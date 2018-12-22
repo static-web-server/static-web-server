@@ -12,6 +12,7 @@ build:
 
 release:
 		-cargo build --release --target $(PLATFORM)
+		-mkdir -p bin
 		-cp -rf target/$(PLATFORM)/release/rust-web-server ./bin
 		-strip ./bin/rust-web-server
 
