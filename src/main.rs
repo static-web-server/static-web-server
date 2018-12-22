@@ -1,4 +1,5 @@
 extern crate env_logger;
+extern crate flate2;
 extern crate iron;
 extern crate playground_middleware;
 
@@ -10,27 +11,12 @@ use iron::prelude::*;
 use playground_middleware::{Cache, GuessContentType, ModifyWith, Prefix, Staticfile};
 use std::time::Duration;
 
-#[derive(Deserialize, Debug)]
-struct Config {
-    #[serde(default = "default_port")]
-    port: u16,
-    #[serde(default = "default_root")]
-    root: String,
-    #[serde(default = "default_assets")]
-    assets: String,
-}
+#[macro_use]
+mod gzip;
+mod env;
 
-fn default_port() -> u16 {
-    8018
-}
-
-fn default_root() -> String {
-    "./public".to_string()
-}
-
-fn default_assets() -> String {
-    "./assets".to_string()
-}
+use crate::env::Config;
+use crate::gzip::GzipMiddleware;
 
 fn main() {
     let config = envy::prefixed("APP_")
@@ -53,6 +39,7 @@ fn main() {
     files.link_after(ModifyWith::new(Cache::new(one_day)));
     files.link_after(Prefix::new(&[config.assets], Cache::new(one_year)));
     files.link_after(GuessContentType::new(default_content_type));
+    files.link_after(GzipMiddleware);
 
     let _server = Iron::new(files)
         .http(_address)
