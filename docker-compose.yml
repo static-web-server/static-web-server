@@ -2,7 +2,8 @@ version: '3'
 
 services:
   cs-server:
-    image: cs-server-rust:latest
+    image: registry.joseluisq.net/static-web-server
+    # image: cs-server-rust:latest
     # build:
     #   context: .
     #   dockerfile: Dockerfile
@@ -21,7 +22,7 @@ services:
           cpus: '0.5'
           memory: 50M
     ports:
-      - "8015:8015"
+      - "8018:8018"
     networks:
        - overlay
 
