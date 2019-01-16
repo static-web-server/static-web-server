@@ -1,5 +1,5 @@
 [package]
-name = "rust-web-server"
+name = "static-web-server"
 version = "1.0.0"
 authors = ["José Quintana <https://git.io/joseluisq>"]
 

@@ -1,4 +1,8 @@
+BIN_NAME=static-web-server
+
 DOCKER_IMG=cs-server-rust:latest
+DOCKER_IMG_SERVICE=envoy-static-web-server:latest
+
 PLATFORM=x86_64-unknown-linux-musl
 
 start:
@@ -13,15 +17,19 @@ build:
 release:
 		-cargo build --release --target $(PLATFORM)
 		-mkdir -p bin
-		-cp -rf target/$(PLATFORM)/release/rust-web-server ./bin
-		-strip ./bin/rust-web-server
+		-cp -rf target/$(PLATFORM)/release/${BIN_NAME} ./bin
+		-strip ./bin/${BIN_NAME}
 
 exec:
-	./target/release/rust-web-server
+	./bin/${BIN_NAME}
 
 img:
 	-docker build -t $(DOCKER_IMG) .
 .PHONY: img
+
+img-service:
+	-docker build -t $(DOCKER_IMG_SERVICE) -f Dockerfile-service .
+.PHONY: img-service
 
 test:
 	-echo "GET $(URL)" \

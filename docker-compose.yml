@@ -1,8 +1,8 @@
-version: '3'
+version: '3.3'
 
 services:
   cs-server:
-    image: registry.joseluisq.net/static-web-server
+    image: hub.joseluisq.net/static-web-server
     # image: cs-server-rust:latest
     # build:
     #   context: .
@@ -24,7 +24,7 @@ services:
     ports:
       - "8018:8018"
     networks:
-       - overlay
+      - overlay
 
 networks:
   overlay:

@@ -19,13 +19,20 @@ use crate::env::Config;
 use crate::gzip::GzipMiddleware;
 
 fn main() {
-    let config = envy::prefixed("APP_")
+    let config = envy::prefixed("SERVER_")
         .from_env::<Config>()
         .expect("Unable to parsing config from env");
 
+    // headers.append_raw("server", config.name.as_bytes().to_vec());
+
     env_logger::init().expect("Unable to initialize logger");
 
-    let _address = &format!("{}{}", "[::]:", config.port.to_string());
+    let _address = &format!(
+        "{}{}{}",
+        config.host.to_string(),
+        ":",
+        config.port.to_string()
+    );
 
     let files = Staticfile::new(config.root).expect("Directory to serve not found");
     let mut files = Chain::new(files);
@@ -46,4 +53,5 @@ fn main() {
         .expect("Unable to start server");
 
     println!("Server listening at {}", _address);
+    println!("Server Name: {}", config.name);
 }
