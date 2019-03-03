@@ -1,8 +1,4 @@
 BIN_NAME=static-web-server
-
-DOCKER_IMG=cs-server-rust:latest
-DOCKER_IMG_SERVICE=envoy-static-web-server:latest
-
 PLATFORM=x86_64-unknown-linux-musl
 
 start:
@@ -32,13 +28,9 @@ exec:
 	./bin/${BIN_NAME}
 .PHONY: exec
 
-img:
+image:
 	-docker build -t $(DOCKER_IMG) .
-.PHONY: img
-
-img-service:
-	-docker build -t $(DOCKER_IMG_SERVICE) -f Dockerfile-service .
-.PHONY: img-service
+.PHONY: image
 
 test:
 	-echo "GET $(URL)" \
