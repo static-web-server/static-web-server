@@ -73,6 +73,5 @@ fn main() {
         .http(_address)
         .expect("Unable to start server");
 
-    info!("Server name is `{}`", config.name);
-    info!("Server is running on HTTP port {}", _address);
+    info!("HTTP Server `{}` is running on {}", config.name, _address);
 }

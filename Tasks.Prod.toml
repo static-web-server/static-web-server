@@ -1,0 +1,49 @@
+[env]
+E_PLATFORM = "x86_64-unknown-linux-musl"
+E_BIN_DIR = "./bin"
+E_BIN_NAME = { script = ["cat Cargo.toml | awk 'match($0, /name = \"(.*)\"/, v) {print v[1]}'"] }
+E_BIN_PATH = "${E_BIN_DIR}/${E_BIN_NAME}"
+
+[tasks.clean_artifacts]
+command = "cargo"
+args = ["clean"]
+
+[tasks.clean_bin]
+script = ["rm -rf bin"]
+
+[tasks.clean]
+dependencies = [
+	"clean_artifacts",
+	"clean_bin"
+]
+
+[tasks.test]
+command = "cargo"
+args = ["test"]
+dependencies = ["clean"]
+
+[tasks.mkdir]
+script = ["mkdir -p ${E_BIN_DIR}"]
+
+[tasks.copy]
+script = ["cp -rf target/${E_PLATFORM}/release/${E_BIN_NAME} ${E_BIN_DIR}"]
+
+[tasks.strip]
+script = ["strip ${E_BIN_PATH}"]
+
+[tasks.size]
+script = ["du -sh ${E_BIN_PATH}"]
+
+[tasks.build]
+command = "cargo"
+args = ["build", "--release", "--target", "${E_PLATFORM}"]
+
+[tasks.release]
+dependencies = [
+	"clean",
+	"build",
+	"mkdir",
+	"copy",
+	"strip",
+	"size"
+]
