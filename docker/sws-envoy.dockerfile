@@ -8,7 +8,7 @@ RUN set -ex \
 ADD bin /bin/static-web-server
 ADD public /public
 
-COPY docker-entrypoint.sh /entrypoint.sh
+COPY docker/docker-entrypoint.sh /entrypoint.sh
 
 RUN chmod u+x /bin/static-web-server \
     && chmod u+x /entrypoint.sh

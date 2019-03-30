@@ -1,8 +1,9 @@
 [env]
-E_PLATFORM = "x86_64-unknown-linux-musl"
-E_BIN_DIR = "./bin"
-E_BIN_NAME = { script = ["cat Cargo.toml | awk 'match($0, /name = \"(.*)\"/, v) {print v[1]}'"] }
-E_BIN_PATH = "${E_BIN_DIR}/${E_BIN_NAME}"
+PKG_PLATFORM = "x86_64-unknown-linux-musl"
+PKG_NAME = { script = ["cat Cargo.toml | awk 'match($0, /name = \"(.*)\"/, v) {print v[1]}'"] }
+PKG_VERSION = { script = ["cat Cargo.toml | awk 'match($0, /version = \"([0-9.].+)\"/, v) {print v[1]}'"] }
+PKG_BIN_DIR = "./bin"
+PKG_BIN_PATH = "${PKG_BIN_DIR}/${PKG_NAME}"
 
 [tasks.clean_artifacts]
 command = "cargo"
@@ -23,20 +24,23 @@ args = ["test"]
 dependencies = ["clean"]
 
 [tasks.mkdir]
-script = ["mkdir -p ${E_BIN_DIR}"]
+script = ["mkdir -p ${PKG_BIN_DIR}"]
 
 [tasks.copy]
-script = ["cp -rf target/${E_PLATFORM}/release/${E_BIN_NAME} ${E_BIN_DIR}"]
+script = ["cp -rf target/${PKG_PLATFORM}/release/${PKG_NAME} ${PKG_BIN_DIR}"]
 
 [tasks.strip]
-script = ["strip ${E_BIN_PATH}"]
+script = ["strip ${PKG_BIN_PATH}"]
 
 [tasks.size]
-script = ["du -sh ${E_BIN_PATH}"]
+script = ["du -sh ${PKG_BIN_PATH}"]
 
 [tasks.build]
 command = "cargo"
-args = ["build", "--release", "--target", "${E_PLATFORM}"]
+args = ["build", "--release", "--target", "${PKG_PLATFORM}"]
+
+[tasks.docker_image]
+script = ["docker build -t ${PKG_NAME} -f ./docker/sws-envoy.dockerfile ."]
 
 [tasks.release]
 dependencies = [
