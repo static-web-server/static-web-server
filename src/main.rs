@@ -38,7 +38,8 @@ fn main() {
                 record.level(),
                 record.args()
             )
-        }).filter(None, LevelFilter::Info)
+        })
+        .filter(None, LevelFilter::Info)
         .init();
 
     let config = envy::prefixed("SERVER_")
