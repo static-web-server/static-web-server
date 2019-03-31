@@ -1,30 +1,36 @@
-version: '3.3'
+version: "3.3"
 
 services:
-  cs-server:
-    image: hub.joseluisq.net/static-web-server
-    # image: cs-server-rust:latest
-    # build:
-    #   context: .
-    #   dockerfile: Dockerfile
+
+  service1:
+    image: static-web-server:latest
+    environment:
+      - SERVER_HOST=127.0.0.1
+      - SERVER_PORT=8080
+      - SERVER_NAME=Server-1
+      - SERVICE_NAME=service1
+
+    # configs:
+    #   - source: docker_registry_service
+    #     target: /etc/envoy-service.yaml
+    volumes:
+      - ./envoy-service.yaml:/etc/envoy-service.yaml
     deploy:
       replicas: 1
       update_config:
         parallelism: 1
-        delay: 10s
       restart_policy:
         condition: on-failure
-      resources:
-        limits:
-          cpus: '0.5'
-          memory: 50M
-        reservations:
-          cpus: '0.5'
-          memory: 50M
-    ports:
-      - "8018:8018"
     networks:
-      - overlay
+      envoymesh:
+        aliases:
+          - service1
+
+#configs:
+#  docker_registry_service:
+#    external: true
 
 networks:
-  overlay:
+  envoymesh:
+    external:
+      name: envoymesh
