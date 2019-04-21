@@ -40,7 +40,7 @@ command = "cargo"
 args = ["build", "--release", "--target", "${PKG_PLATFORM}"]
 
 [tasks.docker_image]
-script = ["docker build -t ${PKG_NAME} -f ./docker/sws-envoy.dockerfile ."]
+script = ["docker build -t ${PKG_NAME} -f ./docker/sws.dockerfile ."]
 
 [tasks.release]
 dependencies = [

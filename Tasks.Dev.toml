@@ -1,6 +1,6 @@
 [env]
 E_ARGS = ""
-E_URL = "http://localhost:8018"
+E_URL = "https://joseluisq.net"
 
 [tasks.watch]
 command = "cargo"
@@ -12,6 +12,6 @@ args = ["run", "run -- ${E_ARGS}"]
 
 [tasks.loadtest]
 script = [
-    "echo GET $E_URL | vegeta -cpus=12 attack -workers=10 -duration=60s -connections=10000 -rate=200 -http2=false | tee results.bin | vegeta report",
+    "echo GET $E_URL | vegeta -cpus=12 attack -workers=10 -duration=60s -connections=10000 -rate=200 -http2=true | tee results.bin | vegeta report",
 	"cat results.bin | vegeta report -reporter=plot > plot.html"
 ]

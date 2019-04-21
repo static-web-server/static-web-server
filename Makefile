@@ -30,3 +30,7 @@ release:
 docker_image:
 	@cargo make --makefile Tasks.Prod.toml docker_image
 .PHONY: docker_image
+
+load_test:
+	@cargo make --makefile Tasks.Dev.toml loadtest
+.PHONY: load_test
