@@ -1,0 +1,10 @@
+{
+  "editor.formatOnSave": true,
+  "editor.insertSpaces": true,
+  "editor.tabSize": 4,
+  "files.insertFinalNewline": true,
+  "rust.build_on_save": true,
+  "rust.clippy_preference": "on",
+  "rust.all_features": true,
+  "rust.show_warnings": true
+}
