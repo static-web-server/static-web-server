@@ -28,6 +28,10 @@ release:
 	@cargo make --makefile Tasks.Prod.toml release
 .PHONY: release
 
+release-beta:
+	@cargo release --dry-run --skip-publish beta
+.PHONY: release-beta
+
 docker_image:
 	@cargo make --makefile Tasks.Prod.toml docker_image
 .PHONY: docker_image
