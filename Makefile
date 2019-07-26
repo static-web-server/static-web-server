@@ -13,6 +13,7 @@ help:
 
 install:
 	@cargo install --force cargo-make
+	@cargo install cargo-release
 .PHONY: install
 
 run:
