@@ -1,8 +1,9 @@
 help:
 	@echo
 	@echo "Static Web Server"
-	@echo "Web Server to static file-serving."
+	@echo "A fast web server to static files-serving powered by Rust Iron. 🚀"
 	@echo
+	@echo "Development:"
 	@echo "Please use \`make <target>\` where <target> is one of:"
 	@echo "    install           to install dependencies."
 	@echo "    run               to run server in development."
@@ -12,12 +13,17 @@ help:
 	@echo
 
 install:
+	@rustup target add x86_64-unknown-linux-musl
 	@cargo install --force cargo-make
 .PHONY: install
 
 run:
 	@cargo make --makefile Tasks.Dev.toml run
 .PHONY: run
+
+test:
+	@echo "There are no tests at the moment!"
+.PHONY: test
 
 watch:
 	@cargo make --makefile Tasks.Dev.toml watch
@@ -27,9 +33,9 @@ release:
 	@cargo make --makefile Tasks.Prod.toml release
 .PHONY: release
 
-docker_image:
+docker.image:
 	@cargo make --makefile Tasks.Prod.toml docker_image
-.PHONY: docker_image
+.PHONY: docker.image
 
 load_test:
 	@cargo make --makefile Tasks.Dev.toml loadtest
