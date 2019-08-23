@@ -19,7 +19,9 @@ pipeline {
     stages {
         stage('Init') {
             steps {
-                env.BUILD_USER = getBuildUser()
+                script {
+                    BUILD_USER = getBuildUser()
+                }
 
                 sh 'rustc --version'
                 sh 'cargo --version'
