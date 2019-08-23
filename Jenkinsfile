@@ -17,6 +17,10 @@ pipeline {
     }
 
     stages {
+        stage('Checkout') {
+            checkout scm
+        }
+
         stage('Init') {
             steps {
                 script {
