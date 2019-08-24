@@ -32,22 +32,26 @@ pipeline {
                 sh 'rustc --version'
                 sh 'cargo --version'
                 sh 'cargo make --version'
-                sh 'make install'
+                sh 'echo ""'
+                sh 'echo "Install dependencies....."'
+                sh 'echo ""'
+                sh 'rustup target add x86_64-unknown-linux-musl'
+	            sh 'cargo install --force cargo-make'
                 sh 'rustup show'
             }
         }
 
         stage('Test') {
             steps {
-                sh 'make test'
+                sh 'echo "There are no tests at the moment!"'
             }
         }
 
         stage('Build') {
             steps {
                 echo "Running ${env.BUILD_ID} on ${env.JENKINS_URL}"
-                sh 'make release'
-                sh 'make docker.image'
+                sh 'cargo make --makefile Tasks.Prod.toml release'
+                sh 'cargo make --makefile Tasks.Prod.toml docker_image'
             }
         }
 
