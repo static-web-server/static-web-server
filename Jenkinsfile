@@ -10,7 +10,6 @@ pipeline {
     environment {
         CI = 'true'
         BUILD_USER = ''
-        CFLAGS_x86_64_unknown_linux_musl = 'x86_64-linux-musl-gcc'
     }
 
     stages {

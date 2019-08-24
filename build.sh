@@ -12,7 +12,8 @@ PKG_BIN_PATH="${PKG_BIN_DIR}/${PKG_NAME}"
 # Build binary release
 cargo clean
 rm -rf bin
-cargo build --release --target ${PKG_PLATFORM}
+env CC_x86_64_unknown_linux_musl=x86_64-linux-musl-gcc \
+    cargo build --release --target ${PKG_PLATFORM}
 mkdir -p ${PKG_BIN_DIR}
 cp -rf target/${PKG_PLATFORM}/release/${PKG_NAME} ${PKG_BIN_DIR}
 strip ${PKG_BIN_PATH}
