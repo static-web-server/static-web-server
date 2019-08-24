@@ -21,6 +21,7 @@ pipeline {
 
         stage('Init') {
             steps {
+                sh 'apt update'
                 sh 'apt install musl-gcc'
                 sh 'rustc --version'
                 sh 'cargo --version'
