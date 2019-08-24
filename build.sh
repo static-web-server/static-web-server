@@ -1,8 +1,5 @@
 #!/usr/bin/env bash
 
-set -e
-set -u
-
 PKG_PLATFORM="x86_64-unknown-linux-musl"
 PKG_NAME=$(cat Cargo.toml | awk 'match($0, /name = \"(.*)\"/, v) {print v[1]}')
 PKG_VERSION=$(cat Cargo.toml | awk 'match($0, /version = \"([0-9.].+)\"/, v) {print v[1]}')

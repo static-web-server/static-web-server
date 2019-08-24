@@ -56,11 +56,13 @@ pipeline {
 
     post {
         success {
-            slackSend (
-                channel: '#jenkins',
-                color: "good",
-                message: "*${currentBuild.currentResult}:* Job ${env.JOB_NAME} build ${env.BUILD_NUMBER}\n More info at: ${env.BUILD_URL}"
-            )
+            withCredentials([string(credentialsId: 'slack-token', variable: 'slackCredentials')]) {
+                slackSend teamDomain: 'quintanaio',
+                    token: slackCredentials, 
+                    channel: '#jenkins',
+                    color: 'good',
+                    message: "*${currentBuild.currentResult}:* Job ${env.JOB_NAME} build ${env.BUILD_NUMBER} by ${env.BUILD_USER}\n More info at: ${env.BUILD_URL}"
+            }
         }
         failure {
             withCredentials([string(credentialsId: 'slack-token', variable: 'slackCredentials')]) {
