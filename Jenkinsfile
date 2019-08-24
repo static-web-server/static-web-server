@@ -1,9 +1,5 @@
 def COLOR_MAP = ['SUCCESS': 'good', 'FAILURE': 'danger', 'UNSTABLE': 'danger', 'ABORTED': 'danger']
 
-def getBuildUser() {
-    return currentBuild.rawBuild.getCause(Cause.UserIdCause).getUserId()
-}
-
 pipeline {
     agent {
         docker {
@@ -25,10 +21,6 @@ pipeline {
 
         stage('Init') {
             steps {
-                script {
-                    BUILD_USER = getBuildUser()
-                }
-
                 sh 'rustc --version'
                 sh 'cargo --version'
                 sh 'cargo make --version'
@@ -73,7 +65,7 @@ pipeline {
             slackSend (
                 channel: '#jenkins',
                 color: "good",
-                message: "*${currentBuild.currentResult}:* Job ${env.JOB_NAME} build ${env.BUILD_NUMBER} by ${env.BUILD_USER}\n More info at: ${env.BUILD_URL}"
+                message: "*${currentBuild.currentResult}:* Job ${env.JOB_NAME} build ${env.BUILD_NUMBER}\n More info at: ${env.BUILD_URL}"
             )
         }
         failure {
