@@ -1,6 +1,5 @@
 FROM scratch
 
-COPY certs/ca-certificates.crt /etc/ssl/certs/
 COPY static-web-server /
 
 EXPOSE 80

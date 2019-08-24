@@ -23,12 +23,7 @@ pipeline {
             steps {
                 sh 'rustc --version'
                 sh 'cargo --version'
-                sh 'echo ""'
-                sh 'echo "Install dependencies....."'
-                sh 'echo ""'
                 sh 'rustup target add x86_64-unknown-linux-musl'
-	            sh 'cargo install --force cargo-make'
-                sh 'cargo make --version'
                 sh 'rustup show'
             }
         }
@@ -42,8 +37,7 @@ pipeline {
         stage('Build') {
             steps {
                 echo "Running ${env.BUILD_ID} on ${env.JENKINS_URL}"
-                sh 'cargo make --makefile Tasks.Prod.toml release'
-                sh 'cargo make --makefile Tasks.Prod.toml docker_image'
+                sh './build.sh'
             }
         }
 
@@ -69,11 +63,13 @@ pipeline {
             )
         }
         failure {
-            slackSend (
-                channel: '#jenkins',
-                color: COLOR_MAP[currentBuild.currentResult],
-                message: "*${currentBuild.currentResult}:* Job ${env.JOB_NAME} build ${env.BUILD_NUMBER} by ${env.BUILD_USER}\n More info at: ${env.BUILD_URL}"
-            )
+            withCredentials([string(credentialsId: 'slack-token', variable: 'slackCredentials')]) {
+                slackSend teamDomain: 'quintanaio',
+                    token: slackCredentials, 
+                    channel: '#jenkins',
+                    color: COLOR_MAP[currentBuild.currentResult],
+                    message: "*${currentBuild.currentResult}:* Job ${env.JOB_NAME} build ${env.BUILD_NUMBER} by ${env.BUILD_USER}\n More info at: ${env.BUILD_URL}"
+            }
         }
     }
 }
