@@ -4,8 +4,8 @@ set -e
 set -u
 
 PKG_PLATFORM="x86_64-unknown-linux-musl"
-PKG_NAME=$(cat Cargo.toml | awk "match(\$0, /name = \"(.\*)\"/, v) {print v[1]}")
-PKG_VERSION=$(cat Cargo.toml | awk "match(\$0, /version = \"([0-9.].+)\"/, v) {print v[1]}")
+PKG_NAME=$(cat Cargo.toml | sed -n 's/name = "\([^}]*\)"/\1/p')
+PKG_VERSION=$(cat Cargo.toml | sed -n 's/version = "\([^}]*\)"/\1/p')
 PKG_BIN_DIR="./bin"
 PKG_BIN_PATH="${PKG_BIN_DIR}/${PKG_NAME}"
 
