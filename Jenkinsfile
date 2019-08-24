@@ -21,8 +21,8 @@ pipeline {
 
         stage('Init') {
             steps {
-                sh 'apt update'
-                sh 'apt install musl-gcc'
+                sh 'apt-get update'
+                sh 'apt-get install musl-gcc'
                 sh 'rustc --version'
                 sh 'cargo --version'
                 sh 'rustup target add x86_64-unknown-linux-musl'
