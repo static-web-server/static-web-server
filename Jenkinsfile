@@ -23,12 +23,12 @@ pipeline {
             steps {
                 sh 'rustc --version'
                 sh 'cargo --version'
-                sh 'cargo make --version'
                 sh 'echo ""'
                 sh 'echo "Install dependencies....."'
                 sh 'echo ""'
                 sh 'rustup target add x86_64-unknown-linux-musl'
 	            sh 'cargo install --force cargo-make'
+                sh 'cargo make --version'
                 sh 'rustup show'
             }
         }
