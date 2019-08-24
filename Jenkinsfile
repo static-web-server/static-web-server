@@ -21,23 +21,23 @@ pipeline {
 
         stage('Init') {
             steps {
-                sh 'rustc --version'
-                sh 'cargo --version'
-                sh 'rustup target add x86_64-unknown-linux-musl'
-                sh 'rustup show'
+                bash 'rustc --version'
+                bash 'cargo --version'
+                bash 'rustup target add x86_64-unknown-linux-musl'
+                bash 'rustup show'
             }
         }
 
         stage('Test') {
             steps {
-                sh 'echo "There are no tests at the moment!"'
+                bash 'echo "There are no tests at the moment!"'
             }
         }
 
         stage('Build') {
             steps {
                 echo "Running ${env.BUILD_ID} on ${env.JENKINS_URL}"
-                sh './build.sh'
+                bash './build.sh'
             }
         }
 
@@ -49,7 +49,7 @@ pipeline {
             }
             steps {
                 // sh 'cargo release --skip-push --skip-publish beta'
-                sh 'echo "Push current docker image..........."'
+                bash 'echo "Push current docker image..........."'
             }
         }
     }
