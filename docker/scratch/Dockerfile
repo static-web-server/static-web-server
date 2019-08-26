@@ -1,6 +1,6 @@
 FROM scratch
 
-COPY static-web-server /
+COPY ./bin/static-web-server /
 
 EXPOSE 80
 
