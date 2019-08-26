@@ -11,7 +11,7 @@ node {
             try {
                 docker.withRegistry('https://registry.joseluisq.net', 'registry-joseluisq-net') {
                     sh "docker login -u ${USERNAME} -p ${PASSWORD}"
-                    rustatic = docker.image('rustatic:latest')
+                    rustatic = docker.image('registry.joseluisq.net/rustatic:latest')
                 }
             } catch (err) {
                 error('Checkout failed!')
