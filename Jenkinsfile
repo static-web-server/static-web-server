@@ -5,16 +5,12 @@ node {
     def app
 
     stage('Checkout') {
-        checkout scm
+        // checkout scm
 
         withCredentials([usernamePassword( credentialsId: 'registry-joseluisq-net', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD')]) {
             try {
                 docker.withRegistry('https://registry.joseluisq.net', 'registry-joseluisq-net') {
-                    sh "docker login -u ${USERNAME} -p ${PASSWORD}"
-                    docker.image('registry.joseluisq.net/rustatic:latest').inside {
-                        sh 'pwd'
-                        sh 'ls -lah'
-                    }
+                    rustatic = docker.image('registry.joseluisq.net/rustatic:latest')
                 }
             } catch (err) {
                 error('Checkout failed!')
