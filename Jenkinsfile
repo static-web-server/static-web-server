@@ -5,7 +5,7 @@ node {
     def app
 
     stage('Checkout') {
-        // checkout scm
+        checkout scm
 
         withCredentials([usernamePassword( credentialsId: 'registry-joseluisq-net', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD')]) {
             try {
@@ -31,7 +31,7 @@ node {
 
     stage('Build') {
         echo "Running ${env.BUILD_ID} on ${env.JENKINS_URL}"
-        // sh './build.sh'
+        sh './rust-build.sh'
     }
 
     // stage('Deploy') {
