@@ -7,12 +7,15 @@ node {
     stage('Checkout') {
         checkout scm
 
-        try {
-            docker.withRegistry('https://registry.joseluisq.net', 'registry-joseluisq-net') {
-                rustatic = docker.image('rustatic:latest')
+        withCredentials([usernamePassword( credentialsId: 'registry-joseluisq-net', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD')]) {
+            try {
+                docker.withRegistry('https://registry.joseluisq.net', 'registry-joseluisq-net') {
+                    sh "docker login -u ${USERNAME} -p ${PASSWORD}"
+                    rustatic = docker.image('rustatic:latest')
+                }
+            } catch (err) {
+                error('Checkout failed!')
             }
-        } catch (err) {
-            error('Checkout failed!')
         }
     }
 
