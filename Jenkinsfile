@@ -4,6 +4,10 @@ node {
     def rustatic
     def app
 
+    environment {
+        PATH = "/home/joseluisq/.cargo/bin/:$PATH"
+    }
+
     stage('Checkout') {
         checkout scm
 
@@ -38,6 +42,8 @@ node {
         echo "Running ${env.BUILD_ID} on ${env.JENKINS_URL}"
         
         rustatic.inside {
+            echo "PATH is: $PATH"
+
             sh 'rustatic $(pwd -P)'
         }
     }
