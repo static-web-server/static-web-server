@@ -5,7 +5,7 @@ node {
     def app
 
     environment {
-        PATH = "$HOME/.cargo/bin/:$PATH"
+        PATH = "/root/.cargo/bin/:$PATH"
     }
 
     stage('Checkout') {
@@ -24,9 +24,9 @@ node {
 
     stage('Init') {
         rustatic.inside {
-            sh 'ls -lah $HOME'
             sh 'echo $PATH'
-            sh 'export PATH="$PATH:$HOME/.cargo/bin"'
+            sh 'ls -lah /root'
+            sh 'export PATH="$PATH:/root/.cargo/bin"'
             sh 'echo $PATH'
 
             sh 'rustc --version'
