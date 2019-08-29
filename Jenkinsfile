@@ -24,6 +24,11 @@ node {
 
     stage('Init') {
         rustatic.inside {
+            sh 'ls -lah $HOME'
+            sh 'echo $PATH'
+            sh 'export PATH="$PATH:$HOME/.cargo/bin"'
+            sh 'echo $PATH'
+
             sh 'rustc --version'
             sh 'cargo --version'
             sh 'rustup --version'
