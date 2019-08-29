@@ -31,7 +31,10 @@ node {
 
     stage('Build') {
         echo "Running ${env.BUILD_ID} on ${env.JENKINS_URL}"
-        sh 'rustatic $(pwd -P)'
+        
+        rustatic.inside {
+            sh 'rustatic $(pwd -P)'
+        }
     }
 
     // stage('Deploy') {
