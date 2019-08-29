@@ -31,7 +31,7 @@ node {
 
     stage('Build') {
         echo "Running ${env.BUILD_ID} on ${env.JENKINS_URL}"
-        sh './build.sh'
+        sh '../build.sh $(pwd -P)'
     }
 
     // stage('Deploy') {
