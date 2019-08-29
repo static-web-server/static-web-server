@@ -20,6 +20,11 @@ node {
 
     stage('Init') {
         rustatic.inside {
+            sh 'rustc --version'
+            sh 'cargo --version'
+            sh 'rustup --version'
+
+            sh 'echo'
             sh 'pwd'
             sh 'ls -lah'
         }
