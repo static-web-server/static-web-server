@@ -5,7 +5,7 @@ node {
     def app
 
     environment {
-        PATH = "/home/joseluisq/.cargo/bin/:$PATH"
+        PATH = "$HOME/.cargo/bin/:$PATH"
     }
 
     stage('Checkout') {
