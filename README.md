@@ -1,4 +1,4 @@
-# Static Web Server
+# Static Web Server [![Build Status](https://ci.joseluisq.net/api/badges/joseluisq/static-web-server/status.svg)](https://ci.joseluisq.net/joseluisq/static-web-server)
 
 > A fast web server to static files-serving powered by [Rust Iron](https://github.com/iron/iron). :zap:
 
