@@ -5,7 +5,7 @@ steps:
   - name: test
     image: registry.joseluisq.net/rustatic:latest
     commands:
-      - pwd
+      - pwd -P
       - ls -lah
       - echo $PATH
       - cargo --version
