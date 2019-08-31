@@ -13,10 +13,7 @@ steps:
       repo: rustatic
       tags: latest
 
-  - name: test
+  - name: build
+    image: registry.joseluisq.net/rustatic:latest
     commands:
       - rustup show
-
-  - name: build
-    commands:
-      - rustatic $(pwd -P)
