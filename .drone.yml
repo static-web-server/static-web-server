@@ -12,6 +12,7 @@ steps:
       - cargo --version
       - rustc --version
       - rustup --version
+      - rustatic $(pwd -P)
 
 image_pull_secrets:
   - dockerconfig
