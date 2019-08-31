@@ -5,6 +5,7 @@ steps:
   - name: test
     image: registry.joseluisq.net/rustatic:latest
     commands:
+      - echo $PATH
       - cargo --version
       - rustc --version
       - rustup --version
