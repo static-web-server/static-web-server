@@ -13,7 +13,7 @@ steps:
       - rustc --version
       - rustup --version
       - rustup show
-      - cargo install .
+      - cargo install
       - cargo build --release --target x86_64-unknown-linux-musl
 
 image_pull_secrets:
