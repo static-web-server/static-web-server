@@ -2,17 +2,6 @@ kind: pipeline
 name: default
 
 steps:
-  - name: docker
-    image: plugins/docker
-    settings:
-      username:
-        from_secret: docker_username
-      password:
-        from_secret: docker_password
-      registry: registry.joseluisq.net
-      # repo: rustatic
-      # tags: latest
-
   - name: build
     image: registry.joseluisq.net/rustatic:latest
     commands:
