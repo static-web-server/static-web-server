@@ -10,10 +10,6 @@ steps:
       password:
         from_secret: docker_password
       registry: registry.joseluisq.net
-      repo: rustatic
-      tags: latest
-    commands:
-      - rustup show
 
   - name: build
     image: registry.joseluisq.net/rustatic:latest
