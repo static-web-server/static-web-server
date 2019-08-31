@@ -5,6 +5,7 @@ steps:
   - name: test
     image: registry.joseluisq.net/rustatic:latest
     commands:
+      - export PATH="$PATH:$HOME/.cargo/bin"
       - pwd -P
       - ls -lah
       - echo $PATH
