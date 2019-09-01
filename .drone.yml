@@ -3,19 +3,19 @@ name: default
 
 steps:
   - name: test
-    image: registry.joseluisq.net/rustatic:latest
+    image: ekidd/rust-musl-builder:stable
     commands:
-      - export PATH="$PATH:$HOME/.cargo/bin"
-      - pwd -P
-      - ls -lah
-      - echo $PATH
-      - cargo --version
-      - rustc --version
-      - rustup --version
-      - rustup show
-      - cargo clean
-      - cargo build
+      - cargo build --release
+      # - export PATH="$PATH:$HOME/.cargo/bin"
+      # - pwd -P
+      # - ls -lah
+      # - echo $PATH
+      # - cargo --version
+      # - rustc --version
+      # - rustup --version
+      # - rustup show
+      # - cargo clean
+      # - cargo build
       # - env CC_x86_64_unknown_linux_musl=x86_64-linux-musl-gcc cargo build --release --target x86_64-unknown-linux-musl
-
-image_pull_secrets:
-  - dockerconfig
+# image_pull_secrets:
+#   - dockerconfig
