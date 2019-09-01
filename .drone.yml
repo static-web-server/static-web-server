@@ -26,9 +26,7 @@ pipeline:
             from_secret: registry_username
         password:
             from_secret: registry_password
-        tags:
-            - latest
-            - "${DRONE_TAG}"
+        auto_tag: true
         when:
             event: tag
 

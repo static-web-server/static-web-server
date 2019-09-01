@@ -53,6 +53,13 @@ docker.image:
 	@cargo make --makefile Tasks.Prod.toml docker_image
 .PHONY: docker.image
 
+docker.image.tag:
+	@git push --delete origin latest
+	@git tag -d latest
+	@git tag latest
+	@git push origin --tags
+.PHONY: docker.image.tag
+
 load_test:
 	@cargo make --makefile Tasks.Dev.toml loadtest
 .PHONY: load_test
