@@ -23,9 +23,9 @@ pipeline:
         repo: registry.joseluisq.net/static-web-server
         dockerfile: ./docker/scratch/Dockerfile
         username:
-            from_secret: secret_username
+            from_secret: registry_username
         password:
-            from_secret: secret_password
+            from_secret: registry_password
         tags:
             - latest
             - "${DRONE_TAG}"
@@ -33,7 +33,7 @@ pipeline:
             event: tag
 
     rebuild-cache:
-        image: drillst  er/drone-volume-cache
+        image: drillster/drone-volume-cache
         rebuild: true
         mount:
             - /home/rust/.cargo/git
