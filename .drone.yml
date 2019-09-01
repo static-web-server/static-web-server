@@ -22,6 +22,8 @@ pipeline:
         registry: registry.joseluisq.net
         repo: registry.joseluisq.net/static-web-server
         dockerfile: ./docker/scratch/Dockerfile
+        auth:
+            from_secret: auth_token_registry
         tags:
             - latest
             - "${DRONE_TAG}"
@@ -39,6 +41,3 @@ pipeline:
             - /tmp/cache:/cache
         when:
             branch: develop
-
-image_pull_secrets:
-    - dockerconfig
