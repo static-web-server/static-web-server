@@ -11,22 +11,23 @@ pipeline:
 
     build:
         image: ekidd/rust-musl-builder:stable
+        group: building
         commands:
             - make release
             - make optimize
 
     build-image:
         image: plugins/docker
-        dockerfile: ./docker/Dockerfile
+        group: building
         registry: registry.joseluisq.net
         repo: registry.joseluisq.net/static-web-server
-        tags: latest
-        tags: [ latest, '${DRONE_TAG}' ]
+        dockerfile: ./docker/scratch/Dockerfile
+        tags: [latest, "${DRONE_TAG}"]
         when:
             event: tag
 
     rebuild-cache:
-        image: drillster/drone-volume-cache
+        image: drillst  er/drone-volume-cache
         rebuild: true
         mount:
             - /home/rust/.cargo/git
