@@ -30,6 +30,17 @@ pipeline:
         when:
             event: tag
 
+    gitea-release:
+        image: plugins/gitea-release
+        group: building
+        api_key:
+            from_secret: gitea_token
+        base_url: https://git.joseluisq.net/
+        files: ./bin/*
+        prerelease: true
+        when:
+            event: tag
+
     rebuild-cache:
         image: drillster/drone-volume-cache
         rebuild: true
