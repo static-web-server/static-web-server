@@ -12,8 +12,7 @@ pipeline:
     build:
         image: ekidd/rust-musl-builder:stable
         commands:
-            - sudo chown -R rust:rust $(pwd)
-            - cargo build --release
+            - make release
             - make optimize
 
     rebuild-cache:

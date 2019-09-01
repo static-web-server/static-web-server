@@ -1,3 +1,6 @@
+PKG_NAME=static-web-server
+PKG_BIN_PATH=./bin
+
 help:
 	@echo
 	@echo "Static Web Server"
@@ -17,14 +20,19 @@ install:
 	@cargo install --force cargo-make
 .PHONY: install
 
+release:
+	@sudo chown -R rust:rust ./
+	@cargo build --release
+.PHONY: release
+
 optimize:
-	-mkdir -p ./bin
-	-cp -rf ./target/x86_64-unknown-linux-musl/release/static-web-server ./bin
-	-echo "Size before:"
-	-du -sh ./bin/static-web-server
-	-strip ./bin/static-web-server
-	-echo "Size after:"
-	-du -sh ./bin/static-web-server
+	@mkdir -p $(PKG_BIN_PATH)
+	@cp -rf ./target/x86_64-unknown-linux-musl/release/$(PKG_NAME) $(PKG_BIN_PATH)
+	@echo "Size before:"
+	@du -sh $(PKG_BIN_PATH)/$(PKG_NAME)
+	@strip $(PKG_BIN_PATH)/$(PKG_NAME)
+	@echo "Size after:"
+	@du -sh $(PKG_BIN_PATH)/$(PKG_NAME)
 .PHONY: optimize
 
 run:
@@ -38,10 +46,6 @@ test:
 watch:
 	@cargo make --makefile Tasks.Dev.toml watch
 .PHONY: watch
-
-release:
-	@cargo make --makefile Tasks.Prod.toml release
-.PHONY: release
 
 docker.image:
 	@cargo make --makefile Tasks.Prod.toml docker_image
