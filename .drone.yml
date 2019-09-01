@@ -1,37 +1,34 @@
-kind: pipeline
-name: default
+pipeline:
+    restore-cache:
+        image: drillster/drone-volume-cache
+        restore: true
+        mount:
+            - /home/rust/.cargo/git
+            - /home/rust/.cargo/registry
+            - /home/rust/src/target
+        volumes:
+            - /tmp/cache:/cache
 
-steps:
-  - name: restore-cache
-    image: drillster/drone-volume-cache
-    restore: true
-    mount:
-      - /home/rust/.cargo/git
-      - /home/rust/.cargo/registry
-      - /home/rust/src/target
-    volumes:
-      - /tmp/cache:/cache
+    build:
+        image: ekidd/rust-musl-builder:stable
+        commands:
+            - sudo chown -R rust:rust $(pwd)
+            - cargo build --release
+            - BINARY_PATH="./bin/$(cat Cargo.toml | sed -n 's/name = "\([^}]*\)"/\1/p')"
+            - echo "Size before:"
+            - du -sh $BINARY_PATH
+            - strip $BINARY_PATH
+            - echo "Size after:"
+            - du -sh $BINARY_PATH
 
-  - name: build
-    image: ekidd/rust-musl-builder:stable
-    commands:
-      - sudo chown -R rust:rust $(pwd)
-      - cargo build --release
-      - BINARY_PATH="./bin/static-web-server"
-      - echo "Size before:"
-      - du -sh $BINARY_PATH
-      - strip $BINARY_PATH
-      - echo "Size after:"
-      - du -sh $BINARY_PATH
-
-  - name: rebuild-cache
-    image: drillster/drone-volume-cache
-    rebuild: true
-    mount:
-      - /home/rust/.cargo/git
-      - /home/rust/.cargo/registry
-      - /home/rust/src/target
-    volumes:
-      - /tmp/cache:/cache
-    when:
-      branch: develop
+    rebuild-cache:
+        image: drillster/drone-volume-cache
+        rebuild: true
+        mount:
+            - /home/rust/.cargo/git
+            - /home/rust/.cargo/registry
+            - /home/rust/src/target
+        volumes:
+            - /tmp/cache:/cache
+        when:
+            branch: develop
