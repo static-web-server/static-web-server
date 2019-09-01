@@ -17,13 +17,13 @@ pipeline:
 
     build-image:
         image: plugins/docker
-        repo: static-web-server
-        tags: latest
-        auto_tag: true
         dockerfile: ./docker/Dockerfile
         registry: registry.joseluisq.net
+        repo: registry.joseluisq.net/static-web-server
+        tags: latest
+        tags: [ latest, '${DRONE_TAG}' ]
         when:
-            branch: develop
+            event: tag
 
     rebuild-cache:
         image: drillster/drone-volume-cache
