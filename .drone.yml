@@ -22,7 +22,9 @@ pipeline:
         registry: registry.joseluisq.net
         repo: registry.joseluisq.net/static-web-server
         dockerfile: ./docker/scratch/Dockerfile
-        tags: [latest, "${DRONE_TAG}"]
+        tags:
+            - latest
+            - "${DRONE_TAG}"
         when:
             event: tag
 
