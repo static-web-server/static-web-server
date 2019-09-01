@@ -14,14 +14,7 @@ pipeline:
         commands:
             - sudo chown -R rust:rust $(pwd)
             - cargo build --release
-            - BINARY_PATH="./bin/$(cat Cargo.toml | sed -n 's/name = "\([^}]*\)"/\1/p')"
-            - mkdir -p ./bin
-            - cp -rf ./target/x86_64-unknown-linux-musl/release/${BINARY_PATH} ./bin
-            - echo "Size before:"
-            - du -sh ${BINARY_PATH}
-            - strip ${BINARY_PATH}
-            - echo "Size after:"
-            - du -sh ${BINARY_PATH}
+            - make optimize
 
     rebuild-cache:
         image: drillster/drone-volume-cache

@@ -17,6 +17,16 @@ install:
 	@cargo install --force cargo-make
 .PHONY: install
 
+optimize:
+	-mkdir -p ./bin
+	-cp -rf ./target/x86_64-unknown-linux-musl/release/static-web-server ./bin
+	-echo "Size before:"
+	-du -sh ./bin/static-web-server
+	-strip ./bin/static-web-server
+	-echo "Size after:"
+	-du -sh ./bin/static-web-server
+.PHONY: optimize
+
 run:
 	@cargo make --makefile Tasks.Dev.toml run
 .PHONY: run
