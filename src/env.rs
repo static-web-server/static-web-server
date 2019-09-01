@@ -21,7 +21,7 @@ pub fn default_host() -> String {
 }
 
 pub fn default_port() -> u16 {
-    8018
+    80
 }
 
 pub fn default_root() -> String {
