@@ -1,4 +1,5 @@
 PKG_NAME=static-web-server
+PKG_TARGET=$(PKG_TARGET)
 PKG_BIN_PATH=./bin
 
 help:
@@ -16,24 +17,10 @@ help:
 	@echo
 
 install:
-	@rustup target add x86_64-unknown-linux-musl
+	@rustup target add $(PKG_TARGET)
 	@cargo install --force cargo-make
+	@cargo install cargo-audit
 .PHONY: install
-
-release:
-	@sudo chown -R rust:rust ./
-	@cargo build --release
-.PHONY: release
-
-optimize:
-	@mkdir -p $(PKG_BIN_PATH)
-	@cp -rf ./target/x86_64-unknown-linux-musl/release/$(PKG_NAME) $(PKG_BIN_PATH)
-	@echo "Size before:"
-	@du -sh $(PKG_BIN_PATH)/$(PKG_NAME)
-	@strip $(PKG_BIN_PATH)/$(PKG_NAME)
-	@echo "Size after:"
-	@du -sh $(PKG_BIN_PATH)/$(PKG_NAME)
-.PHONY: optimize
 
 run:
 	@cargo make --makefile Tasks.Dev.toml run
@@ -46,6 +33,21 @@ test:
 watch:
 	@cargo make --makefile Tasks.Dev.toml watch
 .PHONY: watch
+
+release:
+	@sudo chown -R rust:rust ./
+	@cargo build --release
+.PHONY: release
+
+optimize:
+	@mkdir -p $(PKG_BIN_PATH)
+	@cp -rf ./target/$(PKG_TARGET)/release/$(PKG_NAME) $(PKG_BIN_PATH)
+	@echo "Size before:"
+	@du -sh $(PKG_BIN_PATH)/$(PKG_NAME)
+	@strip $(PKG_BIN_PATH)/$(PKG_NAME)
+	@echo "Size after:"
+	@du -sh $(PKG_BIN_PATH)/$(PKG_NAME)
+.PHONY: optimize
 
 docker.image:
 	@cargo make --makefile Tasks.Prod.toml docker_image

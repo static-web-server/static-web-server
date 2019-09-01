@@ -15,6 +15,15 @@ pipeline:
             - make release
             - make optimize
 
+    build-image:
+        image: plugins/docker
+        settings:
+            repo: static-web-server
+            tags: latest
+            auto_tag: true
+            dockerfile: ./docker/Dockerfile
+            registry: registry.joseluisq.net
+
     rebuild-cache:
         image: drillster/drone-volume-cache
         rebuild: true
@@ -26,3 +35,6 @@ pipeline:
             - /tmp/cache:/cache
         when:
             branch: develop
+
+image_pull_secrets:
+    - dockerconfig
