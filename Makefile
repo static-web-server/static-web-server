@@ -1,5 +1,5 @@
 PKG_NAME=static-web-server
-PKG_TARGET=$(PKG_TARGET)
+PKG_TARGET=x86_64-unknown-linux-musl
 PKG_BIN_PATH=./bin
 
 help:
