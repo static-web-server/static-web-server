@@ -5,7 +5,7 @@ pipeline:
         mount:
             - /home/rust/.cargo/git
             - /home/rust/.cargo/registry
-            - /home/rust/src/target
+            - ./target
         volumes:
             - /tmp/cache:/cache
 
@@ -15,11 +15,13 @@ pipeline:
             - sudo chown -R rust:rust $(pwd)
             - cargo build --release
             - BINARY_PATH="./bin/$(cat Cargo.toml | sed -n 's/name = "\([^}]*\)"/\1/p')"
+            - mkdir -p ./bin
+            - cp -rf ./target/x86_64-unknown-linux-musl/release/${BINARY_PATH} ./bin
             - echo "Size before:"
-            - du -sh $BINARY_PATH
-            - strip $BINARY_PATH
+            - du -sh ${BINARY_PATH}
+            - strip ${BINARY_PATH}
             - echo "Size after:"
-            - du -sh $BINARY_PATH
+            - du -sh ${BINARY_PATH}
 
     rebuild-cache:
         image: drillster/drone-volume-cache
@@ -27,7 +29,7 @@ pipeline:
         mount:
             - /home/rust/.cargo/git
             - /home/rust/.cargo/registry
-            - /home/rust/src/target
+            - ./target
         volumes:
             - /tmp/cache:/cache
         when:
