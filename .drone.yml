@@ -5,6 +5,7 @@ steps:
   - name: test
     image: ekidd/rust-musl-builder:stable
     commands:
+      - sudo chown -R rust:rust $(pwd)
       - cargo build --release
       # - export PATH="$PATH:$HOME/.cargo/bin"
       # - pwd -P
