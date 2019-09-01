@@ -17,7 +17,7 @@ steps:
     commands:
       - sudo chown -R rust:rust $(pwd)
       - cargo build --release
-      - BINARY_PATH="./bin/$(cat Cargo.toml | sed -n 's/name = "\([^}]*\)"/\1/p')"
+      - BINARY_PATH="./bin/static-web-server"
       - echo "Size before:"
       - du -sh $BINARY_PATH
       - strip $BINARY_PATH
