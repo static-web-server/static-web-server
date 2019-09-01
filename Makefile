@@ -1,7 +1,7 @@
 PKG_NAME=static-web-server
 PKG_TARGET=x86_64-unknown-linux-musl
 PKG_BIN_PATH=./bin
-PKG_TAG=$(shell git describe --abbrev=0 --tags)
+PKG_TAG=1.0.0-beta.1
 
 help:
 	@echo
@@ -51,8 +51,8 @@ optimize:
 .PHONY: optimize
 
 release-files:
-	@cd $(PKG_BIN_PATH)
-	@tar -czvf $(PKG_NAME)-v$(PKG_TAG)-x86_64-$(PKG_TARGET).tar.gz $(PKG_NAME)
+	@cd $(PKG_BIN_PATH) && \
+	tar -czvf $(PKG_NAME)-v$(PKG_TAG)-x86_64-$(PKG_TARGET).tar.gz $(PKG_NAME)
 .PHONY: release-files
 
 docker.image:
