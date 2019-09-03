@@ -31,6 +31,37 @@ pipeline:
         when:
             event: tag
 
+    publish-image-alpine:
+        image: plugins/docker
+        group: building
+        registry: registry.joseluisq.net
+        repo: registry.joseluisq.net/static-web-server
+        dockerfile: ./docker/alpine/Dockerfile
+        username:
+            from_secret: registry_username
+        password:
+            from_secret: registry_password
+        auto_tag: true
+        auto_tag_suffix: alpine
+        build_args:
+            - SERVER_VERSION=${DRONE_TAG}-alpine
+        when:
+            event: tag
+
+    # publish-image-alpine:
+    #     image: plugins/docker
+    #     group: building
+    #     repo: joseluisq/static-web-server
+    #     dockerfile: ./docker/alpine/Dockerfile
+    #     secrets: [dockerhub_username, dockerhub_password]
+    #     auto_tag: true
+    #     auto_tag_suffix: alpine
+    #     build_args:
+    #         - SERVER_VERSION=${DRONE_TAG}-alpine
+    #     when:
+    #         branch: develop
+    #         event: push
+
     publish-release:
         image: plugins/gitea-release
         group: building

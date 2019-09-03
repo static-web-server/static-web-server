@@ -3,11 +3,10 @@ FROM scratch
 LABEL maintainer="Jose Quintana <joseluisq.net>"
 
 COPY ./bin/static-web-server /
+COPY ./public /public
 
 EXPOSE 80
-
-VOLUME ["/tmp"]
-
+VOLUME ["/public"]
 ENTRYPOINT ["/static-web-server"]
 
 # Metadata

@@ -55,6 +55,12 @@ release-files:
 	tar -czvf $(PKG_NAME)-v$(PKG_TAG)-x86_64-$(PKG_TARGET).tar.gz $(PKG_NAME)
 .PHONY: release-files
 
+docker.image.alpine:
+	@docker build \
+		--rm=true -f ./docker/alpine/Dockerfile \
+		--build-arg SERVER_VERSION="alpine" -t ${PKG_NAME}:alpine . --pull=true
+.PHONY: docker.image.alpine
+
 docker.image:
 	@cargo make --makefile Tasks.Prod.toml docker_image
 .PHONY: docker.image

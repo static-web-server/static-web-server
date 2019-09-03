@@ -1,4 +1,4 @@
-# Static Web Server [![Build Status](https://ci.joseluisq.net/api/badges/joseluisq/static-web-server/status.svg?branch=develop)](https://ci.joseluisq.net/joseluisq/static-web-server)
+# Static Web Server [![Build Status](https://ci.joseluisq.net/api/badges/joseluisq/static-web-server/status.svg?branch=develop)](https://ci.joseluisq.net/joseluisq/static-web-server) [![](https://images.microbadger.com/badges/image/joseluisq/static-web-server.svg)](https://microbadger.com/images/joseluisq/static-web-server "Get your own image badge on microbadger.com") [![Docker Cloud Build Status](https://img.shields.io/docker/cloud/build/joseluisq/static-web-server.svg)]
 
 > A fast web server to static files-serving powered by [Rust Iron](https://github.com/iron/iron). :zap:
 
