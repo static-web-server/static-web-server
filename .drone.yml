@@ -48,19 +48,29 @@ pipeline:
         when:
             event: tag
 
-    # publish-image-alpine:
-    #     image: plugins/docker
-    #     group: building
-    #     repo: joseluisq/static-web-server
-    #     dockerfile: ./docker/alpine/Dockerfile
-    #     secrets: [dockerhub_username, dockerhub_password]
-    #     auto_tag: true
-    #     auto_tag_suffix: alpine
-    #     build_args:
-    #         - SERVER_VERSION=${DRONE_TAG}-alpine
-    #     when:
-    #         branch: develop
-    #         event: push
+    publish-image-scratch-docker-hub:
+        image: plugins/docker
+        group: building
+        repo: joseluisq/static-web-server
+        dockerfile: ./docker/scratch/Dockerfile
+        secrets: [dockerhub_username, dockerhub_password]
+        auto_tag: true
+        when:
+            event: tag
+
+    publish-image-alpine-docker-hub:
+        image: plugins/docker
+        group: building
+        repo: joseluisq/static-web-server
+        dockerfile: ./docker/alpine/Dockerfile
+        secrets: [dockerhub_username, dockerhub_password]
+        auto_tag: true
+        auto_tag_suffix: alpine
+        build_args:
+            - SERVER_VERSION=${DRONE_TAG}-alpine
+        when:
+            branch: develop
+            event: push
 
     publish-release:
         image: plugins/gitea-release

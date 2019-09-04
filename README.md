@@ -8,7 +8,49 @@ __Status:__ The status is WIP so feel free to contribute.
 
 ## Usage
 
+Server is configurated via environment variables:
+
+- **SERVER_NAME**: Name for server. Default `nameless`.
+- **SERVER_HOST**: Host address (E.g 127.0.0.1). Default `[::]`.
+- **SERVER_PORT**: Host port. Default `80`.
+- **SERVER_ROOT**: Root directory path of static files. Default `/public`.
+- **SERVER_ASSETS**: Assets directory path for add cache headers functionality. Default `/public/assets`.
+
+## Docker stack
+
+Example using Traefik proxy
+
+```yaml
+version: "3.3"
+
+services:
+  web:
+    image: joseluisq/static-web-server:latest
+    environment:
+        - SERVER_NAME=my-server
+        - SERVER_HOST=127.0.0.1
+        - SERVER_PORT=8080
+        - SERVER_ROOT=/html
+        - SERVER_ASSETS=./assets
+    volumes:
+        - ./some-dir-path:/html
+    labels:
+        - "traefik.enable=true"
+        - "traefik.frontend.entryPoints=https"
+        - "traefik.backend=localhost_dev"
+        - "traefik.frontend.rule=Host:localhost.dev"
+        - "traefik.port=80"
+    networks:
+        - traefik_net
+
+networks:
+    traefik_net:
+        external: true
 ```
+
+## Development
+
+```sh
 ~> make help
 
 Static Web Server
@@ -21,16 +63,6 @@ Please use `make <target>` where <target> is one of:
     release           to build a release.
     docker_image      to build a Docker image.
 ```
-
-## API
-
-Server is configurated via environment variables:
-
-- **SERVER_NAME**: Name for server
-- **SERVER_HOST**: Host address (E.g 127.0.0.1). Default `[::]`
-- **SERVER_PORT**: Host port
-- **SERVER_ROOT**: Root directory path of static files
-- **SERVER_ASSETS**: Assets directory path for add cache functionality.
 
 ## Contributions
 
