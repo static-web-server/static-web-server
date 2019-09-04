@@ -53,7 +53,10 @@ pipeline:
         group: building
         repo: joseluisq/static-web-server
         dockerfile: ./docker/scratch/Dockerfile
-        secrets: [dockerhub_username, dockerhub_password]
+        username:
+            from_secret: dockerhub_username
+        password:
+            from_secret: dockerhub_password
         auto_tag: true
         when:
             event: tag
@@ -63,7 +66,10 @@ pipeline:
         group: building
         repo: joseluisq/static-web-server
         dockerfile: ./docker/alpine/Dockerfile
-        secrets: [dockerhub_username, dockerhub_password]
+        username:
+            from_secret: dockerhub_username
+        password:
+            from_secret: dockerhub_password
         auto_tag: true
         auto_tag_suffix: alpine
         build_args:
