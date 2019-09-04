@@ -69,8 +69,7 @@ pipeline:
         build_args:
             - SERVER_VERSION=${DRONE_TAG}-alpine
         when:
-            branch: develop
-            event: push
+            event: tag
 
     publish-release:
         image: plugins/gitea-release
