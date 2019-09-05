@@ -1,6 +1,6 @@
 [package]
 name = "static-web-server"
-version = "1.0.0-beta.1"
+version = "1.0.0-beta.2"
 authors = ["Jose Quintana <https://git.io/joseluisq>"]
 
 [dependencies]
