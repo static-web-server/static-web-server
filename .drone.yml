@@ -27,7 +27,6 @@ pipeline:
         commands:
             - make prod.release
         when:
-            branch: master
             event: tag
 
     publish-image-scratch:
@@ -44,7 +43,6 @@ pipeline:
         build_args:
             - DOCKER_IMAGE_VERSION=${DRONE_TAG}
         when:
-            branch: master
             event: tag
 
     publish-image-alpine:
@@ -62,7 +60,6 @@ pipeline:
         build_args:
             - DOCKER_IMAGE_VERSION=${DRONE_TAG}-alpine
         when:
-            branch: master
             event: tag
 
     publish-gitea-release:
@@ -79,7 +76,6 @@ pipeline:
             - md5
             - sha1
         when:
-            branch: master
             event: tag
 
     # publish-github-release:
@@ -95,7 +91,6 @@ pipeline:
     #         - md5
     #         - sha1
     #     when:
-    #         branch: master
     #         event: tag
 
     publish-image-scratch-docker-hub:
@@ -109,7 +104,6 @@ pipeline:
             from_secret: dockerhub_password
         auto_tag: true
         when:
-            branch: master
             event: tag
 
     publish-image-alpine-docker-hub:
@@ -124,7 +118,6 @@ pipeline:
         auto_tag: true
         auto_tag_suffix: alpine
         when:
-            branch: master
             event: tag
 
     rebuild-cache:
