@@ -4,3 +4,5 @@
 **/*.log
 /*.html
 **/*.bin
+**/*.iml
+**/.idea

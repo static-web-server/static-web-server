@@ -1,32 +1,122 @@
-DOCKER_IMG=cs-server-rust:latest
-PLATFORM=x86_64-unknown-linux-musl
+PKG_TARGET=x86_64-unknown-linux-musl
+PKG_BIN_PATH=./bin
 
-start:
-		-cargo run
+PKG_NAME=$(shell cat Cargo.toml | sed -n 's/name = "\([^}]*\)"/\1/p')
+PKG_TAG=$(shell cat Cargo.toml | sed -n 's/version = "\([^}]*\)"/\1/p')
 
-check:
-		-cargo check
 
-build:
-		-cargo build
+#######################################
+############# Development #############
+#######################################
 
-release:
-		-cargo build --release --target $(PLATFORM)
-		-cp -rf target/$(PLATFORM)/release/rust-web-server ./bin
-		-strip ./bin/rust-web-server
+install:
+	@rustup target add $(PKG_TARGET)
+	@cargo install --force cargo-make
+	@cargo install cargo-audit
+.PHONY: install
 
-exec:
-	./target/release/rust-web-server
+run:
+	@cargo make --makefile Tasks.Dev.toml run
+.PHONY: run
 
-img:
-	-docker build -t $(DOCKER_IMG) .
-.PHONY: img
+watch:
+	@cargo make --makefile Tasks.Dev.toml watch
+.PHONY: watch
+
+
+#######################################
+########### Utility tasks #############
+#######################################
 
 test:
-	-echo "GET $(URL)" \
-		| vegeta -cpus=12 attack \
-			-workers=10 -duration=60s -connections=10000 -rate=200 -http2=false \
-		| tee results.bin | vegeta report
-	-cat results.bin | vegeta report -reporter=plot > plot.html
+	@cargo test
+.PHONY: test
 
-.PHONY: start build check release exec test
+docker.image.alpine:
+	@docker build \
+		--rm=true -f ./docker/alpine/Dockerfile \
+		--build-arg SERVER_VERSION="alpine" -t ${PKG_NAME}:alpine . --pull=true
+.PHONY: docker.image.alpine
+
+
+#######################################
+########## Production tasks ###########
+#######################################
+
+# Compile release binary 
+define build_release =
+	set -e
+	set -u
+
+	sudo chown -R rust:rust ./
+	cargo build --release --target $(PKG_TARGET)
+	echo "Release build completed!"
+endef
+
+# Shrink a release binary size
+define build_release_shrink =
+	set -e
+	set -u
+
+	mkdir -p $(PKG_BIN_PATH)
+	cp -rf ./target/$(PKG_TARGET)/release/$(PKG_NAME) $(PKG_BIN_PATH)
+	echo "Size before:"
+	du -sh $(PKG_BIN_PATH)/$(PKG_NAME)
+	strip $(PKG_BIN_PATH)/$(PKG_NAME)
+	echo "Size after:"
+	du -sh $(PKG_BIN_PATH)/$(PKG_NAME)
+	echo "Release size shrinking completed!"
+endef
+
+# Creates release files (tarballs, zipballs) 
+define build_release_files =
+	set -e
+	set -u
+
+	cd $(PKG_BIN_PATH) && \
+		tar -czvf $(PKG_NAME)-v$(PKG_TAG)-x86_64-$(PKG_TARGET).tar.gz $(PKG_NAME)
+	du -sh ./*
+	echo "Release tarball/zipball files created!"
+endef
+
+# Update docker files to latest tag per platform
+define release_dockerfiles =
+	./scripts/version.sh $(PKG_TAG)
+endef
+
+prod.release:
+	set -e
+	set -u
+
+	$(build_release)
+	$(build_release_shrink)
+	$(build_release_files)
+.ONESHELL: prod.release
+
+prod.release.build:
+	@$(build_release)
+.ONESHELL: prod.release.build
+
+prod.release.shrink:
+	@$(build_release_shrink)
+.ONESHELL: prod.release.shrink
+
+prod.release.files:
+	@$(build_release_files)
+.ONESHELL: prod.release.files
+
+prod.release.tag:
+	git tag -d latest
+	git push --delete origin latest
+	@$(release_dockerfiles)
+	git add .
+	git commit . -m "$(PKG_TAG)"
+	git tag latest
+	git tag $(PKG_TAG)
+	git push
+	git push origin --tags
+.ONESHELL: prod.release.tag
+
+prod.release.dockerfiles:
+	@$(release_dockerfiles)
+.ONESHELL: prod.release.dockerfiles

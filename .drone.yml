@@ -1,0 +1,138 @@
+pipeline:
+    restore-cache:
+        image: drillster/drone-volume-cache
+        restore: true
+        mount:
+            - /home/rust/.cargo/git
+            - /home/rust/.cargo/registry
+            - ./target
+        volumes:
+            - /tmp/cache:/cache
+
+    # DEVELOPMENT
+
+    test:
+        image: ekidd/rust-musl-builder:stable
+        group: development
+        commands:
+            - make test
+        when:
+            event: push
+
+    # PRODUCTION
+
+    build-release:
+        image: ekidd/rust-musl-builder:stable
+        group: production
+        commands:
+            - make prod.release
+        when:
+            branch: master
+            event: tag
+
+    publish-image-scratch:
+        image: plugins/docker
+        group: production
+        registry: registry.joseluisq.net
+        repo: registry.joseluisq.net/static-web-server
+        dockerfile: ./docker/scratch/Dockerfile
+        username:
+            from_secret: registry_username
+        password:
+            from_secret: registry_password
+        auto_tag: true
+        build_args:
+            - DOCKER_IMAGE_VERSION=${DRONE_TAG}
+        when:
+            branch: master
+            event: tag
+
+    publish-image-alpine:
+        image: plugins/docker
+        group: production
+        registry: registry.joseluisq.net
+        repo: registry.joseluisq.net/static-web-server
+        dockerfile: ./docker/alpine/Dockerfile
+        username:
+            from_secret: registry_username
+        password:
+            from_secret: registry_password
+        auto_tag: true
+        auto_tag_suffix: alpine
+        build_args:
+            - DOCKER_IMAGE_VERSION=${DRONE_TAG}-alpine
+        when:
+            branch: master
+            event: tag
+
+    publish-gitea-release:
+        image: plugins/gitea-release
+        group: production
+        api_key:
+            from_secret: gitea_token
+        base_url: https://git.joseluisq.net/
+        files:
+            - ./bin/*.tar.gz
+            - ./bin/*.zip
+        prerelease: true
+        checksum:
+            - md5
+            - sha1
+        when:
+            branch: master
+            event: tag
+
+    # publish-github-release:
+    #     image: plugins/github-release
+    #     group: production
+    #     api_key:
+    #         from_secret: github_token
+    #     files:
+    #         - ./bin/*.tar.gz
+    #         - ./bin/*.zip
+    #     prerelease: true
+    #     checksum:
+    #         - md5
+    #         - sha1
+    #     when:
+    #         branch: master
+    #         event: tag
+
+    publish-image-scratch-docker-hub:
+        image: plugins/docker
+        group: production
+        repo: joseluisq/static-web-server
+        dockerfile: ./docker/scratch/Dockerfile
+        username:
+            from_secret: dockerhub_username
+        password:
+            from_secret: dockerhub_password
+        auto_tag: true
+        when:
+            branch: master
+            event: tag
+
+    publish-image-alpine-docker-hub:
+        image: plugins/docker
+        group: production
+        repo: joseluisq/static-web-server
+        dockerfile: ./docker/alpine/Dockerfile
+        username:
+            from_secret: dockerhub_username
+        password:
+            from_secret: dockerhub_password
+        auto_tag: true
+        auto_tag_suffix: alpine
+        when:
+            branch: master
+            event: tag
+
+    rebuild-cache:
+        image: drillster/drone-volume-cache
+        rebuild: true
+        mount:
+            - /home/rust/.cargo/git
+            - /home/rust/.cargo/registry
+            - ./target
+        volumes:
+            - /tmp/cache:/cache

@@ -1,0 +1,9 @@
+*.~
+.git
+**/*.gz
+**/*.log
+**/*.tar
+**/.DS_Store
+.gitignore
+*docker-compose*
+Makefile
