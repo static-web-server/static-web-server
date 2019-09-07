@@ -120,6 +120,14 @@ pipeline:
         when:
             event: tag
 
+    notification-slack:
+        image: plugins/slack
+        webhook:
+            from_secret: slack_webhook
+        channel: ci-cd
+        when:
+            status: [success, failure]
+
     rebuild-cache:
         image: drillster/drone-volume-cache
         rebuild: true
