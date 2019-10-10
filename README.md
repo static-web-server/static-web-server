@@ -1,4 +1,4 @@
-# Static Web Server [![Build Status](https://ci.joseluisq.net/api/badges/joseluisq/static-web-server/status.svg?branch=develop)](https://ci.joseluisq.net/joseluisq/static-web-server) [![](https://images.microbadger.com/badges/image/joseluisq/static-web-server.svg)](https://microbadger.com/images/joseluisq/static-web-server "Get your own image badge on microbadger.com") [![Docker Cloud Build Status](https://img.shields.io/docker/cloud/build/joseluisq/static-web-server.svg)]
+# Static Web Server [![Build Status](https://ci.joseluisq.net/api/badges/joseluisq/static-web-server/status.svg?branch=develop)](https://ci.joseluisq.net/joseluisq/static-web-server) [![](https://images.microbadger.com/badges/image/joseluisq/static-web-server.svg)](https://microbadger.com/images/joseluisq/static-web-server "Get your own image badge on microbadger.com")
 
 > A fast web server to static files-serving powered by [Rust Iron](https://github.com/iron/iron). :zap:
 
@@ -29,7 +29,7 @@ services:
     environment:
         - SERVER_NAME=my-server
         - SERVER_HOST=127.0.0.1
-        - SERVER_PORT=8080
+        - SERVER_PORT=80
         - SERVER_ROOT=/html
         - SERVER_ASSETS=./assets
     volumes:
@@ -66,9 +66,12 @@ Please use `make <target>` where <target> is one of:
 
 ## Contributions
 
+Unless you explicitly state otherwise, any contribution intentionally submitted for inclusion in current work by you, as defined in the Apache-2.0 license, shall be dual licensed as described below, without any additional terms or conditions.
+
 Feel free to send some [Pull request](https://github.com/joseluisq/static-web-server/pulls) or [issue](https://github.com/joseluisq/static-web-server/issues).
 
 ## License
-MIT license
+
+This work is primarily distributed under the terms of both the [MIT license](LICENSE-MIT) and the [Apache License (Version 2.0)](LICENSE-APACHE).
 
 © 2019 [Jose Quintana](https://git.io/joseluisq)
