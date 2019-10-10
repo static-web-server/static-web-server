@@ -23,12 +23,19 @@ watch:
 	@cargo make --makefile Tasks.Dev.toml watch
 .PHONY: watch
 
+build:
+	@cargo build --release --target $(PKG_TARGET)
+.PHONY: build
+
 
 #######################################
 ########### Utility tasks #############
 #######################################
 
 test:
+	@sudo chown -R rust:rust ./
+	@echo "Testing application..."
+	@rustc --version
 	@cargo test
 .PHONY: test
 
@@ -49,6 +56,8 @@ define build_release =
 	set -u
 
 	sudo chown -R rust:rust ./
+	echo "Compiling application..."
+	rustc --version
 	cargo build --release --target $(PKG_TARGET)
 	echo "Release build completed!"
 endef
@@ -87,6 +96,8 @@ endef
 prod.release:
 	set -e
 	set -u
+
+	echo "Building a release..."
 
 	$(build_release)
 	$(build_release_shrink)
