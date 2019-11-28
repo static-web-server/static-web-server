@@ -14,5 +14,5 @@ LABEL org.opencontainers.image.vendor="Jose Quintana" \
     org.opencontainers.image.url="https://git.joseluisq.net/joseluisq/static-web-server" \
     org.opencontainers.image.title="Static Web Server" \
     org.opencontainers.image.description="A blazing fast web server to static files-serving powered by Rust." \
-    org.opencontainers.image.version="1.0.0-beta.2" \
+    org.opencontainers.image.version="v1.0.0" \
     org.opencontainers.image.documentation="https://git.joseluisq.net/joseluisq/static-web-server"
