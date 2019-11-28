@@ -83,7 +83,7 @@ define build_release_files =
 	set -u
 
 	cd $(PKG_BIN_PATH) && \
-		tar -czvf $(PKG_NAME)-v$(PKG_TAG)-x86_64-$(PKG_TARGET).tar.gz $(PKG_NAME)
+		tar czvf $(PKG_NAME)-v$(PKG_TAG)-x86_64-$(PKG_TARGET).tar.gz $(PKG_NAME)
 	du -sh ./*
 	echo "Release tarball/zipball files created!"
 endef

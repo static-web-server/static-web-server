@@ -2,7 +2,7 @@
 
 > A blazing fast static files-serving web server powered by [Rust Iron](https://github.com/iron/iron). :zap:
 
-**Static Web Server** is a small (`1,6M` static binary) and fast web server to serving static files like html files or assets.
+**Static Web Server** is a small (`1.4M` static binary) and fast web server to serving static files like html files or assets.
 
 It's also an option to deploy it inside a [Docker container](https://hub.docker.com/r/joseluisq/static-web-server).
 
