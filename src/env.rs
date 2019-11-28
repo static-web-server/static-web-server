@@ -1,3 +1,5 @@
+use serde::Deserialize;
+
 #[derive(Deserialize, Debug)]
 pub struct Config {
     #[serde(default = "default_name")]
@@ -13,7 +15,7 @@ pub struct Config {
 }
 
 pub fn default_name() -> String {
-    "nameless".to_string()
+    "my-static-server".to_string()
 }
 
 pub fn default_host() -> String {

@@ -1,24 +1,26 @@
-# Static Web Server [![Build Status](https://ci.joseluisq.net/api/badges/joseluisq/static-web-server/status.svg?branch=develop)](https://ci.joseluisq.net/joseluisq/static-web-server) [![](https://images.microbadger.com/badges/image/joseluisq/static-web-server.svg)](https://microbadger.com/images/joseluisq/static-web-server "Get your own image badge on microbadger.com")
+# Static Web Server [![Build Status](https://travis-ci.com/joseluisq/static-web-server.svg?branch=master)](https://travis-ci.com/joseluisq/static-web-server) [![](https://images.microbadger.com/badges/image/joseluisq/static-web-server.svg)](https://microbadger.com/images/joseluisq/static-web-server "Get your own image badge on microbadger.com") [![Docker Image](https://img.shields.io/docker/pulls/joseluisq/static-web-server.svg?maxAge=2592000)](https://hub.docker.com/r/joseluisq/static-web-server/)
 
-> A fast web server to static files-serving powered by [Rust Iron](https://github.com/iron/iron). :zap:
+> A blazing fast static files-serving web server powered by [Rust Iron](https://github.com/iron/iron). :zap:
 
-**Static Web Server** is an small (`1,6M` static binary) and fast web server to serving static files. Which is also suitable to deploy it into a Docker container.
+**Static Web Server** is a small (`1,6M` static binary) and fast web server to serving static files like html files or assets.
 
-__Status:__ The status is WIP so feel free to contribute.
+It's also an option to deploy it inside a [Docker container](https://hub.docker.com/r/joseluisq/static-web-server).
+
+__Status:__ It's in beta yet. Feel free to contribute.
 
 ## Usage
 
-Server is configurated via environment variables:
+Server is configured via environment variables:
 
-- **SERVER_NAME**: Name for server. Default `nameless`.
+- **SERVER_NAME**: Name for server. Default `my-static-server`.
 - **SERVER_HOST**: Host address (E.g 127.0.0.1). Default `[::]`.
 - **SERVER_PORT**: Host port. Default `80`.
-- **SERVER_ROOT**: Root directory path of static files. Default `/public`.
-- **SERVER_ASSETS**: Assets directory path for add cache headers functionality. Default `/public/assets`.
+- **SERVER_ROOT**: Root directory path of static files. Default `./public`.
+- **SERVER_ASSETS**: Assets directory path for add cache headers functionality. Default `./assets` but relative to the root.
 
 ## Docker stack
 
-Example using Traefik proxy
+Example using [Traefik proxy](https://traefik.io/):
 
 ```yaml
 version: "3.3"
@@ -29,7 +31,7 @@ services:
     environment:
         - SERVER_NAME=my-server
         - SERVER_HOST=127.0.0.1
-        - SERVER_PORT=80
+        - SERVER_PORT=8080
         - SERVER_ROOT=/html
         - SERVER_ASSETS=./assets
     volumes:
@@ -46,22 +48,6 @@ services:
 networks:
     traefik_net:
         external: true
-```
-
-## Development
-
-```sh
-~> make help
-
-Static Web Server
-Web Server to static files-serving.
-
-Please use `make <target>` where <target> is one of:
-    install           to install dependencies.
-    run               to run server in development.
-    watch             to run server (watch files mode) in development.
-    release           to build a release.
-    docker_image      to build a Docker image.
 ```
 
 ## Contributions
