@@ -6,8 +6,6 @@
 
 It's also an option to deploy it inside a [Docker container](https://hub.docker.com/r/joseluisq/static-web-server).
 
-__Status:__ It's in beta yet. Feel free to contribute.
-
 ## Usage
 
 Server is configured via environment variables:

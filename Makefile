@@ -88,11 +88,6 @@ define build_release_files =
 	echo "Release tarball/zipball files created!"
 endef
 
-# Update docker files to latest tag per platform
-define release_dockerfiles =
-	./scripts/version.sh $(PKG_TAG)
-endef
-
 prod.release:
 	set -e
 	set -u
@@ -119,15 +114,19 @@ prod.release.files:
 prod.release.tag:
 	git tag -d latest
 	git push --delete origin latest
-	@$(release_dockerfiles)
+
+	# Update docker files to latest tag per platform
+	./scripts/version.sh v$(PKG_TAG)
+
 	git add .
-	git commit . -m "$(PKG_TAG)"
+	git commit . -m "v$(PKG_TAG)"
 	git tag latest
-	git tag $(PKG_TAG)
+	git tag v$(PKG_TAG)
 	git push
-	git push origin --tags
+	git push origin v$(PKG_TAG)
 .ONESHELL: prod.release.tag
 
 prod.release.dockerfiles:
-	@$(release_dockerfiles)
+	# Update docker files to latest tag per platform
+	./scripts/version.sh v$(PKG_TAG)
 .ONESHELL: prod.release.dockerfiles
