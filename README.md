@@ -2,9 +2,19 @@
 
 > A blazing fast static files-serving web server powered by [Rust Iron](https://github.com/iron/iron). :zap:
 
-**Static Web Server** is a small (`1.4M` static binary) and fast web server to serving static files like html files or assets.
+**Static Web Server** is a very small and fast web server to serving static files such as html files or assets.
 
-It's also an option to deploy it inside a [Docker container](https://hub.docker.com/r/joseluisq/static-web-server).
+## Features
+
+- Built with [Rust](https://rust-lang.org) which is focused on [safety, speed, and concurrency](https://kornel.ski/rust-c-speed).
+- Memory safety and reduced overhead of CPU and RAM resources.
+- Blazing fast static files-serving thanks to [Rust Iron](https://github.com/iron/iron).
+- Suitable for small [GNU/Linux Docker containers](https://hub.docker.com/r/joseluisq/static-web-server). It's a fully __1.4MB__ static binary thanks to [Rust and Musl libc](https://doc.rust-lang.org/edition-guide/rust-2018/platform-and-target-support/musl-support-for-fully-static-binaries.html).
+- Gzip compression by default.
+- Cache control headers included.
+- Configurable via environment variables.
+- Lightweight logging support.
+- Scratch and [latest Alpine Linux](https://hub.docker.com/_/alpine) Docker images available.
 
 ## Usage
 
