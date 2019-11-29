@@ -124,6 +124,7 @@ prod.release.tag:
 	git tag v$(PKG_TAG)
 	git push
 	git push origin v$(PKG_TAG)
+	git push origin latest
 .ONESHELL: prod.release.tag
 
 prod.release.dockerfiles:
