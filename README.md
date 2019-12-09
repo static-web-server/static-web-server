@@ -1,4 +1,4 @@
-# Static Web Server [![Build Status](https://travis-ci.com/joseluisq/static-web-server.svg?branch=master)](https://travis-ci.com/joseluisq/static-web-server) [![](https://images.microbadger.com/badges/image/joseluisq/static-web-server.svg)](https://microbadger.com/images/joseluisq/static-web-server "Get your own image badge on microbadger.com") [![Docker Image](https://img.shields.io/docker/pulls/joseluisq/static-web-server.svg?maxAge=2592000)](https://hub.docker.com/r/joseluisq/static-web-server/)
+# Static Web Server [![Build Status](https://travis-ci.com/joseluisq/static-web-server.svg?branch=master)](https://travis-ci.com/joseluisq/static-web-server) [![](https://images.microbadger.com/badges/image/joseluisq/static-web-server.svg)](https://microbadger.com/images/joseluisq/static-web-server "Get your own image badge on microbadger.com") [![Docker Image](https://img.shields.io/docker/pulls/joseluisq/static-web-server.svg)](https://hub.docker.com/r/joseluisq/static-web-server/)
 
 > A blazing fast static files-serving web server powered by [Rust Iron](https://github.com/iron/iron). :zap:
 
@@ -15,6 +15,13 @@
 - Configurable via environment variables.
 - Lightweight logging support.
 - Scratch and [latest Alpine Linux](https://hub.docker.com/_/alpine) Docker images available.
+
+## Missing features
+
+- TLS support
+- CLI flags setup
+
+PRs welcome!
 
 ## Usage
 
