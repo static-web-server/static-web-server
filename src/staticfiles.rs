@@ -2,7 +2,7 @@ use crate::gzip::GzipMiddleware;
 use crate::logger::Logger;
 
 use iron::prelude::*;
-use playground_middleware::{Cache, GuessContentType, ModifyWith, Prefix, Staticfile};
+use iron_staticfile_middleware::{Cache, GuessContentType, ModifyWith, Prefix, Staticfile};
 use std::time::Duration;
 
 pub fn handler(root_dir: String, assets_dir: String) -> Chain {

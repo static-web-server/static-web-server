@@ -3,14 +3,14 @@ extern crate env_logger;
 extern crate envy;
 extern crate flate2;
 extern crate iron;
-extern crate playground_middleware;
+extern crate iron_staticfile_middleware;
 extern crate serde;
 
 #[macro_use]
 extern crate log;
 
-use crate::env::Config;
 use chrono::Local;
+use env::Config;
 use env_logger::Builder;
 use iron::prelude::*;
 use log::LevelFilter;
@@ -50,5 +50,8 @@ fn main() {
         .http(_address)
         .expect("Unable to start the HTTP Server");
 
-    info!("HTTP Server `{}` is running on {}", config.name, _address);
+    info!(
+        "Static HTTP Server `{}` is running on {}",
+        config.name, _address
+    );
 }
