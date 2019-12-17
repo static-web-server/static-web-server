@@ -1,7 +1,6 @@
 use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
-#[structopt(name = "static-web-server")]
 pub struct Config {
     #[structopt(long, default_value = "my-static-server", env = "SERVER_NAME")]
     /// Name for server
