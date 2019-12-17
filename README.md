@@ -25,13 +25,15 @@ PRs welcome!
 
 ## Usage
 
-Server is configured via environment variables:
+Server is configured either via environment variables:
 
 - **SERVER_NAME**: Name for server. Default `my-static-server`.
 - **SERVER_HOST**: Host address (E.g 127.0.0.1). Default `[::]`.
 - **SERVER_PORT**: Host port. Default `80`.
 - **SERVER_ROOT**: Root directory path of static files. Default `./public`.
 - **SERVER_ASSETS**: Assets directory path for add cache headers functionality. Default `./assets` but relative to the root.
+
+Or command line arguments listed with `cargo run -- -h`.
 
 ## Docker stack
 

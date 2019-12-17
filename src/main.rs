@@ -1,13 +1,12 @@
 extern crate chrono;
 extern crate env_logger;
-extern crate envy;
 extern crate flate2;
 extern crate iron;
 extern crate iron_staticfile_middleware;
-extern crate serde;
 
 #[macro_use]
 extern crate log;
+extern crate structopt;
 
 use chrono::Local;
 use env::Config;
@@ -15,6 +14,7 @@ use env_logger::Builder;
 use iron::prelude::*;
 use log::LevelFilter;
 use std::io::Write;
+use structopt::StructOpt;
 
 mod env;
 mod gzip;
@@ -35,9 +35,7 @@ fn main() {
         .filter(None, LevelFilter::Info)
         .init();
 
-    let config = envy::prefixed("SERVER_")
-        .from_env::<Config>()
-        .expect("Unable to parsing the configuration from system env");
+    let config = Config::from_args();
 
     let _address = &format!(
         "{}{}{}",
