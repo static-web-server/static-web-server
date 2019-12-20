@@ -2,6 +2,7 @@
 name = "static-web-server"
 version = "1.0.0"
 authors = ["Jose Quintana <https://git.io/joseluisq>"]
+edition = "2018"
 
 [dependencies]
 iron = "0.6"

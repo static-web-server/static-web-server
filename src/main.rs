@@ -8,8 +8,8 @@ extern crate iron_staticfile_middleware;
 extern crate log;
 extern crate structopt;
 
+use crate::env::Config;
 use chrono::Local;
-use env::Config;
 use env_logger::Builder;
 use iron::prelude::*;
 use log::LevelFilter;
