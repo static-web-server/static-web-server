@@ -1,6 +1,6 @@
 [env]
-E_ARGS = ""
-E_URL = "https://joseluisq.net"
+E_ARGS = "--port=8787"
+E_URL = "http://locahost"
 
 [tasks.watch]
 command = "cargo"
@@ -8,7 +8,7 @@ args = ["watch", "-cx", "run -- ${E_ARGS}"]
 
 [tasks.run]
 command = "cargo"
-args = ["run", "run -- ${E_ARGS}"]
+args = ["run", "--", "${E_ARGS}"]
 
 [tasks.loadtest]
 script = [
