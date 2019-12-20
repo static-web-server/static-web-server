@@ -8,7 +8,7 @@ extern crate iron_staticfile_middleware;
 extern crate log;
 extern crate structopt;
 
-use crate::env::Config;
+use crate::config::Options;
 use chrono::Local;
 use env_logger::Builder;
 use iron::prelude::*;
@@ -16,7 +16,7 @@ use log::LevelFilter;
 use std::io::Write;
 use structopt::StructOpt;
 
-mod env;
+mod config;
 mod gzip;
 mod logger;
 mod staticfiles;
@@ -35,21 +35,16 @@ fn main() {
         .filter(None, LevelFilter::Info)
         .init();
 
-    let config = Config::from_args();
+    let opts = Options::from_args();
 
-    let _address = &format!(
-        "{}{}{}",
-        config.host.to_string(),
-        ":",
-        config.port.to_string()
-    );
+    let _address = &format!("{}{}{}", opts.host.to_string(), ":", opts.port.to_string());
 
-    let _server = Iron::new(staticfiles::handler(config.root, config.assets))
+    let _server = Iron::new(staticfiles::handler(opts.root, opts.assets))
         .http(_address)
         .expect("Unable to start the HTTP Server");
 
     info!(
         "Static HTTP Server `{}` is running on {}",
-        config.name, _address
+        opts.name, _address
     );
 }

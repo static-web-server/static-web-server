@@ -1,7 +1,7 @@
 use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
-pub struct Config {
+pub struct Options {
     #[structopt(long, default_value = "my-static-server", env = "SERVER_NAME")]
     /// Name for server
     pub name: String,
