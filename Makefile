@@ -39,6 +39,11 @@ test:
 	@cargo test
 .PHONY: test
 
+fmt:
+	@cargo fix --edition
+	@cargo fmt --all
+.PHONY: fmt
+
 docker.image.alpine:
 	@docker build \
 		--rm=true -f ./docker/alpine/Dockerfile \
