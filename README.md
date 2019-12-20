@@ -12,26 +12,46 @@
 - Suitable for small [GNU/Linux Docker containers](https://hub.docker.com/r/joseluisq/static-web-server). It's a fully __1.4MB__ static binary thanks to [Rust and Musl libc](https://doc.rust-lang.org/edition-guide/rust-2018/platform-and-target-support/musl-support-for-fully-static-binaries.html).
 - Gzip compression by default.
 - Cache control headers included.
-- Configurable via environment variables.
+- Configurable via environment variables or CLI arguments.
 - Lightweight logging support.
 - Scratch and [latest Alpine Linux](https://hub.docker.com/_/alpine) Docker images available.
 
 ## Missing features
 
 - TLS support
-- CLI flags setup
 
 PRs welcome!
 
 ## Usage
 
-Server is configured via environment variables:
+Server is configured either via environment variables:
 
 - **SERVER_NAME**: Name for server. Default `my-static-server`.
 - **SERVER_HOST**: Host address (E.g 127.0.0.1). Default `[::]`.
 - **SERVER_PORT**: Host port. Default `80`.
 - **SERVER_ROOT**: Root directory path of static files. Default `./public`.
 - **SERVER_ASSETS**: Assets directory path for add cache headers functionality. Default `./assets` but relative to the root.
+
+Or command line arguments listed with `cargo run -- -h`.
+
+```sh
+static-web-server 1.0.0
+
+USAGE:
+    static-web-server [OPTIONS]
+
+FLAGS:
+    -h, --help       Prints help information
+    -V, --version    Prints version information
+
+OPTIONS:
+        --assets <assets>    Assets directory path for add cache headers functionality [env: SERVER_ASSETS=]  [default:
+                             ./assets]
+        --host <host>        Host address (E.g 127.0.0.1) [env: SERVER_HOST=]  [default: [::]]
+        --name <name>        Name for server [env: SERVER_NAME=]  [default: my-static-server]
+        --port <port>        Host port [env: SERVER_PORT=]  [default: 80]
+        --root <root>        Root directory path of static files [env: SERVER_ROOT=]
+```
 
 ## Docker stack
 

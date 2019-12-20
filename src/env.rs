@@ -1,35 +1,20 @@
-use serde::Deserialize;
+use structopt::StructOpt;
 
-#[derive(Deserialize, Debug)]
+#[derive(Debug, StructOpt)]
 pub struct Config {
-    #[serde(default = "default_name")]
+    #[structopt(long, default_value = "my-static-server", env = "SERVER_NAME")]
+    /// Name for server
     pub name: String,
-    #[serde(default = "default_host")]
+    #[structopt(long, default_value = "[::]", env = "SERVER_HOST")]
+    /// Host address (E.g 127.0.0.1)
     pub host: String,
-    #[serde(default = "default_port")]
+    #[structopt(long, default_value = "80", env = "SERVER_PORT")]
+    /// Host port
     pub port: u16,
-    #[serde(default = "default_root")]
+    #[structopt(long, default_value = "./public", env = "SERVER_ROOT")]
+    /// Root directory path of static files
     pub root: String,
-    #[serde(default = "default_assets")]
+    #[structopt(long, default_value = "./assets", env = "SERVER_ASSETS")]
+    /// Assets directory path for add cache headers functionality
     pub assets: String,
-}
-
-pub fn default_name() -> String {
-    "my-static-server".to_string()
-}
-
-pub fn default_host() -> String {
-    "[::]".to_string()
-}
-
-pub fn default_port() -> u16 {
-    80
-}
-
-pub fn default_root() -> String {
-    "./public".to_string()
-}
-
-pub fn default_assets() -> String {
-    "./assets".to_string()
 }
