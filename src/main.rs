@@ -17,6 +17,7 @@ use std::io::Write;
 use structopt::StructOpt;
 
 mod config;
+mod error_page;
 mod gzip;
 mod logger;
 mod staticfiles;
