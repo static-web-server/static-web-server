@@ -8,18 +8,20 @@ extern crate iron_staticfile_middleware;
 extern crate log;
 extern crate structopt;
 
+mod config;
+mod error_page;
+mod gzip;
+mod logger;
+mod staticfiles;
+
 use crate::config::Options;
 use chrono::Local;
 use env_logger::Builder;
 use iron::prelude::*;
 use log::LevelFilter;
+use staticfiles::*;
 use std::io::Write;
 use structopt::StructOpt;
-
-mod config;
-mod gzip;
-mod logger;
-mod staticfiles;
 
 fn main() {
     Builder::new()
@@ -37,9 +39,16 @@ fn main() {
 
     let opts = Options::from_args();
 
+    let files = StaticFiles::new(StaticFilesOptions {
+        root_dir: opts.root,
+        assets_dir: opts.assets,
+        page_50x_path: opts.page50x,
+        page_404_path: opts.page404,
+    });
+
     let _address = &format!("{}{}{}", opts.host.to_string(), ":", opts.port.to_string());
 
-    let _server = Iron::new(staticfiles::handler(opts.root, opts.assets))
+    let _server = Iron::new(files.handle())
         .http(_address)
         .expect("Unable to start the HTTP Server");
 

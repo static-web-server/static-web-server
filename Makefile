@@ -40,7 +40,7 @@ test:
 .PHONY: test
 
 fmt:
-	@cargo fix --edition
+	@cargo fix
 	@cargo fmt --all
 .PHONY: fmt
 
