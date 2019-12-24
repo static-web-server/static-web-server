@@ -31,6 +31,8 @@ Server is configured either via environment variables:
 - **SERVER_PORT**: Host port. Default `80`.
 - **SERVER_ROOT**: Root directory path of static files. Default `./public`.
 - **SERVER_ASSETS**: Assets directory path for add cache headers functionality. Default `./assets` but relative to the root.
+- **SERVER_ERROR_PAGE_404**: HTML file path for 404 errors. Default `./public/404.html`.
+- **SERVER_ERROR_PAGE_50X**: HTML file path for 50x errors. Default `./public/50x.html`.
 
 Or command line arguments listed with `cargo run -- -h`.
 
@@ -45,12 +47,14 @@ FLAGS:
     -V, --version    Prints version information
 
 OPTIONS:
-        --assets <assets>    Assets directory path for add cache headers functionality [env: SERVER_ASSETS=]  [default:
-                             ./assets]
-        --host <host>        Host address (E.g 127.0.0.1) [env: SERVER_HOST=]  [default: [::]]
-        --name <name>        Name for server [env: SERVER_NAME=]  [default: my-static-server]
-        --port <port>        Host port [env: SERVER_PORT=]  [default: 80]
-        --root <root>        Root directory path of static files [env: SERVER_ROOT=]
+        --assets <assets>      Assets directory path for add cache headers functionality [env: SERVER_ASSETS=]
+                               [default: ./assets]
+        --host <host>          Host address (E.g 127.0.0.1) [env: SERVER_HOST=]  [default: [::]]
+        --name <name>          Name for server [env: SERVER_NAME=]  [default: my-static-server]
+        --page404 <page404>    HTML file path for 404 errors [env: SERVER_ERROR_PAGE_404=]  [default: ./public/404.html]
+        --page50x <page50x>    HTML file path for 50x errors [env: SERVER_ERROR_PAGE_50X=]  [default: ./public/50x.html]
+        --port <port>          Host port [env: SERVER_PORT=]  [default: 80]
+        --root <root>          Root directory path of static files [env: SERVER_ROOT=]  [default: ./public]
 ```
 
 ## Docker stack

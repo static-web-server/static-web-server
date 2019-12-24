@@ -22,13 +22,13 @@ pub struct Options {
         default_value = "./public/50x.html",
         env = "SERVER_ERROR_PAGE_50X"
     )]
-    /// HTML file content for 50x errors
+    /// HTML file path for 50x errors
     pub page50x: String,
     #[structopt(
         long,
         default_value = "./public/404.html",
         env = "SERVER_ERROR_PAGE_404"
     )]
-    /// HTML file content for 404 errors
+    /// HTML file path for 404 errors
     pub page404: String,
 }
