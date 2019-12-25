@@ -9,12 +9,12 @@
 - Built with [Rust](https://rust-lang.org) which is focused on [safety, speed, and concurrency](https://kornel.ski/rust-c-speed).
 - Memory safety and reduced overhead of CPU and RAM resources.
 - Blazing fast static files-serving thanks to [Rust Iron](https://github.com/iron/iron).
-- Suitable for small [GNU/Linux Docker containers](https://hub.docker.com/r/joseluisq/static-web-server). It's a fully __1.4MB__ static binary thanks to [Rust and Musl libc](https://doc.rust-lang.org/edition-guide/rust-2018/platform-and-target-support/musl-support-for-fully-static-binaries.html).
+- Suitable for small [GNU/Linux Docker containers](https://hub.docker.com/r/joseluisq/static-web-server). It's a fully __1.8MB__ static binary thanks to [Rust and Musl libc](https://doc.rust-lang.org/edition-guide/rust-2018/platform-and-target-support/musl-support-for-fully-static-binaries.html).
 - Gzip compression by default.
 - Cache control headers included.
 - Configurable via environment variables or CLI arguments.
 - Lightweight logging support.
-- Scratch and [latest Alpine Linux](https://hub.docker.com/_/alpine) Docker images available.
+- [Scratch](https://hub.docker.com/_/scratch) and [latest Alpine Linux](https://hub.docker.com/_/alpine) Docker images available.
 
 ## Missing features
 
@@ -70,7 +70,7 @@ services:
     environment:
         - SERVER_NAME=my-server
         - SERVER_HOST=127.0.0.1
-        - SERVER_PORT=8080
+        - SERVER_PORT=80
         - SERVER_ROOT=/html
         - SERVER_ASSETS=./assets
     volumes:
