@@ -1,5 +1,15 @@
 body {
-  font-family: Arial, Helvetica, sans-serif;
-  color: slategray;
+  font-family: sans-serif;
+  color: black;
   text-align: center;
+  font-size: 1.2rem;
+}
+
+h1 a {
+  text-decoration: none;
+  color: black;
+}
+
+a {
+  color: #0366d6;
 }

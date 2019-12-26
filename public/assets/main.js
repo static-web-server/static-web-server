@@ -1,1 +1,1 @@
-(() => console.log("Hello world!"))()
+(() => console.log("Static Web Server running!"))()
