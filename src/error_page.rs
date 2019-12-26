@@ -9,19 +9,33 @@ use std::path::Path;
 
 /// Custom Error pages middleware for Iron
 pub struct ErrorPage {
-    /// HTML file content for 50x errors.
-    pub page50x: std::string::String,
     /// HTML file content for 404 errors.
-    pub page404: std::string::String,
+    pub page404: String,
+    /// HTML file content for 50x errors.
+    pub page50x: String,
 }
 
 impl ErrorPage {
     /// Create a new instance of `ErrorPage` middleware with a given html pages.
-    pub fn new<P: AsRef<Path>>(page_50x_path: P, page_404_path: P) -> ErrorPage {
-        let page50x = fs::read_to_string(page_50x_path).unwrap();
-        let page404 = fs::read_to_string(page_404_path).unwrap();
+    pub fn new<P: AsRef<Path>>(page_404_path: P, page_50x_path: P) -> ErrorPage {
+        let page404: String;
+        let page50x: String;
 
-        ErrorPage { page50x, page404 }
+        if Path::new(&page_404_path.as_ref()).exists() {
+            page404 = fs::read_to_string(page_404_path).unwrap();
+        } else {
+            page404 = String::from("<h2>404</h2><p>Content could not found</p>");
+        }
+
+        if Path::new(&page_50x_path.as_ref()).exists() {
+            page50x = fs::read_to_string(page_50x_path).unwrap();
+        } else {
+            page50x = String::from(
+                "<h2>50x</h2><p>Service is temporarily unavailable due an unexpected error</p>",
+            );
+        }
+
+        ErrorPage { page404, page50x }
     }
 }
 
