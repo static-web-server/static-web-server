@@ -45,8 +45,8 @@ impl StaticFiles {
         chain.link_after(GzipMiddleware);
         chain.link_after(Logger);
         chain.link_after(ErrorPage::new(
-            self.opts.page_50x_path.as_str(),
             self.opts.page_404_path.as_str(),
+            self.opts.page_50x_path.as_str(),
         ));
         chain
     }
