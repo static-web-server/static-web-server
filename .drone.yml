@@ -12,7 +12,7 @@ pipeline:
     # DEVELOPMENT
 
     test:
-        image: ekidd/rust-musl-builder:stable
+        image: joseluisq/rust-linux-darwin-builder:1.40.0
         group: development
         commands:
             - make test
@@ -22,7 +22,7 @@ pipeline:
     # PRODUCTION
 
     build-release:
-        image: ekidd/rust-musl-builder:stable
+        image: joseluisq/rust-linux-darwin-builder:1.40.0
         group: production
         commands:
             - make prod.release
@@ -71,27 +71,23 @@ pipeline:
         files:
             - ./bin/*.tar.gz
             - ./bin/*.zip
+            - ./bin/*-SHA256SUM
         prerelease: true
-        checksum:
-            - md5
-            - sha1
         when:
             event: tag
 
-    # publish-github-release:
-    #     image: plugins/github-release
-    #     group: production
-    #     api_key:
-    #         from_secret: github_token
-    #     files:
-    #         - ./bin/*.tar.gz
-    #         - ./bin/*.zip
-    #     prerelease: true
-    #     checksum:
-    #         - md5
-    #         - sha1
-    #     when:
-    #         event: tag
+    publish-github-release:
+        image: plugins/github-release
+        group: production
+        api_key:
+            from_secret: github_token
+        files:
+            - ./bin/*.tar.gz
+            - ./bin/*.zip
+            - ./bin/*-SHA256SUM
+        prerelease: true
+        when:
+            event: tag
 
     publish-image-scratch-docker-hub:
         image: plugins/docker
