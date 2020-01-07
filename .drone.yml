@@ -76,18 +76,19 @@ pipeline:
         when:
             event: tag
 
-    publish-github-release:
-        image: plugins/github-release
-        group: production
-        api_key:
-            from_secret: github_token
-        files:
-            - ./bin/*.tar.gz
-            - ./bin/*.zip
-            - ./bin/*-SHA256SUM
-        prerelease: true
-        when:
-            event: tag
+    ## Github release step is not required because this is a Gitea based project
+    # publish-github-release:
+    #     image: plugins/github-release
+    #     group: production
+    #     api_key:
+    #         from_secret: github_token
+    #     files:
+    #         - ./bin/*.tar.gz
+    #         - ./bin/*.zip
+    #         - ./bin/*-SHA256SUM
+    #     prerelease: true
+    #     when:
+    #         event: tag
 
     publish-image-scratch-docker-hub:
         image: plugins/docker
