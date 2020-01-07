@@ -88,7 +88,10 @@ define build_release =
 	sudo chown -R rust:rust ./
 	echo "Compiling application..."
 	rustc --version
+	echo "Compiling release binary for $(PKG_TARGET)..."
 	cargo build --release --target $(PKG_TARGET)
+	echo
+	echo "Compiling release binary for $(PKG_TARGET_DARWIN)..."
 	cargo build --release --target $(PKG_TARGET_DARWIN)
 	echo "Release builds completed!"
 endef
@@ -99,6 +102,8 @@ define build_release_shrink =
 	set -u
 
 	echo "Copying release binaries..."
+
+	mkdir -p $(PKG_BIN_PATH)
 
 	# Linux
 	mkdir -p $(PKG_TMP_BIN_PATH)
@@ -115,6 +120,8 @@ define build_release_shrink =
 	strip $(PKG_TMP_BIN_PATH)/$(PKG_NAME)
 	echo "Size after:"
 	du -sh $(PKG_TMP_BIN_PATH)/$(PKG_NAME)
+	echo "Copying $(PKG_TMP_BIN_PATH)/$(PKG_NAME) binary to $(PKG_BIN_PATH) directory..."
+	cp -rf $(PKG_TMP_BIN_PATH)/$(PKG_NAME) $(PKG_BIN_PATH)/
 	echo "Release size shrinking completed!"
 endef
 
@@ -123,12 +130,14 @@ define build_release_files =
 	set -e
 	set -u
 
+	mkdir -p $(PKG_BIN_PATH)
+
 	# Linux
-	tar -C $(PKG_TMP_BIN_PATH) -czvf $(PKG_BIN_PATH)/$(PKG_RELEASE_NAME).tar.gz $(PKG_NAME)
+	tar czvf $(PKG_BIN_PATH)/$(PKG_RELEASE_NAME).tar.gz -C $(PKG_TMP_BIN_PATH) $(PKG_NAME)
 	sha256sum $(PKG_BIN_PATH)/$(PKG_RELEASE_NAME).tar.gz > $(PKG_BIN_PATH)/$(PKG_RELEASE_NAME)-SHA256SUM
 
 	# Darwin
-	tar -C $(PKG_TMP_BIN_PATH_DARWIN) -czvf $(PKG_BIN_PATH)/$(PKG_RELEASE_NAME_DARWIN).tar.gz $(PKG_NAME)
+	tar czvf $(PKG_BIN_PATH)/$(PKG_RELEASE_NAME_DARWIN).tar.gz -C $(PKG_TMP_BIN_PATH_DARWIN) $(PKG_NAME)
 	sha256sum $(PKG_BIN_PATH)/$(PKG_RELEASE_NAME_DARWIN).tar.gz > $(PKG_BIN_PATH)/$(PKG_RELEASE_NAME_DARWIN)-SHA256SUM
 
 	du -sh $(PKG_BIN_PATH)/*
