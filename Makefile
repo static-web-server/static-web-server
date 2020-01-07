@@ -35,6 +35,23 @@ build:
 	@cargo build --release --target $(PKG_TARGET)
 .PHONY: build
 
+linux:
+	@docker run --rm \
+		--user rust:rust \
+		--volume ${PWD}:/home/rust/static-web-server \
+		--workdir /home/rust/static-web-server \
+		joseluisq/rust-linux-darwin-builder:latest \
+		sh -c "cargo build --release --target $(PKG_TARGET)"
+.PHONY: linux
+
+darwin:
+	@docker run --rm \
+		--user rust:rust \
+		--volume ${PWD}:/home/rust/static-web-server \
+		--workdir /home/rust/static-web-server \
+		joseluisq/rust-linux-darwin-builder:latest \
+		sh -c "cargo build --release --target $(PKG_TARGET_DARWIN)"
+.PHONY: darwin
 
 #######################################
 ########### Utility tasks #############
