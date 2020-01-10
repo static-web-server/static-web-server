@@ -1,9 +1,17 @@
 PKG_TARGET=x86_64-unknown-linux-musl
+PKG_TARGET_DARWIN=x86_64-apple-darwin
+
 PKG_BIN_PATH=./bin
+PKG_TMP_PATH=/tmp
 
 PKG_NAME=$(shell cat Cargo.toml | sed -n 's/name = "\([^}]*\)"/\1/p' | head -n1)
 PKG_TAG=$(shell cat Cargo.toml | sed -n 's/version = "\([^}]*\)"/\1/p' | head -n1)
 
+PKG_RELEASE_NAME=$(PKG_NAME)-v$(PKG_TAG)-$(PKG_TARGET)
+PKG_RELEASE_NAME_DARWIN=$(PKG_NAME)-v$(PKG_TAG)-$(PKG_TARGET_DARWIN)
+
+PKG_TMP_BIN_PATH=$(PKG_TMP_PATH)/$(PKG_RELEASE_NAME)
+PKG_TMP_BIN_PATH_DARWIN=$(PKG_TMP_PATH)/$(PKG_RELEASE_NAME_DARWIN)
 
 #######################################
 ############# Development #############
@@ -27,6 +35,23 @@ build:
 	@cargo build --release --target $(PKG_TARGET)
 .PHONY: build
 
+linux:
+	@docker run --rm \
+		--user rust:rust \
+		--volume ${PWD}:/home/rust/static-web-server \
+		--workdir /home/rust/static-web-server \
+		joseluisq/rust-linux-darwin-builder:latest \
+		sh -c "cargo build --release --target $(PKG_TARGET)"
+.PHONY: linux
+
+darwin:
+	@docker run --rm \
+		--user rust:rust \
+		--volume ${PWD}:/home/rust/static-web-server \
+		--workdir /home/rust/static-web-server \
+		joseluisq/rust-linux-darwin-builder:latest \
+		sh -c "cargo build --release --target $(PKG_TARGET_DARWIN)"
+.PHONY: darwin
 
 #######################################
 ########### Utility tasks #############
@@ -63,8 +88,12 @@ define build_release =
 	sudo chown -R rust:rust ./
 	echo "Compiling application..."
 	rustc --version
+	echo "Compiling release binary for $(PKG_TARGET)..."
 	cargo build --release --target $(PKG_TARGET)
-	echo "Release build completed!"
+	echo
+	echo "Compiling release binary for $(PKG_TARGET_DARWIN)..."
+	cargo build --release --target $(PKG_TARGET_DARWIN)
+	echo "Release builds completed!"
 endef
 
 # Shrink a release binary size
@@ -72,13 +101,27 @@ define build_release_shrink =
 	set -e
 	set -u
 
+	echo "Copying release binaries..."
+
 	mkdir -p $(PKG_BIN_PATH)
-	cp -rf ./target/$(PKG_TARGET)/release/$(PKG_NAME) $(PKG_BIN_PATH)
+
+	# Linux
+	mkdir -p $(PKG_TMP_BIN_PATH)
+	cp -rf ./target/$(PKG_TARGET)/release/$(PKG_NAME) $(PKG_TMP_BIN_PATH)
+
+	# Darwin
+	mkdir -p $(PKG_TMP_BIN_PATH_DARWIN)
+	cp -rf ./target/$(PKG_TARGET_DARWIN)/release/$(PKG_NAME) $(PKG_TMP_BIN_PATH_DARWIN)
+
+	# Linux only
+	echo "Performing binary shrinking for $(PKG_TARGET) release..."
 	echo "Size before:"
-	du -sh $(PKG_BIN_PATH)/$(PKG_NAME)
-	strip $(PKG_BIN_PATH)/$(PKG_NAME)
+	du -sh $(PKG_TMP_BIN_PATH)/$(PKG_NAME)
+	strip $(PKG_TMP_BIN_PATH)/$(PKG_NAME)
 	echo "Size after:"
-	du -sh $(PKG_BIN_PATH)/$(PKG_NAME)
+	du -sh $(PKG_TMP_BIN_PATH)/$(PKG_NAME)
+	echo "Copying $(PKG_TMP_BIN_PATH)/$(PKG_NAME) binary to $(PKG_BIN_PATH) directory..."
+	cp -rf $(PKG_TMP_BIN_PATH)/$(PKG_NAME) $(PKG_BIN_PATH)/
 	echo "Release size shrinking completed!"
 endef
 
@@ -87,9 +130,17 @@ define build_release_files =
 	set -e
 	set -u
 
-	cd $(PKG_BIN_PATH) && \
-		tar czvf $(PKG_NAME)-v$(PKG_TAG)-x86_64-$(PKG_TARGET).tar.gz $(PKG_NAME)
-	du -sh ./*
+	mkdir -p $(PKG_BIN_PATH)
+
+	# Linux
+	tar czvf $(PKG_BIN_PATH)/$(PKG_RELEASE_NAME).tar.gz -C $(PKG_TMP_BIN_PATH) $(PKG_NAME)
+	sha256sum $(PKG_BIN_PATH)/$(PKG_RELEASE_NAME).tar.gz > $(PKG_BIN_PATH)/$(PKG_RELEASE_NAME)-SHA256SUM
+
+	# Darwin
+	tar czvf $(PKG_BIN_PATH)/$(PKG_RELEASE_NAME_DARWIN).tar.gz -C $(PKG_TMP_BIN_PATH_DARWIN) $(PKG_NAME)
+	sha256sum $(PKG_BIN_PATH)/$(PKG_RELEASE_NAME_DARWIN).tar.gz > $(PKG_BIN_PATH)/$(PKG_RELEASE_NAME_DARWIN)-SHA256SUM
+
+	du -sh $(PKG_BIN_PATH)/*
 	echo "Release tarball/zipball files created!"
 endef
 
