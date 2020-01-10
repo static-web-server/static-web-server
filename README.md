@@ -13,14 +13,9 @@
 - Gzip compression by default.
 - Cache control headers included.
 - Configurable via environment variables or CLI arguments.
+- TLS support via [Rust Native TLS](https://docs.rs/native-tls/0.2.3/native_tls/) crate.
 - Lightweight logging support.
 - [Scratch](https://hub.docker.com/_/scratch) and [latest Alpine Linux](https://hub.docker.com/_/alpine) Docker images available.
-
-## Missing features
-
-- TLS support
-
-PRs welcome!
 
 ## Usage
 
