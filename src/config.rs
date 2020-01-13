@@ -32,4 +32,13 @@ pub struct Options {
     )]
     /// HTML file path for 404 errors. If path is not specified or simply don't exists then server will use a generic HTML error message.
     pub page404: String,
+    #[structopt(long, env = "SERVER_TLS")]
+    /// Enables TLS/SSL support.
+    pub tls: bool,
+    #[structopt(long, default_value = "", env = "SERVER_TLS_PKCS12")]
+    /// A cryptographic identity PKCS #12 bundle file path containing a X509 certificate along with its corresponding private key and chain of certificates to a trusted root.
+    pub tls_pkcs12: String,
+    #[structopt(long, default_value = "", env = "SERVER_TLS_PKCS12_PASSWD")]
+    /// A specified password to decrypt the private key.
+    pub tls_pkcs12_passwd: String,
 }

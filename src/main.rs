@@ -1,6 +1,7 @@
 extern crate chrono;
 extern crate env_logger;
 extern crate flate2;
+extern crate hyper_native_tls;
 extern crate iron;
 extern crate iron_staticfile_middleware;
 
@@ -17,6 +18,7 @@ mod staticfiles;
 use crate::config::Options;
 use chrono::Local;
 use env_logger::Builder;
+use hyper_native_tls::NativeTlsServer;
 use iron::prelude::*;
 use log::LevelFilter;
 use staticfiles::*;
@@ -46,14 +48,27 @@ fn main() {
         page_404_path: opts.page404,
     });
 
-    let _address = &format!("{}{}{}", opts.host.to_string(), ":", opts.port.to_string());
+    let addr = &format!("{}{}{}", opts.host.to_string(), ":", opts.port.to_string());
+    let proto = if opts.tls { "HTTPS" } else { "HTTP" };
 
-    let _server = Iron::new(files.handle())
-        .http(_address)
-        .expect("Unable to start the HTTP Server");
+    let server_info = |server_name: &String, proto: &str, addr: &String| {
+        info!(
+            "Static {} Server `{}` is running on {}",
+            proto, server_name, addr
+        );
+    };
 
-    info!(
-        "Static HTTP Server `{}` is running on {}",
-        opts.name, _address
-    );
+    if opts.tls {
+        let ssl = NativeTlsServer::new(opts.tls_pkcs12, &opts.tls_pkcs12_passwd).unwrap();
+
+        match Iron::new(files.handle()).https(addr, ssl) {
+            Result::Ok(_) => server_info(&opts.name, &proto, addr),
+            Result::Err(err) => panic!("{:?}", err),
+        }
+    } else {
+        match Iron::new(files.handle()).http(addr) {
+            Result::Ok(_) => server_info(&opts.name, &proto, addr),
+            Result::Err(err) => panic!("{:?}", err),
+        }
+    }
 }

@@ -41,7 +41,7 @@ linux:
 		--volume ${PWD}:/home/rust/static-web-server \
 		--workdir /home/rust/static-web-server \
 		joseluisq/rust-linux-darwin-builder:latest \
-		sh -c "cargo build --release --target $(PKG_TARGET)"
+		sh -c "sudo chown -R rust:rust ./target && cargo build --release --target $(PKG_TARGET)"
 .PHONY: linux
 
 darwin:
@@ -50,7 +50,7 @@ darwin:
 		--volume ${PWD}:/home/rust/static-web-server \
 		--workdir /home/rust/static-web-server \
 		joseluisq/rust-linux-darwin-builder:latest \
-		sh -c "cargo build --release --target $(PKG_TARGET_DARWIN)"
+		sh -c "sudo chown -R rust:rust ./target && cargo build --release --target $(PKG_TARGET_DARWIN)"
 .PHONY: darwin
 
 #######################################
