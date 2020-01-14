@@ -76,6 +76,25 @@ OPTIONS:
             A specified password to decrypt the private key [env: SERVER_TLS_PKCS12_PASSWD=]  [default: ]
 ```
 
+## TLS/SSL
+
+TLS/SSL support is provided by [Rust Native TLS](https://docs.rs/native-tls/0.2.3/native_tls/struct.Identity.html#method.from_pkcs12) crate which supports [PKCS #12 cryptographic identity](https://en.wikipedia.org/wiki/PKCS_12).
+An identity is an [X509 certificate](https://en.wikipedia.org/wiki/X.509) certificate along with its corresponding private key and chain of certificates to a trusted root.
+
+For instance, identity files (`.p12` or `.pfx`) can be generated using the [OpenSSL SSL/TLS Toolkit](https://www.openssl.org/docs/manmaster/man1/pkcs12.html):
+
+Generate a self-signed certificate:
+
+```sh
+openssl req -x509 -newkey rsa:4096 -nodes -keyout local.key -out local.crt -days 3650
+```
+
+Generate a PKCS #12 indentity file:
+
+```sh
+openssl pkcs12 -export -out identity.p12 -inkey local.key -in local.crt -password pass:my_password
+```
+
 ## Docker stack
 
 Example using [Traefik proxy](https://traefik.io/):
