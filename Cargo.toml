@@ -2,7 +2,23 @@
 name = "static-web-server"
 version = "1.3.0"
 authors = ["Jose Quintana <https://git.io/joseluisq>"]
+license = "MIT OR Apache-2.0"
+description = "A blazing fast static files-serving web server powered by Rust Iron."
+repository = "https://github.com/joseluisq/static-web-server"
+readme = "README.md"
+keywords = [
+    "docker-image",
+    "static-web-server",
+    "file-server",
+    "http-server",
+    "linux",
+    "darwin",
+    "musl-libc",
+    "x86-64"
+]
+categories = ["network-programming", "web-programming::http-server"]
 edition = "2018"
+include = ["src/**/*", "Cargo.toml", "Cargo.lock"]
 
 [dependencies]
 iron = "0.6"
