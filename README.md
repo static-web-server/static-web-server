@@ -9,7 +9,7 @@
 - Built with [Rust](https://rust-lang.org) which is focused on [safety, speed, and concurrency](https://kornel.ski/rust-c-speed).
 - Memory safety and reduced overhead of CPU and RAM resources.
 - Blazing fast static files-serving thanks to [Rust Iron](https://github.com/iron/iron).
-- Suitable for small [GNU/Linux Docker containers](https://hub.docker.com/r/joseluisq/static-web-server). It's a fully __4,3M__ static binary thanks to [Rust and Musl libc](https://doc.rust-lang.org/edition-guide/rust-2018/platform-and-target-support/musl-support-for-fully-static-binaries.html) (`x86_64-unknown-linux-musl`).
+- Suitable for small [GNU/Linux Docker containers](https://hub.docker.com/r/joseluisq/static-web-server). It's a fully __4MB__ static binary thanks to [Rust and Musl libc](https://doc.rust-lang.org/edition-guide/rust-2018/platform-and-target-support/musl-support-for-fully-static-binaries.html) (`x86_64-unknown-linux-musl`).
 - Gzip compression by default.
 - Cache control headers included.
 - Configurable via environment variables or CLI arguments.
@@ -42,7 +42,7 @@ Server can be configured either via environment variables or command-line argume
 CLI arguments listed with `static-web-server -h`.
 
 ```
-static-web-server 1.4.0
+static-web-server 1.5.0
 A blazing fast static files-serving web server powered by Rust Iron
 
 USAGE:
@@ -137,4 +137,4 @@ Feel free to send some [Pull request](https://github.com/joseluisq/static-web-se
 
 This work is primarily distributed under the terms of both the [MIT license](LICENSE-MIT) and the [Apache License (Version 2.0)](LICENSE-APACHE).
 
-© 2019 [Jose Quintana](https://git.io/joseluisq)
+© 2019-present [Jose Quintana](https://git.io/joseluisq)
