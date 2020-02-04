@@ -12,7 +12,7 @@ pipeline:
     # DEVELOPMENT
 
     test:
-        image: joseluisq/rust-linux-darwin-builder:1.40.0
+        image: joseluisq/rust-linux-darwin-builder:1.41.0
         group: development
         commands:
             - make test
@@ -22,7 +22,7 @@ pipeline:
     # PRODUCTION
 
     build-release:
-        image: joseluisq/rust-linux-darwin-builder:1.40.0
+        image: joseluisq/rust-linux-darwin-builder:1.41.0
         group: production
         commands:
             - make prod.release
@@ -75,20 +75,6 @@ pipeline:
         prerelease: true
         when:
             event: tag
-
-    ## Github release step is not required because this is a Gitea based project
-    # publish-github-release:
-    #     image: plugins/github-release
-    #     group: production
-    #     api_key:
-    #         from_secret: github_token
-    #     files:
-    #         - ./bin/*.tar.gz
-    #         - ./bin/*.zip
-    #         - ./bin/*-SHA256SUM
-    #     prerelease: true
-    #     when:
-    #         event: tag
 
     publish-image-scratch-docker-hub:
         image: plugins/docker
