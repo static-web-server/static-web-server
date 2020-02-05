@@ -1,5 +1,6 @@
 PKG_TARGET=x86_64-unknown-linux-musl
 PKG_TARGET_DARWIN=x86_64-apple-darwin
+RUST_VERSION=$(shell rustc --version | cut -d ' ' -f2)
 
 PKG_BIN_PATH=./bin
 PKG_TMP_PATH=/tmp
@@ -40,8 +41,13 @@ linux:
 		--user rust:rust \
 		--volume ${PWD}:/home/rust/static-web-server \
 		--workdir /home/rust/static-web-server \
-		joseluisq/rust-linux-darwin-builder:latest \
-		sh -c "sudo chown -R rust:rust ./target && cargo build --release --target $(PKG_TARGET)"
+		joseluisq/rust-linux-darwin-builder:$(RUST_VERSION) \
+		sh -c "rustc --version && \
+			mkdir -p target bin && \
+			cargo build --release --target $(PKG_TARGET) && \
+			cp -rf ./target/$(PKG_TARGET)/release/$(PKG_NAME) $(PKG_BIN_PATH)/$(PKG_NAME)-linux && \
+			strip $(PKG_BIN_PATH)/$(PKG_NAME)-linux && \
+			du -sh $(PKG_BIN_PATH)/*"
 .PHONY: linux
 
 darwin:
@@ -49,8 +55,13 @@ darwin:
 		--user rust:rust \
 		--volume ${PWD}:/home/rust/static-web-server \
 		--workdir /home/rust/static-web-server \
-		joseluisq/rust-linux-darwin-builder:latest \
-		sh -c "sudo chown -R rust:rust ./target && cargo build --release --target $(PKG_TARGET_DARWIN)"
+		joseluisq/rust-linux-darwin-builder:$(RUST_VERSION) && \
+		sh -c "rustc --version && \
+			mkdir -p target bin && \
+			cargo build --release --target $(PKG_TARGET_DARWIN) && \
+			cp -rf ./target/$(PKG_TARGET_DARWIN)/release/$(PKG_NAME) $(PKG_BIN_PATH)/$(PKG_NAME)-darwin && \
+			strip $(PKG_BIN_PATH)/$(PKG_NAME)-darwin && \
+			du -sh $(PKG_BIN_PATH)/*"
 .PHONY: darwin
 
 #######################################
