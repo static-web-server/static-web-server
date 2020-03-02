@@ -1,6 +1,6 @@
 PKG_TARGET=x86_64-unknown-linux-musl
 PKG_TARGET_DARWIN=x86_64-apple-darwin
-RUST_VERSION=$(shell rustc --version | cut -d ' ' -f2)
+RUST_VERSION ?= $(shell rustc --version | cut -d ' ' -f2)
 
 PKG_BIN_PATH=./bin
 PKG_TMP_PATH=/tmp
@@ -33,35 +33,62 @@ watch:
 .PHONY: watch
 
 build:
+	@rustc -vV
 	@cargo build --release --target $(PKG_TARGET)
 .PHONY: build
 
 linux:
-	@docker run --rm \
-		--user rust:rust \
-		--volume ${PWD}:/home/rust/static-web-server \
+	@docker run --rm -it \
+		-v $(PWD):/home/rust/static-web-server \
+		-v cargo-git:/home/rust/.cargo/git \
+		-v cargo-registry:/home/rust/.cargo/registry \
+		-v cargo-target:/home/rust/static-web-server/target \
+\
 		--workdir /home/rust/static-web-server \
 		joseluisq/rust-linux-darwin-builder:$(RUST_VERSION) \
-		sh -c "rustc --version && \
-			mkdir -p target bin && \
+\
+		bash -c "\
+			echo Building Linux release binary... && \
+\
+			sudo chown -R rust:rust \
+				/home/rust/.cargo/git \
+				/home/rust/static-web-server/target \
+				/home/rust/.cargo/registry && \
+			sudo touch Cargo.lock && sudo chown rust:rust Cargo.lock && \
+\
+			rustc -vV && \
 			cargo build --release --target $(PKG_TARGET) && \
-			cp -rf ./target/$(PKG_TARGET)/release/$(PKG_NAME) $(PKG_BIN_PATH)/$(PKG_NAME)-linux && \
-			strip $(PKG_BIN_PATH)/$(PKG_NAME)-linux && \
-			du -sh $(PKG_BIN_PATH)/*"
+			du -sh ./target/$(PKG_TARGET)/release/$(PKG_NAME) && \
+			sudo mkdir -p release && \
+			sudo cp -rf ./target/$(PKG_TARGET)/release/$(PKG_NAME) release/$(PKG_NAME)-linux && \
+			sudo chown -R rust:rust release/"
 .PHONY: linux
 
 darwin:
-	@docker run --rm \
-		--user rust:rust \
-		--volume ${PWD}:/home/rust/static-web-server \
+	@docker run --rm -it \
+		-v $(PWD):/home/rust/static-web-server \
+		-v cargo-git:/home/rust/.cargo/git \
+		-v cargo-registry:/home/rust/.cargo/registry \
+		-v cargo-target:/home/rust/static-web-server/target \
+\
 		--workdir /home/rust/static-web-server \
-		joseluisq/rust-linux-darwin-builder:$(RUST_VERSION) && \
-		sh -c "rustc --version && \
-			mkdir -p target bin && \
+		joseluisq/rust-linux-darwin-builder:$(RUST_VERSION) \
+\
+		bash -c "\
+			echo Building Darwin release binary... && \
+\
+			sudo chown -R rust:rust \
+				/home/rust/.cargo/git \
+				/home/rust/static-web-server/target \
+				/home/rust/.cargo/registry && \
+			sudo touch Cargo.lock && sudo chown rust:rust Cargo.lock && \
+\
+			rustc -vV && \
 			cargo build --release --target $(PKG_TARGET_DARWIN) && \
-			cp -rf ./target/$(PKG_TARGET_DARWIN)/release/$(PKG_NAME) $(PKG_BIN_PATH)/$(PKG_NAME)-darwin && \
-			strip $(PKG_BIN_PATH)/$(PKG_NAME)-darwin && \
-			du -sh $(PKG_BIN_PATH)/*"
+			du -sh ./target/$(PKG_TARGET_DARWIN)/release/$(PKG_NAME) && \
+			sudo mkdir -p release && \
+			sudo cp -rf ./target/$(PKG_TARGET_DARWIN)/release/$(PKG_NAME) release/$(PKG_NAME)-darwin && \
+			sudo chown -R rust:rust release/"
 .PHONY: darwin
 
 #######################################
