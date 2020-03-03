@@ -12,7 +12,7 @@ if [ $# -eq 0 ]; then
 fi
 
 export VERSION=$LATEST_TAG
-export ALPINE_VERSION=3.10
+export ALPINE_VERSION=3.11
 
 PLATFORMS=(
     "alpine"
@@ -31,7 +31,7 @@ for PLATFORM in "${PLATFORMS[@]}"; do
     
     rm -rf "${PLATFORM_DIR}/Dockerfile"
     
-    envsubst \$ALPINE_VERSION,\$VERSION <"${PLATFORM_DIR}/Dockerfile.tmpl" >"${PLATFORM_DIR}/Dockerfile"
+    envsubst \$ALPINE_VERSION,\$VERSION <"${PLATFORM_DIR}/tmpl.Dockerfile" >"${PLATFORM_DIR}/Dockerfile"
 done
 
 echo "All Dockerfiles were updated!"
