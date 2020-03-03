@@ -29,6 +29,7 @@ structopt = "0.3"
 flate2 = "1.0"
 iron_staticfile_middleware = { git = "https://github.com/joseluisq/iron-staticfile-middleware.git" }
 hyper-native-tls = "0.3"
+ctrlc = "3.1"
 
 [dev-dependencies]
 openssl = { version = "0.10", features = ["vendored"] }
