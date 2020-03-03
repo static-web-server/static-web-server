@@ -210,7 +210,7 @@ prod.release.tag:
 	git push --delete origin latest
 
 	# Update docker files to latest tag per platform
-	./scripts/version.sh v$(PKG_TAG)
+	./docker/version.sh v$(PKG_TAG)
 
 	git add .
 	git commit . -m "v$(PKG_TAG)"
@@ -223,5 +223,5 @@ prod.release.tag:
 
 prod.release.dockerfiles:
 	# Update docker files to latest tag per platform
-	./scripts/version.sh v$(PKG_TAG)
+	./docker/version.sh v$(PKG_TAG)
 .ONESHELL: prod.release.dockerfiles

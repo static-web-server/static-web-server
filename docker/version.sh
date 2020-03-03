@@ -21,16 +21,16 @@ PLATFORMS=(
 
 for PLATFORM in "${PLATFORMS[@]}"; do
     PLATFORM_DIR="${BASE_PATH}/${PLATFORM}"
-
+    
     if [ ! -d "$PLATFORM_DIR" ]; then
         echo "Directory no found for \"${PLATFORM_DIR}\""
         exit 1
     fi
-
+    
     echo "Generating Dockerfile for platform \"${PLATFORM}\""
-
+    
     rm -rf "${PLATFORM_DIR}/Dockerfile"
-
+    
     envsubst \$ALPINE_VERSION,\$VERSION <"${PLATFORM_DIR}/Dockerfile.tmpl" >"${PLATFORM_DIR}/Dockerfile"
 done
 
