@@ -10,17 +10,24 @@
 - Memory safety and reduced overhead of CPU and RAM resources.
 - Blazing fast static files-serving thanks to [Rust Iron](https://github.com/iron/iron).
 - Suitable for small [GNU/Linux Docker containers](https://hub.docker.com/r/joseluisq/static-web-server). It's a fully __4MB__ static binary thanks to [Rust and Musl libc](https://doc.rust-lang.org/edition-guide/rust-2018/platform-and-target-support/musl-support-for-fully-static-binaries.html) (`x86_64-unknown-linux-musl`).
-- Gzip compression by default.
-- Cache control headers included.
+- Gzip compression on demand via `accept-encoding` header.
+- Assets Cache control headers support.
 - Configurable via environment variables or CLI arguments.
 - TLS support via [Rust Native TLS](https://docs.rs/native-tls/0.2.3/native_tls/) crate.
 - Lightweight logging support.
-- MacOs (`x86_64-apple-darwin`) binary support thanks to [Rust Linux / Darwin Builder](https://github.com/joseluisq/rust-linux-darwin-builder).
-- [Scratch](https://hub.docker.com/_/scratch) and [latest Alpine Linux](https://hub.docker.com/_/alpine) Docker images available.
+- MacOs binary support (`x86_64-apple-darwin`) thanks to [Rust Linux / Darwin Builder](https://github.com/joseluisq/rust-linux-darwin-builder).
+- [Scratch](https://hub.docker.com/_/scratch) and latest [Alpine Linux](https://hub.docker.com/_/alpine) Docker images available.
+
+## Releases
+
+Available for download/install via following methods:
+
+- **Docker Image** on [hub.docker.com/r/joseluisq/static-web-server/](https://hub.docker.com/r/joseluisq/static-web-server/)
+- **Release binaries** for `GNU/Linux` and `MacOS` x86_64 on [github.com/joseluisq/static-web-server/releases](https://github.com/joseluisq/static-web-server/releases).
 
 ## Usage
 
-Server can be configured either via environment variables or command-line arguments.
+Server can be configured either via environment variables or their equivalent command-line arguments.
 
 ### Environment Variables
 
@@ -83,13 +90,13 @@ An identity is an [X509 certificate](https://en.wikipedia.org/wiki/X.509) certif
 
 For instance, identity files (`.p12` or `.pfx`) can be generated using the [OpenSSL SSL/TLS Toolkit](https://www.openssl.org/docs/manmaster/man1/pkcs12.html):
 
-Generate a self-signed certificate:
+Generate a self-signed certificate (optional):
 
 ```sh
 openssl req -x509 -newkey rsa:4096 -nodes -keyout local.key -out local.crt -days 3650
 ```
 
-Generate a PKCS #12 indentity file:
+Generate a PKCS #12 indentity file (using an existing certificate and private key):
 
 ```sh
 openssl pkcs12 -export -out identity.p12 -inkey local.key -in local.crt -password pass:my_password
@@ -97,7 +104,7 @@ openssl pkcs12 -export -out identity.p12 -inkey local.key -in local.crt -passwor
 
 ## Docker stack
 
-Example using [Traefik proxy](https://traefik.io/):
+Example using [Traefik Proxy](https://traefik.io/):
 
 ```yaml
 version: "3.3"
