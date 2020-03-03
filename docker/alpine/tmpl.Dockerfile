@@ -12,9 +12,11 @@ RUN set -ex; \
     *) echo >&2 "error: unsupported architecture: $apkArch"; exit 1 ;; \
     esac;
 
+COPY ./docker/alpine/entrypoint.sh /
 COPY ./bin/static-web-server /usr/local/bin/
 COPY ./public /public
 EXPOSE 80
+ENTRYPOINT ["/entrypoint.sh"]
 CMD ["static-web-server"]
 
 # Metadata
