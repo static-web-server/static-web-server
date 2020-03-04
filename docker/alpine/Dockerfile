@@ -1,4 +1,4 @@
-FROM alpine:3.10
+FROM alpine:3.11
 
 LABEL maintainer="Jose Quintana <joseluisq.net>"
 
@@ -12,9 +12,11 @@ RUN set -ex; \
     *) echo >&2 "error: unsupported architecture: $apkArch"; exit 1 ;; \
     esac;
 
+COPY ./docker/alpine/entrypoint.sh /
 COPY ./bin/static-web-server /usr/local/bin/
 COPY ./public /public
 EXPOSE 80
+ENTRYPOINT ["/entrypoint.sh"]
 CMD ["static-web-server"]
 
 # Metadata
@@ -22,5 +24,5 @@ LABEL org.opencontainers.image.vendor="Jose Quintana" \
     org.opencontainers.image.url="https://github.com/joseluisq/static-web-server" \
     org.opencontainers.image.title="Static Web Server" \
     org.opencontainers.image.description="A blazing fast static files-serving web server powered by Rust Iron." \
-    org.opencontainers.image.version="v1.5.0" \
+    org.opencontainers.image.version="v1.6.0" \
     org.opencontainers.image.documentation="https://github.com/joseluisq/static-web-server"
