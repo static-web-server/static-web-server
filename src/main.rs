@@ -1,10 +1,11 @@
 extern crate chrono;
-extern crate ctrlc;
 extern crate env_logger;
 extern crate flate2;
 extern crate hyper_native_tls;
 extern crate iron;
 extern crate iron_staticfile_middleware;
+extern crate nix;
+extern crate signal;
 
 #[macro_use]
 extern crate log;
@@ -14,6 +15,7 @@ mod config;
 mod error_page;
 mod gzip;
 mod logger;
+mod signal_manager;
 mod staticfiles;
 
 use crate::config::Options;
@@ -24,21 +26,23 @@ use iron::prelude::*;
 use log::LevelFilter;
 use staticfiles::*;
 use std::io::Write;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
 use structopt::StructOpt;
 
-fn on_server_running(server_name: &str, proto: &str, addr: &str, running: Arc<AtomicBool>) {
+fn on_server_running(server_name: &str, proto: &str, addr: &str) {
+    // Notify when server is running
     info!(
         "Static {} Server `{}` is running on {}",
         proto, server_name, addr
     );
 
-    println!("Waiting for Ctrl-C signal...");
-    while running.load(Ordering::SeqCst) {}
+    // Wait for incoming signals (E.g Ctrl+C (SIGINT), SIGTERM, etc
+    signal_manager::wait_for_signal(|sig: signal::Signal| {
+        let code = signal_manager::signal_to_int(sig);
 
-    println!("Exiting server execution...");
-    std::process::exit(0)
+        println!();
+        warn!("SIGINT {} caught. HTTP Server execution exited.", code);
+        std::process::exit(code)
+    })
 }
 
 fn main() {
@@ -59,16 +63,8 @@ fn main() {
     let addr = &format!("{}{}{}", opts.host.to_string(), ":", opts.port.to_string());
     let proto = if opts.tls { "HTTPS" } else { "HTTP" };
 
-    // Handle Ctrl+C interrupt signals
-    let running = Arc::new(AtomicBool::new(true));
-    let r = running.clone();
-
-    ctrlc::set_handler(move || {
-        r.store(false, Ordering::SeqCst);
-    })
-    .expect("Error setting Ctrl-C handler");
-
     // Configure & launch the HTTP server
+
     let files = StaticFiles::new(StaticFilesOptions {
         root_dir: opts.root,
         assets_dir: opts.assets,
@@ -80,12 +76,12 @@ fn main() {
         let ssl = NativeTlsServer::new(opts.tls_pkcs12, &opts.tls_pkcs12_passwd).unwrap();
 
         match Iron::new(files.handle()).https(addr, ssl) {
-            Result::Ok(_) => on_server_running(&opts.name, &proto, addr, running),
+            Result::Ok(_) => on_server_running(&opts.name, &proto, addr),
             Result::Err(err) => panic!("{:?}", err),
         }
     } else {
         match Iron::new(files.handle()).http(addr) {
-            Result::Ok(_) => on_server_running(&opts.name, &proto, addr, running),
+            Result::Ok(_) => on_server_running(&opts.name, &proto, addr),
             Result::Err(err) => panic!("{:?}", err),
         }
     }
