@@ -306,7 +306,7 @@ dependencies = [
 [[package]]
 name = "iron_staticfile_middleware"
 version = "0.2.0"
-source = "git+https://github.com/joseluisq/iron-staticfile-middleware.git#562b241a80a7e216ccdbe1d4d603f1a0b621d5b1"
+source = "git+https://github.com/joseluisq/iron-staticfile-middleware.git#4e02bc6eda9cf88bf4b7866581ae83efda7f3110"
 dependencies = [
  "iron",
  "log 0.4.8",
@@ -417,6 +417,19 @@ dependencies = [
  "security-framework",
  "security-framework-sys",
  "tempfile",
+]
+
+[[package]]
+name = "nix"
+version = "0.14.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6c722bee1037d430d0f8e687bbdbf222f27cc6e4e68d5caf630857bb2b6dbdce"
+dependencies = [
+ "bitflags",
+ "cc",
+ "cfg-if",
+ "libc",
+ "void",
 ]
 
 [[package]]
@@ -840,6 +853,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "signal"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2f6ce83b159ab6984d2419f495134972b48754d13ff2e3f8c998339942b56ed9"
+dependencies = [
+ "libc",
+ "nix",
+]
+
+[[package]]
 name = "siphasher"
 version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -862,7 +885,9 @@ dependencies = [
  "iron",
  "iron_staticfile_middleware",
  "log 0.4.8",
+ "nix",
  "openssl",
+ "signal",
  "structopt",
 ]
 
@@ -1079,6 +1104,12 @@ name = "version_check"
 version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "078775d0255232fb988e6fccf26ddc9d1ac274299aaedcedce21c6f72cc533ce"
+
+[[package]]
+name = "void"
+version = "1.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6a02e4885ed3bc0f2de90ea6dd45ebcbb66dacffe03547fadbb0eeae2770887d"
 
 [[package]]
 name = "wasi"

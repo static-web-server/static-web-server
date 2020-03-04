@@ -225,3 +225,10 @@ prod.release.dockerfiles:
 	# Update docker files to latest tag per platform
 	./docker/version.sh v$(PKG_TAG)
 .ONESHELL: prod.release.dockerfiles
+
+loadtest:
+	@echo "GET http://localhost:1234" | \
+		vegeta -cpus=12 attack -workers=10 -duration=5s -connections=10000 -rate=200 -http2=false > results.bin
+	@cat results.bin | vegeta report -type='hist[0,2ms,4ms,6ms]'
+	@cat results.bin | vegeta plot > plot.html
+.PHONY: loadtest
