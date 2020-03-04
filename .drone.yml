@@ -12,7 +12,7 @@ pipeline:
     # DEVELOPMENT
 
     test:
-        image: joseluisq/rust-linux-darwin-builder:1.41.0
+        image: joseluisq/rust-linux-darwin-builder:1.41.1
         group: development
         commands:
             - make test
@@ -22,7 +22,7 @@ pipeline:
     # PRODUCTION
 
     build-release:
-        image: joseluisq/rust-linux-darwin-builder:1.41.0
+        image: joseluisq/rust-linux-darwin-builder:1.41.1
         group: production
         commands:
             - make prod.release
