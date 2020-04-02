@@ -13,6 +13,8 @@ steps:
   volumes:
     - name: cache
       path: /cache
+    - name: cargo-cache
+      path: /home/rust/.cargo
   settings:
     restore: true
     mount:
@@ -30,6 +32,8 @@ steps:
   volumes:
     - name: cache
       path: /cache
+    - name: cargo-cache
+      path: /home/rust/.cargo
   settings:
     rebuild: true
     mount:
@@ -41,6 +45,9 @@ volumes:
   - name: cache
     host:
       path: /tmp/cache
+  - name: cargo-cache
+    host:
+      path: /tmp/cargo-cache
 
 trigger:
   event:
@@ -52,6 +59,22 @@ trigger:
     - feature/*
     - bugfix/*
     - hotfix/*
+
+
+---
+kind: pipeline
+type: docker
+name: production
+
+platform:
+  os: linux
+  arch: amd64
+
+steps:
+- name: release
+  image: joseluisq/rust-linux-darwin-builder:1.41.1
+  commands:
+    - make test
 
 
 ---
