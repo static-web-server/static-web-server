@@ -81,7 +81,7 @@ darwin:
 
 test:
 	@echo "Testing application..."
-	@rustc --version
+	@rustc -vV
 	@cargo test
 .PHONY: test
 
@@ -107,7 +107,7 @@ define build_release =
 	set -u
 
 	echo "Compiling application..."
-	rustc --version
+	rustc -vV
 	echo "Compiling release binary for $(PKG_TARGET)..."
 	cargo build --release --target $(PKG_TARGET)
 	echo
@@ -208,6 +208,10 @@ prod.release.dockerfiles:
 	# Update docker files to latest tag per platform
 	./docker/version.sh v$(PKG_TAG)
 .ONESHELL: prod.release.dockerfiles
+
+promote:
+	@drone build promote joseluisq/static-web-server $(BUILD) $(ENV)
+.PHONY: promote
 
 loadtest:
 	@echo "GET http://localhost:1234" | \
