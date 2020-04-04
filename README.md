@@ -1,4 +1,4 @@
-# Static Web Server [![Build Status](https://travis-ci.com/joseluisq/static-web-server.svg?branch=master)](https://travis-ci.com/joseluisq/static-web-server) [![](https://images.microbadger.com/badges/image/joseluisq/static-web-server.svg)](https://microbadger.com/images/joseluisq/static-web-server "Get your own image badge on microbadger.com") [![Docker Image](https://img.shields.io/docker/pulls/joseluisq/static-web-server.svg)](https://hub.docker.com/r/joseluisq/static-web-server/)
+# Static Web Server [![Docker Image Version (tag latest semver)](https://img.shields.io/docker/v/joseluisq/static-web-server/1)](https://hub.docker.com/r/joseluisq/static-web-server/) [![Build Status](https://travis-ci.com/joseluisq/static-web-server.svg?branch=master)](https://travis-ci.com/joseluisq/static-web-server) [![Docker Image Size (tag)](https://img.shields.io/docker/image-size/joseluisq/static-web-server/1)](https://hub.docker.com/r/joseluisq/static-web-server/tags) [![Docker Image](https://img.shields.io/docker/pulls/joseluisq/static-web-server.svg)](https://hub.docker.com/r/joseluisq/static-web-server/)
 
 > A blazing fast static files-serving web server powered by [Rust Iron](https://github.com/iron/iron). :zap:
 
@@ -49,7 +49,7 @@ Server can be configured either via environment variables or their equivalent co
 CLI arguments listed with `static-web-server -h`.
 
 ```
-static-web-server 1.5.0
+static-web-server 1.6.0
 A blazing fast static files-serving web server powered by Rust Iron
 
 USAGE:
@@ -111,7 +111,7 @@ version: "3.3"
 
 services:
   web:
-    image: joseluisq/static-web-server:latest
+    image: joseluisq/static-web-server:1
     environment:
         - SERVER_NAME=my-server
         - SERVER_HOST=127.0.0.1
