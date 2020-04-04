@@ -13,17 +13,13 @@ steps:
   volumes:
     - name: cache
       path: /cache
-    - name: cargo-cache
-      path: /home/rust/.cargo
   settings:
     restore: true
     mount:
-      - /home/rust/.cargo/git
-      - /home/rust/.cargo/registry
       - ./target
 
 - name: test
-  image: joseluisq/rust-linux-darwin-builder:1.41.1
+  image: joseluisq/rust-linux-darwin-builder:1.42.0
   commands:
     - make test
 
@@ -32,22 +28,15 @@ steps:
   volumes:
     - name: cache
       path: /cache
-    - name: cargo-cache
-      path: /home/rust/.cargo
   settings:
     rebuild: true
     mount:
-      - /home/rust/.cargo/git
-      - /home/rust/.cargo/registry
       - ./target
 
 volumes:
   - name: cache
     host:
       path: /tmp/cache
-  - name: cargo-cache
-    host:
-      path: /tmp/cargo-cache
 
 trigger:
   event:
@@ -71,10 +60,86 @@ platform:
   arch: amd64
 
 steps:
-- name: release
-  image: joseluisq/rust-linux-darwin-builder:1.41.1
+- name: test
+  image: joseluisq/rust-linux-darwin-builder:1.42.0
   commands:
     - make test
+
+- name: release
+  image: joseluisq/rust-linux-darwin-builder:1.42.0
+  commands:
+    - make prod.release
+
+- name: publish-scratch
+  image: plugins/docker
+  settings:
+    registry: registry.joseluisq.net
+    repo: registry.joseluisq.net/static-web-server
+    dockerfile: ./docker/scratch/Dockerfile
+    username:
+      from_secret: registry_username
+    password:
+      from_secret: registry_password
+    auto_tag: true
+    build_args:
+      - DOCKER_IMAGE_VERSION=${DRONE_TAG}
+    tags:
+      - latest
+
+- name: publish-alpine
+  image: plugins/docker
+  settings:
+    registry: registry.joseluisq.net
+    repo: registry.joseluisq.net/static-web-server
+    dockerfile: ./docker/alpine/Dockerfile
+    username:
+      from_secret: registry_username
+    password:
+      from_secret: registry_password
+    auto_tag: true
+    auto_tag_suffix: alpine
+    build_args:
+      - DOCKER_IMAGE_VERSION=${DRONE_TAG}-alpine
+
+- name: gitea-release
+  image: plugins/gitea-release
+  settings:
+    api_key:
+      from_secret: gitea_token
+    base_url: https://git.joseluisq.net/
+    files:
+      - ./bin/*.tar.gz
+      - ./bin/*-SHA256SUM
+    prerelease: true
+
+- name: publish-public-scratch
+  image: plugins/docker
+  settings:
+    repo: joseluisq/static-web-server
+    dockerfile: ./docker/scratch/Dockerfile
+    username:
+      from_secret: dockerhub_username
+    password:
+      from_secret: dockerhub_password
+    auto_tag: true
+    tags:
+      - latest
+
+- name: publish-public-alpine
+  image: plugins/docker
+  settings:
+    repo: joseluisq/static-web-server
+    dockerfile: ./docker/alpine/Dockerfile
+    username:
+      from_secret: dockerhub_username
+    password:
+      from_secret: dockerhub_password
+    auto_tag: true
+    auto_tag_suffix: alpine
+
+trigger:
+  target:
+  - production
 
 
 ---
@@ -96,6 +161,7 @@ steps:
 
 depends_on:
 - development
+- production
 
 trigger:
   status:
