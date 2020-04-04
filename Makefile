@@ -155,7 +155,7 @@ define build_release_files =
 
 	# Linux
 	tar czvf $(PKG_RELEASE_NAME).tar.gz -C $(PKG_TMP_BIN_PATH) $(PKG_NAME)
-	sha256sum $(PKG_RELEASEMakefile_NAME).tar.gz > $(PKG_NAME)-v$(PKG_TAG)-SHA256SUM
+	sha256sum $(PKG_RELEASE_NAME).tar.gz > $(PKG_NAME)-v$(PKG_TAG)-SHA256SUM
 
 	# Darwin
 	tar czvf $(PKG_RELEASE_NAME_DARWIN).tar.gz -C $(PKG_TMP_BIN_PATH_DARWIN) $(PKG_NAME)
