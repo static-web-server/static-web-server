@@ -39,56 +39,40 @@ build:
 
 linux:
 	@docker run --rm -it \
-		-v $(PWD):/home/rust/static-web-server \
-		-v cargo-git:/home/rust/.cargo/git \
-		-v cargo-registry:/home/rust/.cargo/registry \
-		-v cargo-target:/home/rust/static-web-server/target \
+		-v $(PWD):/root/src/static-web-server \
+		-v cargo-git:/root/.cargo/git \
+		-v cargo-registry:/root/.cargo/registry \
+		-v cargo-target:/root/src/static-web-server/target \
 \
-		--workdir /home/rust/static-web-server \
+		--workdir /root/src/static-web-server \
 		joseluisq/rust-linux-darwin-builder:$(RUST_VERSION) \
 \
 		bash -c "\
 			echo Building Linux release binary... && \
-\
-			sudo chown -R rust:rust \
-				/home/rust/.cargo/git \
-				/home/rust/static-web-server/target \
-				/home/rust/.cargo/registry && \
-			sudo touch Cargo.lock && sudo chown rust:rust Cargo.lock && \
-\
 			rustc -vV && \
 			cargo build --release --target $(PKG_TARGET) && \
 			du -sh ./target/$(PKG_TARGET)/release/$(PKG_NAME) && \
-			sudo mkdir -p release && \
-			sudo cp -rf ./target/$(PKG_TARGET)/release/$(PKG_NAME) release/$(PKG_NAME)-linux && \
-			sudo chown -R rust:rust release/"
+			mkdir -p release && \
+			cp -rf ./target/$(PKG_TARGET)/release/$(PKG_NAME) release/$(PKG_NAME)-linux"
 .PHONY: linux
 
 darwin:
 	@docker run --rm -it \
-		-v $(PWD):/home/rust/static-web-server \
-		-v cargo-git:/home/rust/.cargo/git \
-		-v cargo-registry:/home/rust/.cargo/registry \
-		-v cargo-target:/home/rust/static-web-server/target \
+		-v $(PWD):/root/src/static-web-server \
+		-v cargo-git:/root/.cargo/git \
+		-v cargo-registry:/root/.cargo/registry \
+		-v cargo-target:/root/src/static-web-server/target \
 \
-		--workdir /home/rust/static-web-server \
+		--workdir /root/src/static-web-server \
 		joseluisq/rust-linux-darwin-builder:$(RUST_VERSION) \
 \
 		bash -c "\
 			echo Building Darwin release binary... && \
-\
-			sudo chown -R rust:rust \
-				/home/rust/.cargo/git \
-				/home/rust/static-web-server/target \
-				/home/rust/.cargo/registry && \
-			sudo touch Cargo.lock && sudo chown rust:rust Cargo.lock && \
-\
 			rustc -vV && \
 			cargo build --release --target $(PKG_TARGET_DARWIN) && \
 			du -sh ./target/$(PKG_TARGET_DARWIN)/release/$(PKG_NAME) && \
-			sudo mkdir -p release && \
-			sudo cp -rf ./target/$(PKG_TARGET_DARWIN)/release/$(PKG_NAME) release/$(PKG_NAME)-darwin && \
-			sudo chown -R rust:rust release/"
+			mkdir -p release && \
+			cp -rf ./target/$(PKG_TARGET_DARWIN)/release/$(PKG_NAME) release/$(PKG_NAME)-darwin"
 .PHONY: darwin
 
 #######################################
@@ -96,7 +80,6 @@ darwin:
 #######################################
 
 test:
-	@sudo chown -R rust:rust ./
 	@echo "Testing application..."
 	@rustc --version
 	@cargo test
@@ -123,7 +106,6 @@ define build_release =
 	set -e
 	set -u
 
-	sudo chown -R rust:rust ./
 	echo "Compiling application..."
 	rustc --version
 	echo "Compiling release binary for $(PKG_TARGET)..."
@@ -169,17 +151,18 @@ define build_release_files =
 	set -u
 
 	mkdir -p $(PKG_BIN_PATH)
+	cd $(PKG_BIN_PATH)
 
 	# Linux
-	tar czvf $(PKG_BIN_PATH)/$(PKG_RELEASE_NAME).tar.gz -C $(PKG_TMP_BIN_PATH) $(PKG_NAME)
-	sha256sum $(PKG_BIN_PATH)/$(PKG_RELEASE_NAME).tar.gz > $(PKG_BIN_PATH)/$(PKG_RELEASE_NAME)-SHA256SUM
+	tar czvf $(PKG_RELEASE_NAME).tar.gz -C $(PKG_TMP_BIN_PATH) $(PKG_NAME)
+	sha256sum $(PKG_RELEASEMakefile_NAME).tar.gz > $(PKG_NAME)-v$(PKG_TAG)-SHA256SUM
 
 	# Darwin
-	tar czvf $(PKG_BIN_PATH)/$(PKG_RELEASE_NAME_DARWIN).tar.gz -C $(PKG_TMP_BIN_PATH_DARWIN) $(PKG_NAME)
-	sha256sum $(PKG_BIN_PATH)/$(PKG_RELEASE_NAME_DARWIN).tar.gz > $(PKG_BIN_PATH)/$(PKG_RELEASE_NAME_DARWIN)-SHA256SUM
+	tar czvf $(PKG_RELEASE_NAME_DARWIN).tar.gz -C $(PKG_TMP_BIN_PATH_DARWIN) $(PKG_NAME)
+	sha256sum $(PKG_RELEASE_NAME_DARWIN).tar.gz >> $(PKG_NAME)-v$(PKG_TAG)-SHA256SUM
 
-	du -sh $(PKG_BIN_PATH)/*
-	echo "Release tarball/zipball files created!"
+	du -sh ./*
+	echo "Release tarball files created!"
 endef
 
 prod.release:
