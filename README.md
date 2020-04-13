@@ -41,6 +41,7 @@ Server can be configured either via environment variables or their equivalent co
 | `SERVER_ERROR_PAGE_404` | HTML file path for 404 errors. | If path is not specified or simply don't exists then server will use a generic HTML error message. Default `./public/404.html`.
 | `SERVER_ERROR_PAGE_50X` | HTML file path for 50x errors. | If path is not specified or simply don't exists then server will use a generic HTML error message. Default `./public/50x.html` |
 | `SERVER_TLS` | Enables TLS/SSL support. Make sure also to adjust current server port. | Default `false` |
+| `SERVER_LOG_LEVEL` | Specify a logging level in lower case (see [log::LevelFilter](https://docs.rs/log/0.4.10/log/enum.LevelFilter.html)). | Default `error` |
 | `SERVER_TLS_PKCS12` | A cryptographic identity [PKCS #12](https://docs.rs/native-tls/0.2.3/native_tls/struct.Identity.html#method.from_pkcs12) bundle file path containing a [X509 certificate](https://en.wikipedia.org/wiki/X.509) along with its corresponding private key and chain of certificates to a trusted root. | Default empty |
 | `SERVER_TLS_PKCS12_PASSWD` | A specified password to decrypt the private key. | Default empty |
 
@@ -64,6 +65,7 @@ OPTIONS:
             Assets directory path for add cache headers functionality [env: SERVER_ASSETS=]  [default: ./assets]
 
         --host <host>                              Host address (E.g 127.0.0.1) [env: SERVER_HOST=]  [default: [::]]
+        --log-level <log-level>                    Specify a logging level in lower case [env: SERVER_LOG_LEVEL=]  [default: error]
         --name <name>                              Name for server [env: SERVER_NAME=]  [default: my-static-server]
         --page404 <page404>
             HTML file path for 404 errors. If path is not specified or simply don't exists then server will use a

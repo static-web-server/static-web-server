@@ -41,4 +41,7 @@ pub struct Options {
     #[structopt(long, default_value = "", env = "SERVER_TLS_PKCS12_PASSWD")]
     /// A specified password to decrypt the private key.
     pub tls_pkcs12_passwd: String,
+    #[structopt(long, default_value = "error", env = "SERVER_LOG_LEVEL")]
+    /// Specify a logging level in lower case.
+    pub log_level: String,
 }

@@ -1,15 +1,11 @@
-extern crate chrono;
-extern crate env_logger;
-extern crate flate2;
-extern crate hyper_native_tls;
-extern crate iron;
-extern crate iron_staticfile_middleware;
-extern crate nix;
-extern crate signal;
-
 #[macro_use]
 extern crate log;
-extern crate structopt;
+
+use crate::config::Options;
+use hyper_native_tls::NativeTlsServer;
+use iron::prelude::*;
+use staticfiles::*;
+use structopt::StructOpt;
 
 mod config;
 mod error_page;
@@ -17,16 +13,6 @@ mod gzip;
 mod logger;
 mod signal_manager;
 mod staticfiles;
-
-use crate::config::Options;
-use chrono::Local;
-use env_logger::Builder;
-use hyper_native_tls::NativeTlsServer;
-use iron::prelude::*;
-use log::LevelFilter;
-use staticfiles::*;
-use std::io::Write;
-use structopt::StructOpt;
 
 fn on_server_running(server_name: &str, proto: &str, addr: &str) {
     // Notify when server is running
@@ -46,20 +32,10 @@ fn on_server_running(server_name: &str, proto: &str, addr: &str) {
 }
 
 fn main() {
-    Builder::new()
-        .format(|buf, record| {
-            writeln!(
-                buf,
-                "{} [{}] - {}",
-                Local::now().format("%Y-%m-%dT%H:%M:%S"),
-                record.level(),
-                record.args()
-            )
-        })
-        .filter(None, LevelFilter::Info)
-        .init();
-
     let opts = Options::from_args();
+
+    logger::init(&opts.log_level);
+
     let addr = &format!("{}{}{}", opts.host.to_string(), ":", opts.port.to_string());
     let proto = if opts.tls { "HTTPS" } else { "HTTP" };
 

@@ -25,12 +25,14 @@ install:
 .PHONY: install
 
 run:
+	@rustc -vV
 	@cargo make --makefile Tasks.Dev.toml run
 .PHONY: run
 
-watch:
+dev:
+	@rustc -vV
 	@cargo make --makefile Tasks.Dev.toml watch
-.PHONY: watch
+.PHONY: dev
 
 build:
 	@rustc -vV
@@ -214,8 +216,8 @@ promote:
 .PHONY: promote
 
 loadtest:
-	@echo "GET http://localhost:1234" | \
-		vegeta -cpus=12 attack -workers=10 -duration=5s -connections=10000 -rate=200 -http2=false > results.bin
+	@echo "GET http://localhost:8787" | \
+		vegeta -cpus=12 attack -workers=10 -duration=60s -connections=10000 -rate=200 -http2=false > results.bin
 	@cat results.bin | vegeta report -type='hist[0,2ms,4ms,6ms]'
 	@cat results.bin | vegeta plot > plot.html
 .PHONY: loadtest

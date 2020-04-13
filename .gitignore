@@ -6,5 +6,10 @@
 **/*.bin
 **/*.iml
 **/.idea
+**/*.txt
+**/*.zip
+**/*.tar.gz
+**/*.tar
+**/*.gz
 **/.DS_Store
 release

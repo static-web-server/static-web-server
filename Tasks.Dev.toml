@@ -1,6 +1,9 @@
 [env]
 E_ARGS = "--port=8787"
 E_URL = "http://locahost"
+SERVER_LOG_LEVEL = "trace"
+SERVER_ROOT = "./public"
+SERVER_ASSETS = "./assets"
 
 [tasks.watch]
 command = "cargo"
