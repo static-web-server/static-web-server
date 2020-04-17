@@ -16,10 +16,10 @@ mod staticfiles;
 
 fn on_server_running(server_name: &str, proto: &str, addr: &str) {
     // Notify when server is running
-    info!(
-        "Static {} Server `{}` is running on {}",
+    logger::log_server(&format!(
+        "Static {} Server \"{}\" is listening on {}",
         proto, server_name, addr
-    );
+    ));
 
     // Wait for incoming signals (E.g Ctrl+C (SIGINT), SIGTERM, etc
     signal_manager::wait_for_signal(|sig: signal::Signal| {

@@ -34,6 +34,15 @@ pub fn init(log_level_str: &str) {
         .init();
 }
 
+/// Print specific log info for the server which doesn't depend on any level
+pub fn log_server(msg: &str) {
+    println!(
+        "{} [SERVER] - {}",
+        Local::now().format("%Y-%m-%dT%H:%M:%S"),
+        &msg
+    );
+}
+
 pub struct Logger;
 
 impl AfterMiddleware for Logger {
