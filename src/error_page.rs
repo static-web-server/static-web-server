@@ -1,11 +1,13 @@
-extern crate iron;
-
 use iron::mime;
 use iron::prelude::*;
 use iron::status;
 use iron::AfterMiddleware;
 use std::fs;
 use std::path::Path;
+
+static PAGE_404: &str = "<h2>404</h2><p>Content could not found</p>";
+static PAGE_50X: &str =
+    "<h2>50x</h2><p>Service is temporarily unavailable due an unexpected error</p>";
 
 /// Custom Error pages middleware for Iron
 pub struct ErrorPage {
@@ -18,22 +20,17 @@ pub struct ErrorPage {
 impl ErrorPage {
     /// Create a new instance of `ErrorPage` middleware with a given html pages.
     pub fn new<P: AsRef<Path>>(page_404_path: P, page_50x_path: P) -> ErrorPage {
-        let page404: String;
-        let page50x: String;
-
-        if Path::new(&page_404_path.as_ref()).exists() {
-            page404 = fs::read_to_string(page_404_path).unwrap();
+        let page404 = if Path::new(&page_404_path.as_ref()).exists() {
+            fs::read_to_string(page_404_path).unwrap()
         } else {
-            page404 = String::from("<h2>404</h2><p>Content could not found</p>");
-        }
+            String::from(PAGE_404)
+        };
 
-        if Path::new(&page_50x_path.as_ref()).exists() {
-            page50x = fs::read_to_string(page_50x_path).unwrap();
+        let page50x = if Path::new(&page_50x_path.as_ref()).exists() {
+            fs::read_to_string(page_50x_path).unwrap()
         } else {
-            page50x = String::from(
-                "<h2>50x</h2><p>Service is temporarily unavailable due an unexpected error</p>",
-            );
-        }
+            String::from(PAGE_50X)
+        };
 
         ErrorPage { page404, page50x }
     }
