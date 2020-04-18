@@ -10,6 +10,7 @@ use structopt::StructOpt;
 mod config;
 mod error_page;
 mod gzip;
+mod helpers;
 mod logger;
 mod signal_manager;
 mod staticfiles;

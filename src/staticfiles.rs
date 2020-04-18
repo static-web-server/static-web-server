@@ -1,5 +1,6 @@
 use crate::error_page::ErrorPage;
 use crate::gzip::GzipMiddleware;
+use crate::helpers;
 use crate::logger::Logger;
 
 use iron::prelude::*;
@@ -26,10 +27,41 @@ impl StaticFiles {
 
     /// Handle static files for current `StaticFiles` middleware.
     pub fn handle(&self) -> Chain {
-        let mut chain = Chain::new(
-            Staticfile::new(self.opts.root_dir.as_str())
-                .expect("Directory to serve files was not found"),
-        );
+        // Check the root directory
+        let root_dir = match helpers::validate_dirpath(&self.opts.root_dir) {
+            Err(err) => {
+                error!(
+                    "{}",
+                    helpers::path_error_fmt(err, "root", &self.opts.root_dir)
+                );
+                std::process::exit(1);
+            }
+            Ok(val) => val,
+        };
+
+        // Check the assets directory
+        let assets_dir = match helpers::validate_dirpath(&self.opts.assets_dir) {
+            Err(err) => {
+                error!(
+                    "{}",
+                    helpers::path_error_fmt(err, "assets", &self.opts.assets_dir)
+                );
+                std::process::exit(1);
+            }
+            Ok(val) => val,
+        };
+
+        let assets_dirname = match assets_dir.iter().last() {
+            Some(val) => val.to_str().unwrap().to_string(),
+            None => {
+                error!("assets directory name was not determined");
+                std::process::exit(1);
+            }
+        };
+
+        // Define middleware chain
+        let mut chain =
+            Chain::new(Staticfile::new(&root_dir).expect("Directory to serve files was not found"));
         let one_day = Duration::new(60 * 60 * 24, 0);
         let one_year = Duration::new(60 * 60 * 24 * 365, 0);
         let default_content_type = "text/html"
@@ -37,16 +69,13 @@ impl StaticFiles {
             .expect("Unable to create a default content type header");
 
         chain.link_after(ModifyWith::new(Cache::new(one_day)));
-        chain.link_after(Prefix::new(
-            &[self.opts.assets_dir.as_str()],
-            Cache::new(one_year),
-        ));
+        chain.link_after(Prefix::new(&[assets_dirname], Cache::new(one_year)));
         chain.link_after(GuessContentType::new(default_content_type));
         chain.link_after(GzipMiddleware);
         chain.link_after(Logger);
         chain.link_after(ErrorPage::new(
-            self.opts.page_404_path.as_str(),
-            self.opts.page_50x_path.as_str(),
+            &self.opts.page_404_path,
+            &self.opts.page_50x_path,
         ));
         chain
     }
