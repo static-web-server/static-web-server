@@ -1,26 +1,35 @@
+use std::error;
 use std::path::{Path, PathBuf};
 
-pub enum PathError {
-    PathNotFound,
-    NotDirectory,
-}
-
-/// Validate a path if exist and is a directory.
-pub fn validate_dirpath<P: AsRef<Path>>(path: P) -> Result<PathBuf, PathError>
+/// Validate and return a directory path.
+pub fn get_valid_dirpath<P: AsRef<Path>>(path: P) -> Result<PathBuf, Box<dyn error::Error>>
 where
     PathBuf: From<P>,
 {
     match PathBuf::from(path) {
-        p if !p.exists() => Result::Err(PathError::PathNotFound),
-        p if !p.is_dir() => Result::Err(PathError::NotDirectory),
-        p => Result::Ok(p),
+        v if !v.exists() => Result::Err(From::from(format!("path \"{:?}\" was not found", &v))),
+        v if !v.is_dir() => {
+            Result::Err(From::from(format!("path \"{:?}\" is not a directory", &v)))
+        }
+        v => Result::Ok(v),
     }
 }
 
-/// Format a `PathError` description
-pub fn path_error_fmt(err: PathError, dirname: &str, dirpath: &str) -> String {
-    match err {
-        PathError::PathNotFound => format!("{} path \"{}\" was not found", dirname, dirpath),
-        PathError::NotDirectory => format!("{} path \"{}\" is not a directory", dirname, dirpath),
+/// Get the directory name of a valid directory path.
+pub fn get_dirname<P: AsRef<Path>>(path: P) -> Result<String, Box<dyn error::Error>>
+where
+    PathBuf: From<P>,
+{
+    let path = match get_valid_dirpath(path) {
+        Err(e) => return Result::Err(e),
+        Ok(v) => v,
+    };
+
+    match path.iter().last() {
+        Some(v) => Result::Ok(v.to_str().unwrap().to_string()),
+        _ => Result::Err(From::from(format!(
+            "directory name for path \"{:?}\" was not determined",
+            path,
+        ))),
     }
 }
