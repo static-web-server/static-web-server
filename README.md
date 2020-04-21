@@ -37,7 +37,7 @@ Server can be configured either via environment variables or their equivalent co
 | `SERVER_HOST` | Host address (E.g 127.0.0.1). | Default `[::]`. |
 | `SERVER_PORT` | Host port. | Default `80`. |
 | `SERVER_ROOT` | Root directory path of static files. | Default `./public`. |
-| `SERVER_ASSETS` | Assets directory path for add cache headers functionality. | Default `./assets` but relative to the root. |
+| `SERVER_ASSETS` | Assets directory path for add cache headers functionality. | Default `./public/assets`. |
 | `SERVER_LOG_LEVEL` | Specify a logging level in lower case (see [log::LevelFilter](https://docs.rs/log/0.4.10/log/enum.LevelFilter.html)). | Default `error` |
 | `SERVER_ERROR_PAGE_404` | HTML file path for 404 errors. | If path is not specified or simply don't exists then server will use a generic HTML error message. Default `./public/404.html`.
 | `SERVER_ERROR_PAGE_50X` | HTML file path for 50x errors. | If path is not specified or simply don't exists then server will use a generic HTML error message. Default `./public/50x.html` |
@@ -50,7 +50,7 @@ Server can be configured either via environment variables or their equivalent co
 CLI arguments listed with `static-web-server -h`.
 
 ```
-static-web-server 1.7.0
+static-web-server 1.8.0
 A blazing fast static files-serving web server powered by Rust Iron
 
 USAGE:
