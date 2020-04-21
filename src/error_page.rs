@@ -1,6 +1,4 @@
-use iron::headers::ContentLength;
 use iron::mime;
-use iron::modifiers::Header;
 use iron::prelude::*;
 use iron::status;
 use iron::AfterMiddleware;
@@ -41,6 +39,8 @@ impl ErrorPage {
 impl AfterMiddleware for ErrorPage {
     fn after(&self, req: &mut Request, resp: Response) -> IronResult<Response> {
         let content_type = "text/html".parse::<mime::Mime>().unwrap();
+        let mut no_status_error = false;
+
         let mut resp = match resp.status {
             Some(status::NotFound) => {
                 Response::with((content_type, status::NotFound, self.page404.as_str()))
@@ -61,13 +61,15 @@ impl AfterMiddleware for ErrorPage {
             Some(status::GatewayTimeout) => {
                 Response::with((content_type, status::GatewayTimeout, self.page50x.as_str()))
             }
-            _ => resp,
+            _ => {
+                no_status_error = true;
+                resp
+            }
         };
 
-        // Empty response body on HEAD requests
-        if req.method == iron::method::Head {
+        // Empty response body only on HEAD requests and status error (404,50x)
+        if req.method == iron::method::Head && !no_status_error {
             resp.set_mut(Vec::new());
-            resp.set_mut(Header(ContentLength(0)));
         }
 
         Ok(resp)
