@@ -34,6 +34,9 @@ signal = "0.7"
 
 [dev-dependencies]
 openssl = { version = "0.10", features = ["vendored"] }
+hyper = "0.10"
+iron-test = "0.6"
+tempdir = "0.3"
 
 [profile.release]
 lto = true

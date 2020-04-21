@@ -295,6 +295,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "iron-test"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b1944bcf30f8b3f51ebf01e715517dd9755e9480934778d6de70179a41d283c1"
+dependencies = [
+ "hyper",
+ "iron",
+ "log 0.3.9",
+ "url",
+ "uuid",
+]
+
+[[package]]
 name = "iron_staticfile_middleware"
 version = "0.3.0"
 source = "git+https://github.com/joseluisq/iron-staticfile-middleware.git#d3107bbf9718dffa00d3fb3ec703eeea74f89b97"
@@ -613,6 +626,29 @@ dependencies = [
 
 [[package]]
 name = "rand"
+version = "0.3.23"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "64ac302d8f83c0c1974bf758f6b041c6c8ada916fbb44a609158ca8b064cc76c"
+dependencies = [
+ "libc",
+ "rand 0.4.6",
+]
+
+[[package]]
+name = "rand"
+version = "0.4.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "552840b97013b1a26992c11eac34bdd778e464601a4c2054b5f0bff7c6761293"
+dependencies = [
+ "fuchsia-cprng",
+ "libc",
+ "rand_core 0.3.1",
+ "rdrand",
+ "winapi",
+]
+
+[[package]]
+name = "rand"
 version = "0.6.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6d71dacdc3c88c1fde3885a3be3fbab9f35724e6ce99467f7d9c5026132184ca"
@@ -874,14 +910,17 @@ dependencies = [
  "chrono",
  "env_logger",
  "flate2",
+ "hyper",
  "hyper-native-tls",
  "iron",
+ "iron-test",
  "iron_staticfile_middleware",
  "log 0.4.8",
  "nix",
  "openssl",
  "signal",
  "structopt",
+ "tempdir",
 ]
 
 [[package]]
@@ -934,6 +973,16 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
+]
+
+[[package]]
+name = "tempdir"
+version = "0.3.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "15f2b5fb00ccdf689e0149d1b1b3c03fead81c2b37735d812fa8bddbbf41b6d8"
+dependencies = [
+ "rand 0.4.6",
+ "remove_dir_all",
 ]
 
 [[package]]
@@ -1071,6 +1120,15 @@ dependencies = [
  "idna",
  "matches",
  "percent-encoding",
+]
+
+[[package]]
+name = "uuid"
+version = "0.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bcc7e3b898aa6f6c08e5295b6c89258d1331e9ac578cc992fb818759951bdc22"
+dependencies = [
+ "rand 0.3.23",
 ]
 
 [[package]]

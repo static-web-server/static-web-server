@@ -63,3 +63,180 @@ fn main() {
         }
     }
 }
+
+#[cfg(test)]
+mod test {
+    extern crate hyper;
+    extern crate iron_test;
+    extern crate tempdir;
+
+    use super::*;
+
+    use std::fs::{DirBuilder, File};
+    use std::io::Write;
+    use std::path::{Path, PathBuf};
+
+    use self::hyper::header::Headers;
+    use self::iron_test::{request, response};
+    use self::tempdir::TempDir;
+    use iron::headers::ContentLength;
+    use iron::status;
+
+    struct TestFilesystemSetup(TempDir);
+
+    impl TestFilesystemSetup {
+        fn new() -> Self {
+            TestFilesystemSetup(TempDir::new("test").expect("Could not create test directory"))
+        }
+
+        fn path(&self) -> &Path {
+            self.0.path()
+        }
+
+        fn dir(&self, name: &str) -> PathBuf {
+            let p = self.path().join(name);
+            DirBuilder::new()
+                .recursive(true)
+                .create(&p)
+                .expect("Could not create directory");
+            p
+        }
+
+        fn file(&self, name: &str, body: Vec<u8>) -> PathBuf {
+            let p = self.path().join(name);
+
+            let mut file = File::create(&p).expect("Could not create file");
+            file.write_all(&body).expect("Could not write to file");
+
+            p
+        }
+    }
+
+    #[test]
+    fn staticfile_allow_request_methods() {
+        let opts = Options::from_args();
+
+        let files = StaticFiles::new(StaticFilesOptions {
+            root_dir: opts.root,
+            assets_dir: opts.assets,
+            page_50x_path: opts.page50x,
+            page_404_path: opts.page404,
+        });
+
+        let response = request::head("http://127.0.0.1/", Headers::new(), &files.handle())
+            .expect("Response was a http error");
+
+        assert_eq!(response.status, Some(status::Ok));
+
+        let response = request::get("http://127.0.0.1/", Headers::new(), &files.handle())
+            .expect("Response was a http error");
+
+        assert_eq!(response.status, Some(status::Ok));
+    }
+
+    #[test]
+    fn staticfile_empty_body_on_head_request() {
+        let opts = Options::from_args();
+
+        let files = StaticFiles::new(StaticFilesOptions {
+            root_dir: opts.root,
+            assets_dir: opts.assets,
+            page_50x_path: opts.page50x,
+            page_404_path: opts.page404,
+        });
+
+        let res = request::head("http://127.0.0.1/", Headers::new(), &files.handle())
+            .expect("Response was a http error");
+
+        assert_eq!(res.status, Some(status::Ok));
+
+        let result_body = response::extract_body_to_bytes(res);
+        assert_eq!(result_body, vec!());
+    }
+
+    #[test]
+    fn staticfile_valid_content_length_on_head_request() {
+        let root = TestFilesystemSetup::new();
+        root.dir("root");
+        root.file("index.html", b"<html><h2>hello</h2></html>".to_vec());
+
+        let assets = TestFilesystemSetup::new();
+        assets.dir("assets");
+
+        let opts = Options::from_args();
+
+        let files = StaticFiles::new(StaticFilesOptions {
+            root_dir: root.path().to_str().unwrap().to_string(),
+            assets_dir: assets.path().to_str().unwrap().to_string(),
+            page_50x_path: opts.page50x,
+            page_404_path: opts.page404,
+        });
+
+        let res = request::head("http://127.0.0.1/", Headers::new(), &files.handle())
+            .expect("Response was a http error");
+
+        assert_eq!(res.status, Some(status::Ok));
+
+        let content_length = res.headers.get::<ContentLength>().unwrap();
+
+        assert_eq!(content_length.0, 27);
+    }
+
+    #[test]
+    fn staticfile_zero_content_length_on_404_head_request() {
+        let opts = Options::from_args();
+
+        let files = StaticFiles::new(StaticFilesOptions {
+            root_dir: opts.root,
+            assets_dir: opts.assets,
+            page_50x_path: opts.page50x,
+            page_404_path: opts.page404,
+        });
+
+        let res = request::head("http://127.0.0.1/unknown", Headers::new(), &files.handle())
+            .expect("Response was a http error");
+
+        assert_eq!(res.status, Some(status::NotFound));
+
+        let content_length = res.headers.get::<ContentLength>().unwrap();
+
+        assert_eq!(content_length.0, 0);
+    }
+
+    #[test]
+    fn staticfile_disallow_request_methods() {
+        let opts = Options::from_args();
+
+        let files = StaticFiles::new(StaticFilesOptions {
+            root_dir: opts.root,
+            assets_dir: opts.assets,
+            page_50x_path: opts.page50x,
+            page_404_path: opts.page404,
+        });
+
+        let response = request::post("http://127.0.0.1/", Headers::new(), "", &files.handle())
+            .expect("Response was a http error");
+
+        assert_eq!(response.status, Some(status::MethodNotAllowed));
+
+        let response = request::delete("http://127.0.0.1/", Headers::new(), &files.handle())
+            .expect("Response was a http error");
+
+        assert_eq!(response.status, Some(status::MethodNotAllowed));
+
+        let response = request::put("http://127.0.0.1/", Headers::new(), "", &files.handle())
+            .expect("Response was a http error");
+
+        assert_eq!(response.status, Some(status::MethodNotAllowed));
+
+        let response = request::patch("http://127.0.0.1/", Headers::new(), "", &files.handle())
+            .expect("Response was a http error");
+
+        assert_eq!(response.status, Some(status::MethodNotAllowed));
+
+        let response = request::options("http://127.0.0.1/", Headers::new(), &files.handle())
+            .expect("Response was a http error");
+
+        assert_eq!(response.status, Some(status::MethodNotAllowed));
+    }
+}
