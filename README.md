@@ -120,10 +120,14 @@ services:
         - SERVER_NAME=my-server
         - SERVER_HOST=127.0.0.1
         - SERVER_PORT=80
-        - SERVER_ROOT=/html
-        - SERVER_ASSETS=./assets
+        - SERVER_ROOT=/public
+        # NOTE:
+        #   For the server, assets directory is not relative to root.
+        #   That's why, it's necessary to be explicit (prefer absolute paths).
+        #   See release v1.8.0 for more details.
+        - SERVER_ASSETS=/public/assets
     volumes:
-        - ./some-dir-path:/html
+        - ./some-dir-path:/public
     labels:
         - "traefik.enable=true"
         - "traefik.frontend.entryPoints=https"
