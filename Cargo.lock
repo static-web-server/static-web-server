@@ -905,7 +905,7 @@ checksum = "05720e22615919e4734f6a99ceae50d00226c3c5aca406e102ebc33298214e0a"
 
 [[package]]
 name = "static-web-server"
-version = "1.7.0"
+version = "1.8.0"
 dependencies = [
  "chrono",
  "env_logger",
