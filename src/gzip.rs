@@ -8,6 +8,11 @@ pub struct GzipMiddleware;
 
 impl AfterMiddleware for GzipMiddleware {
     fn after(&self, req: &mut Request, mut resp: Response) -> IronResult<Response> {
+        // Skip Gzip response on HEAD requests
+        if req.method == iron::method::Head {
+            return Ok(resp);
+        }
+
         let accept_gz = match req.headers.get::<AcceptEncoding>() {
             Some(accept) => accept.0.iter().any(|qi| qi.item == Encoding::Gzip),
             None => false,
