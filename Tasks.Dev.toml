@@ -3,7 +3,7 @@ E_ARGS = "--port=8787"
 E_URL = "http://locahost"
 SERVER_LOG_LEVEL = "trace"
 SERVER_ROOT = "./public"
-SERVER_ASSETS = "./assets"
+SERVER_ASSETS = "./public/assets"
 
 [tasks.watch]
 command = "cargo"

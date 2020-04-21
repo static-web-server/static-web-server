@@ -15,7 +15,7 @@ pub struct Options {
     #[structopt(long, default_value = "./public", env = "SERVER_ROOT")]
     /// Root directory path of static files
     pub root: String,
-    #[structopt(long, default_value = "./assets", env = "SERVER_ASSETS")]
+    #[structopt(long, default_value = "./public/assets", env = "SERVER_ASSETS")]
     /// Assets directory path for add cache headers functionality
     pub assets: String,
     #[structopt(
