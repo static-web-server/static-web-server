@@ -1,4 +1,6 @@
+use iron::headers::ContentLength;
 use iron::mime;
+use iron::modifiers::Header;
 use iron::prelude::*;
 use iron::status;
 use iron::AfterMiddleware;
@@ -37,36 +39,37 @@ impl ErrorPage {
 }
 
 impl AfterMiddleware for ErrorPage {
-    fn after(&self, _: &mut Request, res: Response) -> IronResult<Response> {
+    fn after(&self, req: &mut Request, resp: Response) -> IronResult<Response> {
         let content_type = "text/html".parse::<mime::Mime>().unwrap();
-
-        match res.status {
-            Some(status::NotFound) => Ok(Response::with((
-                content_type,
-                status::NotFound,
-                self.page404.as_str(),
-            ))),
-            Some(status::InternalServerError) => Ok(Response::with((
+        let mut resp = match resp.status {
+            Some(status::NotFound) => {
+                Response::with((content_type, status::NotFound, self.page404.as_str()))
+            }
+            Some(status::InternalServerError) => Response::with((
                 content_type,
                 status::InternalServerError,
                 self.page50x.as_str(),
-            ))),
-            Some(status::BadGateway) => Ok(Response::with((
-                content_type,
-                status::BadGateway,
-                self.page50x.as_str(),
-            ))),
-            Some(status::ServiceUnavailable) => Ok(Response::with((
+            )),
+            Some(status::BadGateway) => {
+                Response::with((content_type, status::BadGateway, self.page50x.as_str()))
+            }
+            Some(status::ServiceUnavailable) => Response::with((
                 content_type,
                 status::ServiceUnavailable,
                 self.page50x.as_str(),
-            ))),
-            Some(status::GatewayTimeout) => Ok(Response::with((
-                content_type,
-                status::GatewayTimeout,
-                self.page50x.as_str(),
-            ))),
-            _ => Ok(res),
+            )),
+            Some(status::GatewayTimeout) => {
+                Response::with((content_type, status::GatewayTimeout, self.page50x.as_str()))
+            }
+            _ => resp,
+        };
+
+        // Empty response body on HEAD requests
+        if req.method == iron::method::Head {
+            resp.set_mut(Vec::new());
+            resp.set_mut(Header(ContentLength(0)));
         }
+
+        Ok(resp)
     }
 }
