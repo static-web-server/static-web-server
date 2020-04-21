@@ -3,7 +3,9 @@
 **/*.gz
 **/*.log
 **/*.tar
+**/*.zip
 **/.DS_Store
 .gitignore
 *docker-compose*
 Makefile
+target
