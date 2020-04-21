@@ -296,8 +296,8 @@ dependencies = [
 
 [[package]]
 name = "iron_staticfile_middleware"
-version = "0.2.0"
-source = "git+https://github.com/joseluisq/iron-staticfile-middleware.git#68ab4500d43f63493ebb9db5983a94e10193dee0"
+version = "0.3.0"
+source = "git+https://github.com/joseluisq/iron-staticfile-middleware.git#d3107bbf9718dffa00d3fb3ec703eeea74f89b97"
 dependencies = [
  "iron",
  "log 0.4.8",
