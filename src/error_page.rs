@@ -5,9 +5,9 @@ use iron::AfterMiddleware;
 use std::fs;
 use std::path::Path;
 
-static PAGE_404: &str = "<h2>404</h2><p>Content could not found</p>";
-static PAGE_50X: &str =
-    "<h2>50x</h2><p>Service is temporarily unavailable due an unexpected error</p>";
+const PAGE_404: &str = "<h2>404</h2><p>Content could not found</p>";
+const PAGE_50X: &str =
+    "<h2>50x</h2><p>SERVICE is temporarily unavailable due an unexpected error</p>";
 
 /// Custom Error pages middleware for Iron
 pub struct ErrorPage {
