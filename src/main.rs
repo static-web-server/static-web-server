@@ -47,6 +47,7 @@ fn main() {
         assets_dir: opts.assets,
         page_50x_path: opts.page50x,
         page_404_path: opts.page404,
+        cors_allow_origins: opts.cors_allow_origins,
     });
 
     if opts.tls {
@@ -121,6 +122,7 @@ mod test {
             assets_dir: opts.assets,
             page_50x_path: opts.page50x,
             page_404_path: opts.page404,
+            cors_allow_origins: "".to_string(),
         });
 
         let response = request::head("http://127.0.0.1/", Headers::new(), &files.handle())
@@ -143,6 +145,7 @@ mod test {
             assets_dir: opts.assets,
             page_50x_path: opts.page50x,
             page_404_path: opts.page404,
+            cors_allow_origins: "".to_string(),
         });
 
         let res = request::head("http://127.0.0.1/", Headers::new(), &files.handle())
@@ -170,6 +173,7 @@ mod test {
             assets_dir: assets.path().to_str().unwrap().to_string(),
             page_50x_path: opts.page50x,
             page_404_path: opts.page404,
+            cors_allow_origins: "".to_string(),
         });
 
         let res = request::head("http://127.0.0.1/", Headers::new(), &files.handle())
@@ -191,6 +195,7 @@ mod test {
             assets_dir: opts.assets,
             page_50x_path: opts.page50x,
             page_404_path: opts.page404,
+            cors_allow_origins: "".to_string(),
         });
 
         let res = request::head("http://127.0.0.1/unknown", Headers::new(), &files.handle())
@@ -212,6 +217,7 @@ mod test {
             assets_dir: opts.assets,
             page_50x_path: opts.page50x,
             page_404_path: opts.page404,
+            cors_allow_origins: "".to_string(),
         });
 
         let response = request::post("http://127.0.0.1/", Headers::new(), "", &files.handle())

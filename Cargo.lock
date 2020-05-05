@@ -295,6 +295,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "iron-cors"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "24b02b8856c7f14e443c483e802cf0ce693f3bec19f49d2c9a242b18f88c9b70"
+dependencies = [
+ "iron",
+ "log 0.4.8",
+]
+
+[[package]]
 name = "iron-test"
 version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -913,6 +923,7 @@ dependencies = [
  "hyper",
  "hyper-native-tls",
  "iron",
+ "iron-cors",
  "iron-test",
  "iron_staticfile_middleware",
  "log 0.4.8",

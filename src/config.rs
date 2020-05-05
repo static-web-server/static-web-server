@@ -44,4 +44,7 @@ pub struct Options {
     #[structopt(long, default_value = "error", env = "SERVER_LOG_LEVEL")]
     /// Specify a logging level in lower case.
     pub log_level: String,
+    #[structopt(long, default_value = "", env = "SERVER_CORS_ALLOW_ORIGINS")]
+    /// Specify a CORS list of allowed origin hosts separated by comas with no whitespaces. Host ports or protocols aren't being checked. Use an asterisk (*) to allow any host.
+    pub cors_allow_origins: String,
 }

@@ -44,6 +44,7 @@ Server can be configured either via environment variables or their equivalent co
 | `SERVER_TLS` | Enables TLS/SSL support. Make sure also to adjust current server port. | Default `false` |
 | `SERVER_TLS_PKCS12` | A cryptographic identity [PKCS #12](https://docs.rs/native-tls/0.2.3/native_tls/struct.Identity.html#method.from_pkcs12) bundle file path containing a [X509 certificate](https://en.wikipedia.org/wiki/X.509) along with its corresponding private key and chain of certificates to a trusted root. | Default empty |
 | `SERVER_TLS_PKCS12_PASSWD` | A specified password to decrypt the private key. | Default empty |
+| `SERVER_CORS_ALLOW_ORIGINS` | Specify a CORS list of allowed origin hosts separated by comas with no whitespaces. Host ports or protocols aren't being checked. Use an asterisk (*) to allow any host. See [Iron CORS crate](https://docs.rs/iron-cors/0.8.0/iron_cors/#mode-1-whitelist). | Default empty (which means CORS is disabled) |
 
 ### Command-line arguments
 
@@ -64,22 +65,25 @@ OPTIONS:
         --assets <assets>
             Assets directory path for add cache headers functionality [env: SERVER_ASSETS=]  [default: ./public/assets]
 
-        --host <host>                              Host address (E.g 127.0.0.1) [env: SERVER_HOST=]  [default: [::]]
+        --cors-allow-origins <cors-allow-origins>
+            Specify a CORS list of allowed origin hosts separated by comas with no whitespaces. Host ports or protocols
+            aren't being checked. Use an asterisk (*) to allow any host [env: SERVER_CORS_ALLOW_ORIGINS=]  [default: ]
+        --host <host>                                Host address (E.g 127.0.0.1) [env: SERVER_HOST=]  [default: [::]]
         --log-level <log-level>
             Specify a logging level in lower case [env: SERVER_LOG_LEVEL=]  [default: error]
 
-        --name <name>                              Name for server [env: SERVER_NAME=]  [default: my-static-server]
+        --name <name>                                Name for server [env: SERVER_NAME=]  [default: my-static-server]
         --page404 <page404>
             HTML file path for 404 errors. If path is not specified or simply don't exists then server will use a
             generic HTML error message [env: SERVER_ERROR_PAGE_404=]  [default: ./public/404.html]
         --page50x <page50x>
             HTML file path for 50x errors. If path is not specified or simply don't exists then server will use a
             generic HTML error message [env: SERVER_ERROR_PAGE_50X=]  [default: ./public/50x.html]
-        --port <port>                              Host port [env: SERVER_PORT=]  [default: 80]
+        --port <port>                                Host port [env: SERVER_PORT=]  [default: 80]
         --root <root>
             Root directory path of static files [env: SERVER_ROOT=]  [default: ./public]
 
-        --tls <tls>                                Enables TLS/SSL support [env: SERVER_TLS=]
+        --tls <tls>                                  Enables TLS/SSL support [env: SERVER_TLS=]
         --tls-pkcs12 <tls-pkcs12>
             A cryptographic identity PKCS #12 bundle file path containing a X509 certificate along with its
             corresponding private key and chain of certificates to a trusted root [env: SERVER_TLS_PKCS12=]  [default: ]

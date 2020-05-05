@@ -1,10 +1,12 @@
 use crate::error_page::ErrorPage;
 use crate::gzip::GzipMiddleware;
 use crate::helpers;
-use crate::logger::Logger;
+use crate::logger::{log_server, Logger};
 
 use iron::prelude::*;
+use iron_cors::CorsMiddleware;
 use iron_staticfile_middleware::{Cache, GuessContentType, ModifyWith, Prefix, Staticfile};
+use std::collections::HashSet;
 use std::time::Duration;
 
 /// An Iron middleware for static files-serving.
@@ -17,6 +19,7 @@ pub struct StaticFilesOptions {
     pub assets_dir: String,
     pub page_50x_path: String,
     pub page_404_path: String,
+    pub cors_allow_origins: String,
 }
 
 impl StaticFiles {
@@ -64,6 +67,24 @@ impl StaticFiles {
         let default_content_type = "text/html"
             .parse()
             .expect("Unable to create a default content type header");
+
+        // CORS support
+        let allowed_hosts = &self.opts.cors_allow_origins;
+
+        if !allowed_hosts.is_empty() {
+            log_server("CORS enabled");
+            log_server(&format!("Access-Control-Allow-Origin: {}", allowed_hosts));
+
+            if allowed_hosts == "*" {
+                chain.link_around(CorsMiddleware::with_allow_any());
+            } else {
+                let allowed_hosts = allowed_hosts
+                    .split(',')
+                    .map(|s| s.to_string())
+                    .collect::<HashSet<_>>();
+                chain.link_around(CorsMiddleware::with_whitelist(allowed_hosts));
+            };
+        }
 
         chain.link_after(ModifyWith::new(Cache::new(one_day)));
         chain.link_after(Prefix::new(&[assets_dirname], Cache::new(one_year)));

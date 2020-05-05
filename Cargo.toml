@@ -31,6 +31,7 @@ iron_staticfile_middleware = { git = "https://github.com/joseluisq/iron-staticfi
 hyper-native-tls = "0.3"
 nix = "0.14"
 signal = "0.7"
+iron-cors = "0.8"
 
 [dev-dependencies]
 openssl = { version = "0.10", features = ["vendored"] }
