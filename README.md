@@ -2,21 +2,24 @@
 
 > A blazing fast static files-serving web server powered by [Rust Iron](https://github.com/iron/iron). :zap:
 
-**Static Web Server** is a very small and fast web server to serving static files such as html files or assets.
+**Static Web Server** is a very small and fast production-ready web server to serving static web files or assets.
 
 ## Features
 
 - Built with [Rust](https://rust-lang.org) which is focused on [safety, speed, and concurrency](https://kornel.ski/rust-c-speed).
 - Memory safety and reduced overhead of CPU and RAM resources.
-- Blazing fast static files-serving thanks to [Rust Iron](https://github.com/iron/iron).
-- Suitable for small [GNU/Linux Docker containers](https://hub.docker.com/r/joseluisq/static-web-server). It's a fully __4MB__ static binary thanks to [Rust and Musl libc](https://doc.rust-lang.org/edition-guide/rust-2018/platform-and-target-support/musl-support-for-fully-static-binaries.html) (`x86_64-unknown-linux-musl`).
-- Gzip compression on demand via `accept-encoding` header.
-- Assets Cache control headers support.
-- Configurable via environment variables or CLI arguments.
-- TLS support via [Rust Native TLS](https://docs.rs/native-tls/0.2.3/native_tls/) crate.
-- Lightweight logging support.
+- Blazing fast static files-serving thanks to [Rust Iron](https://github.com/iron/iron) and [Hyper](https://github.com/hyperium/hyper).
+- Suitable for lightweight [GNU/Linux Docker containers](https://hub.docker.com/r/joseluisq/static-web-server/tags). It's a fully __4MB__ static binary thanks to [Rust and Musl libc](https://doc.rust-lang.org/edition-guide/rust-2018/platform-and-target-support/musl-support-for-fully-static-binaries.html) (`x86_64-unknown-linux-musl`).
+- Gzip compression on demand via [accept-encoding](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Accept-Encoding) header.
+- [Partial Content Delivery](https://en.wikipedia.org/wiki/Byte_serving) support for byte-serving of large files.
+- [Cache control headers](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Cache-Control) for assets.
+- [CORS](https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS) support.
+- [HEAD](https://tools.ietf.org/html/rfc7231#section-4.3.2) responses support.
+- [TLS](https://www.openssl.org/) support via [Rust Native TLS](https://docs.rs/native-tls/0.2.3/native_tls/) crate.
+- Lightweight and configurable logging.
+- First-class [Docker](https://docs.docker.com/get-started/overview/) support. [Scratch](https://hub.docker.com/_/scratch) and latest [Alpine Linux](https://hub.docker.com/_/alpine) Docker images available.
+- Server configurable via environment variables or CLI arguments.
 - MacOs binary support (`x86_64-apple-darwin`) thanks to [Rust Linux / Darwin Builder](https://github.com/joseluisq/rust-linux-darwin-builder).
-- [Scratch](https://hub.docker.com/_/scratch) and latest [Alpine Linux](https://hub.docker.com/_/alpine) Docker images available.
 
 ## Releases
 
@@ -128,7 +131,7 @@ services:
         # NOTE:
         #   For the server, assets directory is not relative to root.
         #   That's why, it's necessary to be explicit (prefer absolute paths).
-        #   See release v1.8.0 for more details.
+        #   See release v1.8.0+ for more details.
         - SERVER_ASSETS=/public/assets
     volumes:
         - ./some-dir-path:/public
