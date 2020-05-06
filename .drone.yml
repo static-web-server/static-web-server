@@ -186,6 +186,60 @@ trigger:
   event:
   - tag
 
+
+
+---
+kind: pipeline
+type: docker
+name: staging
+
+platform:
+  os: linux
+  arch: amd64
+
+steps:
+- name: test
+  image: joseluisq/rust-linux-darwin-builder:1.43.0
+  commands:
+    - make test
+
+- name: release
+  image: joseluisq/rust-linux-darwin-builder:1.43.0
+  commands:
+    - make prod.release
+
+- name: publish-scratch
+  image: plugins/docker
+  settings:
+    registry: registry.joseluisq.net
+    repo: registry.joseluisq.net/static-web-server
+    dockerfile: ./docker/scratch/Dockerfile
+    username:
+      from_secret: registry_username
+    password:
+      from_secret: registry_password
+    tags:
+      - v1-dev
+
+- name: publish-alpine
+  image: plugins/docker
+  settings:
+    registry: registry.joseluisq.net
+    repo: registry.joseluisq.net/static-web-server
+    dockerfile: ./docker/alpine/Dockerfile
+    username:
+      from_secret: registry_username
+    password:
+      from_secret: registry_password
+    tags:
+      - v1-dev-alpine
+
+trigger:
+  target:
+  - staging
+
+
+
 ---
 kind: pipeline
 type: docker
@@ -205,6 +259,7 @@ steps:
 
 depends_on:
 - development
+- staging
 - production
 
 trigger:
