@@ -1,30 +1,11 @@
 use flate2::write::GzEncoder;
 use flate2::Compression;
 use iron::headers::{AcceptEncoding, ContentEncoding, ContentType, Encoding};
-use iron::mime;
 use iron::prelude::*;
 use iron::AfterMiddleware;
+use iron_staticfile_middleware::helpers;
 
 pub struct GzipMiddleware;
-
-const GZIP_TYPES: [&str; 16] = [
-    "text/html",
-    "text/css",
-    "text/javascript",
-    "text/xml",
-    "text/plain",
-    "text/x-component",
-    "application/javascript",
-    "application/x-javascript",
-    "application/json",
-    "application/xml",
-    "application/rss+xml",
-    "application/atom+xml",
-    "font/truetype",
-    "font/opentype",
-    "application/vnd.ms-fontobject",
-    "image/svg+xml",
-];
 
 impl AfterMiddleware for GzipMiddleware {
     fn after(&self, req: &mut Request, mut resp: Response) -> IronResult<Response> {
@@ -34,27 +15,10 @@ impl AfterMiddleware for GzipMiddleware {
         }
 
         // Enable Gzip compression only for known text-based file types
-        let enable_gzip = match resp.headers.get::<ContentType>() {
-            Some(content_type) => {
-                let mut v = false;
-                for e in &GZIP_TYPES {
-                    if content_type.0 == e.parse::<mime::Mime>().unwrap() {
-                        v = true;
-                        break;
-                    }
-                }
+        let enable_gz = helpers::is_text_mime_type(resp.headers.get::<ContentType>());
+        let accept_gz = helpers::accept_gzip(req.headers.get::<AcceptEncoding>());
 
-                v
-            }
-            None => false,
-        };
-
-        let accept_gz = match req.headers.get::<AcceptEncoding>() {
-            Some(accept) => accept.0.iter().any(|qi| qi.item == Encoding::Gzip),
-            None => false,
-        };
-
-        if enable_gzip && accept_gz {
+        if enable_gz && accept_gz {
             let compressed_bytes = resp.body.as_mut().map(|b| {
                 let mut encoder = GzEncoder::new(Vec::new(), Compression::fast());
                 {
