@@ -319,8 +319,8 @@ dependencies = [
 
 [[package]]
 name = "iron_staticfile_middleware"
-version = "0.4.0"
-source = "git+https://github.com/joseluisq/iron-staticfile-middleware.git#59702bc15cf6d11e96491ae1101aeedcaafbed41"
+version = "0.4.1"
+source = "git+https://github.com/joseluisq/iron-staticfile-middleware.git?tag=v0.4.1#d7c68b0b79a4d97d04c55e4958e90203c156c346"
 dependencies = [
  "iron",
  "log 0.4.8",
@@ -860,9 +860,9 @@ checksum = "ef703b7cb59335eae2eb93ceb664c0eb7ea6bf567079d843e09420219668e072"
 
 [[package]]
 name = "schannel"
-version = "0.1.18"
+version = "0.1.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "039c25b130bd8c1321ee2d7de7fde2659fa9c2744e4bb29711cfc852ea53cd19"
+checksum = "8f05ba609c234e60bee0d547fe94a4c7e9da733d1c962cf6e59efa4cd9c8bc75"
 dependencies = [
  "lazy_static",
  "winapi",
@@ -870,9 +870,9 @@ dependencies = [
 
 [[package]]
 name = "security-framework"
-version = "0.4.3"
+version = "0.4.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3f331b9025654145cd425b9ded0caf8f5ae0df80d418b326e2dc1c3dc5eb0620"
+checksum = "64808902d7d99f78eaddd2b4e2509713babc3dc3c85ad6f4c447680f3c01e535"
 dependencies = [
  "bitflags",
  "core-foundation",

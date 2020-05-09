@@ -27,7 +27,7 @@ chrono = "0.4"
 env_logger = "0.7"
 structopt = "0.3"
 flate2 = "1.0"
-iron_staticfile_middleware = { git = "https://github.com/joseluisq/iron-staticfile-middleware.git" }
+iron_staticfile_middleware = { git = "https://github.com/joseluisq/iron-staticfile-middleware.git", tag = "v0.4.1" }
 hyper-native-tls = "0.3"
 nix = "0.14"
 signal = "0.7"
