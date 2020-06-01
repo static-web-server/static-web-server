@@ -20,7 +20,7 @@ impl AfterMiddleware for GzipMiddleware {
 
         if enable_gz && accept_gz {
             let compressed_bytes = resp.body.as_mut().map(|b| {
-                let mut encoder = GzEncoder::new(Vec::new(), Compression::fast());
+                let mut encoder = GzEncoder::new(vec![], Compression::fast());
                 {
                     let _ = b.write_body(&mut encoder);
                 }

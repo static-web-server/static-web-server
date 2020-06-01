@@ -31,7 +31,7 @@ impl StaticFiles {
     /// Handle static files for current `StaticFiles` middleware.
     pub fn handle(&self) -> Chain {
         // Check the root directory
-        let root_dir = match helpers::get_valid_dirpath(&self.opts.root_dir) {
+        let root_dir = &match helpers::get_valid_dirpath(&self.opts.root_dir) {
             Err(e) => {
                 error!("{}", e);
                 std::process::exit(1)
@@ -40,7 +40,7 @@ impl StaticFiles {
         };
 
         // Check the assets directory
-        let assets_dir = match helpers::get_valid_dirpath(&self.opts.assets_dir) {
+        let assets_dir = &match helpers::get_valid_dirpath(&self.opts.assets_dir) {
             Err(e) => {
                 error!("{}", e);
                 std::process::exit(1)
@@ -49,7 +49,7 @@ impl StaticFiles {
         };
 
         // Get the assets directory name
-        let assets_dirname = match helpers::get_dirname(&assets_dir) {
+        let assets_dirname = &match helpers::get_dirname(assets_dir) {
             Err(e) => {
                 error!("{}", e);
                 std::process::exit(1)
@@ -59,8 +59,7 @@ impl StaticFiles {
 
         // Define middleware chain
         let mut chain = Chain::new(
-            Staticfile::new(&root_dir, &assets_dir)
-                .expect("Directory to serve files was not found"),
+            Staticfile::new(root_dir, assets_dir).expect("Directory to serve files was not found"),
         );
         let one_day = Duration::new(60 * 60 * 24, 0);
         let one_year = Duration::new(60 * 60 * 24 * 365, 0);
