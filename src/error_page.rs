@@ -1,4 +1,3 @@
-use iron::mime;
 use iron::prelude::*;
 use iron::status;
 use iron::AfterMiddleware;
@@ -8,6 +7,7 @@ use std::path::Path;
 const PAGE_404: &str = "<h2>404</h2><p>Content could not found</p>";
 const PAGE_50X: &str =
     "<h2>50x</h2><p>SERVICE is temporarily unavailable due an unexpected error</p>";
+const CONTENT_TYPE: &str = "text/html";
 
 /// Custom Error pages middleware for Iron
 pub struct ErrorPage {
@@ -38,28 +38,27 @@ impl ErrorPage {
 
 impl AfterMiddleware for ErrorPage {
     fn after(&self, req: &mut Request, resp: Response) -> IronResult<Response> {
-        let content_type = "text/html".parse::<mime::Mime>().unwrap();
         let mut no_status_error = false;
 
         let mut resp = match resp.status {
             Some(status::NotFound) => {
-                Response::with((content_type, status::NotFound, self.page404.as_str()))
+                Response::with((CONTENT_TYPE, status::NotFound, self.page404.as_str()))
             }
             Some(status::InternalServerError) => Response::with((
-                content_type,
+                CONTENT_TYPE,
                 status::InternalServerError,
                 self.page50x.as_str(),
             )),
             Some(status::BadGateway) => {
-                Response::with((content_type, status::BadGateway, self.page50x.as_str()))
+                Response::with((CONTENT_TYPE, status::BadGateway, self.page50x.as_str()))
             }
             Some(status::ServiceUnavailable) => Response::with((
-                content_type,
+                CONTENT_TYPE,
                 status::ServiceUnavailable,
                 self.page50x.as_str(),
             )),
             Some(status::GatewayTimeout) => {
-                Response::with((content_type, status::GatewayTimeout, self.page50x.as_str()))
+                Response::with((CONTENT_TYPE, status::GatewayTimeout, self.page50x.as_str()))
             }
             _ => {
                 no_status_error = true;
@@ -69,7 +68,7 @@ impl AfterMiddleware for ErrorPage {
 
         // Empty response body only on HEAD requests and status error (404,50x)
         if req.method == iron::method::Head && !no_status_error {
-            resp.set_mut(Vec::new());
+            resp.set_mut(vec![]);
         }
 
         Ok(resp)
