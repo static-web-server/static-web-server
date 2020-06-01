@@ -37,7 +37,7 @@ fn main() {
 
     logger::init(&opts.log_level);
 
-    let addr = &format!("{}{}{}", opts.host.to_string(), ":", opts.port.to_string());
+    let addr = &format!("{}{}{}", opts.host, ":", opts.port);
     let proto = if opts.tls { "HTTPS" } else { "HTTP" };
 
     // Configure & launch the HTTP server
