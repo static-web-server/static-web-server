@@ -80,7 +80,7 @@ mod test {
     use self::hyper::header::Headers;
     use self::iron_test::{request, response};
     use self::tempdir::TempDir;
-    use iron::headers::ContentLength;
+    use iron::headers::{ContentLength, ContentType};
     use iron::status;
 
     struct TestFilesystemSetup(TempDir);
@@ -244,5 +244,36 @@ mod test {
             .expect("Response was a http error");
 
         assert_eq!(response.status, Some(status::MethodNotAllowed));
+    }
+
+    #[test]
+    fn staticfile_valid_content_type_for_404() {
+        let root = TestFilesystemSetup::new();
+        root.dir("root");
+
+        let assets = TestFilesystemSetup::new();
+        assets.dir("assets");
+
+        let opts = Options::from_args();
+
+        let files = StaticFiles::new(StaticFilesOptions {
+            root_dir: root.path().to_str().unwrap().to_string(),
+            assets_dir: assets.path().to_str().unwrap().to_string(),
+            page_50x_path: opts.page50x,
+            page_404_path: opts.page404,
+            cors_allow_origins: "".to_string(),
+        });
+
+        let res = request::head("http://127.0.0.1/unknown", Headers::new(), &files.handle())
+            .expect("Response was a http error");
+
+        assert_eq!(res.status, Some(status::NotFound));
+
+        let content_type = res.headers.get::<ContentType>().unwrap();
+
+        assert_eq!(
+            content_type.0,
+            "text/html".parse::<iron::mime::Mime>().unwrap()
+        );
     }
 }

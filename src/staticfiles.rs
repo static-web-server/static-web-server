@@ -3,6 +3,7 @@ use crate::gzip::GzipMiddleware;
 use crate::helpers;
 use crate::logger::{log_server, Logger};
 
+use iron::mime;
 use iron::prelude::*;
 use iron_cors::CorsMiddleware;
 use iron_staticfile_middleware::{Cache, GuessContentType, ModifyWith, Prefix, Staticfile};
@@ -64,7 +65,7 @@ impl StaticFiles {
         let one_day = Duration::new(60 * 60 * 24, 0);
         let one_year = Duration::new(60 * 60 * 24 * 365, 0);
         let default_content_type = "text/html"
-            .parse()
+            .parse::<mime::Mime>()
             .expect("Unable to create a default content type header");
 
         // CORS support
