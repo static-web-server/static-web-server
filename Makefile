@@ -191,19 +191,14 @@ prod.release.files:
 .ONESHELL: prod.release.files
 
 prod.release.tag:
-	git tag -d latest
-	git push --delete origin latest
-
 	# Update docker files to latest tag per platform
 	./docker/version.sh v$(PKG_TAG)
 
 	git add .
 	git commit . -m "v$(PKG_TAG)"
-	git tag latest
 	git tag v$(PKG_TAG)
 	git push
 	git push origin v$(PKG_TAG)
-	git push origin latest
 .ONESHELL: prod.release.tag
 
 prod.release.dockerfiles:
