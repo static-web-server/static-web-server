@@ -21,6 +21,7 @@ edition = "2018"
 include = ["src/**/*", "Cargo.toml", "Cargo.lock"]
 
 [dependencies]
+jemallocator = "0.3.2"
 iron = "0.6"
 log = "0.4"
 chrono = "0.4"
@@ -40,4 +41,6 @@ iron-test = "0.6"
 tempdir = "0.3"
 
 [profile.release]
-lto = true
+lto = "fat"
+codegen-units = 1
+panic = "abort"
