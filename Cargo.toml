@@ -33,6 +33,9 @@ nix = "0.14"
 signal = "0.7"
 iron-cors = "0.8"
 
+[target.'cfg(all(target_env = "musl", target_pointer_width = "64"))'.dependencies.jemallocator]
+version = "0.3"
+
 [dev-dependencies]
 openssl = { version = "0.10", features = ["vendored"] }
 hyper = "0.10"
@@ -40,4 +43,6 @@ iron-test = "0.6"
 tempdir = "0.3"
 
 [profile.release]
-lto = true
+lto = "fat"
+codegen-units = 1
+panic = "abort"
