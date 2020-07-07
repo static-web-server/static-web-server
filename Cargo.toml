@@ -21,7 +21,6 @@ edition = "2018"
 include = ["src/**/*", "Cargo.toml", "Cargo.lock"]
 
 [dependencies]
-jemallocator = "0.3.2"
 iron = "0.6"
 log = "0.4"
 chrono = "0.4"
@@ -33,6 +32,9 @@ hyper-native-tls = "0.3"
 nix = "0.14"
 signal = "0.7"
 iron-cors = "0.8"
+
+[target.'cfg(all(target_env = "musl", target_pointer_width = "64"))'.dependencies.jemallocator]
+version = "0.3"
 
 [dev-dependencies]
 openssl = { version = "0.10", features = ["vendored"] }
