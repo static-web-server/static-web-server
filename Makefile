@@ -26,12 +26,12 @@ install:
 
 run:
 	@rustc -vV
-	@cargo make --makefile Tasks.Dev.toml run
+	@cargo make --makefile Makefile.toml run
 .PHONY: run
 
 dev:
 	@rustc -vV
-	@cargo make --makefile Tasks.Dev.toml watch
+	@cargo make --makefile Makefile.toml watch
 .PHONY: dev
 
 build:

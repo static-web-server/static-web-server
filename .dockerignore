@@ -9,3 +9,4 @@
 *docker-compose*
 Makefile
 target
+**/*.env

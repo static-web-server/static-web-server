@@ -12,4 +12,7 @@
 **/*.tar
 **/*.gz
 **/.DS_Store
+**/*.env
 release
+
+!sample.env

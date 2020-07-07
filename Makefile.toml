@@ -1,0 +1,12 @@
+env_files = [
+    { path = "./development.env", profile = "development" },
+    { path = "./production.env", profile = "production" }
+]
+
+[tasks.watch]
+command = "cargo"
+args = ["watch", "-cx", "run -- ${E_ARGS}"]
+
+[tasks.run]
+command = "cargo"
+args = ["run", "--", "${E_ARGS}"]
