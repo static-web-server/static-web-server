@@ -19,7 +19,7 @@ steps:
       - ./target
 
 - name: test
-  image: joseluisq/rust-linux-darwin-builder:1.44.1
+  image: joseluisq/rust-linux-darwin-builder:1.45.1
   commands:
     - make test
 
@@ -61,7 +61,7 @@ platform:
 
 steps:
 - name: test
-  image: joseluisq/rust-linux-darwin-builder:1.44.1
+  image: joseluisq/rust-linux-darwin-builder:1.45.1
   commands:
     - make test
   when:
@@ -69,7 +69,7 @@ steps:
     - tag
 
 - name: release
-  image: joseluisq/rust-linux-darwin-builder:1.44.1
+  image: joseluisq/rust-linux-darwin-builder:1.45.1
   commands:
     - make prod.release
   when:
@@ -199,12 +199,12 @@ platform:
 
 steps:
 - name: test
-  image: joseluisq/rust-linux-darwin-builder:1.44.1
+  image: joseluisq/rust-linux-darwin-builder:1.45.1
   commands:
     - make test
 
 - name: release
-  image: joseluisq/rust-linux-darwin-builder:1.44.1
+  image: joseluisq/rust-linux-darwin-builder:1.45.1
   commands:
     - make prod.release
 
