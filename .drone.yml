@@ -19,7 +19,7 @@ steps:
       - ./target
 
 - name: test
-  image: joseluisq/rust-linux-darwin-builder:1.45.1
+  image: joseluisq/rust-linux-darwin-builder:1.46.0
   commands:
     - make test
 
@@ -50,6 +50,7 @@ trigger:
     - hotfix/*
 
 
+
 ---
 kind: pipeline
 type: docker
@@ -61,7 +62,7 @@ platform:
 
 steps:
 - name: test
-  image: joseluisq/rust-linux-darwin-builder:1.45.1
+  image: joseluisq/rust-linux-darwin-builder:1.46.0
   commands:
     - make test
   when:
@@ -69,19 +70,13 @@ steps:
     - tag
 
 - name: release
-  image: joseluisq/rust-linux-darwin-builder:1.45.1
+  image: joseluisq/rust-linux-darwin-builder:1.46.0
   commands:
     - make prod.release
-  when:
-    ref:
-    - refs/tags/v*
-    exclude:
-    - refs/tags/**rc**
-    - refs/tags/**beta**
-    - refs/tags/latest
 
 - name: publish-scratch
-  image: plugins/docker
+  image: joseluisq/drone-docker
+  privileged: true
   settings:
     registry: registry.joseluisq.net
     repo: registry.joseluisq.net/static-web-server
@@ -90,21 +85,15 @@ steps:
       from_secret: registry_username
     password:
       from_secret: registry_password
-    auto_tag: true
     build_args:
       - DOCKER_IMAGE_VERSION=${DRONE_TAG}
-    tags:
+    auto_tag: true
+    auto_tag_aliases:
       - latest
-  when:
-    ref:
-    - refs/tags/v*
-    exclude:
-    - refs/tags/**rc**
-    - refs/tags/**beta**
-    - refs/tags/latest
 
 - name: publish-alpine
-  image: plugins/docker
+  image: joseluisq/drone-docker
+  privileged: true
   settings:
     registry: registry.joseluisq.net
     repo: registry.joseluisq.net/static-web-server
@@ -113,17 +102,10 @@ steps:
       from_secret: registry_username
     password:
       from_secret: registry_password
-    auto_tag: true
-    auto_tag_suffix: alpine
     build_args:
       - DOCKER_IMAGE_VERSION=${DRONE_TAG}-alpine
-  when:
-    ref:
-    - refs/tags/v*
-    exclude:
-    - refs/tags/**rc**
-    - refs/tags/**beta**
-    - refs/tags/latest
+    auto_tag: true
+    auto_tag_suffix: alpine
 
 - name: gitea-release
   image: plugins/gitea-release
@@ -135,16 +117,10 @@ steps:
       - ./bin/*.tar.gz
       - ./bin/*-SHA256SUM
     prerelease: true
-  when:
-    ref:
-    - refs/tags/v*
-    exclude:
-    - refs/tags/**rc**
-    - refs/tags/**beta**
-    - refs/tags/latest
 
 - name: publish-public-scratch
-  image: plugins/docker
+  image: joseluisq/drone-docker
+  privileged: true
   settings:
     repo: joseluisq/static-web-server
     dockerfile: ./docker/scratch/Dockerfile
@@ -153,18 +129,12 @@ steps:
     password:
       from_secret: dockerhub_password
     auto_tag: true
-    tags:
+    auto_tag_aliases:
       - latest
-  when:
-    ref:
-    - refs/tags/v*
-    exclude:
-    - refs/tags/**rc**
-    - refs/tags/**beta**
-    - refs/tags/latest
 
 - name: publish-public-alpine
-  image: plugins/docker
+  image: joseluisq/drone-docker
+  privileged: true
   settings:
     repo: joseluisq/static-web-server
     dockerfile: ./docker/alpine/Dockerfile
@@ -174,17 +144,17 @@ steps:
       from_secret: dockerhub_password
     auto_tag: true
     auto_tag_suffix: alpine
-  when:
-    ref:
+
+trigger:
+  ref:
+    include:
     - refs/tags/v*
     exclude:
     - refs/tags/**rc**
+    - refs/tags/**alpha**
     - refs/tags/**beta**
-    - refs/tags/latest
-
-trigger:
-  event:
-  - tag
+    - refs/tags/**latest**
+    - refs/tags/**dev**
 
 
 
@@ -199,17 +169,18 @@ platform:
 
 steps:
 - name: test
-  image: joseluisq/rust-linux-darwin-builder:1.45.1
+  image: joseluisq/rust-linux-darwin-builder:1.46.0
   commands:
     - make test
 
 - name: release
-  image: joseluisq/rust-linux-darwin-builder:1.45.1
+  image: joseluisq/rust-linux-darwin-builder:1.46.0
   commands:
     - make prod.release
 
 - name: publish-scratch
-  image: plugins/docker
+  image: joseluisq/drone-docker
+  privileged: true
   settings:
     registry: registry.joseluisq.net
     repo: registry.joseluisq.net/static-web-server
@@ -222,7 +193,8 @@ steps:
       - v1-dev
 
 - name: publish-alpine
-  image: plugins/docker
+  image: joseluisq/drone-docker
+  privileged: true
   settings:
     registry: registry.joseluisq.net
     repo: registry.joseluisq.net/static-web-server
