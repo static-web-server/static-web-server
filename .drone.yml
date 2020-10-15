@@ -86,7 +86,7 @@ steps:
     password:
       from_secret: registry_password
     build_args:
-      - DOCKER_IMAGE_VERSION=${DRONE_TAG}
+      - SERVER_VERSION=${DRONE_TAG##v}
     auto_tag: true
     auto_tag_aliases:
       - latest
@@ -103,20 +103,20 @@ steps:
     password:
       from_secret: registry_password
     build_args:
-      - DOCKER_IMAGE_VERSION=${DRONE_TAG}-alpine
+      - SERVER_VERSION=${DRONE_TAG##v}
     auto_tag: true
     auto_tag_suffix: alpine
 
-- name: gitea-release
-  image: plugins/gitea-release
+- name: github-release
+  image: plugins/github-release
   settings:
     api_key:
-      from_secret: gitea_token
-    base_url: https://git.joseluisq.net/
+      from_secret: github_token
     files:
       - ./bin/*.tar.gz
       - ./bin/*-SHA256SUM
-    prerelease: true
+    title: ${DRONE_TAG}
+    draft: true
 
 - name: publish-public-scratch
   image: joseluisq/drone-docker
