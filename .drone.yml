@@ -128,6 +128,8 @@ steps:
       from_secret: dockerhub_username
     password:
       from_secret: dockerhub_password
+    build_args:
+      - SERVER_VERSION=${DRONE_TAG##v}
     auto_tag: true
     auto_tag_aliases:
       - latest
@@ -142,6 +144,8 @@ steps:
       from_secret: dockerhub_username
     password:
       from_secret: dockerhub_password
+    build_args:
+      - SERVER_VERSION=${DRONE_TAG##v}
     auto_tag: true
     auto_tag_suffix: alpine
 
