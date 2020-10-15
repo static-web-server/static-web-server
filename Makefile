@@ -209,21 +209,12 @@ prod.release.files:
 	@$(build_release_files)
 .ONESHELL: prod.release.files
 
-prod.release.tag:
-	# Update docker files to latest tag per platform
-	./docker/version.sh v$(PKG_TAG)
-
+prod.release.version:
 	git add .
 	git commit . -m "v$(PKG_TAG)"
 	git tag v$(PKG_TAG)
 	git push
-	git push origin v$(PKG_TAG)
-.ONESHELL: prod.release.tag
-
-prod.release.dockerfiles:
-	# Update docker files to latest tag per platform
-	./docker/version.sh v$(PKG_TAG)
-.ONESHELL: prod.release.dockerfiles
+.ONESHELL: prod.release.version
 
 promote:
 	@drone build promote joseluisq/static-web-server $(BUILD) $(ENV)
