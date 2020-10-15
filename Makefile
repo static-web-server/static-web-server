@@ -39,6 +39,20 @@ build:
 	@cargo build --release --target $(PKG_TARGET)
 .PHONY: build
 
+# Release test tasks
+test.release:
+	@docker run --rm -it \
+		-v $(PWD):/root/src/static-web-server \
+		-v cargo-git:/root/.cargo/git \
+		-v cargo-registry:/root/.cargo/registry \
+		-v cargo-target:/root/src/static-web-server/target \
+\
+		--workdir /root/src/static-web-server \
+		joseluisq/rust-linux-darwin-builder:$(RUST_VERSION) \
+\
+		bash -c "make prod.release"
+.PHONY: test.release
+
 linux:
 	@docker run --rm -it \
 		-v $(PWD):/root/src/static-web-server \
@@ -114,14 +128,18 @@ define build_release =
 	set -e
 	set -u
 
+	echo
 	echo "Compiling application..."
 	rustc -vV
+	echo
 	echo "Compiling release binary for $(PKG_TARGET)..."
 	cargo build --release --target $(PKG_TARGET)
 	echo
+	echo
 	echo "Compiling release binary for $(PKG_TARGET_DARWIN)..."
 	cargo build --release --target $(PKG_TARGET_DARWIN)
-	echo "Release builds completed!"
+	echo
+	echo "Release builds were compiled!"
 endef
 
 # Shrink a release binary size
@@ -135,23 +153,25 @@ define build_release_shrink =
 
 	# Linux
 	mkdir -p $(PKG_TMP_BIN_PATH)
-	cp -rf ./target/$(PKG_TARGET)/release/$(PKG_NAME) $(PKG_TMP_BIN_PATH)
+	cp -rf ./target/$(PKG_TARGET)/release/$(PKG_NAME) $(PKG_TMP_BIN_PATH)/
 
 	# Darwin
 	mkdir -p $(PKG_TMP_BIN_PATH_DARWIN)
-	cp -rf ./target/$(PKG_TARGET_DARWIN)/release/$(PKG_NAME) $(PKG_TMP_BIN_PATH_DARWIN)
+	cp -rf ./target/$(PKG_TARGET_DARWIN)/release/$(PKG_NAME) $(PKG_TMP_BIN_PATH_DARWIN)/
 
 	# Linux
 	echo "Performing Linux/Darwin binaries shrinking..."
-	echo "Size before:"
-	du -sh $(PKG_TMP_BIN_PATH)/.
+	echo "Binary sizes before:"
+	du -sh $(PKG_TMP_BIN_PATH)/$(PKG_NAME)
+	du -sh $(PKG_TMP_BIN_PATH_DARWIN)/$(PKG_NAME)
 
 	# Shrink binaries in place (tmp dir)
 	strip $(PKG_TMP_BIN_PATH)/$(PKG_NAME)
-	x86_64-apple-darwin15-strip $(PKG_TMP_BIN_PATH)/$(PKG_RELEASE_NAME_DARWIN)
+	x86_64-apple-darwin15-strip $(PKG_TMP_BIN_PATH_DARWIN)/$(PKG_NAME)
 
-	echo "Size after:"
-	du -sh $(PKG_TMP_BIN_PATH)/.
+	echo "Binary sizes after (shrinking):"
+	du -sh $(PKG_TMP_BIN_PATH)/$(PKG_NAME)
+	du -sh $(PKG_TMP_BIN_PATH_DARWIN)/$(PKG_NAME)
 
 	# Copy only Linux binary for the Docker image build process
 	echo "Copying Linux binary from $(PKG_TMP_BIN_PATH) to $(PKG_BIN_PATH) directory..."
