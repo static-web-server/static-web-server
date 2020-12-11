@@ -5,8 +5,10 @@
 **/*.tar
 **/*.zip
 **/.DS_Store
+**/*.env
 .gitignore
 *docker-compose*
 Makefile
 target
-**/*.env
+.vscode
+release

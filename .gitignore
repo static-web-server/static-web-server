@@ -14,5 +14,6 @@
 **/.DS_Store
 **/*.env
 release
+.vscode
 
 !sample.env
