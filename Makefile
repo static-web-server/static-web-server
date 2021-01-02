@@ -93,7 +93,7 @@ darwin:
 			mkdir -p release && \
 			cp -rf ./target/$(PKG_TARGET_DARWIN)/release/$(PKG_NAME) release/$(PKG_NAME)-darwin && \
 			echo \"Shrinking Darwin binary file...\" && \
-			x86_64-apple-darwin15-strip release/$(PKG_NAME)-darwin && \
+			x86_64-apple-darwin19-strip release/$(PKG_NAME)-darwin && \
 			du -sh ./release/$(PKG_NAME)-darwin"
 .PHONY: darwin
 
@@ -167,7 +167,7 @@ define build_release_shrink =
 
 	# Shrink binaries in place (tmp dir)
 	strip $(PKG_TMP_BIN_PATH)/$(PKG_NAME)
-	x86_64-apple-darwin15-strip $(PKG_TMP_BIN_PATH_DARWIN)/$(PKG_NAME)
+	x86_64-apple-darwin19-strip $(PKG_TMP_BIN_PATH_DARWIN)/$(PKG_NAME)
 
 	echo "Binary sizes after (shrinking):"
 	du -sh $(PKG_TMP_BIN_PATH)/$(PKG_NAME)
