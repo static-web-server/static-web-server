@@ -8,6 +8,7 @@ extern crate log;
 use crate::config::Options;
 use hyper_native_tls::NativeTlsServer;
 use iron::{prelude::*, Listening};
+use iron_staticfile_middleware::HttpToHttpsRedirect;
 use staticfiles::*;
 use structopt::StructOpt;
 
@@ -73,6 +74,24 @@ fn main() {
                 server_type: "Static HTTPS".to_string(),
             }),
             Result::Err(err) => panic!("{:?}", err),
+        }
+
+        // Launch redirect HTTP server (if requested)
+        if let Some(port_redirect) = opts.tls_redirect_from {
+            let addr_redirect = &format!("{}{}{}", opts.host, ":", port_redirect);
+            let host_redirect = match opts.tls_redirect_host.as_ref() {
+                Some(host) => host,
+                None => &opts.host,
+            };
+            let handler =
+                Chain::new(HttpToHttpsRedirect::new(&host_redirect, opts.port).permanent());
+            match Iron::new(handler).http(addr_redirect) {
+                Result::Ok(listening) => running_servers.push(RunningServer {
+                    listening,
+                    server_type: "Redirect HTTP".to_string(),
+                }),
+                Result::Err(err) => panic!("{:?}", err),
+            }
         }
     } else {
         // Launch static HTTP server

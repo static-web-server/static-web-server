@@ -41,6 +41,12 @@ pub struct Options {
     #[structopt(long, default_value = "", env = "SERVER_TLS_PKCS12_PASSWD")]
     /// A specified password to decrypt the private key.
     pub tls_pkcs12_passwd: String,
+    #[structopt(long, env = "SERVER_TLS_REDIRECT_FROM")]
+    /// Host port for redirecting HTTP requests to HTTPS. This option enables the HTTP redirect feature.
+    pub tls_redirect_from: Option<u16>,
+    #[structopt(long, env = "SERVER_TLS_REDIRECT_HOST")]
+    /// Host name of HTTPS site for redirecting HTTP requests to. Defaults to host address.
+    pub tls_redirect_host: Option<String>,
     #[structopt(long, default_value = "error", env = "SERVER_LOG_LEVEL")]
     /// Specify a logging level in lower case.
     pub log_level: String,
