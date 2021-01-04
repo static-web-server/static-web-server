@@ -20,6 +20,7 @@
 - First-class [Docker](https://docs.docker.com/get-started/overview/) support. [Scratch](https://hub.docker.com/_/scratch) and latest [Alpine Linux](https://hub.docker.com/_/alpine) Docker images available.
 - Server configurable via environment variables or CLI arguments.
 - MacOs binary support (`x86_64-apple-darwin`) thanks to [Rust Linux / Darwin Builder](https://github.com/joseluisq/rust-linux-darwin-builder).
+- Additional HTTP redirect server for redirecting HTTP traffic to HTTPS site.
 
 ## Releases
 
@@ -47,6 +48,8 @@ Server can be configured either via environment variables or their equivalent co
 | `SERVER_TLS` | Enables TLS/SSL support. Make sure also to adjust current server port. | Default `false` |
 | `SERVER_TLS_PKCS12` | A cryptographic identity [PKCS #12](https://docs.rs/native-tls/0.2.3/native_tls/struct.Identity.html#method.from_pkcs12) bundle file path containing a [X509 certificate](https://en.wikipedia.org/wiki/X.509) along with its corresponding private key and chain of certificates to a trusted root. | Default empty |
 | `SERVER_TLS_PKCS12_PASSWD` | A specified password to decrypt the private key. | Default empty |
+| `SERVER_TLS_REDIRECT_FROM` | Host port for redirecting HTTP requests to HTTPS. This option enables the HTTP redirect feature | Default empty (disabled) |
+| `SERVER_TLS_REDIRECT_HOST` | Host name of HTTPS site for redirecting HTTP requests to. | Default host address |
 | `SERVER_CORS_ALLOW_ORIGINS` | Specify a CORS list of allowed origin hosts separated by comas with no whitespaces. Host ports or protocols aren't being checked. Use an asterisk (*) to allow any host. See [Iron CORS crate](https://docs.rs/iron-cors/0.8.0/iron_cors/#mode-1-whitelist). | Default empty (which means CORS is disabled) |
 
 ### Command-line arguments
@@ -92,6 +95,13 @@ OPTIONS:
             corresponding private key and chain of certificates to a trusted root [env: SERVER_TLS_PKCS12=]  [default: ]
         --tls-pkcs12-passwd <tls-pkcs12-passwd>
             A specified password to decrypt the private key [env: SERVER_TLS_PKCS12_PASSWD=]  [default: ]
+
+        --tls-redirect-from <tls-redirect-from>
+            Host port for redirecting HTTP requests to HTTPS. This option enables the HTTP redirect feature [env:
+            SERVER_TLS_REDIRECT_FROM=]
+        --tls-redirect-host <tls-redirect-host>
+            Host name of HTTPS site for redirecting HTTP requests to. Defaults to host address [env:
+            SERVER_TLS_REDIRECT_HOST=]
 ```
 
 ## TLS/SSL
