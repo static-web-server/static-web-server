@@ -1,6 +1,6 @@
 use structopt::StructOpt;
 
-/// Warp Web Server
+/// Static Web Server
 #[derive(Debug, StructOpt)]
 pub struct Options {
     #[structopt(long, short = "s", default_value = "::", env = "SERVER_HOST")]

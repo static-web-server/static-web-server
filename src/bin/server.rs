@@ -4,33 +4,36 @@
 #[global_allocator]
 static ALLOC: jemallocator::Jemalloc = jemallocator::Jemalloc;
 
-#[macro_use]
 extern crate static_web_server;
 
-use self::static_web_server::{core::config, core::logger, core::rejection};
 use structopt::StructOpt;
+use tracing::info;
 use warp::Filter;
 
+use self::static_web_server::core::*;
+
 /// It creates a new server instance with given options.
-async fn server(opts: config::Options) {
-    logger::init(&opts.log_level);
+async fn server(opts: config::Options) -> Result {
+    logger::init(&opts.log_level)?;
 
     let filters = warp::get()
         .and(warp::fs::dir(opts.root))
         .with(warp::compression::gzip())
-        .recover(rejection::handle_rejection);
+        .recover(rejection::handle_rejection)
+        .with(warp::trace::request());
 
-    note!("server is listening on {}:{}", &opts.host, &opts.port);
+    info!("listening on http://[{}]:{}", &opts.host, &opts.port);
 
-    let host = opts
-        .host
-        .parse::<std::net::IpAddr>()
-        .expect("not valid IP address");
+    let host = opts.host.parse::<std::net::IpAddr>()?;
 
-    warp::serve(filters).run((host, opts.port)).await
+    warp::serve(filters).run((host, opts.port)).await;
+
+    Ok(())
 }
 
 #[tokio::main(max_threads = 10_000)]
-async fn main() {
-    server(config::Options::from_args()).await
+async fn main() -> Result {
+    server(config::Options::from_args()).await?;
+
+    Ok(())
 }

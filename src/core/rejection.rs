@@ -3,8 +3,7 @@ use std::convert::Infallible;
 use warp::http::StatusCode;
 use warp::{Rejection, Reply};
 
-// This function receives a `Rejection` and tries to return a custom
-// value, otherwise simply passes the rejection along.
+// It receives a `Rejection` and tries to return a HTML error reply.
 pub async fn handle_rejection(err: Rejection) -> Result<impl Reply, Infallible> {
     let code = if err.is_not_found() {
         StatusCode::NOT_FOUND
@@ -15,9 +14,9 @@ pub async fn handle_rejection(err: Rejection) -> Result<impl Reply, Infallible> 
     } else {
         StatusCode::INTERNAL_SERVER_ERROR
     };
-    let body = format!(
+    let content = format!(
         "<html><head><title>{}</title></head><body><center><h1>{}</h1></center></body></html>",
         code, code
     );
-    Ok(warp::reply::with_status(warp::reply::html(body), code))
+    Ok(warp::reply::with_status(warp::reply::html(content), code))
 }
