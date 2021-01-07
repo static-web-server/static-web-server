@@ -7,7 +7,7 @@ static ALLOC: jemallocator::Jemalloc = jemallocator::Jemalloc;
 extern crate static_web_server;
 
 use structopt::StructOpt;
-use tracing::info;
+use tracing::warn;
 use warp::Filter;
 
 use self::static_web_server::core::*;
@@ -22,11 +22,16 @@ async fn server(opts: config::Options) -> Result {
         .recover(rejection::handle_rejection)
         .with(warp::trace::request());
 
-    info!("listening on http://[{}]:{}", &opts.host, &opts.port);
-
     let host = opts.host.parse::<std::net::IpAddr>()?;
+    let port = opts.port;
 
-    warp::serve(filters).run((host, opts.port)).await;
+    tokio::task::spawn(warp::serve(filters).run((host, port)));
+
+    signals::wait(|sig: signals::Signal| {
+        let code = signals::as_int(sig);
+        warn!("Signal {} caught. Server execution exited.", code);
+        std::process::exit(code)
+    });
 
     Ok(())
 }
