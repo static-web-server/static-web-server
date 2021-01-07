@@ -1692,8 +1692,7 @@ dependencies = [
 [[package]]
 name = "warp"
 version = "0.2.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f41be6df54c97904af01aa23e613d4521eed7ab23537cede692d4058f6449407"
+source = "git+https://github.com/joseluisq/warp.git?branch=0.2.x#1865f785faf9bde73f0dc2b1b0778c42aee829b9"
 dependencies = [
  "async-compression",
  "bytes",
