@@ -16,22 +16,22 @@ use self::static_web_server::core::*;
 async fn server(opts: config::Options) -> Result {
     logger::init(&opts.log_level)?;
 
-    let public_head = warp::head().and(warp::fs::dir(opts.root.clone()));
-    let public_get = warp::get().and(warp::fs::dir(opts.root));
-
-    let routes = public_head.or(public_get.with(warp::compression::gzip()));
+    let public_head = warp::head().and(
+        warp::fs::dir(opts.root.clone())
+            .with(warp::trace::request())
+            .recover(rejection::handle_rejection),
+    );
+    let public_get = warp::get().and(
+        warp::fs::dir(opts.root)
+            .with(warp::trace::request())
+            .with(warp::compression::gzip(true))
+            .recover(rejection::handle_rejection),
+    );
 
     let host = opts.host.parse::<std::net::IpAddr>()?;
     let port = opts.port;
 
-    tokio::task::spawn(
-        warp::serve(
-            routes
-                .with(warp::trace::request())
-                .recover(rejection::handle_rejection),
-        )
-        .run((host, port)),
-    );
+    tokio::task::spawn(warp::serve(public_head.or(public_get)).run((host, port)));
 
     signals::wait(|sig: signals::Signal| {
         let code = signals::as_int(sig);
