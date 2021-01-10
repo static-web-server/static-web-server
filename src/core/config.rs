@@ -15,6 +15,10 @@ pub struct Options {
     /// Root directory path of static files
     pub root: String,
 
+    #[structopt(long, short = "c", default_value = "gzip", env = "SERVER_COMPRESSION")]
+    /// Compression body support for text-based files. Values: "gzip", "deflate" or "brotli"
+    pub compression: String,
+
     #[structopt(long, short = "l", default_value = "error", env = "SERVER_LOG_LEVEL")]
     /// Specify a logging level in lower case.
     pub log_level: String,

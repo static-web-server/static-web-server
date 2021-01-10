@@ -21,17 +21,62 @@ async fn server(opts: config::Options) -> Result {
             .with(warp::trace::request())
             .recover(rejection::handle_rejection),
     );
-    let public_get = warp::get().and(
-        warp::fs::dir(opts.root)
+
+    let public_get_default = warp::get().and(
+        warp::fs::dir(opts.root.clone())
             .with(warp::trace::request())
-            .with(warp::compression::gzip(true))
             .recover(rejection::handle_rejection),
     );
 
     let host = opts.host.parse::<std::net::IpAddr>()?;
     let port = opts.port;
 
-    tokio::task::spawn(warp::serve(public_head.or(public_get)).run((host, port)));
+    let accept_encoding = |v: &'static str| warp::header::contains("accept-encoding", v);
+
+    match opts.compression.as_ref() {
+        "brotli" => tokio::task::spawn(
+            warp::serve(
+                public_head.or(warp::get()
+                    .and(accept_encoding("br"))
+                    .and(
+                        warp::fs::dir(opts.root.clone())
+                            .with(warp::trace::request())
+                            .with(warp::compression::brotli(true))
+                            .recover(rejection::handle_rejection),
+                    )
+                    .or(public_get_default)),
+            )
+            .run((host, port)),
+        ),
+        "deflate" => tokio::task::spawn(
+            warp::serve(
+                public_head.or(warp::get()
+                    .and(accept_encoding("deflate"))
+                    .and(
+                        warp::fs::dir(opts.root.clone())
+                            .with(warp::trace::request())
+                            .with(warp::compression::deflate(true))
+                            .recover(rejection::handle_rejection),
+                    )
+                    .or(public_get_default)),
+            )
+            .run((host, port)),
+        ),
+        _ => tokio::task::spawn(
+            warp::serve(
+                public_head.or(warp::get()
+                    .and(accept_encoding("gzip"))
+                    .and(
+                        warp::fs::dir(opts.root.clone())
+                            .with(warp::trace::request())
+                            .with(warp::compression::gzip(true))
+                            .recover(rejection::handle_rejection),
+                    )
+                    .or(public_get_default)),
+            )
+            .run((host, port)),
+        ),
+    };
 
     signals::wait(|sig: signals::Signal| {
         let code = signals::as_int(sig);
