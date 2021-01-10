@@ -62,7 +62,7 @@ async fn server(opts: config::Options) -> Result {
             )
             .run((host, port)),
         ),
-        _ => tokio::task::spawn(
+        "gzip" => tokio::task::spawn(
             warp::serve(
                 public_head.or(warp::get()
                     .and(accept_encoding("gzip"))
@@ -76,6 +76,7 @@ async fn server(opts: config::Options) -> Result {
             )
             .run((host, port)),
         ),
+        _ => tokio::task::spawn(warp::serve(public_head.or(public_get_default)).run((host, port))),
     };
 
     signals::wait(|sig: signals::Signal| {

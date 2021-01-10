@@ -16,7 +16,8 @@ pub struct Options {
     pub root: String,
 
     #[structopt(long, short = "c", default_value = "gzip", env = "SERVER_COMPRESSION")]
-    /// Compression body support for text-based files. Values: "gzip", "deflate" or "brotli"
+    /// Compression body support for web text-based file types. Values: "gzip", "deflate" or "brotli".
+    /// Use an empty value to skip compression.
     pub compression: String,
 
     #[structopt(long, short = "l", default_value = "error", env = "SERVER_LOG_LEVEL")]
