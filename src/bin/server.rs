@@ -18,12 +18,14 @@ async fn server(opts: config::Options) -> Result {
 
     let public_head = warp::head().and(
         warp::fs::dir(opts.root.clone())
+            .map(cache::control_headers)
             .with(warp::trace::request())
             .recover(rejection::handle_rejection),
     );
 
     let public_get_default = warp::get().and(
         warp::fs::dir(opts.root.clone())
+            .map(cache::control_headers)
             .with(warp::trace::request())
             .recover(rejection::handle_rejection),
     );
@@ -40,6 +42,7 @@ async fn server(opts: config::Options) -> Result {
                     .and(accept_encoding("br"))
                     .and(
                         warp::fs::dir(opts.root.clone())
+                            .map(cache::control_headers)
                             .with(warp::trace::request())
                             .with(warp::compression::brotli(true))
                             .recover(rejection::handle_rejection),
@@ -54,6 +57,7 @@ async fn server(opts: config::Options) -> Result {
                     .and(accept_encoding("deflate"))
                     .and(
                         warp::fs::dir(opts.root.clone())
+                            .map(cache::control_headers)
                             .with(warp::trace::request())
                             .with(warp::compression::deflate(true))
                             .recover(rejection::handle_rejection),
@@ -68,6 +72,7 @@ async fn server(opts: config::Options) -> Result {
                     .and(accept_encoding("gzip"))
                     .and(
                         warp::fs::dir(opts.root.clone())
+                            .map(cache::control_headers)
                             .with(warp::trace::request())
                             .with(warp::compression::gzip(true))
                             .recover(rejection::handle_rejection),
