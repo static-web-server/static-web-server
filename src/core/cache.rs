@@ -12,13 +12,10 @@ pub fn control_headers(res: warp::fs::File) -> warp::reply::WithHeader<warp::fs:
 
     if let Some(ext) = res.path().extension() {
         if let Some(ext) = ext.to_str() {
-            // Caching (one year)
-            if CACHE_EXT_ONE_YEAR.iter().any(|n| *n == ext) {
-                max_age = 60 * 60 * 24 * 365;
-            }
-            // Caching (one hour)
             if CACHE_EXT_ONE_HOUR.iter().any(|n| *n == ext) {
                 max_age = 60 * 60;
+            } else if CACHE_EXT_ONE_YEAR.iter().any(|x| *x == ext) {
+                max_age = 60 * 60 * 24 * 365;
             }
         }
     }
