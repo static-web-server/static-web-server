@@ -20,6 +20,10 @@ categories = ["network-programming", "web-programming::http-server"]
 edition = "2018"
 include = ["src/**/*", "Cargo.toml", "Cargo.lock"]
 
+[[bin]]
+name = "static-web-server"
+path = "src/bin/server.rs"
+
 [dependencies]
 tokio = { version = "0.2", features = ["full"] }
 warp = { git = "https://github.com/joseluisq/warp.git", branch = "0.2.x", features = ["compression"] }
