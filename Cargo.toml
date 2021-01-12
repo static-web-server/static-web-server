@@ -1,46 +1,37 @@
 [package]
 name = "static-web-server"
-version = "1.12.0"
+version = "0.0.0"
 authors = ["Jose Quintana <https://git.io/joseluisq>"]
 license = "MIT OR Apache-2.0"
-description = "A blazing fast static files-serving web server powered by Rust Iron."
+description = "A blazing fast static files-serving web server."
 repository = "https://github.com/joseluisq/static-web-server"
 readme = "README.md"
 keywords = [
-    "docker-image",
     "static-web-server",
     "file-server",
     "http-server",
     "linux",
     "darwin",
     "musl-libc",
-    "x86-64"
+    "x86-64",
+    "docker-image"
 ]
 categories = ["network-programming", "web-programming::http-server"]
 edition = "2018"
 include = ["src/**/*", "Cargo.toml", "Cargo.lock"]
 
 [dependencies]
-iron = "0.6"
-log = "0.4"
-chrono = "0.4"
-env_logger = "0.7"
+tokio = { version = "0.2", features = ["full"] }
+warp = { git = "https://github.com/joseluisq/warp.git", branch = "0.2.x", features = ["compression"] }
+anyhow = "1.0"
+tracing = "0.1"
+tracing-subscriber = "0.2"
 structopt = "0.3"
-flate2 = "1.0"
-iron_staticfile_middleware = { git = "https://github.com/joseluisq/iron-staticfile-middleware.git", tag = "v0.4.2" }
-hyper-native-tls = "0.3"
 nix = "0.14"
 signal = "0.7"
-iron-cors = "0.8"
 
 [target.'cfg(all(target_env = "musl", target_pointer_width = "64"))'.dependencies.jemallocator]
 version = "0.3"
-
-[dev-dependencies]
-openssl = { version = "0.10", features = ["vendored"] }
-hyper = "0.10"
-iron-test = "0.6"
-tempdir = "0.3"
 
 [profile.release]
 lto = "fat"

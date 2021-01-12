@@ -15,5 +15,6 @@
 **/*.env
 release
 .vscode
+TODO
 
 !sample.env
