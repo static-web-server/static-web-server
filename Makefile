@@ -34,6 +34,11 @@ dev:
 	@cargo make --makefile Makefile.toml watch
 .PHONY: dev
 
+lint:
+	@rustc -vV
+	@cargo clippy --all-features -- -D warnings
+.PHONY: lint
+
 build:
 	@rustc -vV
 	@cargo build --release --target $(PKG_TARGET)
