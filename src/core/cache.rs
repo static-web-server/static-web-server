@@ -1,5 +1,5 @@
-const CACHE_EXT_ONE_HOUR: [&'static str; 4] = ["atom", "json", "rss", "xml"];
-const CACHE_EXT_ONE_YEAR: [&'static str; 30] = [
+const CACHE_EXT_ONE_HOUR: [&str; 4] = ["atom", "json", "rss", "xml"];
+const CACHE_EXT_ONE_YEAR: [&str; 30] = [
     "bmp", "bz2", "css", "map", "doc", "gif", "gz", "htc", "ico", "jpg", "mp3", "mp4", "ogg",
     "ogv", "pdf", "png", "rar", "tar", "tgz", "wav", "weba", "webm", "webp", "woff", "zip", "jpeg",
     "js", "mjs", "rtf", "woff2",
