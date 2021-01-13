@@ -15,6 +15,7 @@ For stable `v1` and contributions please refer to [1.x](https://github.com/josel
 - Suitable for lightweight [GNU/Linux Docker containers](https://hub.docker.com/r/joseluisq/static-web-server/tags). It's a fully __5MB__ static binary thanks to [Rust and Musl libc](https://doc.rust-lang.org/edition-guide/rust-2018/platform-and-target-support/musl-support-for-fully-static-binaries.html).
 - Opt-in GZip, Deflate and Brotli compression for text-based web files only.
 - Compression on demand via [Accept-Encoding](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Accept-Encoding) header.
+- [Partial Content Delivery](https://en.wikipedia.org/wiki/Byte_serving) support for byte-serving of large files.
 - [Cache Control](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Cache-Control) headers for assets.
 - [HEAD](https://tools.ietf.org/html/rfc7231#section-4.3.2) responses.
 - Lightweight and configurable logging via [tracing](https://github.com/tokio-rs/tracing) crate.
