@@ -31,7 +31,7 @@ fn on_server_running(server_name: &str, running_servers: &Vec<RunningServer>) {
     // Notify when server is running
     running_servers.iter().for_each(|server| {
         logger::log_server(&format!(
-            "{} Server \"{}\" is listening on {}",
+            "{} Server ({}) is listening on {}",
             server.server_type, server_name, server.listening.socket
         ))
     });
@@ -41,7 +41,7 @@ fn on_server_running(server_name: &str, running_servers: &Vec<RunningServer>) {
         let code = signal_manager::signal_to_int(sig);
 
         println!();
-        warn!("SIGINT {} caught. HTTP Server execution exited.", code);
+        warn!("Signal {} caught. Server execution exited.", code);
         std::process::exit(code)
     })
 }
@@ -69,11 +69,11 @@ fn main() {
         let ssl = NativeTlsServer::new(opts.tls_pkcs12, &opts.tls_pkcs12_passwd).unwrap();
 
         match Iron::new(files.handle()).https(addr, ssl) {
-            Result::Ok(listening) => running_servers.push(RunningServer {
+            Ok(listening) => running_servers.push(RunningServer {
                 listening,
-                server_type: "Static HTTPS".to_string(),
+                server_type: "HTTPS".to_string(),
             }),
-            Result::Err(err) => panic!("{:?}", err),
+            Err(err) => panic!("{:?}", err),
         }
 
         // Launch redirect HTTP server (if requested)
@@ -86,21 +86,21 @@ fn main() {
             let handler =
                 Chain::new(HttpToHttpsRedirect::new(&host_redirect, opts.port).permanent());
             match Iron::new(handler).http(addr_redirect) {
-                Result::Ok(listening) => running_servers.push(RunningServer {
+                Ok(listening) => running_servers.push(RunningServer {
                     listening,
                     server_type: "Redirect HTTP".to_string(),
                 }),
-                Result::Err(err) => panic!("{:?}", err),
+                Err(err) => panic!("{:?}", err),
             }
         }
     } else {
         // Launch static HTTP server
         match Iron::new(files.handle()).http(addr) {
-            Result::Ok(listening) => running_servers.push(RunningServer {
+            Ok(listening) => running_servers.push(RunningServer {
                 listening,
-                server_type: "Static HTTP".to_string(),
+                server_type: "HTTP".to_string(),
             }),
-            Result::Err(err) => panic!("{:?}", err),
+            Err(err) => panic!("{:?}", err),
         }
     }
     on_server_running(&opts.name, &running_servers);
