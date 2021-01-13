@@ -1,7 +1,7 @@
-# Static Web Server [![Docker Image Version (tag latest semver)](https://img.shields.io/docker/v/joseluisq/static-web-server/1)](https://hub.docker.com/r/joseluisq/static-web-server/) ![CI](https://github.com/joseluisq/static-web-server/workflows/CI/badge.svg) [![Docker Image Size (tag)](https://img.shields.io/docker/image-size/joseluisq/static-web-server/1)](https://hub.docker.com/r/joseluisq/static-web-server/tags) [![Docker Image](https://img.shields.io/docker/pulls/joseluisq/static-web-server.svg)](https://hub.docker.com/r/joseluisq/static-web-server/)
+# Static Web Server [![CI](https://github.com/joseluisq/static-web-server/workflows/CI/badge.svg)](https://github.com/joseluisq/static-web-server/actions?query=workflow%3ACI) [![Docker Image Version (tag latest semver)](https://img.shields.io/docker/v/joseluisq/static-web-server/1)](https://hub.docker.com/r/joseluisq/static-web-server/) [![Docker Image Size (tag)](https://img.shields.io/docker/image-size/joseluisq/static-web-server/1)](https://hub.docker.com/r/joseluisq/static-web-server/tags) [![Docker Image](https://img.shields.io/docker/pulls/joseluisq/static-web-server.svg)](https://hub.docker.com/r/joseluisq/static-web-server/)
 
-**STATUS:** This is the WIP v2 release under **active** development.
-For stable release v1 and contributions please refer to branch [1.x](https://github.com/joseluisq/static-web-server/tree/1.x).
+**Status:** WIP `v2` release under **active** development.<br>
+For stable `v1` and contributions please refer to [1.x](https://github.com/joseluisq/static-web-server/tree/1.x) branch.
 
 > A blazing fast static files-serving web server. :zap:
 
