@@ -8,11 +8,11 @@ const CACHE_EXT_ONE_YEAR: [&str; 30] = [
 /// It applies the corresponding Cache-Control headers based on a set of file types.
 pub fn control_headers(res: warp::fs::File) -> warp::reply::WithHeader<warp::fs::File> {
     // Default max-age value in seconds (one day)
-    let mut max_age = 60 * 60 * 24 as u64;
+    let mut max_age = 60 * 60 * 24_u64;
 
     if let Some(ext) = res.path().extension() {
         if let Some(ext) = ext.to_str() {
-            if CACHE_EXT_ONE_HOUR.iter().any(|n| *n == ext) {
+            if CACHE_EXT_ONE_HOUR.iter().any(|x| *x == ext) {
                 max_age = 60 * 60;
             } else if CACHE_EXT_ONE_YEAR.iter().any(|x| *x == ext) {
                 max_age = 60 * 60 * 24 * 365;
@@ -34,5 +34,5 @@ pub fn control_headers(res: warp::fs::File) -> warp::reply::WithHeader<warp::fs:
 
 /// It caps a duration value at ~136 years.
 fn duration(n: u64) -> u32 {
-    std::cmp::min(n.clone(), u32::MAX as u64) as u32
+    std::cmp::min(n, u32::MAX as u64) as u32
 }
