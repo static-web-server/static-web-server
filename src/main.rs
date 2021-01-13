@@ -27,7 +27,7 @@ struct RunningServer {
     server_type: String,
 }
 
-fn on_server_running(server_name: &str, running_servers: &Vec<RunningServer>) {
+fn on_server_running(server_name: &str, running_servers: &[RunningServer]) {
     // Notify when server is running
     running_servers.iter().for_each(|server| {
         logger::log_server(&format!(
