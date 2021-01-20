@@ -25,14 +25,15 @@ name = "static-web-server"
 path = "src/bin/server.rs"
 
 [dependencies]
-tokio = { version = "0.2", features = ["full"] }
-warp = { git = "https://github.com/joseluisq/warp.git", branch = "0.2.x", features = ["compression"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
+warp = { git = "https://github.com/joseluisq/warp.git", branch = "0.3.x", features = ["compression"] }
 anyhow = "1.0"
 tracing = "0.1"
 tracing-subscriber = "0.2"
 structopt = "0.3"
 nix = "0.14"
 signal = "0.7"
+num_cpus = { version = "1.13" }
 
 [target.'cfg(all(target_env = "musl", target_pointer_width = "64"))'.dependencies.jemallocator]
 version = "0.3"
