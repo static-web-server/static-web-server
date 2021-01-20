@@ -13,6 +13,8 @@
 **/*.gz
 **/.DS_Store
 **/*.env
+**/*.svg
+**/*.data
 release
 .vscode
 TODO
