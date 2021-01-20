@@ -93,9 +93,25 @@ async fn server(opts: config::Options) -> Result {
     Ok(())
 }
 
-#[tokio::main(max_threads = 10_000)]
-async fn main() -> Result {
-    server(config::Options::from_args()).await?;
+fn main() -> Result {
+    let opts = config::Options::from_args();
+    let n = if opts.threads_multiplier == 0 {
+        1
+    } else {
+        opts.threads_multiplier
+    };
+    let threads = num_cpus::get() * n;
+
+    tokio::runtime::Builder::new_multi_thread()
+        .worker_threads(threads)
+        .enable_all()
+        .build()?
+        .block_on(async {
+            let r = server(opts).await;
+            if r.is_err() {
+                panic!("Server error: {:?}", r.unwrap_err())
+            }
+        });
 
     Ok(())
 }

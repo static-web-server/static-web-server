@@ -11,6 +11,18 @@ pub struct Options {
     /// Host port
     pub port: u16,
 
+    #[structopt(
+        long,
+        short = "t",
+        default_value = "8",
+        env = "SERVER_THREADS_MULTIPLIER"
+    )]
+    /// Number of worker threads multiplier that'll be multiplied by the number of system CPUs
+    /// using the formula: `worker threads = number of CPUs * n` where `n` is the value that changes here.
+    /// When multiplier value is 0 or 1 then the `number of CPUs` is used.
+    /// Number of worker threads result should be a number between 1 and 32,768 though it is advised to keep this value on the smaller side.
+    pub threads_multiplier: usize,
+
     #[structopt(long, short = "r", default_value = "./public", env = "SERVER_ROOT")]
     /// Root directory path of static files
     pub root: String,
