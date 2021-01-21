@@ -27,6 +27,22 @@ pub struct Options {
     /// Root directory path of static files
     pub root: String,
 
+    #[structopt(
+        long,
+        default_value = "./public/50x.html",
+        env = "SERVER_ERROR_PAGE_50X"
+    )]
+    /// HTML file path for 50x errors. If path is not specified or simply don't exists then server will use a generic HTML error message.
+    pub page50x: String,
+
+    #[structopt(
+        long,
+        default_value = "./public/404.html",
+        env = "SERVER_ERROR_PAGE_404"
+    )]
+    /// HTML file path for 404 errors. If path is not specified or simply don't exists then server will use a generic HTML error message.
+    pub page404: String,
+
     #[structopt(long, short = "c", default_value = "gzip", env = "SERVER_COMPRESSION")]
     /// Compression body support for web text-based file types. Values: "gzip", "deflate" or "brotli".
     /// Use an empty value to skip compression.

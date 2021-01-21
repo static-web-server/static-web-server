@@ -36,3 +36,10 @@ pub fn control_headers(res: warp::fs::File) -> warp::reply::WithHeader<warp::fs:
 fn duration(n: u64) -> u32 {
     std::cmp::min(n, u32::MAX as u64) as u32
 }
+
+/// Warp filter in order to check for an `Accept-Encoding` header value.
+pub fn accept_encoding(
+    val: &'static str,
+) -> impl warp::Filter<Extract = (), Error = warp::Rejection> + Copy {
+    warp::header::contains("accept-encoding", val)
+}
