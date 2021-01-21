@@ -15,8 +15,8 @@ pub async fn handle_rejection(
         StatusCode::NOT_FOUND
     } else {
         if err
-        .find::<warp::filters::body::BodyDeserializeError>()
-        .is_some()
+            .find::<warp::filters::body::BodyDeserializeError>()
+            .is_some()
         {
             StatusCode::BAD_REQUEST
         } else if err.find::<warp::reject::MethodNotAllowed>().is_some() {

@@ -30,10 +30,10 @@ async fn server(opts: config::Options) -> Result {
         warp::fs::dir(root_dir.clone())
             .map(cache::control_headers)
             .with(warp::trace::request())
-            .recover(move |r| {
+            .recover(move |rej| {
                 let page404_a = page404_a.clone();
                 let page50x_a = page50x_a.clone();
-                async move { rejection::handle_rejection(page404_a, page50x_a, r).await }
+                async move { rejection::handle_rejection(page404_a, page50x_a, rej).await }
             }),
     );
 
@@ -44,10 +44,10 @@ async fn server(opts: config::Options) -> Result {
         warp::fs::dir(root_dir.clone())
             .map(cache::control_headers)
             .with(warp::trace::request())
-            .recover(move |r| {
+            .recover(move |rej| {
                 let page404_b = page404_b.clone();
                 let page50x_b = page50x_b.clone();
-                async move { rejection::handle_rejection(page404_b, page50x_b, r).await }
+                async move { rejection::handle_rejection(page404_b, page50x_b, rej).await }
             }),
     );
 
@@ -58,75 +58,69 @@ async fn server(opts: config::Options) -> Result {
     let page404_c = page404.clone();
     let page50x_c = page50x.clone();
     match opts.compression.as_ref() {
-        "brotli" => {
-            tokio::task::spawn(
-                warp::serve(
-                    public_head.or(warp::get()
-                        .and(cache::accept_encoding("br"))
-                        .and(
-                            warp::fs::dir(root_dir.clone())
-                                .map(cache::control_headers)
-                                .with(warp::trace::request())
-                                .with(warp::compression::brotli(true))
-                                .recover(move |r| {
-                                    let page404_c = page404_c.clone();
-                                    let page50x_c = page50x_c.clone();
-                                    async move {
-                                        rejection::handle_rejection(page404_c, page50x_c, r).await
-                                    }
-                                }),
-                        )
-                        .or(public_get_default)),
-                )
-                .run((host, port)),
+        "brotli" => tokio::task::spawn(
+            warp::serve(
+                public_head.or(warp::get()
+                    .and(cache::accept_encoding("br"))
+                    .and(
+                        warp::fs::dir(root_dir.clone())
+                            .map(cache::control_headers)
+                            .with(warp::trace::request())
+                            .with(warp::compression::brotli(true))
+                            .recover(move |rej| {
+                                let page404_c = page404_c.clone();
+                                let page50x_c = page50x_c.clone();
+                                async move {
+                                    rejection::handle_rejection(page404_c, page50x_c, rej).await
+                                }
+                            }),
+                    )
+                    .or(public_get_default)),
             )
-        }
-        "deflate" => {
-            tokio::task::spawn(
-                warp::serve(
-                    public_head.or(warp::get()
-                        .and(cache::accept_encoding("deflate"))
-                        .and(
-                            warp::fs::dir(root_dir.clone())
-                                .map(cache::control_headers)
-                                .with(warp::trace::request())
-                                .with(warp::compression::deflate(true))
-                                .recover(move |r| {
-                                    let page404_c = page404_c.clone();
-                                    let page50x_c = page50x_c.clone();
-                                    async move {
-                                        rejection::handle_rejection(page404_c, page50x_c, r).await
-                                    }
-                                }),
-                        )
-                        .or(public_get_default)),
-                )
-                .run((host, port)),
+            .run((host, port)),
+        ),
+        "deflate" => tokio::task::spawn(
+            warp::serve(
+                public_head.or(warp::get()
+                    .and(cache::accept_encoding("deflate"))
+                    .and(
+                        warp::fs::dir(root_dir.clone())
+                            .map(cache::control_headers)
+                            .with(warp::trace::request())
+                            .with(warp::compression::deflate(true))
+                            .recover(move |rej| {
+                                let page404_c = page404_c.clone();
+                                let page50x_c = page50x_c.clone();
+                                async move {
+                                    rejection::handle_rejection(page404_c, page50x_c, rej).await
+                                }
+                            }),
+                    )
+                    .or(public_get_default)),
             )
-        }
-        "gzip" => {
-            tokio::task::spawn(
-                warp::serve(
-                    public_head.or(warp::get()
-                        .and(cache::accept_encoding("gzip"))
-                        .and(
-                            warp::fs::dir(root_dir.clone())
-                                .map(cache::control_headers)
-                                .with(warp::trace::request())
-                                .with(warp::compression::gzip(true))
-                                .recover(move |r| {
-                                    let page404_c = page404_c.clone();
-                                    let page50x_c = page50x_c.clone();
-                                    async move {
-                                        rejection::handle_rejection(page404_c, page50x_c, r).await
-                                    }
-                                }),
-                        )
-                        .or(public_get_default)),
-                )
-                .run((host, port)),
+            .run((host, port)),
+        ),
+        "gzip" => tokio::task::spawn(
+            warp::serve(
+                public_head.or(warp::get()
+                    .and(cache::accept_encoding("gzip"))
+                    .and(
+                        warp::fs::dir(root_dir.clone())
+                            .map(cache::control_headers)
+                            .with(warp::trace::request())
+                            .with(warp::compression::gzip(true))
+                            .recover(move |rej| {
+                                let page404_c = page404_c.clone();
+                                let page50x_c = page50x_c.clone();
+                                async move {
+                                    rejection::handle_rejection(page404_c, page50x_c, rej).await
+                                }
+                            }),
+                    )
+                    .or(public_get_default)),
             )
-        }
+            .run((host, port)),
+        ),
         _ => tokio::task::spawn(warp::serve(public_head.or(public_get_default)).run((host, port))),
     };
 
