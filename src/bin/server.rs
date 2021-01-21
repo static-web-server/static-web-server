@@ -55,21 +55,19 @@ async fn server(opts: config::Options) -> Result {
     let port = opts.port;
 
     // Public GET/HEAD endpoints with compression (deflate, gzip, brotli, none)
-    let page404_c = page404.clone();
-    let page50x_c = page50x.clone();
     match opts.compression.as_ref() {
         "brotli" => tokio::task::spawn(
             warp::serve(
                 public_head.or(warp::get()
                     .and(cache::accept_encoding("br"))
                     .and(
-                        warp::fs::dir(root_dir.clone())
+                        warp::fs::dir(root_dir)
                             .map(cache::control_headers)
                             .with(warp::trace::request())
                             .with(warp::compression::brotli(true))
                             .recover(move |rej| {
-                                let page404_c = page404_c.clone();
-                                let page50x_c = page50x_c.clone();
+                                let page404_c = page404.clone();
+                                let page50x_c = page50x.clone();
                                 async move {
                                     rejection::handle_rejection(page404_c, page50x_c, rej).await
                                 }
@@ -84,13 +82,13 @@ async fn server(opts: config::Options) -> Result {
                 public_head.or(warp::get()
                     .and(cache::accept_encoding("deflate"))
                     .and(
-                        warp::fs::dir(root_dir.clone())
+                        warp::fs::dir(root_dir)
                             .map(cache::control_headers)
                             .with(warp::trace::request())
                             .with(warp::compression::deflate(true))
                             .recover(move |rej| {
-                                let page404_c = page404_c.clone();
-                                let page50x_c = page50x_c.clone();
+                                let page404_c = page404.clone();
+                                let page50x_c = page50x.clone();
                                 async move {
                                     rejection::handle_rejection(page404_c, page50x_c, rej).await
                                 }
@@ -105,13 +103,13 @@ async fn server(opts: config::Options) -> Result {
                 public_head.or(warp::get()
                     .and(cache::accept_encoding("gzip"))
                     .and(
-                        warp::fs::dir(root_dir.clone())
+                        warp::fs::dir(root_dir)
                             .map(cache::control_headers)
                             .with(warp::trace::request())
                             .with(warp::compression::gzip(true))
                             .recover(move |rej| {
-                                let page404_c = page404_c.clone();
-                                let page50x_c = page50x_c.clone();
+                                let page404_c = page404.clone();
+                                let page50x_c = page50x.clone();
                                 async move {
                                     rejection::handle_rejection(page404_c, page50x_c, rej).await
                                 }
