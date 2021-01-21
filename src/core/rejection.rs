@@ -13,20 +13,18 @@ pub async fn handle_rejection(
     let code = if err.is_not_found() {
         content = page_404;
         StatusCode::NOT_FOUND
+    } else if err
+        .find::<warp::filters::body::BodyDeserializeError>()
+        .is_some()
+    {
+        StatusCode::BAD_REQUEST
+    } else if err.find::<warp::reject::MethodNotAllowed>().is_some() {
+        StatusCode::METHOD_NOT_ALLOWED
+    } else if err.find::<warp::reject::UnsupportedMediaType>().is_some() {
+        StatusCode::UNSUPPORTED_MEDIA_TYPE
     } else {
-        if err
-            .find::<warp::filters::body::BodyDeserializeError>()
-            .is_some()
-        {
-            StatusCode::BAD_REQUEST
-        } else if err.find::<warp::reject::MethodNotAllowed>().is_some() {
-            StatusCode::METHOD_NOT_ALLOWED
-        } else if err.find::<warp::reject::UnsupportedMediaType>().is_some() {
-            StatusCode::UNSUPPORTED_MEDIA_TYPE
-        } else {
-            content = page_50x;
-            StatusCode::INTERNAL_SERVER_ERROR
-        }
+        content = page_50x;
+        StatusCode::INTERNAL_SERVER_ERROR
     };
 
     if content.is_empty() {
