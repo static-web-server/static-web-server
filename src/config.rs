@@ -2,7 +2,7 @@ use structopt::StructOpt;
 
 /// Static Web Server
 #[derive(Debug, StructOpt)]
-pub struct Options {
+pub struct Config {
     #[structopt(long, short = "a", default_value = "::", env = "SERVER_HOST")]
     /// Host address (E.g 127.0.0.1 or ::1)
     pub host: String,

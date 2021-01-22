@@ -20,6 +20,8 @@ pub async fn handle_rejection(
         StatusCode::BAD_REQUEST
     } else if err.find::<warp::reject::MethodNotAllowed>().is_some() {
         StatusCode::METHOD_NOT_ALLOWED
+    } else if err.find::<warp::filters::cors::CorsForbidden>().is_some() {
+        StatusCode::FORBIDDEN
     } else if err.find::<warp::reject::UnsupportedMediaType>().is_some() {
         StatusCode::UNSUPPORTED_MEDIA_TYPE
     } else {
