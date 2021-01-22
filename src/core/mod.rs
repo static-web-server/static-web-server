@@ -1,5 +1,6 @@
 pub mod cache;
 pub mod config;
+pub mod cors;
 pub mod helpers;
 pub mod logger;
 pub mod rejection;

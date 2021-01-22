@@ -3,7 +3,7 @@ use structopt::StructOpt;
 /// Static Web Server
 #[derive(Debug, StructOpt)]
 pub struct Options {
-    #[structopt(long, short = "s", default_value = "::", env = "SERVER_HOST")]
+    #[structopt(long, short = "a", default_value = "::", env = "SERVER_HOST")]
     /// Host address (E.g 127.0.0.1 or ::1)
     pub host: String,
 
@@ -13,7 +13,7 @@ pub struct Options {
 
     #[structopt(
         long,
-        short = "t",
+        short = "n",
         default_value = "8",
         env = "SERVER_THREADS_MULTIPLIER"
     )]
@@ -23,7 +23,7 @@ pub struct Options {
     /// Number of worker threads result should be a number between 1 and 32,768 though it is advised to keep this value on the smaller side.
     pub threads_multiplier: usize,
 
-    #[structopt(long, short = "r", default_value = "./public", env = "SERVER_ROOT")]
+    #[structopt(long, short = "d", default_value = "./public", env = "SERVER_ROOT")]
     /// Root directory path of static files
     pub root: String,
 
@@ -43,12 +43,21 @@ pub struct Options {
     /// HTML file path for 404 errors. If path is not specified or simply don't exists then server will use a generic HTML error message.
     pub page404: String,
 
-    #[structopt(long, short = "c", default_value = "gzip", env = "SERVER_COMPRESSION")]
+    #[structopt(long, short = "x", default_value = "gzip", env = "SERVER_COMPRESSION")]
     /// Compression body support for web text-based file types. Values: "gzip", "deflate" or "brotli".
     /// Use an empty value to skip compression.
     pub compression: String,
 
-    #[structopt(long, short = "l", default_value = "error", env = "SERVER_LOG_LEVEL")]
+    #[structopt(long, short = "g", default_value = "error", env = "SERVER_LOG_LEVEL")]
     /// Specify a logging level in lower case.
     pub log_level: String,
+
+    #[structopt(
+        long,
+        short = "c",
+        default_value = "",
+        env = "SERVER_CORS_ALLOW_ORIGINS"
+    )]
+    /// Specify a optional CORS list of allowed origin hosts separated by comas. Host ports or protocols aren't being checked. Use an asterisk (*) to allow any host.
+    pub cors_allow_origins: String,
 }
