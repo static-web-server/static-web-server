@@ -1,7 +1,7 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use super::Result;
+use crate::Result;
 
 /// Validate and return a directory path.
 pub fn get_valid_dirpath<P: AsRef<Path>>(path: P) -> Result<PathBuf>

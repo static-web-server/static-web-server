@@ -1,7 +1,7 @@
 use tracing::Level;
 use tracing_subscriber::fmt::format::FmtSpan;
 
-use super::Result;
+use crate::Result;
 
 /// Initialize logging builder with its levels.
 pub fn init(level: &str) -> Result {
