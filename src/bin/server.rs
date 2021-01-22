@@ -6,11 +6,11 @@ static ALLOC: jemallocator::Jemalloc = jemallocator::Jemalloc;
 
 extern crate static_web_server;
 
-use self::static_web_server::*;
+use self::static_web_server::{Config, Result, Server};
 use structopt::StructOpt;
 
 fn main() -> Result {
-    server::Server::new(config::Config::from_args()).run()?;
+    Server::new(Config::from_args()).run()?;
 
     Ok(())
 }
