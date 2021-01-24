@@ -1,6 +1,6 @@
 [package]
 name = "static-web-server"
-version = "1.12.0"
+version = "1.13.0"
 authors = ["Jose Quintana <https://git.io/joseluisq>"]
 license = "MIT OR Apache-2.0"
 description = "A blazing fast static files-serving web server powered by Rust Iron."
