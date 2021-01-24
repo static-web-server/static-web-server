@@ -3,7 +3,7 @@ use std::convert::Infallible;
 use warp::http::StatusCode;
 use warp::{Rejection, Reply};
 
-// It receives a `Rejection` and tries to return a HTML error reply.
+/// It receives a `Rejection` and tries to return the corresponding HTML error reply.
 pub async fn handle_rejection(
     page_404: String,
     page_50x: String,

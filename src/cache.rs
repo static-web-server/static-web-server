@@ -1,8 +1,8 @@
 const CACHE_EXT_ONE_HOUR: [&str; 4] = ["atom", "json", "rss", "xml"];
 const CACHE_EXT_ONE_YEAR: [&str; 30] = [
-    "bmp", "bz2", "css", "map", "doc", "gif", "gz", "htc", "ico", "jpg", "mp3", "mp4", "ogg",
-    "ogv", "pdf", "png", "rar", "tar", "tgz", "wav", "weba", "webm", "webp", "woff", "zip", "jpeg",
-    "js", "mjs", "rtf", "woff2",
+    "bmp", "bz2", "css", "doc", "gif", "gz", "htc", "ico", "jpeg", "jpg", "js", "map", "mjs",
+    "mp3", "mp4", "ogg", "ogv", "pdf", "png", "rar", "rtf", "tar", "tgz", "wav", "weba", "webm",
+    "webp", "woff", "woff2", "zip",
 ];
 
 /// It applies the corresponding Cache-Control headers based on a set of file types.
@@ -35,11 +35,4 @@ pub fn control_headers(res: warp::fs::File) -> warp::reply::WithHeader<warp::fs:
 /// It caps a duration value at ~136 years.
 fn duration(n: u64) -> u32 {
     std::cmp::min(n, u32::MAX as u64) as u32
-}
-
-/// Warp filter in order to check for an `Accept-Encoding` header value.
-pub fn has_accept_encoding(
-    val: &'static str,
-) -> impl warp::Filter<Extract = (), Error = warp::Rejection> + Copy {
-    warp::header::contains("accept-encoding", val)
 }

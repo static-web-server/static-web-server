@@ -27,11 +27,10 @@ where
     }
 }
 
-// Read the entire contents of a file into a string if it's valid or empty otherwise.
+/// Read the entire contents of a file into a string if valid or returns empty otherwise.
 pub fn read_file_content(p: &str) -> String {
     if !p.is_empty() && Path::new(p).exists() {
         return fs::read_to_string(p).unwrap_or_default();
     }
-
     String::new()
 }

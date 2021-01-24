@@ -6,6 +6,7 @@ extern crate anyhow;
 pub mod cache;
 pub mod config;
 pub mod cors;
+pub mod filters;
 pub mod helpers;
 pub mod logger;
 pub mod rejection;

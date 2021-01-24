@@ -1,7 +1,7 @@
 use std::net::{IpAddr, SocketAddr};
 use warp::Filter;
 
-use crate::{cache, config, cors, helpers, logger, rejection, signals, Result};
+use crate::{cache, config, cors, filters, helpers, logger, rejection, signals, Result};
 
 /// Define a multi-thread HTTP/HTTPS web server.
 pub struct Server {
@@ -95,7 +95,7 @@ impl Server {
                     );
                     warp::serve(
                         public_head.with(cors_filter.clone()).or(warp::get()
-                            .and(cache::has_accept_encoding("br"))
+                            .and(filters::has_accept_encoding("br"))
                             .and(with_dir)
                             .with(cors_filter.clone())
                             .or(public_get_default.with(cors_filter))),
@@ -105,7 +105,7 @@ impl Server {
                 } else {
                     warp::serve(
                         public_head.or(warp::get()
-                            .and(cache::has_accept_encoding("br"))
+                            .and(filters::has_accept_encoding("br"))
                             .and(with_dir)
                             .or(public_get_default)),
                     )
@@ -131,7 +131,7 @@ impl Server {
                     );
                     warp::serve(
                         public_head.with(cors_filter.clone()).or(warp::get()
-                            .and(cache::has_accept_encoding("deflate"))
+                            .and(filters::has_accept_encoding("deflate"))
                             .and(with_dir)
                             .with(cors_filter.clone())
                             .or(public_get_default.with(cors_filter))),
@@ -141,7 +141,7 @@ impl Server {
                 } else {
                     warp::serve(
                         public_head.or(warp::get()
-                            .and(cache::has_accept_encoding("deflate"))
+                            .and(filters::has_accept_encoding("deflate"))
                             .and(with_dir)
                             .or(public_get_default)),
                     )
@@ -167,7 +167,7 @@ impl Server {
                     );
                     warp::serve(
                         public_head.with(cors_filter.clone()).or(warp::get()
-                            .and(cache::has_accept_encoding("gzip"))
+                            .and(filters::has_accept_encoding("gzip"))
                             .and(with_dir)
                             .with(cors_filter.clone())
                             .or(public_get_default.with(cors_filter))),
@@ -177,7 +177,7 @@ impl Server {
                 } else {
                     warp::serve(
                         public_head.or(warp::get()
-                            .and(cache::has_accept_encoding("gzip"))
+                            .and(filters::has_accept_encoding("gzip"))
                             .and(with_dir)
                             .or(public_get_default)),
                     )
