@@ -70,28 +70,28 @@ FLAGS:
     -V, --version    Prints version information
 
 OPTIONS:
-        --assets <assets>
+    -f, --assets <assets>
             Assets directory path for add cache headers functionality [env: SERVER_ASSETS=]  [default: ./public/assets]
 
-        --cors-allow-origins <cors-allow-origins>
+    -c, --cors-allow-origins <cors-allow-origins>
             Specify a CORS list of allowed origin hosts separated by comas with no whitespaces. Host ports or protocols
             aren't being checked. Use an asterisk (*) to allow any host [env: SERVER_CORS_ALLOW_ORIGINS=]  [default: ]
-        --host <host>                                Host address (E.g 127.0.0.1) [env: SERVER_HOST=]  [default: [::]]
-        --log-level <log-level>
+    -a, --host <host>                                Host address (E.g 127.0.0.1) [env: SERVER_HOST=]  [default: [::]]
+    -g, --log-level <log-level>
             Specify a logging level in lower case [env: SERVER_LOG_LEVEL=]  [default: error]
 
-        --name <name>                                Name for server [env: SERVER_NAME=]  [default: my-static-server]
+    -l, --name <name>                                Name for server [env: SERVER_NAME=]  [default: my-static-server]
         --page404 <page404>
             HTML file path for 404 errors. If path is not specified or simply don't exists then server will use a
             generic HTML error message [env: SERVER_ERROR_PAGE_404=]  [default: ./public/404.html]
         --page50x <page50x>
             HTML file path for 50x errors. If path is not specified or simply don't exists then server will use a
             generic HTML error message [env: SERVER_ERROR_PAGE_50X=]  [default: ./public/50x.html]
-        --port <port>                                Host port [env: SERVER_PORT=]  [default: 80]
-        --root <root>
+    -p, --port <port>                                Host port [env: SERVER_PORT=]  [default: 80]
+    -d, --root <root>
             Root directory path of static files [env: SERVER_ROOT=]  [default: ./public]
 
-        --tls <tls>                                  Enables TLS/SSL support [env: SERVER_TLS=]
+    -t, --tls <tls>                                  Enables TLS/SSL support [env: SERVER_TLS=]
         --tls-pkcs12 <tls-pkcs12>
             A cryptographic identity PKCS #12 bundle file path containing a X509 certificate along with its
             corresponding private key and chain of certificates to a trusted root [env: SERVER_TLS_PKCS12=]  [default: ]
