@@ -37,7 +37,7 @@ impl Server {
         Ok(())
     }
 
-    /// Run the inner `Warp` forever on the current thread.
+    /// Run the inner `Warp` server forever on the current thread.
     async fn start_server(self) -> Result {
         let opts = self.opts;
 
@@ -46,7 +46,7 @@ impl Server {
         let ip = opts.host.parse::<IpAddr>()?;
         let addr = SocketAddr::from((ip, opts.port));
 
-        // Check a valid root directory
+        // Check for a valid root directory
         let root_dir = helpers::get_valid_dirpath(opts.root)?;
 
         // Custom error pages content
