@@ -60,4 +60,16 @@ pub struct Config {
     )]
     /// Specify a optional CORS list of allowed origin hosts separated by comas. Host ports or protocols aren't being checked. Use an asterisk (*) to allow any host.
     pub cors_allow_origins: String,
+
+    #[structopt(long, short = "t", env = "SERVER_HTTP2_TLS")]
+    /// Enables HTTP/2 with TLS support.
+    pub http2: bool,
+
+    #[structopt(long, default_value = "", env = "SERVER_HTTP2_TLS_CERT")]
+    /// Specify the file path to read the certificate.
+    pub http2_tls_cert: String,
+
+    #[structopt(long, default_value = "", env = "SERVER_HTTP2_TLS_KEY")]
+    /// Specify the file path to read the private key.
+    pub http2_tls_key: String,
 }

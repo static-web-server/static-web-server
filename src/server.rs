@@ -75,6 +75,11 @@ impl Server {
         // Public GET endpoint (default)
         let public_get_default = warp::get().and(base_dir_filter.clone());
 
+        // HTTP/2 + TLS
+        let http2 = opts.http2;
+        let http2_tls_cert_path = opts.http2_tls_cert;
+        let http2_tls_key_path = opts.http2_tls_key;
+
         // Public GET/HEAD endpoints with compression (deflate, gzip, brotli, none)
         match opts.compression.as_ref() {
             "brotli" => tokio::task::spawn(async move {
@@ -93,24 +98,40 @@ impl Server {
                         cors_enabled = ?true,
                         allowed_origins = ?cors_allowed_origins
                     );
-                    warp::serve(
+                    let server = warp::serve(
                         public_head.with(cors_filter.clone()).or(warp::get()
                             .and(filters::has_accept_encoding("br"))
                             .and(with_dir)
                             .with(cors_filter.clone())
                             .or(public_get_default.with(cors_filter))),
-                    )
-                    .run(addr)
-                    .await
+                    );
+                    if http2 {
+                        server
+                            .tls()
+                            .cert_path(http2_tls_cert_path)
+                            .key_path(http2_tls_key_path)
+                            .run(addr)
+                            .await;
+                    } else {
+                        server.run(addr).await
+                    }
                 } else {
-                    warp::serve(
+                    let server = warp::serve(
                         public_head.or(warp::get()
                             .and(filters::has_accept_encoding("br"))
                             .and(with_dir)
                             .or(public_get_default)),
-                    )
-                    .run(addr)
-                    .await
+                    );
+                    if http2 {
+                        server
+                            .tls()
+                            .cert_path(http2_tls_cert_path)
+                            .key_path(http2_tls_key_path)
+                            .run(addr)
+                            .await;
+                    } else {
+                        server.run(addr).await
+                    }
                 }
             }),
             "deflate" => tokio::task::spawn(async move {
@@ -129,24 +150,40 @@ impl Server {
                         cors_enabled = ?true,
                         allowed_origins = ?cors_allowed_origins
                     );
-                    warp::serve(
+                    let server = warp::serve(
                         public_head.with(cors_filter.clone()).or(warp::get()
                             .and(filters::has_accept_encoding("deflate"))
                             .and(with_dir)
                             .with(cors_filter.clone())
                             .or(public_get_default.with(cors_filter))),
-                    )
-                    .run(addr)
-                    .await
+                    );
+                    if http2 {
+                        server
+                            .tls()
+                            .cert_path(http2_tls_cert_path)
+                            .key_path(http2_tls_key_path)
+                            .run(addr)
+                            .await;
+                    } else {
+                        server.run(addr).await
+                    }
                 } else {
-                    warp::serve(
+                    let server = warp::serve(
                         public_head.or(warp::get()
                             .and(filters::has_accept_encoding("deflate"))
                             .and(with_dir)
                             .or(public_get_default)),
-                    )
-                    .run(addr)
-                    .await
+                    );
+                    if http2 {
+                        server
+                            .tls()
+                            .cert_path(http2_tls_cert_path)
+                            .key_path(http2_tls_key_path)
+                            .run(addr)
+                            .await;
+                    } else {
+                        server.run(addr).await
+                    }
                 }
             }),
             "gzip" => tokio::task::spawn(async move {
@@ -165,24 +202,40 @@ impl Server {
                         cors_enabled = ?true,
                         allowed_origins = ?cors_allowed_origins
                     );
-                    warp::serve(
+                    let server = warp::serve(
                         public_head.with(cors_filter.clone()).or(warp::get()
                             .and(filters::has_accept_encoding("gzip"))
                             .and(with_dir)
                             .with(cors_filter.clone())
                             .or(public_get_default.with(cors_filter))),
-                    )
-                    .run(addr)
-                    .await
+                    );
+                    if http2 {
+                        server
+                            .tls()
+                            .cert_path(http2_tls_cert_path)
+                            .key_path(http2_tls_key_path)
+                            .run(addr)
+                            .await;
+                    } else {
+                        server.run(addr).await
+                    }
                 } else {
-                    warp::serve(
+                    let server = warp::serve(
                         public_head.or(warp::get()
                             .and(filters::has_accept_encoding("gzip"))
                             .and(with_dir)
                             .or(public_get_default)),
-                    )
-                    .run(addr)
-                    .await
+                    );
+                    if http2 {
+                        server
+                            .tls()
+                            .cert_path(http2_tls_cert_path)
+                            .key_path(http2_tls_key_path)
+                            .run(addr)
+                            .await;
+                    } else {
+                        server.run(addr).await
+                    }
                 }
             }),
             _ => tokio::task::spawn(async move {
@@ -194,13 +247,29 @@ impl Server {
                     let public_get_default = warp::get()
                         .and(base_dir_filter.clone())
                         .with(cors_filter.clone());
-                    warp::serve(public_head.or(public_get_default.with(cors_filter)))
-                        .run(addr)
-                        .await
+                    let server = warp::serve(public_head.or(public_get_default.with(cors_filter)));
+                    if http2 {
+                        server
+                            .tls()
+                            .cert_path(http2_tls_cert_path)
+                            .key_path(http2_tls_key_path)
+                            .run(addr)
+                            .await;
+                    } else {
+                        server.run(addr).await
+                    }
                 } else {
-                    warp::serve(public_head.or(public_get_default))
-                        .run(addr)
-                        .await
+                    let server = warp::serve(public_head.or(public_get_default));
+                    if http2 {
+                        server
+                            .tls()
+                            .cert_path(http2_tls_cert_path)
+                            .key_path(http2_tls_key_path)
+                            .run(addr)
+                            .await;
+                    } else {
+                        server.run(addr).await
+                    }
                 }
             }),
         };
