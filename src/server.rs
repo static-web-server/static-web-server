@@ -80,7 +80,7 @@ impl Server {
         let http2_tls_cert_path = opts.http2_tls_cert;
         let http2_tls_key_path = opts.http2_tls_key;
 
-        // Public GET/HEAD endpoints with compression (deflate, gzip, brotli, none)
+        // Public GET/HEAD endpoints with compression (gzip, brotli or none)
         match opts.compression.as_ref() {
             "brotli" => tokio::task::spawn(async move {
                 let with_dir = warp::fs::dir(root_dir)
@@ -119,58 +119,6 @@ impl Server {
                     let server = warp::serve(
                         public_head.or(warp::get()
                             .and(filters::has_accept_encoding("br"))
-                            .and(with_dir)
-                            .or(public_get_default)),
-                    );
-                    if http2 {
-                        server
-                            .tls()
-                            .cert_path(http2_tls_cert_path)
-                            .key_path(http2_tls_key_path)
-                            .run(addr)
-                            .await;
-                    } else {
-                        server.run(addr).await
-                    }
-                }
-            }),
-            "deflate" => tokio::task::spawn(async move {
-                let with_dir = warp::fs::dir(root_dir)
-                    .map(cache::control_headers)
-                    .with(warp::trace::request())
-                    .with(warp::compression::deflate(true))
-                    .recover(move |rej| {
-                        let page404 = page404.clone();
-                        let page50x = page50x.clone();
-                        async move { rejection::handle_rejection(page404, page50x, rej).await }
-                    });
-
-                if let Some(cors_filter) = cors_filter {
-                    tracing::info!(
-                        cors_enabled = ?true,
-                        allowed_origins = ?cors_allowed_origins
-                    );
-                    let server = warp::serve(
-                        public_head.with(cors_filter.clone()).or(warp::get()
-                            .and(filters::has_accept_encoding("deflate"))
-                            .and(with_dir)
-                            .with(cors_filter.clone())
-                            .or(public_get_default.with(cors_filter))),
-                    );
-                    if http2 {
-                        server
-                            .tls()
-                            .cert_path(http2_tls_cert_path)
-                            .key_path(http2_tls_key_path)
-                            .run(addr)
-                            .await;
-                    } else {
-                        server.run(addr).await
-                    }
-                } else {
-                    let server = warp::serve(
-                        public_head.or(warp::get()
-                            .and(filters::has_accept_encoding("deflate"))
                             .and(with_dir)
                             .or(public_get_default)),
                     );

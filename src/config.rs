@@ -44,7 +44,7 @@ pub struct Config {
     pub page404: String,
 
     #[structopt(long, short = "x", default_value = "gzip", env = "SERVER_COMPRESSION")]
-    /// Compression body support for web text-based file types. Values: "gzip", "deflate" or "brotli".
+    /// Compression body support for web text-based file types. Values: "gzip" or "brotli".
     /// Use an empty value to skip compression.
     pub compression: String,
 
