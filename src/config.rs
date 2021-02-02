@@ -1,6 +1,6 @@
 use structopt::StructOpt;
 
-/// Static Web Server
+/// A blazing fast static files-serving web server powered by Rust
 #[derive(Debug, StructOpt)]
 pub struct Config {
     #[structopt(long, short = "a", default_value = "::", env = "SERVER_HOST")]
@@ -24,7 +24,7 @@ pub struct Config {
     pub threads_multiplier: usize,
 
     #[structopt(long, short = "d", default_value = "./public", env = "SERVER_ROOT")]
-    /// Root directory path of static files
+    /// Root directory path of static files.
     pub root: String,
 
     #[structopt(
@@ -44,12 +44,12 @@ pub struct Config {
     pub page404: String,
 
     #[structopt(long, short = "x", default_value = "gzip", env = "SERVER_COMPRESSION")]
-    /// Compression body support for web text-based file types. Values: "gzip" or "brotli".
+    /// Compression body support for text-based web file types only. Values: "gzip" or "brotli".
     /// Use an empty value to skip compression.
     pub compression: String,
 
     #[structopt(long, short = "g", default_value = "error", env = "SERVER_LOG_LEVEL")]
-    /// Specify a logging level in lower case.
+    /// Specify a logging level in lower case. Values: error, warn, info, debug or trace
     pub log_level: String,
 
     #[structopt(
@@ -58,11 +58,11 @@ pub struct Config {
         default_value = "",
         env = "SERVER_CORS_ALLOW_ORIGINS"
     )]
-    /// Specify a optional CORS list of allowed origin hosts separated by comas. Host ports or protocols aren't being checked. Use an asterisk (*) to allow any host.
+    /// Specify an optional CORS list of allowed origin hosts separated by comas. Host ports or protocols aren't being checked. Use an asterisk (*) to allow any host.
     pub cors_allow_origins: String,
 
     #[structopt(long, short = "t", env = "SERVER_HTTP2_TLS")]
-    /// Enables HTTP/2 with TLS support.
+    /// Enable HTTP/2 with TLS support.
     pub http2: bool,
 
     #[structopt(long, default_value = "", env = "SERVER_HTTP2_TLS_CERT")]
