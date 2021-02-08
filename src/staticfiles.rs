@@ -1,14 +1,14 @@
+use iron::mime;
+use iron::prelude::*;
+use iron_cors::CorsMiddleware;
+use std::collections::HashSet;
+use std::time::Duration;
+
 use crate::error_page::ErrorPage;
 use crate::gzip::GzipMiddleware;
 use crate::helpers;
 use crate::logger::{log_server, Logger};
-
-use iron::mime;
-use iron::prelude::*;
-use iron_cors::CorsMiddleware;
-use iron_staticfile_middleware::{Cache, GuessContentType, ModifyWith, Prefix, Staticfile};
-use std::collections::HashSet;
-use std::time::Duration;
+use crate::staticfile_middleware::{Cache, GuessContentType, ModifyWith, Prefix, Staticfile};
 
 /// An Iron middleware for static files-serving.
 pub struct StaticFiles {

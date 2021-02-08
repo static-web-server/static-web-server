@@ -20,18 +20,26 @@ categories = ["network-programming", "web-programming::http-server"]
 edition = "2018"
 include = ["src/**/*", "Cargo.toml", "Cargo.lock"]
 
+[[bin]]
+name = "static-web-server"
+path = "src/bin/server.rs"
+
 [dependencies]
-iron = "0.6"
-log = "0.4"
 chrono = "0.4"
 env_logger = "0.7"
-structopt = "0.3"
 flate2 = "1.0"
-iron_staticfile_middleware = { git = "https://github.com/joseluisq/iron-staticfile-middleware.git", tag = "v0.4.2" }
 hyper-native-tls = "0.3"
-nix = "0.14"
-signal = "0.7"
+iron = "0.6"
 iron-cors = "0.8"
+log = "0.4"
+mime = "0.2"
+mime_guess = "1.8"
+nix = "0.14"
+rustc-serialize = "0.3"
+signal = "0.7"
+structopt = "0.3"
+time = "0.1"
+url = "1.4"
 
 [target.'cfg(all(target_env = "musl", target_pointer_width = "64"))'.dependencies.jemallocator]
 version = "0.3"
@@ -43,6 +51,10 @@ iron-test = "0.6"
 tempdir = "0.3"
 
 [profile.release]
+opt-level = 3
 lto = "fat"
 codegen-units = 1
 panic = "abort"
+debug = false
+rpath = false
+debug-assertions = false
