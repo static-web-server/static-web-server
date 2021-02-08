@@ -79,6 +79,6 @@ pub struct Options {
         default_value = "",
         env = "SERVER_CORS_ALLOW_ORIGINS"
     )]
-    /// Specify a CORS list of allowed origin hosts separated by comas with no whitespaces. Host ports or protocols aren't being checked. Use an asterisk (*) to allow any host.
+    /// Specify a CORS list of allowed origin hosts separated by comas. Host ports or protocols aren't being checked. Use an asterisk (*) to allow any host.
     pub cors_allow_origins: String,
 }
