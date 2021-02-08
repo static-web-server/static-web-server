@@ -80,7 +80,7 @@ impl StaticFiles {
             } else {
                 let allowed_hosts = allowed_hosts
                     .split(',')
-                    .map(|s| s.to_string())
+                    .map(|s| s.trim().to_string())
                     .collect::<HashSet<_>>();
                 chain.link_around(CorsMiddleware::with_whitelist(allowed_hosts));
             };
