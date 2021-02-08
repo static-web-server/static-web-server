@@ -5,10 +5,6 @@ use iron::AfterMiddleware;
 use std::fs;
 use std::path::Path;
 
-const PAGE_404: &str = "<h2>404</h2><p>Content could not found</p>";
-const PAGE_50X: &str =
-    "<h2>50x</h2><p>SERVICE is temporarily unavailable due an unexpected error</p>";
-
 /// Custom Error pages middleware for Iron
 pub struct ErrorPage {
     /// HTML file content for 404 errors.
@@ -23,13 +19,13 @@ impl ErrorPage {
         let page404 = if Path::new(&page_404_path.as_ref()).exists() {
             fs::read_to_string(page_404_path).unwrap()
         } else {
-            String::from(PAGE_404)
+            String::new()
         };
 
         let page50x = if Path::new(&page_50x_path.as_ref()).exists() {
             fs::read_to_string(page_50x_path).unwrap()
         } else {
-            String::from(PAGE_50X)
+            String::new()
         };
 
         ErrorPage { page404, page50x }
@@ -37,38 +33,75 @@ impl ErrorPage {
 }
 
 impl AfterMiddleware for ErrorPage {
-    fn after(&self, req: &mut Request, resp: Response) -> IronResult<Response> {
-        let mut no_status_error = false;
-
+    fn after(&self, req: &mut Request, mut resp: Response) -> IronResult<Response> {
         let content_type = "text/html"
             .parse::<mime::Mime>()
             .expect("Unable to create a default content type header");
 
-        let mut resp = match resp.status {
-            Some(status::NotFound) => {
-                Response::with((content_type, status::NotFound, self.page404.as_str()))
-            }
-            Some(status::InternalServerError) => Response::with((
-                content_type,
-                status::InternalServerError,
-                self.page50x.as_str(),
-            )),
-            Some(status::BadGateway) => {
-                Response::with((content_type, status::BadGateway, self.page50x.as_str()))
-            }
-            Some(status::ServiceUnavailable) => Response::with((
-                content_type,
-                status::ServiceUnavailable,
-                self.page50x.as_str(),
-            )),
-            Some(status::GatewayTimeout) => {
-                Response::with((content_type, status::GatewayTimeout, self.page50x.as_str()))
-            }
-            _ => {
-                no_status_error = true;
-                resp
-            }
-        };
+        // Check for 4xx and 50x status codes
+        let mut no_status_error = false;
+        if let Some(stat) = resp.status {
+            resp = match stat {
+                // 4xx
+                status::BadRequest
+                | status::Unauthorized
+                | status::PaymentRequired
+                | status::Forbidden
+                | status::NotFound
+                | status::MethodNotAllowed
+                | status::NotAcceptable
+                | status::ProxyAuthenticationRequired
+                | status::RequestTimeout
+                | status::Conflict
+                | status::Gone
+                | status::LengthRequired
+                | status::PreconditionFailed
+                | status::PayloadTooLarge
+                | status::UriTooLong
+                | status::UnsupportedMediaType
+                | status::RangeNotSatisfiable
+                | status::ExpectationFailed => {
+                    let mut content = String::new();
+
+                    // Extra check for 404 status code and content
+                    if stat == status::NotFound && !self.page404.is_empty() {
+                        content = self.page404.clone()
+                    }
+
+                    if content.is_empty() {
+                        content = format!(
+                            "<html><head><title>{}</title></head><body><center><h1>{}</h1></center></body></html>",
+                            stat.to_string(), stat.to_string());
+                    }
+                    Response::with((content_type, stat, content))
+                }
+                // 50x
+                status::InternalServerError
+                | status::NotImplemented
+                | status::BadGateway
+                | status::ServiceUnavailable
+                | status::GatewayTimeout
+                | status::HttpVersionNotSupported
+                | status::VariantAlsoNegotiates
+                | status::InsufficientStorage
+                | status::LoopDetected => {
+                    let content = if self.page50x.is_empty() {
+                        format!(
+                            "<html><head><title>{}</title></head><body><center><h1>{}</h1></center></body></html>",
+                            stat.to_string(), stat.to_string()
+                        )
+                    } else {
+                        self.page50x.clone()
+                    };
+                    Response::with((content_type, stat, content))
+                }
+                // other status codes like 200, etc
+                _ => {
+                    no_status_error = true;
+                    resp
+                }
+            };
+        }
 
         // Empty response body only on HEAD requests and status error (404,50x)
         if req.method == iron::method::Head && !no_status_error {
