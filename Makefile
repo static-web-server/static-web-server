@@ -93,7 +93,7 @@ darwin:
 		bash -c "\
 			echo Building Darwin release binary... && \
 			rustc -vV && \
-			cargo build --release --target $(PKG_TARGET_DARWIN) && \
+			env CC=o64-clang CXX=o64-clang++ cargo build --release --target $(PKG_TARGET_DARWIN) && \
 			du -sh ./target/$(PKG_TARGET_DARWIN)/release/$(PKG_NAME) && \
 			mkdir -p release && \
 			cp -rf ./target/$(PKG_TARGET_DARWIN)/release/$(PKG_NAME) release/$(PKG_NAME)-darwin && \
@@ -142,7 +142,7 @@ define build_release =
 	echo
 	echo
 	echo "Compiling release binary for $(PKG_TARGET_DARWIN)..."
-	cargo build --release --target $(PKG_TARGET_DARWIN)
+	env CC=o64-clang CXX=o64-clang++ cargo build --release --target $(PKG_TARGET_DARWIN)
 	echo
 	echo "Release builds were compiled!"
 endef
