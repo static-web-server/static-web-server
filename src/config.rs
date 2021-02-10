@@ -81,4 +81,12 @@ pub struct Options {
     )]
     /// Specify a CORS list of allowed origin hosts separated by comas. Host ports or protocols aren't being checked. Use an asterisk (*) to allow any host.
     pub cors_allow_origins: String,
+
+    #[structopt(
+        long,
+        short = "i",
+        env = "SERVER_DIRECTORY_LISTING"
+    )]
+    /// Enable directory listing for all requests ending with the slash character (‘/’).
+    pub directory_listing: bool,
 }

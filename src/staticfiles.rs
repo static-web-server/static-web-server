@@ -21,6 +21,7 @@ pub struct StaticFilesOptions {
     pub page_50x_path: String,
     pub page_404_path: String,
     pub cors_allow_origins: String,
+    pub directory_listing: bool,
 }
 
 impl StaticFiles {
@@ -60,7 +61,8 @@ impl StaticFiles {
 
         // Define middleware chain
         let mut chain = Chain::new(
-            Staticfile::new(root_dir, assets_dir).expect("Directory to serve files was not found"),
+            Staticfile::new(root_dir, assets_dir, self.opts.directory_listing)
+                .expect("Directory to serve files was not found"),
         );
         let one_day = Duration::new(60 * 60 * 24, 0);
         let one_year = Duration::new(60 * 60 * 24 * 365, 0);
