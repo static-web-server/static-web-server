@@ -13,25 +13,6 @@ struct RunningServer {
     server_type: String,
 }
 
-fn on_server_running(server_name: &str, running_servers: &[RunningServer]) {
-    // Notify when server is running
-    running_servers.iter().for_each(|server| {
-        logger::log_server(&format!(
-            "{} Server ({}) is listening on {}",
-            server.server_type, server_name, server.listening.socket
-        ))
-    });
-
-    // Wait for incoming signals (E.g Ctrl+C (SIGINT), SIGTERM, etc
-    signal_manager::wait_for_signal(|sig: signal::Signal| {
-        let code = signal_manager::signal_to_int(sig);
-
-        println!();
-        warn!("Signal {} caught. Server execution exited.", code);
-        std::process::exit(code)
-    })
-}
-
 /// Run HTTP/HTTPS web server
 pub fn run(opts: Options) {
     logger::init(&opts.log_level);
@@ -44,14 +25,18 @@ pub fn run(opts: Options) {
         assets_dir: opts.assets,
         page_50x_path: opts.page50x,
         page_404_path: opts.page404,
-        cors_allow_origins: opts.cors_allow_origins,
-        directory_listing: opts.directory_listing,
+        cors_allow_origins: opts.cors_allow_origins.unwrap_or_default(),
+        directory_listing: opts.directory_listing.unwrap_or_default(),
     });
 
     let mut running_servers = Vec::new();
-    if opts.tls {
+    if opts.tls.unwrap_or_default() {
         // Launch static HTTPS server
-        let ssl = NativeTlsServer::new(opts.tls_pkcs12, &opts.tls_pkcs12_passwd).unwrap();
+        let ssl = NativeTlsServer::new(
+            opts.tls_pkcs12.unwrap_or_default(),
+            &opts.tls_pkcs12_passwd.unwrap_or_default(),
+        )
+        .unwrap();
 
         match Iron::new(files.handle()).https(addr, ssl) {
             Ok(listening) => running_servers.push(RunningServer {
@@ -88,5 +73,30 @@ pub fn run(opts: Options) {
             Err(err) => panic!("{:?}", err),
         }
     }
-    on_server_running(&opts.name, &running_servers);
+
+    on_server_running(&opts.name.unwrap_or_default(), &running_servers);
+}
+
+fn on_server_running(server_name: &str, running_servers: &[RunningServer]) {
+    // Notify when server is running
+    running_servers.iter().for_each(|server| {
+        let mut servername = String::new();
+        if !server_name.is_empty() {
+            servername = format!(" ({})", servername);
+        }
+
+        logger::log_server(&format!(
+            "{} Server{} is listening on {}",
+            server.server_type, servername, server.listening.socket
+        ))
+    });
+
+    // Wait for incoming signals (E.g Ctrl+C (SIGINT), SIGTERM, etc
+    signal_manager::wait_for_signal(|sig: signal::Signal| {
+        let code = signal_manager::signal_to_int(sig);
+
+        println!();
+        warn!("Signal {} caught. Server execution exited.", code);
+        std::process::exit(code)
+    })
 }

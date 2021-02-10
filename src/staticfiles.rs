@@ -59,6 +59,10 @@ impl StaticFiles {
             Ok(v) => v,
         };
 
+        if self.opts.directory_listing {
+            log_server("Directory listing enabled");
+        }
+
         // Define middleware chain
         let mut chain = Chain::new(
             Staticfile::new(root_dir, assets_dir, self.opts.directory_listing)
@@ -72,7 +76,6 @@ impl StaticFiles {
 
         // CORS support
         let allowed_hosts = &self.opts.cors_allow_origins;
-
         if !allowed_hosts.is_empty() {
             log_server("CORS enabled");
             log_server(&format!("Access-Control-Allow-Origin: {}", allowed_hosts));

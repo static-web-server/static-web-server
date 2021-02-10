@@ -3,14 +3,9 @@ use structopt::StructOpt;
 /// A blazing fast static files-serving web server powered by Rust Iron
 #[derive(Debug, StructOpt)]
 pub struct Options {
-    #[structopt(
-        long,
-        short = "l",
-        default_value = "my-static-server",
-        env = "SERVER_NAME"
-    )]
+    #[structopt(long, short = "l", env = "SERVER_NAME")]
     /// Name for server
-    pub name: String,
+    pub name: Option<String>,
 
     #[structopt(long, short = "a", default_value = "[::]", env = "SERVER_HOST")]
     /// Host address (E.g 127.0.0.1)
@@ -51,15 +46,15 @@ pub struct Options {
 
     #[structopt(long, short = "t", env = "SERVER_TLS")]
     /// Enables TLS/SSL support.
-    pub tls: bool,
+    pub tls: Option<bool>,
 
-    #[structopt(long, default_value = "", env = "SERVER_TLS_PKCS12")]
+    #[structopt(long, env = "SERVER_TLS_PKCS12")]
     /// A cryptographic identity PKCS #12 bundle file path containing a X509 certificate along with its corresponding private key and chain of certificates to a trusted root.
-    pub tls_pkcs12: String,
+    pub tls_pkcs12: Option<String>,
 
-    #[structopt(long, default_value = "", env = "SERVER_TLS_PKCS12_PASSWD")]
+    #[structopt(long, env = "SERVER_TLS_PKCS12_PASSWD")]
     /// A specified password to decrypt the private key.
-    pub tls_pkcs12_passwd: String,
+    pub tls_pkcs12_passwd: Option<String>,
 
     #[structopt(long, env = "SERVER_TLS_REDIRECT_FROM")]
     /// Host port for redirecting HTTP requests to HTTPS. This option enables the HTTP redirect feature.
@@ -73,16 +68,11 @@ pub struct Options {
     /// Specify a logging level in lower case.
     pub log_level: String,
 
-    #[structopt(
-        long,
-        short = "c",
-        default_value = "",
-        env = "SERVER_CORS_ALLOW_ORIGINS"
-    )]
+    #[structopt(long, short = "c", env = "SERVER_CORS_ALLOW_ORIGINS")]
     /// Specify a CORS list of allowed origin hosts separated by comas. Host ports or protocols aren't being checked. Use an asterisk (*) to allow any host.
-    pub cors_allow_origins: String,
+    pub cors_allow_origins: Option<String>,
 
     #[structopt(long, short = "i", env = "SERVER_DIRECTORY_LISTING")]
     /// Enable directory listing for all requests ending with the slash character (‘/’).
-    pub directory_listing: bool,
+    pub directory_listing: Option<bool>,
 }
