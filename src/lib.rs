@@ -4,7 +4,6 @@ extern crate log;
 extern crate iron;
 extern crate mime;
 extern crate mime_guess;
-extern crate rustc_serialize;
 extern crate time;
 extern crate url;
 
