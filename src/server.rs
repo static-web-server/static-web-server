@@ -32,19 +32,20 @@ fn on_server_running(server_name: &str, running_servers: &[RunningServer]) {
     })
 }
 
+/// Run HTTP/HTTPS web server
 pub fn run(opts: Options) {
     logger::init(&opts.log_level);
 
     let addr = &format!("{}{}{}", opts.host, ":", opts.port);
 
     // Configure & launch the HTTP server
-
     let files = StaticFiles::new(StaticFilesOptions {
         root_dir: opts.root,
         assets_dir: opts.assets,
         page_50x_path: opts.page50x,
         page_404_path: opts.page404,
         cors_allow_origins: opts.cors_allow_origins,
+        directory_listing: opts.directory_listing,
     });
 
     let mut running_servers = Vec::new();

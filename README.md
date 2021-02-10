@@ -19,6 +19,7 @@
 - [HEAD](https://tools.ietf.org/html/rfc7231#section-4.3.2) responses support.
 - [TLS](https://www.openssl.org/) support via [Rust Native TLS](https://docs.rs/native-tls/0.2.3/native_tls/) crate.
 - Lightweight and configurable logging.
+- Directory listing support.
 - First-class [Docker](https://docs.docker.com/get-started/overview/) support. [Scratch](https://hub.docker.com/_/scratch) and latest [Alpine Linux](https://hub.docker.com/_/alpine) Docker images available.
 - Server configurable via environment variables or CLI arguments.
 - MacOs binary support (`x86_64-apple-darwin`) thanks to [Rust Linux / Darwin Builder](https://github.com/joseluisq/rust-linux-darwin-builder).
@@ -52,7 +53,8 @@ Server can be configured either via environment variables or their equivalent co
 | `SERVER_TLS_PKCS12_PASSWD`  | A specified password to decrypt the private key.                                                                                                                                                                                                                                                     | Default empty                                                                                                                   |
 | `SERVER_TLS_REDIRECT_FROM`  | Host port for redirecting HTTP requests to HTTPS. This option enables the HTTP redirect feature                                                                                                                                                                                                      | Default empty (disabled)                                                                                                        |
 | `SERVER_TLS_REDIRECT_HOST`  | Host name of HTTPS site for redirecting HTTP requests to.                                                                                                                                                                                                                                            | Default host address                                                                                                            |
-| `SERVER_CORS_ALLOW_ORIGINS` | Specify a CORS list of allowed origin hosts separated by comas. Host ports or protocols aren't being checked. Use an asterisk (*) to allow any host. See [Iron CORS crate](https://docs.rs/iron-cors/0.8.0/iron_cors/#mode-1-whitelist).                                         | Default empty (which means CORS is disabled)                                                                                    |
+| `SERVER_CORS_ALLOW_ORIGINS` | Specify a CORS list of allowed origin hosts separated by comas. Host ports or protocols aren't being checked. Use an asterisk (*) to allow any host. See [Iron CORS crate](https://docs.rs/iron-cors/0.8.0/iron_cors/#mode-1-whitelist).                                                             | Default empty (which means CORS is disabled)                                                                                    |
+| `SERVER_DIRECTORY_LISTING`  | Enable directory listing for all requests ending with the slash character (‘/’)                                                                                                                                                                                                                      | Default `false` (which means it's disabled)                                                                                    |
 
 ### Command-line arguments
 
@@ -74,8 +76,11 @@ OPTIONS:
             Assets directory path for add cache headers functionality [env: SERVER_ASSETS=]  [default: ./public/assets]
 
     -c, --cors-allow-origins <cors-allow-origins>
-            Specify a CORS list of allowed origin hosts separated by comas with no whitespaces. Host ports or protocols
-            aren't being checked. Use an asterisk (*) to allow any host [env: SERVER_CORS_ALLOW_ORIGINS=]  [default: ]
+            Specify a CORS list of allowed origin hosts separated by comas. Host ports or protocols aren't being
+            checked. Use an asterisk (*) to allow any host [env: SERVER_CORS_ALLOW_ORIGINS=]  [default: ]
+    -i, --directory-listing <directory-listing>
+            Enable directory listing for all requests ending with the slash character (‘/’) [env:
+            SERVER_DIRECTORY_LISTING=]
     -a, --host <host>                                Host address (E.g 127.0.0.1) [env: SERVER_HOST=]  [default: [::]]
     -g, --log-level <log-level>
             Specify a logging level in lower case [env: SERVER_LOG_LEVEL=]  [default: error]
