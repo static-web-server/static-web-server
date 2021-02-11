@@ -35,12 +35,14 @@ iron-cors = "0.8"
 log = "0.4"
 mime = "0.2"
 mime_guess = "1.8"
-nix = "0.14"
-signal = "0.7"
 structopt = { version = "0.3", default-features = false }
 time = "0.1"
 url = "1.4"
 
+[target.'cfg(not(windows))'.dependencies.nix]
+version = "0.14"
+[target.'cfg(not(windows))'.dependencies.signal]
+version = "0.7"
 [target.'cfg(all(target_env = "musl", target_pointer_width = "64"))'.dependencies.jemallocator]
 version = "0.3"
 
