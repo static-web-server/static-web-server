@@ -64,8 +64,10 @@ impl Staticfile {
             res
         };
 
-        let path_resolved = PathBuf::from(helpers::adjust_canonicalization(path_resolved));
         let base_path = if is_assets { &self.assets } else { &self.root };
+        let path_resolved = PathBuf::from(helpers::adjust_canonicalization(
+            path_resolved.canonicalize()?,
+        ));
 
         // Protect against path/directory traversal
         if !path_resolved.starts_with(&base_path) {
@@ -89,7 +91,10 @@ impl Handler for Staticfile {
         // Resolve path on file system
         let path_resolved = match self.resolve_path(&req.url.path()) {
             Ok(file_path) => file_path,
-            Err(_) => return Ok(Response::with(status::NotFound)),
+            Err(e) => {
+                trace!("{}", e);
+                return Ok(Response::with(status::NotFound));
+            }
         };
 
         // 1. Check if "directory listing" feature is enabled,
