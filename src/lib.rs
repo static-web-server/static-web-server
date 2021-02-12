@@ -13,7 +13,10 @@ pub mod gzip;
 pub mod helpers;
 pub mod logger;
 pub mod server;
+
+#[cfg(not(windows))]
 pub mod signal_manager;
+
 pub mod staticfile_middleware;
 pub mod staticfiles;
 

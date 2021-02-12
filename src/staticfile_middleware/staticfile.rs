@@ -1,7 +1,7 @@
 use humansize::{file_size_opts, FileSize};
 use iron::headers::{
-    AcceptEncoding, AcceptRanges, ContentEncoding, ContentLength, Encoding, HttpDate,
-    IfModifiedSince, LastModified, Range, RangeUnit,
+    AcceptRanges, ContentEncoding, ContentLength, Encoding, HttpDate, IfModifiedSince,
+    LastModified, Range, RangeUnit,
 };
 use iron::method::Method;
 use iron::middleware::Handler;
@@ -10,11 +10,11 @@ use iron::prelude::*;
 use iron::status;
 use std::fs::{File, Metadata};
 use std::path::{Path, PathBuf};
+use std::time::SystemTime;
 use std::time::UNIX_EPOCH;
 use std::{error, io};
-use std::{ffi::OsString, time::SystemTime};
 
-use crate::staticfile_middleware::helpers;
+use crate::helpers as utils;
 use crate::staticfile_middleware::partial_file::PartialFile;
 
 /// Recursively serves files from the specified root and assets directories.
@@ -25,12 +25,12 @@ pub struct Staticfile {
 }
 
 impl Staticfile {
-    pub fn new<P>(root: P, assets: P, dir_list: bool) -> io::Result<Staticfile>
+    pub fn new<P: AsRef<Path>>(root: P, assets: P, dir_list: bool) -> io::Result<Staticfile>
     where
-        P: AsRef<Path>,
+        PathBuf: From<P>,
     {
-        let root = root.as_ref().canonicalize()?;
-        let assets = assets.as_ref().canonicalize()?;
+        let root = root.into();
+        let assets = assets.into();
 
         Ok(Staticfile {
             root,
@@ -64,12 +64,15 @@ impl Staticfile {
             res
         };
 
-        let resolved = resolved.canonicalize()?;
-        let path = if is_assets { &self.assets } else { &self.root };
+        let resolved = PathBuf::from(utils::adjust_canonicalization(resolved));
+        let base_path = if is_assets { &self.assets } else { &self.root };
 
         // Protect against path/directory traversal
-        if !resolved.starts_with(&path) {
-            return Result::Err(From::from(format!("Cannot leave {:?} path", &path)));
+        if !resolved.starts_with(&base_path) {
+            return Err(From::from(format!(
+                "Cannot leave {:?} base path",
+                &base_path
+            )));
         }
 
         Ok(resolved)
@@ -173,10 +176,12 @@ impl Handler for Staticfile {
         // 2. Otherwise proceed with the normal file-response process
 
         // Get current file metadata
-        let accept_gz = helpers::accept_gzip(req.headers.get::<AcceptEncoding>());
-        let file = match StaticFileWithMetadata::search(&file_path, accept_gz) {
+        let file = match StaticFileWithMetadata::search(file_path.clone()) {
             Ok(f) => f,
-            Err(_) => return Ok(Response::with(status::NotFound)),
+            Err(e) => {
+                trace!("{}", e);
+                return Ok(Response::with(status::NotFound));
+            }
         };
 
         // Apply last modified date time
@@ -260,47 +265,20 @@ struct StaticFileWithMetadata {
 }
 
 impl StaticFileWithMetadata {
-    pub fn search<P>(
-        path: P,
-        allow_gz: bool,
-    ) -> Result<StaticFileWithMetadata, Box<dyn error::Error>>
-    // TODO: unbox
-    where
-        P: Into<PathBuf>,
-    {
-        let mut file_path = path.into();
+    pub fn search(path: PathBuf) -> Result<StaticFileWithMetadata, Box<dyn error::Error>> {
+        let mut file_path = path;
         trace!("Opening {}", file_path.display());
-        let mut file = StaticFileWithMetadata::open(&file_path)?;
+        let metadata = std::fs::metadata(&file_path)?;
 
         // Look for index.html inside of a directory
-        if file.metadata.is_dir() {
+        if metadata.is_dir() {
             file_path.push("index.html");
             trace!("Redirecting to index {}", file_path.display());
-            file = StaticFileWithMetadata::open(&file_path)?;
         }
 
+        let file = StaticFileWithMetadata::open(&file_path)?;
         if file.metadata.is_file() {
-            if allow_gz {
-                // Find the foo.gz sibling of foo
-                let mut side_by_side_path: OsString = file_path.into();
-                side_by_side_path.push(".gz");
-                file_path = side_by_side_path.into();
-                trace!("Attempting to find side-by-side GZ {}", file_path.display());
-
-                match StaticFileWithMetadata::open(&file_path) {
-                    Ok(mut gz_file) => {
-                        if gz_file.metadata.is_file() {
-                            gz_file.is_gz = true;
-                            Ok(gz_file)
-                        } else {
-                            Ok(file)
-                        }
-                    }
-                    Err(_) => Ok(file),
-                }
-            } else {
-                Ok(file)
-            }
+            Ok(file)
         } else {
             Err(From::from("Requested path was not a regular file"))
         }
