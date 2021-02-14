@@ -33,20 +33,35 @@ impl StaticFiles {
     /// Handle static files for current `StaticFiles` middleware.
     pub fn handle(&self) -> Chain {
         // Check root directory
-        let p = PathBuf::from(&self.opts.root_dir).canonicalize().unwrap();
+        let p = match PathBuf::from(&self.opts.root_dir).canonicalize() {
+            Ok(p) => p,
+            Err(e) => {
+                error!("Root directory path not found or inaccessible");
+                debug!("Error: {}", e);
+                std::process::exit(1)
+            }
+        };
         let root_dir = PathBuf::from(helpers::adjust_canonicalization(p));
 
         // Check assets directory
-        let p = PathBuf::from(&self.opts.assets_dir).canonicalize().unwrap();
+        let p = match PathBuf::from(&self.opts.assets_dir).canonicalize() {
+            Ok(p) => p,
+            Err(e) => {
+                error!("Assets directory path not found or inaccessible",);
+                debug!("Error: {}", e);
+                std::process::exit(1)
+            }
+        };
         let assets_dir = PathBuf::from(helpers::adjust_canonicalization(p));
 
         // Get assets directory name
         let assets_dirname = &match helpers::get_dirname(&assets_dir) {
+            Ok(v) => v,
             Err(e) => {
-                error!("{}", e);
+                error!("Unable to get assets directory name");
+                debug!("Error: {}", e);
                 std::process::exit(1)
             }
-            Ok(v) => v,
         };
 
         if self.opts.directory_listing {
@@ -54,15 +69,14 @@ impl StaticFiles {
         }
 
         // Define middleware chain
-        let mut chain = Chain::new(
-            Staticfile::new(root_dir, assets_dir, self.opts.directory_listing)
-                .expect("Directory to serve files was not found"),
-        );
+        let mut chain = Chain::new(Staticfile::new(
+            root_dir,
+            assets_dir,
+            self.opts.directory_listing,
+        ));
         let one_day = Duration::new(60 * 60 * 24, 0);
         let one_year = Duration::new(60 * 60 * 24 * 365, 0);
-        let default_content_type = "text/html"
-            .parse::<mime::Mime>()
-            .expect("Unable to create a default content type header");
+        let default_content_type = "text/html".parse::<mime::Mime>().unwrap();
 
         // CORS support
         let allowed_hosts = &self.opts.cors_allow_origins;

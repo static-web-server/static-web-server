@@ -9,10 +9,10 @@ use iron::modifiers::Header;
 use iron::prelude::*;
 use iron::status;
 use percent_encoding::percent_decode_str;
+use std::error;
 use std::fs::{File, Metadata};
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
-use std::{error, io};
 
 use crate::helpers;
 use crate::staticfile_middleware::partial_file::PartialFile;
@@ -25,19 +25,15 @@ pub struct Staticfile {
 }
 
 impl Staticfile {
-    pub fn new<P: AsRef<Path>>(
-        root_dir: P,
-        assets_dir: P,
-        dir_listing: bool,
-    ) -> io::Result<Staticfile>
+    pub fn new<P: AsRef<Path>>(root_dir: P, assets_dir: P, dir_listing: bool) -> Staticfile
     where
         PathBuf: From<P>,
     {
-        Ok(Staticfile {
+        Staticfile {
             root: root_dir.into(),
             assets: assets_dir.into(),
             dir_listing,
-        })
+        }
     }
 
     /// Resolve a specific path which should be relative to base path.
@@ -368,7 +364,7 @@ mod test {
         let fs2 = TestFilesystemSetup::new();
         fs2.dir("assets");
 
-        let sf = Staticfile::new(fs.path(), fs2.path(), false).unwrap();
+        let sf = Staticfile::new(fs.path(), fs2.path(), false);
         let path = sf.resolve_path(&["index.html"]);
         assert!(path.unwrap().ends_with("index.html"));
     }
@@ -381,7 +377,7 @@ mod test {
         let fs2 = TestFilesystemSetup::new();
         fs2.file("assets");
 
-        let sf = Staticfile::new(fs.path(), fs2.path(), false).unwrap();
+        let sf = Staticfile::new(fs.path(), fs2.path(), false);
         let path = sf.resolve_path(&["dir", "index.html"]);
         assert!(path.unwrap().ends_with("dir/index.html"));
     }
@@ -394,7 +390,7 @@ mod test {
         let fs2 = TestFilesystemSetup::new();
         let dir2 = fs2.file("assets");
 
-        let sf = Staticfile::new(dir, dir2, false).unwrap();
+        let sf = Staticfile::new(dir, dir2, false);
         let path = sf.resolve_path(&["..", "naughty.txt"]);
         assert!(path.is_err());
     }
@@ -403,7 +399,7 @@ mod test {
     fn staticfile_disallows_post_requests() {
         let fs = TestFilesystemSetup::new();
         let fs2 = TestFilesystemSetup::new();
-        let sf = Staticfile::new(fs.path(), fs2.path(), false).unwrap();
+        let sf = Staticfile::new(fs.path(), fs2.path(), false);
 
         let response = request::post("http://127.0.0.1/", Headers::new(), "", &sf);
 
