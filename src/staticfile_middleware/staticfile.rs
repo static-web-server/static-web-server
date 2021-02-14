@@ -162,6 +162,10 @@ impl Handler for Staticfile {
                 );
             }
 
+            let current_path = percent_decode_str(&current_path)
+                .decode_utf8()
+                .unwrap()
+                .to_string();
             let page_str = format!(
                 "<html><head><meta charset=\"utf-8\"><title>Index of {}</title></head><body><h1>Index of {}</h1><table style=\"min-width:680px;\"><tr><th colspan=\"3\"><hr></th></tr>{}<tr><th colspan=\"3\"><hr></th></tr></table></body></html>", current_path, current_path, entries_str
             );
