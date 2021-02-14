@@ -1,8 +1,8 @@
 use iron::mime;
 use iron::prelude::*;
 use iron_cors::CorsMiddleware;
-use std::collections::HashSet;
 use std::time::Duration;
+use std::{collections::HashSet, path::PathBuf};
 
 use crate::error_page::ErrorPage;
 use crate::gzip::GzipMiddleware;
@@ -32,26 +32,16 @@ impl StaticFiles {
 
     /// Handle static files for current `StaticFiles` middleware.
     pub fn handle(&self) -> Chain {
-        // Check the root directory
-        let root_dir = &match helpers::get_valid_dirpath(&self.opts.root_dir) {
-            Err(e) => {
-                error!("{}", e);
-                std::process::exit(1)
-            }
-            Ok(v) => v,
-        };
+        // Check root directory
+        let p = PathBuf::from(&self.opts.root_dir).canonicalize().unwrap();
+        let root_dir = PathBuf::from(helpers::adjust_canonicalization(p));
 
-        // Check the assets directory
-        let assets_dir = &match helpers::get_valid_dirpath(&self.opts.assets_dir) {
-            Err(e) => {
-                error!("{}", e);
-                std::process::exit(1)
-            }
-            Ok(v) => v,
-        };
+        // Check assets directory
+        let p = PathBuf::from(&self.opts.assets_dir).canonicalize().unwrap();
+        let assets_dir = PathBuf::from(helpers::adjust_canonicalization(p));
 
-        // Get the assets directory name
-        let assets_dirname = &match helpers::get_dirname(assets_dir) {
+        // Get assets directory name
+        let assets_dirname = &match helpers::get_dirname(&assets_dir) {
             Err(e) => {
                 error!("{}", e);
                 std::process::exit(1)

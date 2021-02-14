@@ -38,6 +38,7 @@ mime_guess = "1.8"
 structopt = { version = "0.3", default-features = false }
 time = "0.1"
 url = "1.4"
+percent-encoding = "2.1"
 
 [target.'cfg(not(windows))'.dependencies.nix]
 version = "0.14"

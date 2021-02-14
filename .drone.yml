@@ -48,6 +48,7 @@ trigger:
     - feature/*
     - bugfix/*
     - hotfix/*
+    - 1.x
 
 
 

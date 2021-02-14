@@ -1,56 +1,57 @@
 use humansize::{file_size_opts, FileSize};
 use iron::headers::{
-    AcceptEncoding, AcceptRanges, ContentEncoding, ContentLength, Encoding, HttpDate,
-    IfModifiedSince, LastModified, Range, RangeUnit,
+    AcceptRanges, ContentEncoding, ContentLength, Encoding, HttpDate, IfModifiedSince,
+    LastModified, Range, RangeUnit,
 };
 use iron::method::Method;
 use iron::middleware::Handler;
 use iron::modifiers::Header;
 use iron::prelude::*;
 use iron::status;
+use percent_encoding::percent_decode_str;
 use std::fs::{File, Metadata};
 use std::path::{Path, PathBuf};
-use std::time::UNIX_EPOCH;
+use std::time::{SystemTime, UNIX_EPOCH};
 use std::{error, io};
-use std::{ffi::OsString, time::SystemTime};
 
-use crate::staticfile_middleware::helpers;
+use crate::helpers;
 use crate::staticfile_middleware::partial_file::PartialFile;
 
 /// Recursively serves files from the specified root and assets directories.
 pub struct Staticfile {
     root: PathBuf,
     assets: PathBuf,
-    dir_list: bool,
+    dir_listing: bool,
 }
 
 impl Staticfile {
-    pub fn new<P>(root: P, assets: P, dir_list: bool) -> io::Result<Staticfile>
+    pub fn new<P: AsRef<Path>>(
+        root_dir: P,
+        assets_dir: P,
+        dir_listing: bool,
+    ) -> io::Result<Staticfile>
     where
-        P: AsRef<Path>,
+        PathBuf: From<P>,
     {
-        let root = root.as_ref().canonicalize()?;
-        let assets = assets.as_ref().canonicalize()?;
-
         Ok(Staticfile {
-            root,
-            assets,
-            dir_list,
+            root: root_dir.into(),
+            assets: assets_dir.into(),
+            dir_listing,
         })
     }
 
     fn resolve_path(&self, path: &[&str]) -> Result<PathBuf, Box<dyn error::Error>> {
-        let path_dirname = path[0];
+        let current_dirname = percent_decode_str(path[0]).decode_utf8()?;
         let asserts_dirname = self.assets.iter().last().unwrap().to_str().unwrap();
         let mut is_assets = false;
 
-        let resolved = if path_dirname == asserts_dirname {
+        let path_resolved = if current_dirname.as_ref() == asserts_dirname {
             // Assets path validation resolve
             is_assets = true;
 
             let mut res = self.assets.clone();
             for component in path.iter().skip(1) {
-                res.push(component);
+                res.push(percent_decode_str(component).decode_utf8()?.as_ref());
             }
 
             res
@@ -58,21 +59,26 @@ impl Staticfile {
             // Root path validation resolve
             let mut res = self.root.clone();
             for component in path {
-                res.push(component);
+                res.push(percent_decode_str(component).decode_utf8()?.as_ref());
             }
 
             res
         };
 
-        let resolved = resolved.canonicalize()?;
-        let path = if is_assets { &self.assets } else { &self.root };
+        let base_path = if is_assets { &self.assets } else { &self.root };
+        let path_resolved = PathBuf::from(helpers::adjust_canonicalization(
+            path_resolved.canonicalize()?,
+        ));
 
         // Protect against path/directory traversal
-        if !resolved.starts_with(&path) {
-            return Result::Err(From::from(format!("Cannot leave {:?} path", &path)));
+        if !path_resolved.starts_with(&base_path) {
+            return Err(From::from(format!(
+                "Cannot leave {:?} base path",
+                &base_path
+            )));
         }
 
-        Ok(resolved)
+        Ok(path_resolved)
     }
 }
 
@@ -84,17 +90,20 @@ impl Handler for Staticfile {
         }
 
         // Resolve path on file system
-        let file_path = match self.resolve_path(&req.url.path()) {
+        let path_resolved = match self.resolve_path(&req.url.path()) {
             Ok(file_path) => file_path,
-            Err(_) => return Ok(Response::with(status::NotFound)),
+            Err(e) => {
+                trace!("{}", e);
+                return Ok(Response::with(status::NotFound));
+            }
         };
 
-        // 1. Check if directory listing feature is enabled,
+        // 1. Check if "directory listing" feature is enabled,
         // if current path is a valid directory and
         // if it does not contain an index.html file
-        if self.dir_list && file_path.is_dir() && !file_path.join("index.html").exists() {
-            let encoding = Encoding::Identity;
-            let readir = match std::fs::read_dir(file_path) {
+        if self.dir_listing && path_resolved.is_dir() && !path_resolved.join("index.html").exists()
+        {
+            let read_dir = match std::fs::read_dir(path_resolved) {
                 Ok(dir) => dir,
                 Err(err) => {
                     error!("{}", err);
@@ -129,7 +138,7 @@ impl Handler for Staticfile {
                 entries_str =
                     String::from("<tr><td colspan=\"3\"><a href=\"../\">../</a></td></tr>");
             }
-            for entry in readir {
+            for entry in read_dir {
                 let entry = entry.unwrap();
                 let meta = entry.metadata().unwrap();
                 let mut filesize = meta.len().file_size(file_size_opts::DECIMAL).unwrap();
@@ -138,8 +147,9 @@ impl Handler for Staticfile {
                     name = format!("{}/", name);
                     filesize = String::from("-")
                 }
+
                 let uri = format!("{}{}", current_path, name);
-                let modified = get_last_modified(meta.modified().unwrap()).unwrap();
+                let modified = parse_last_modified(meta.modified().unwrap()).unwrap();
 
                 entries_str = format!(
                     "{}<tr><td><a href=\"{}\" title=\"{}\">{}</a></td><td style=\"width: 160px;\">{}</td><td align=\"right\" style=\"width: 140px;\">{}</td></tr>",
@@ -152,12 +162,16 @@ impl Handler for Staticfile {
                 );
             }
 
-            let page = format!(
-                "<html><head><title>Index of {}</title></head><body><h1>Index of {}</h1><table style=\"min-width:680px;\"><tr><th colspan=\"3\"><hr></th></tr>{}<tr><th colspan=\"3\"><hr></th></tr></table></body></html>", current_path, current_path, entries_str
+            let current_path = percent_decode_str(&current_path)
+                .decode_utf8()
+                .unwrap()
+                .to_string();
+            let page_str = format!(
+                "<html><head><meta charset=\"utf-8\"><title>Index of {}</title></head><body><h1>Index of {}</h1><table style=\"min-width:680px;\"><tr><th colspan=\"3\"><hr></th></tr>{}<tr><th colspan=\"3\"><hr></th></tr></table></body></html>", current_path, current_path, entries_str
             );
-            let len = page.len() as u64;
-            let content_encoding = ContentEncoding(vec![encoding]);
-            let mut resp = Response::with((status::Ok, Header(content_encoding), page));
+            let len = page_str.len() as u64;
+            let content_encoding = ContentEncoding(vec![Encoding::Identity]);
+            let mut resp = Response::with((status::Ok, Header(content_encoding), page_str));
 
             // Empty current response body on HEAD requests,
             // just setting up the `content-length` header (size of the file in bytes)
@@ -170,53 +184,39 @@ impl Handler for Staticfile {
             return Ok(resp);
         }
 
-        // 2. Otherwise proceed with the normal file-response process
+        // 2. Otherwise proceed with the normal file-  process
 
-        // Get current file metadata
-        let accept_gz = helpers::accept_gzip(req.headers.get::<AcceptEncoding>());
-        let file = match StaticFileWithMetadata::search(&file_path, accept_gz) {
+        // Search a file and its metadata by the resolved path
+        let static_file = match StaticFileWithMeta::search(path_resolved.clone()) {
             Ok(f) => f,
-            Err(_) => return Ok(Response::with(status::NotFound)),
+            Err(e) => {
+                trace!("{}", e);
+                return Ok(Response::with(status::NotFound));
+            }
         };
 
         // Apply last modified date time
-        let client_last_modified = req.headers.get::<IfModifiedSince>();
-        let last_modified = file.last_modified().ok().map(HttpDate);
+        let client_last_mod = req.headers.get::<IfModifiedSince>();
+        let last_mod = static_file.last_modified().ok().map(HttpDate);
 
-        if let (Some(client_last_modified), Some(last_modified)) =
-            (client_last_modified, last_modified)
-        {
+        if let (Some(client_last_mod), Some(last_mod)) = (client_last_mod, last_mod) {
             trace!(
                 "Comparing {} (file) <= {} (req)",
-                last_modified,
-                client_last_modified.0
+                last_mod,
+                client_last_mod.0
             );
 
-            if last_modified <= client_last_modified.0 {
+            if last_mod <= client_last_mod.0 {
                 return Ok(Response::with(status::NotModified));
             }
         }
 
-        // Add Encoding Gzip header
-        let encoding = if file.is_gz {
-            Encoding::Gzip
-        } else {
-            Encoding::Identity
-        };
-        let encoding = ContentEncoding(vec![encoding]);
-
-        // Prepare response
-        let mut resp = match last_modified {
-            Some(last_modified) => {
-                let last_modified = LastModified(last_modified);
-                Response::with((
-                    status::Ok,
-                    Header(last_modified),
-                    Header(encoding),
-                    file.file,
-                ))
+        // Prepare response object
+        let mut resp = match last_mod {
+            Some(last_mod) => {
+                Response::with((status::Ok, Header(LastModified(last_mod)), static_file.file))
             }
-            None => Response::with((status::Ok, Header(encoding), file.file)),
+            None => Response::with((status::Ok, static_file.file)),
         };
 
         // Empty current response body on HEAD requests,
@@ -224,7 +224,7 @@ impl Handler for Staticfile {
         // https://tools.ietf.org/html/rfc7231#section-4.3.2
         if req.method == Method::Head {
             resp.set_mut(vec![]);
-            resp.set_mut(Header(ContentLength(file.metadata.len())));
+            resp.set_mut(Header(ContentLength(static_file.meta.len())));
             return Ok(resp);
         }
 
@@ -236,7 +236,7 @@ impl Handler for Staticfile {
             None => resp,
             // Try to deliver partial content
             Some(Range::Bytes(v)) => {
-                if let Ok(partial_file) = PartialFile::from_path(&file_path, v) {
+                if let Ok(partial_file) = PartialFile::from_path(&path_resolved, v) {
                     Response::with((
                         status::Ok,
                         partial_file,
@@ -253,79 +253,46 @@ impl Handler for Staticfile {
     }
 }
 
-struct StaticFileWithMetadata {
+/// It represents a regular source file in file system with its metadata.
+struct StaticFileWithMeta {
     file: File,
-    metadata: Metadata,
-    is_gz: bool,
+    meta: Metadata,
 }
 
-impl StaticFileWithMetadata {
-    pub fn search<P>(
-        path: P,
-        allow_gz: bool,
-    ) -> Result<StaticFileWithMetadata, Box<dyn error::Error>>
-    // TODO: unbox
-    where
-        P: Into<PathBuf>,
-    {
-        let mut file_path = path.into();
-        trace!("Opening {}", file_path.display());
-        let mut file = StaticFileWithMetadata::open(&file_path)?;
+impl StaticFileWithMeta {
+    /// Search for a regular source file in file system.
+    /// If source file is a directory then it attempts to search for an index.html.
+    pub fn search(mut src: PathBuf) -> Result<StaticFileWithMeta, Box<dyn error::Error>> {
+        trace!("Opening {}", src.display());
 
-        // Look for index.html inside of a directory
-        if file.metadata.is_dir() {
-            file_path.push("index.html");
-            trace!("Redirecting to index {}", file_path.display());
-            file = StaticFileWithMetadata::open(&file_path)?;
+        let mut auto_index = false;
+        let meta = std::fs::metadata(&src)?;
+
+        // Look for an `index.html` file inside of a directory
+        if meta.is_dir() {
+            src.push("index.html");
+            auto_index = true;
+            trace!("Redirecting to index {}", src.display());
         }
 
-        if file.metadata.is_file() {
-            if allow_gz {
-                // Find the foo.gz sibling of foo
-                let mut side_by_side_path: OsString = file_path.into();
-                side_by_side_path.push(".gz");
-                file_path = side_by_side_path.into();
-                trace!("Attempting to find side-by-side GZ {}", file_path.display());
+        // Attempt to open source file in read-only mode
+        let file = File::open(src)?;
+        let meta = if auto_index { file.metadata()? } else { meta };
 
-                match StaticFileWithMetadata::open(&file_path) {
-                    Ok(mut gz_file) => {
-                        if gz_file.metadata.is_file() {
-                            gz_file.is_gz = true;
-                            Ok(gz_file)
-                        } else {
-                            Ok(file)
-                        }
-                    }
-                    Err(_) => Ok(file),
-                }
-            } else {
-                Ok(file)
-            }
+        if meta.is_file() {
+            Ok(StaticFileWithMeta { file, meta })
         } else {
             Err(From::from("Requested path was not a regular file"))
         }
     }
 
-    fn open<P>(path: P) -> Result<StaticFileWithMetadata, Box<dyn error::Error>>
-    where
-        P: AsRef<Path>,
-    {
-        let file = File::open(path)?;
-        let metadata = file.metadata()?;
-
-        Ok(StaticFileWithMetadata {
-            file,
-            metadata,
-            is_gz: false,
-        })
-    }
-
+    /// Get the last modification time of current file.
     pub fn last_modified(&self) -> Result<time::Tm, Box<dyn error::Error>> {
-        get_last_modified(self.metadata.modified()?)
+        parse_last_modified(self.meta.modified()?)
     }
 }
 
-fn get_last_modified(modified: SystemTime) -> Result<time::Tm, Box<dyn error::Error>> {
+fn parse_last_modified(modified: SystemTime) -> Result<time::Tm, Box<dyn error::Error>> {
     let since_epoch = modified.duration_since(UNIX_EPOCH)?;
     // HTTP times don't have nanosecond precision, so we truncate
     // the modification time.
