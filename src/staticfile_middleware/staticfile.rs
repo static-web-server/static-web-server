@@ -40,12 +40,13 @@ impl Staticfile {
         })
     }
 
+    /// Resolve a specific path which should be relative to base path.
     fn resolve_path(&self, path: &[&str]) -> Result<PathBuf, Box<dyn error::Error>> {
         let current_dirname = percent_decode_str(path[0]).decode_utf8()?;
         let asserts_dirname = self.assets.iter().last().unwrap().to_str().unwrap();
         let mut is_assets = false;
 
-        let path_resolved = if current_dirname.as_ref() == asserts_dirname {
+        let path_resolved = if current_dirname == asserts_dirname {
             // Assets path validation resolve
             is_assets = true;
 
@@ -91,7 +92,7 @@ impl Handler for Staticfile {
 
         // Resolve path on file system
         let path_resolved = match self.resolve_path(&req.url.path()) {
-            Ok(file_path) => file_path,
+            Ok(p) => p,
             Err(e) => {
                 trace!("{}", e);
                 return Ok(Response::with(status::NotFound));
@@ -100,13 +101,13 @@ impl Handler for Staticfile {
 
         // 1. Check if "directory listing" feature is enabled,
         // if current path is a valid directory and
-        // if it does not contain an index.html file
+        // if it does not contain an `index.html` file
         if self.dir_listing && path_resolved.is_dir() && !path_resolved.join("index.html").exists()
         {
-            let read_dir = match std::fs::read_dir(path_resolved) {
-                Ok(dir) => dir,
-                Err(err) => {
-                    error!("{}", err);
+            let read_dir = match std::fs::read_dir(&path_resolved) {
+                Ok(d) => d,
+                Err(e) => {
+                    error!("{}", e);
                     return Ok(Response::with(status::InternalServerError));
                 }
             };
@@ -118,13 +119,19 @@ impl Handler for Staticfile {
                 .map(|i| format!("/{}", i))
                 .collect::<String>();
 
-            // Redirect if current path does not end with slash
+            // Redirect if current path does not end with a slash
             if !current_path.ends_with('/') {
                 let mut u: url::Url = req.url.clone().into();
                 current_path.push('/');
                 u.set_path(&current_path);
 
-                let url = iron::Url::from_generic_url(u).expect("Unable to parse redirect url");
+                let url = match iron::Url::from_generic_url(u) {
+                    Ok(u) => u,
+                    Err(e) => {
+                        error!("Unable to parse redirection url: {}", e);
+                        return Ok(Response::with(status::BadRequest));
+                    }
+                };
 
                 return Ok(Response::with((
                     status::PermanentRedirect,
@@ -132,7 +139,7 @@ impl Handler for Staticfile {
                 )));
             }
 
-            // Read current directory and create the index page
+            // Read current directory and create the index page content
             let mut entries_str = String::new();
             if current_path != "/" {
                 entries_str =
@@ -187,7 +194,7 @@ impl Handler for Staticfile {
         // 2. Otherwise proceed with the normal file-  process
 
         // Search a file and its metadata by the resolved path
-        let static_file = match StaticFileWithMeta::search(path_resolved.clone()) {
+        let static_file = match StaticFileWithMeta::search(&path_resolved) {
             Ok(f) => f,
             Err(e) => {
                 trace!("{}", e);
@@ -262,8 +269,12 @@ struct StaticFileWithMeta {
 impl StaticFileWithMeta {
     /// Search for a regular source file in file system.
     /// If source file is a directory then it attempts to search for an index.html.
-    pub fn search(mut src: PathBuf) -> Result<StaticFileWithMeta, Box<dyn error::Error>> {
-        trace!("Opening {}", src.display());
+    pub fn search<P: AsRef<Path>>(src: P) -> Result<StaticFileWithMeta, Box<dyn error::Error>>
+    where
+        PathBuf: From<P>,
+    {
+        let mut src: PathBuf = src.into();
+        trace!("Opening path {}", src.display());
 
         let mut auto_index = false;
         let meta = std::fs::metadata(&src)?;

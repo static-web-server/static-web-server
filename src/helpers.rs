@@ -2,16 +2,15 @@ use std::error;
 use std::path::{Path, PathBuf};
 
 /// Validate and return a directory path.
-pub fn get_valid_dirpath<P: AsRef<Path>>(path: P) -> Result<PathBuf, Box<dyn error::Error>>
+pub fn get_valid_dirpath<P: AsRef<Path>>(p: P) -> Result<PathBuf, Box<dyn error::Error>>
 where
     PathBuf: From<P>,
 {
-    match PathBuf::from(path) {
-        v if !v.exists() => Result::Err(From::from(format!("path \"{:?}\" was not found", &v))),
-        v if !v.is_dir() => {
-            Result::Err(From::from(format!("path \"{:?}\" is not a directory", &v)))
-        }
-        v => Result::Ok(v),
+    let p: PathBuf = p.into();
+    match p {
+        v if !v.exists() => Err(From::from(format!("path \"{:?}\" was not found", &v))),
+        v if !v.is_dir() => Err(From::from(format!("path \"{:?}\" is not a directory", &v))),
+        v => Ok(v),
     }
 }
 
@@ -21,13 +20,13 @@ where
     PathBuf: From<P>,
 {
     let path = match get_valid_dirpath(path) {
-        Err(e) => return Result::Err(e),
         Ok(v) => v,
+        Err(e) => return Err(e),
     };
 
     match path.iter().last() {
-        Some(v) => Result::Ok(v.to_str().unwrap().to_string()),
-        _ => Result::Err(From::from(format!(
+        Some(v) => Ok(v.to_str().unwrap().to_string()),
+        None => Err(From::from(format!(
             "directory name for path \"{:?}\" was not determined",
             path,
         ))),
