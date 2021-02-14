@@ -109,5 +109,5 @@ fn handle_signals() {
 
 #[cfg(windows)]
 fn handle_signals() {
-    println!("TODO: Windows signals...")
+    // TODO: Windows signals...
 }

@@ -8,6 +8,7 @@ use iron::middleware::Handler;
 use iron::modifiers::Header;
 use iron::prelude::*;
 use iron::status;
+use percent_encoding::percent_decode_str;
 use std::fs::{File, Metadata};
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -40,17 +41,17 @@ impl Staticfile {
     }
 
     fn resolve_path(&self, path: &[&str]) -> Result<PathBuf, Box<dyn error::Error>> {
-        let current_dirname = path[0];
+        let current_dirname = percent_decode_str(path[0]).decode_utf8()?;
         let asserts_dirname = self.assets.iter().last().unwrap().to_str().unwrap();
         let mut is_assets = false;
 
-        let path_resolved = if current_dirname == asserts_dirname {
+        let path_resolved = if current_dirname.as_ref() == asserts_dirname {
             // Assets path validation resolve
             is_assets = true;
 
             let mut res = self.assets.clone();
             for component in path.iter().skip(1) {
-                res.push(component);
+                res.push(percent_decode_str(component).decode_utf8()?.as_ref());
             }
 
             res
@@ -58,7 +59,7 @@ impl Staticfile {
             // Root path validation resolve
             let mut res = self.root.clone();
             for component in path {
-                res.push(component);
+                res.push(percent_decode_str(component).decode_utf8()?.as_ref());
             }
 
             res
@@ -146,6 +147,7 @@ impl Handler for Staticfile {
                     name = format!("{}/", name);
                     filesize = String::from("-")
                 }
+
                 let uri = format!("{}{}", current_path, name);
                 let modified = parse_last_modified(meta.modified().unwrap()).unwrap();
 
@@ -161,7 +163,7 @@ impl Handler for Staticfile {
             }
 
             let page_str = format!(
-                "<html><head><title>Index of {}</title></head><body><h1>Index of {}</h1><table style=\"min-width:680px;\"><tr><th colspan=\"3\"><hr></th></tr>{}<tr><th colspan=\"3\"><hr></th></tr></table></body></html>", current_path, current_path, entries_str
+                "<html><head><meta charset=\"utf-8\"><title>Index of {}</title></head><body><h1>Index of {}</h1><table style=\"min-width:680px;\"><tr><th colspan=\"3\"><hr></th></tr>{}<tr><th colspan=\"3\"><hr></th></tr></table></body></html>", current_path, current_path, entries_str
             );
             let len = page_str.len() as u64;
             let content_encoding = ContentEncoding(vec![Encoding::Identity]);
