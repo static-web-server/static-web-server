@@ -11,26 +11,26 @@
 - Built with [Rust](https://rust-lang.org) which is focused on [safety, speed, and concurrency](https://kornel.ski/rust-c-speed).
 - Memory safety and reduced overhead of CPU and RAM resources.
 - Blazing fast static files-serving thanks to [Rust Iron](https://github.com/iron/iron) and [Hyper](https://github.com/hyperium/hyper).
-- Suitable for lightweight [GNU/Linux Docker containers](https://hub.docker.com/r/joseluisq/static-web-server/tags). It's a fully __4MB__ static binary thanks to [Rust and Musl libc](https://doc.rust-lang.org/edition-guide/rust-2018/platform-and-target-support/musl-support-for-fully-static-binaries.html) (`x86_64-unknown-linux-musl`).
+- Binaries available for Linux, macOS and Windows x86_64.
+- Suitable for lightweight [GNU/Linux Docker containers](https://hub.docker.com/r/joseluisq/static-web-server/tags). It's a fully __5MB__ static binary thanks to [Rust and Musl libc](https://doc.rust-lang.org/edition-guide/rust-2018/platform-and-target-support/musl-support-for-fully-static-binaries.html).
 - Gzip compression on demand via [accept-encoding](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Accept-Encoding) header.
 - [Partial Content Delivery](https://en.wikipedia.org/wiki/Byte_serving) support for byte-serving of large files.
 - [Cache control headers](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Cache-Control) for assets.
 - [CORS](https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS) support.
 - [HEAD](https://tools.ietf.org/html/rfc7231#section-4.3.2) responses support.
 - [TLS](https://www.openssl.org/) support via [Rust Native TLS](https://docs.rs/native-tls/0.2.3/native_tls/) crate.
+- Optional directory listing.
 - Lightweight and configurable logging.
-- Directory listing support.
-- First-class [Docker](https://docs.docker.com/get-started/overview/) support. [Scratch](https://hub.docker.com/_/scratch) and latest [Alpine Linux](https://hub.docker.com/_/alpine) Docker images available.
+- Optional HTTP to HTTPS redirection.
+- First-class [Docker](https://docs.docker.com/get-started/overview/) support. [Scratch](https://hub.docker.com/_/scratch) and latest [Alpine Linux](https://hub.docker.com/_/alpine) Docker images.
 - Server configurable via environment variables or CLI arguments.
-- MacOs binary support (`x86_64-apple-darwin`) thanks to [Rust Linux / Darwin Builder](https://github.com/joseluisq/rust-linux-darwin-builder).
-- Additional HTTP redirect server for redirecting HTTP traffic to HTTPS site.
 
 ## Releases
 
 Available for download/install via following methods:
 
 - **Docker Image** on [hub.docker.com/r/joseluisq/static-web-server/](https://hub.docker.com/r/joseluisq/static-web-server/)
-- **Release binaries** for `GNU/Linux` and `MacOS` x86_64 on [github.com/joseluisq/static-web-server/releases](https://github.com/joseluisq/static-web-server/releases).
+- **Release binaries** for Linux, macOS and Windows x86_64 on [github.com/joseluisq/static-web-server/releases](https://github.com/joseluisq/static-web-server/releases).
 
 ## Usage
 
@@ -53,15 +53,15 @@ Server can be configured either via environment variables or their equivalent co
 | `SERVER_TLS_PKCS12_PASSWD`  | A specified password to decrypt the private key.                                                                                                                                                                                                                                                     | Default empty                                                                                                                   |
 | `SERVER_TLS_REDIRECT_FROM`  | Host port for redirecting HTTP requests to HTTPS. This option enables the HTTP redirect feature                                                                                                                                                                                                      | Default empty (disabled)                                                                                                        |
 | `SERVER_TLS_REDIRECT_HOST`  | Host name of HTTPS site for redirecting HTTP requests to.                                                                                                                                                                                                                                            | Default host address                                                                                                            |
-| `SERVER_CORS_ALLOW_ORIGINS` | Specify a CORS list of allowed origin hosts separated by comas. Host ports or protocols aren't being checked. Use an asterisk (*) to allow any host. See [Iron CORS crate](https://docs.rs/iron-cors/0.8.0/iron_cors/#mode-1-whitelist).                                                             | Default empty (which means CORS is disabled)                                                                                    |
-| `SERVER_DIRECTORY_LISTING`  | Enable directory listing for all requests ending with the slash character (‘/’)                                                                                                                                                                                                                      | Default `false` (which means it's disabled)                                                                                    |
+| `SERVER_CORS_ALLOW_ORIGINS` | Specify a CORS list of allowed origin hosts separated by comas. Host ports or protocols aren't being checked. Use an asterisk (*) to allow any host. See [Iron CORS crate](https://docs.rs/iron-cors/0.8.0/iron_cors/#mode-1-whitelist).                                                             | Default empty (disabled)                                                                                    |
+| `SERVER_DIRECTORY_LISTING`  | Enable directory listing for all requests ending with the slash character (‘/’)                                                                                                                                                                                                                      | Default `false` (disabled)                                                                                    |
 
 ### Command-line arguments
 
 CLI arguments listed with `static-web-server -h`.
 
 ```
-static-web-server 1.10.0
+static-web-server 1.14.0
 A blazing fast static files-serving web server powered by Rust Iron
 
 USAGE:
@@ -77,7 +77,7 @@ OPTIONS:
 
     -c, --cors-allow-origins <cors-allow-origins>
             Specify a CORS list of allowed origin hosts separated by comas. Host ports or protocols aren't being
-            checked. Use an asterisk (*) to allow any host [env: SERVER_CORS_ALLOW_ORIGINS=]  [default: ]
+            checked. Use an asterisk (*) to allow any host [env: SERVER_CORS_ALLOW_ORIGINS=]
     -i, --directory-listing <directory-listing>
             Enable directory listing for all requests ending with the slash character (‘/’) [env:
             SERVER_DIRECTORY_LISTING=]
@@ -85,7 +85,7 @@ OPTIONS:
     -g, --log-level <log-level>
             Specify a logging level in lower case [env: SERVER_LOG_LEVEL=]  [default: error]
 
-    -l, --name <name>                                Name for server [env: SERVER_NAME=]  [default: my-static-server]
+    -l, --name <name>                                Name for server [env: SERVER_NAME=]
         --page404 <page404>
             HTML file path for 404 errors. If path is not specified or simply don't exists then server will use a
             generic HTML error message [env: SERVER_ERROR_PAGE_404=]  [default: ./public/404.html]
@@ -99,9 +99,9 @@ OPTIONS:
     -t, --tls <tls>                                  Enables TLS/SSL support [env: SERVER_TLS=]
         --tls-pkcs12 <tls-pkcs12>
             A cryptographic identity PKCS #12 bundle file path containing a X509 certificate along with its
-            corresponding private key and chain of certificates to a trusted root [env: SERVER_TLS_PKCS12=]  [default: ]
+            corresponding private key and chain of certificates to a trusted root [env: SERVER_TLS_PKCS12=]
         --tls-pkcs12-passwd <tls-pkcs12-passwd>
-            A specified password to decrypt the private key [env: SERVER_TLS_PKCS12_PASSWD=]  [default: ]
+            A specified password to decrypt the private key [env: SERVER_TLS_PKCS12_PASSWD=]
 
         --tls-redirect-from <tls-redirect-from>
             Host port for redirecting HTTP requests to HTTPS. This option enables the HTTP redirect feature [env:
