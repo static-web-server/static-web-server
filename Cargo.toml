@@ -30,15 +30,23 @@ warp = { git = "https://github.com/joseluisq/warp.git", branch = "0.3.x", featur
 anyhow = "1.0"
 tracing = "0.1"
 tracing-subscriber = "0.2"
-structopt = "0.3"
-nix = "0.14"
-signal = "0.7"
+structopt = { version = "0.3", default-features = false }
 num_cpus = { version = "1.13" }
+
+[target.'cfg(not(windows))'.dependencies.nix]
+version = "0.14"
+
+[target.'cfg(not(windows))'.dependencies.signal]
+version = "0.7"
 
 [target.'cfg(all(target_env = "musl", target_pointer_width = "64"))'.dependencies.jemallocator]
 version = "0.3"
 
 [profile.release]
+opt-level = 3
 lto = "fat"
 codegen-units = 1
 panic = "abort"
+debug = false
+rpath = false
+debug-assertions = false
