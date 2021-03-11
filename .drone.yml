@@ -19,7 +19,7 @@ steps:
       - ./target
 
 - name: test
-  image: joseluisq/rust-linux-darwin-builder:1.49.0
+  image: joseluisq/rust-linux-darwin-builder:1.50.0
   commands:
     - make test
 
@@ -62,7 +62,7 @@ platform:
 
 steps:
 - name: test
-  image: joseluisq/rust-linux-darwin-builder:1.49.0
+  image: joseluisq/rust-linux-darwin-builder:1.50.0
   commands:
     - make test
   when:
@@ -70,7 +70,7 @@ steps:
     - tag
 
 - name: release
-  image: joseluisq/rust-linux-darwin-builder:1.49.0
+  image: joseluisq/rust-linux-darwin-builder:1.50.0
   commands:
     - make prod.release
 
@@ -173,7 +173,7 @@ platform:
 
 steps:
 - name: test
-  image: joseluisq/rust-linux-darwin-builder:1.49.0
+  image: joseluisq/rust-linux-darwin-builder:1.50.0
   commands:
     - make test
   when:
@@ -181,7 +181,7 @@ steps:
     - tag
 
 - name: release
-  image: joseluisq/rust-linux-darwin-builder:1.49.0
+  image: joseluisq/rust-linux-darwin-builder:1.50.0
   commands:
     - make prod.release
 
@@ -274,12 +274,12 @@ platform:
 
 steps:
 - name: test
-  image: joseluisq/rust-linux-darwin-builder:1.49.0
+  image: joseluisq/rust-linux-darwin-builder:1.50.0
   commands:
     - make test
 
 - name: release
-  image: joseluisq/rust-linux-darwin-builder:1.49.0
+  image: joseluisq/rust-linux-darwin-builder:1.50.0
   commands:
     - make prod.release
 
@@ -325,6 +325,9 @@ name: notification
 platform:
   os: linux
   arch: amd64
+
+clone:
+  disable: true
 
 steps:
 - name: notify
