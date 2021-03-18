@@ -25,8 +25,8 @@ name = "static-web-server"
 path = "src/bin/server.rs"
 
 [dependencies]
-tokio = { version = "1", features = ["rt-multi-thread"] }
-warp = { git = "https://github.com/joseluisq/warp.git", branch = "0.3.x", features = ["tls","compression"] }
+tokio = { version = "1", features = ["rt-multi-thread"], default-features = false }
+warp = { git = "https://github.com/joseluisq/warp.git", branch = "0.3.x", features = ["tls", "compression"], default-features = false }
 anyhow = "1.0"
 tracing = "0.1"
 tracing-subscriber = "0.2"
