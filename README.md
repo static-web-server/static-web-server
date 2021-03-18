@@ -9,10 +9,9 @@
 ## Features
 
 - Built with [Rust](https://rust-lang.org) which is focused on [safety, speed, and concurrency](https://kornel.ski/rust-c-speed).
-- Memory safety and reduced overhead of CPU and RAM resources.
+- Memory safety and very reduced CPU and RAM overhead.
 - Blazing fast static files-serving thanks to [Rust Iron](https://github.com/iron/iron) and [Hyper](https://github.com/hyperium/hyper).
-- Binaries available for Linux, macOS and Windows x86_64.
-- Suitable for lightweight [GNU/Linux Docker containers](https://hub.docker.com/r/joseluisq/static-web-server/tags). It's a fully __5MB__ static binary thanks to [Rust and Musl libc](https://doc.rust-lang.org/edition-guide/rust-2018/platform-and-target-support/musl-support-for-fully-static-binaries.html).
+- No dependencies. Just a single __4MB__ and fully static binary ([Musl libc](https://doc.rust-lang.org/edition-guide/rust-2018/platform-and-target-support/musl-support-for-fully-static-binaries.html)) which makes it suitable for running on [any Linux distro](https://en.wikipedia.org/wiki/Linux_distribution) or [Docker container](https://hub.docker.com/r/joseluisq/static-web-server/tags).
 - Gzip compression on demand via [accept-encoding](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Accept-Encoding) header.
 - [Partial Content Delivery](https://en.wikipedia.org/wiki/Byte_serving) support for byte-serving of large files.
 - [Cache control headers](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Cache-Control) for assets.
@@ -23,14 +22,20 @@
 - Lightweight and configurable logging.
 - Optional HTTP to HTTPS redirection.
 - First-class [Docker](https://docs.docker.com/get-started/overview/) support. [Scratch](https://hub.docker.com/_/scratch) and latest [Alpine Linux](https://hub.docker.com/_/alpine) Docker images.
-- Server configurable via environment variables or CLI arguments.
+- Server configurable via CLI arguments or their equivalent environment variables.
+- Cross-platform. Binaries available for Linux, macOS and Windows x86_64.
 
 ## Releases
 
 Available for download/install via following methods:
 
-- **Docker Image** on [hub.docker.com/r/joseluisq/static-web-server/](https://hub.docker.com/r/joseluisq/static-web-server/)
-- **Release binaries** for Linux, macOS and Windows x86_64 on [github.com/joseluisq/static-web-server/releases](https://github.com/joseluisq/static-web-server/releases).
+#### Docker Image (Linux x86_64)
+
+[hub.docker.com/r/joseluisq/static-web-server/](https://hub.docker.com/r/joseluisq/static-web-server/)
+
+#### Release binaries (Linux, macOS and Windows x86_64)
+
+[github.com/joseluisq/static-web-server/releases](https://github.com/joseluisq/static-web-server/releases)
 
 ## Usage
 
@@ -46,8 +51,8 @@ Server can be configured either via environment variables or their equivalent co
 | `SERVER_ROOT`               | Root directory path of static files.                                                                                                                                                                                                                                                                 | Default `./public`.                                                                                                             |
 | `SERVER_ASSETS`             | Assets directory path for add cache headers functionality.                                                                                                                                                                                                                                           | Default `./public/assets`.                                                                                                      |
 | `SERVER_LOG_LEVEL`          | Specify a logging level in lower case (see [log::LevelFilter](https://docs.rs/log/0.4.10/log/enum.LevelFilter.html)).                                                                                                                                                                                | Default `error`                                                                                                                 |
-| `SERVER_ERROR_PAGE_404`     | HTML file path for 404 errors.                                                                                                                                                                                                                                                                       | If path is not specified or simply don't exists then server will use a generic HTML error message. Default `./public/404.html`. |
-| `SERVER_ERROR_PAGE_50X`     | HTML file path for 50x errors.                                                                                                                                                                                                                                                                       | If path is not specified or simply don't exists then server will use a generic HTML error message. Default `./public/50x.html`  |
+| `SERVER_ERROR_PAGE_404`     | HTML file path for 404 errors.                                                                                                                                                                                                                                                                       | If path is not specified or simply don't exists then server will use a generic HTML error message. Default file path `./public/404.html`. |
+| `SERVER_ERROR_PAGE_50X`     | HTML file path for 50x errors.                                                                                                                                                                                                                                                                       | If path is not specified or simply don't exists then server will use a generic HTML error message. Default file path `./public/50x.html`  |
 | `SERVER_TLS`                | Enables TLS/SSL support. Make sure also to adjust current server port.                                                                                                                                                                                                                               | Default `false`                                                                                                                 |
 | `SERVER_TLS_PKCS12`         | A cryptographic identity [PKCS #12](https://docs.rs/native-tls/0.2.3/native_tls/struct.Identity.html#method.from_pkcs12) bundle file path containing a [X509 certificate](https://en.wikipedia.org/wiki/X.509) along with its corresponding private key and chain of certificates to a trusted root. | Default empty                                                                                                                   |
 | `SERVER_TLS_PKCS12_PASSWD`  | A specified password to decrypt the private key.                                                                                                                                                                                                                                                     | Default empty                                                                                                                   |
