@@ -24,13 +24,15 @@ impl Server {
     /// Build and run the `Server` forever on the current thread.
     pub fn run(self) -> Result {
         tokio::runtime::Builder::new_multi_thread()
-            .worker_threads(self.threads)
             .enable_all()
+            .thread_name("static-web-server")
+            .worker_threads(self.threads)
+            .max_blocking_threads(self.threads)
             .build()?
             .block_on(async {
                 let r = self.start_server().await;
                 if r.is_err() {
-                    panic!("Server error: {:?}", r.unwrap_err())
+                    panic!("Server error during start up: {:?}", r.unwrap_err())
                 }
             });
 
@@ -42,6 +44,9 @@ impl Server {
         let opts = self.opts;
 
         logger::init(&opts.log_level)?;
+
+        tracing::info!("runtime worker threads {}", self.threads);
+        tracing::info!("runtime max blocking threads {}", self.threads);
 
         let ip = opts.host.parse::<IpAddr>()?;
         let addr = SocketAddr::from((ip, opts.port));
