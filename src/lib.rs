@@ -16,6 +16,6 @@ pub mod signals;
 #[macro_use]
 pub mod error;
 
-pub use config::Config;
+pub use config::{Config, CONFIG};
 pub use error::*;
 pub use server::Server;

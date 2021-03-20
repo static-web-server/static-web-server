@@ -1,4 +1,7 @@
+use once_cell::sync::OnceCell;
 use structopt::StructOpt;
+
+pub static CONFIG: OnceCell<Config> = OnceCell::new();
 
 /// A blazing fast static files-serving web server powered by Rust
 #[derive(Debug, StructOpt)]
@@ -72,4 +75,10 @@ pub struct Config {
     #[structopt(long, default_value = "", env = "SERVER_HTTP2_TLS_KEY")]
     /// Specify the file path to read the private key.
     pub http2_tls_key: String,
+}
+
+impl Config {
+    pub fn global() -> &'static Config {
+        CONFIG.get().expect("Config is not initialized")
+    }
 }

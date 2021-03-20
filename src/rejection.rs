@@ -1,17 +1,20 @@
 use anyhow::Result;
+use once_cell::sync::OnceCell;
 use std::convert::Infallible;
 use warp::http::StatusCode;
 use warp::{Rejection, Reply};
 
+pub static PAGE_404: OnceCell<String> = OnceCell::new();
+pub static PAGE_50X: OnceCell<String> = OnceCell::new();
+
 /// It receives a `Rejection` and tries to return the corresponding HTML error reply.
-pub async fn handle_rejection(
-    page_404: String,
-    page_50x: String,
-    err: Rejection,
-) -> Result<impl Reply, Infallible> {
+pub async fn handle_rejection(err: Rejection) -> Result<impl Reply, Infallible> {
     let mut content = String::new();
     let code = if err.is_not_found() {
-        content = page_404;
+        content = PAGE_404
+            .get()
+            .expect("page 404 is not initialized")
+            .to_string();
         StatusCode::NOT_FOUND
     } else if err
         .find::<warp::filters::body::BodyDeserializeError>()
@@ -25,7 +28,10 @@ pub async fn handle_rejection(
     } else if err.find::<warp::reject::UnsupportedMediaType>().is_some() {
         StatusCode::UNSUPPORTED_MEDIA_TYPE
     } else {
-        content = page_50x;
+        content = PAGE_50X
+            .get()
+            .expect("page 50x is not initialized")
+            .to_string();
         StatusCode::INTERNAL_SERVER_ERROR
     };
 
