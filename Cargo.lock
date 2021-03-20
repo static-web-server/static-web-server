@@ -32,9 +32,9 @@ dependencies = [
 
 [[package]]
 name = "anyhow"
-version = "1.0.38"
+version = "1.0.39"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "afddf7f520a80dbf76e6f50a35bca42a2331ef227a28b3b6dc5c2e2338d114b1"
+checksum = "81cddc5f91628367664cc7c69714ff08deee8a3efc54623011c772544d7b2767"
 
 [[package]]
 name = "async-compression"
@@ -367,12 +367,13 @@ dependencies = [
 
 [[package]]
 name = "http-body"
-version = "0.4.0"
+version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2861bd27ee074e5ee891e8b539837a9430012e249d7f0ca2d795650f579c1994"
+checksum = "5dfb77c123b4e2f72a2069aeae0b4b4949cc7e966df277813fc16347e7549737"
 dependencies = [
  "bytes",
  "http",
+ "pin-project-lite",
 ]
 
 [[package]]
@@ -864,6 +865,7 @@ dependencies = [
  "jemallocator",
  "nix",
  "num_cpus",
+ "once_cell",
  "signal",
  "structopt",
  "tokio",
@@ -938,9 +940,9 @@ dependencies = [
 
 [[package]]
 name = "tokio"
-version = "1.3.0"
+version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8d56477f6ed99e10225f38f9f75f872f29b8b8bd8c0b946f63345bb144e9eeda"
+checksum = "134af885d758d645f0f0505c9a8b3f9bf8a348fd822e112ab5248138348f1722"
 dependencies = [
  "autocfg",
  "bytes",
@@ -964,9 +966,9 @@ dependencies = [
 
 [[package]]
 name = "tokio-stream"
-version = "0.1.4"
+version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c535f53c0cfa1acace62995a8994fc9cc1f12d202420da96ff306ee24d576469"
+checksum = "e177a5d8c3bf36de9ebe6d58537d8879e964332f93fb3339e43f618c81361af0"
 dependencies = [
  "futures-core",
  "pin-project-lite",
@@ -975,9 +977,9 @@ dependencies = [
 
 [[package]]
 name = "tokio-util"
-version = "0.6.4"
+version = "0.6.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ec31e5cc6b46e653cf57762f36f71d5e6386391d88a72fd6db4508f8f676fb29"
+checksum = "5143d049e85af7fbc36f5454d990e62c2df705b3589f123b71f441b6b59f443f"
 dependencies = [
  "bytes",
  "futures-core",
