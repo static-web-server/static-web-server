@@ -65,20 +65,20 @@ impl Server {
             .expect("page 50x is not initialized");
 
         // CORS support
-        let (cors_filter, cors_allowed_origins) =
+        let (cors_filter_opt, cors_allowed_origins) =
             cors::get_opt_cors_filter(opts.cors_allow_origins.as_ref());
 
         // Base fs directory filter
-        let base_dir_filter = warp::fs::dir(root_dir.clone())
+        let base_fs_dir_filter = warp::fs::dir(root_dir.clone())
             .map(cache::control_headers)
             .with(warp::trace::request())
             .recover(rejection::handle_rejection);
 
         // Public HEAD endpoint
-        let public_head = warp::head().and(base_dir_filter.clone());
+        let public_head = warp::head().and(base_fs_dir_filter.clone());
 
         // Public GET endpoint (default)
-        let public_get_default = warp::get().and(base_dir_filter.clone());
+        let public_get_default = warp::get().and(base_fs_dir_filter);
 
         // HTTP/2 + TLS
         let http2 = opts.http2;
@@ -88,25 +88,29 @@ impl Server {
         // Public GET/HEAD endpoints with compression (gzip, brotli or none)
         match opts.compression.as_ref() {
             "brotli" => tokio::task::spawn(async move {
-                let with_dir = warp::fs::dir(root_dir)
+                let fs_dir_filter = warp::fs::dir(root_dir)
                     .map(cache::control_headers)
                     .with(warp::trace::request())
                     .with(warp::compression::brotli(true))
                     .recover(rejection::handle_rejection);
 
-                match cors_filter {
+                match cors_filter_opt {
                     Some(cors_filter) => {
                         tracing::info!(
                             cors_enabled = ?true,
                             allowed_origins = ?cors_allowed_origins
                         );
-                        let server = warp::serve(
-                            public_head.with(cors_filter.clone()).or(warp::get()
-                                .and(filters::has_accept_encoding("br"))
-                                .and(with_dir)
-                                .with(cors_filter.clone())
-                                .or(public_get_default.with(cors_filter))),
-                        );
+
+                        let public_head = public_head.with(cors_filter.clone());
+                        let public_get_default = public_get_default.with(cors_filter.clone());
+
+                        let public_get = warp::get()
+                            .and(filters::has_accept_encoding("br"))
+                            .and(fs_dir_filter)
+                            .with(cors_filter.clone());
+
+                        let server = warp::serve(public_head.or(public_get).or(public_get_default));
+
                         if http2 {
                             server
                                 .tls()
@@ -119,12 +123,12 @@ impl Server {
                         }
                     }
                     None => {
-                        let server = warp::serve(
-                            public_head.or(warp::get()
-                                .and(filters::has_accept_encoding("br"))
-                                .and(with_dir)
-                                .or(public_get_default)),
-                        );
+                        let public_get = warp::get()
+                            .and(filters::has_accept_encoding("br"))
+                            .and(fs_dir_filter);
+
+                        let server = warp::serve(public_head.or(public_get).or(public_get_default));
+
                         if http2 {
                             server
                                 .tls()
@@ -139,25 +143,29 @@ impl Server {
                 }
             }),
             "gzip" => tokio::task::spawn(async move {
-                let with_dir = warp::fs::dir(root_dir)
+                let fs_dir_filter = warp::fs::dir(root_dir)
                     .map(cache::control_headers)
                     .with(warp::trace::request())
                     .with(warp::compression::gzip(true))
                     .recover(rejection::handle_rejection);
 
-                match cors_filter {
+                match cors_filter_opt {
                     Some(cors_filter) => {
                         tracing::info!(
                             cors_enabled = ?true,
                             allowed_origins = ?cors_allowed_origins
                         );
-                        let server = warp::serve(
-                            public_head.with(cors_filter.clone()).or(warp::get()
-                                .and(filters::has_accept_encoding("gzip"))
-                                .and(with_dir)
-                                .with(cors_filter.clone())
-                                .or(public_get_default.with(cors_filter))),
-                        );
+
+                        let public_head = public_head.with(cors_filter.clone());
+                        let public_get_default = public_get_default.with(cors_filter.clone());
+
+                        let public_get = warp::get()
+                            .and(filters::has_accept_encoding("gzip"))
+                            .and(fs_dir_filter)
+                            .with(cors_filter.clone());
+
+                        let server = warp::serve(public_head.or(public_get).or(public_get_default));
+
                         if http2 {
                             server
                                 .tls()
@@ -170,12 +178,12 @@ impl Server {
                         }
                     }
                     None => {
-                        let server = warp::serve(
-                            public_head.or(warp::get()
-                                .and(filters::has_accept_encoding("gzip"))
-                                .and(with_dir)
-                                .or(public_get_default)),
-                        );
+                        let public_get = warp::get()
+                            .and(filters::has_accept_encoding("gzip"))
+                            .and(fs_dir_filter);
+
+                        let server = warp::serve(public_head.or(public_get).or(public_get_default));
+
                         if http2 {
                             server
                                 .tls()
@@ -190,17 +198,17 @@ impl Server {
                 }
             }),
             _ => tokio::task::spawn(async move {
-                match cors_filter {
+                match cors_filter_opt {
                     Some(cors_filter) => {
                         tracing::info!(
                             cors_enabled = ?true,
                             allowed_origins = ?cors_allowed_origins
                         );
-                        let public_get_default = warp::get()
-                            .and(base_dir_filter.clone())
-                            .with(cors_filter.clone());
-                        let server =
-                            warp::serve(public_head.or(public_get_default.with(cors_filter)));
+
+                        let public_get = public_get_default.with(cors_filter.clone());
+
+                        let server = warp::serve(public_head.or(public_get));
+
                         if http2 {
                             server
                                 .tls()
@@ -214,6 +222,7 @@ impl Server {
                     }
                     None => {
                         let server = warp::serve(public_head.or(public_get_default));
+
                         if http2 {
                             server
                                 .tls()
