@@ -1,9 +1,8 @@
 # Static Web Server [![CI](https://github.com/joseluisq/static-web-server/workflows/CI/badge.svg)](https://github.com/joseluisq/static-web-server/actions?query=workflow%3ACI) [![Docker Image Version (tag latest semver)](https://img.shields.io/docker/v/joseluisq/static-web-server/1)](https://hub.docker.com/r/joseluisq/static-web-server/) [![Docker Image Size (tag)](https://img.shields.io/docker/image-size/joseluisq/static-web-server/1)](https://hub.docker.com/r/joseluisq/static-web-server/tags) [![Docker Image](https://img.shields.io/docker/pulls/joseluisq/static-web-server.svg)](https://hub.docker.com/r/joseluisq/static-web-server/)
 
-**Status:** WIP `v2` release under **active** development.<br>
-For stable `v1` and contributions please refer to [1.x](https://github.com/joseluisq/static-web-server/tree/1.x) branch.
+**Status:** WIP `v2` release under **active** development. For the stable `v1` and contributions please refer to [1.x](https://github.com/joseluisq/static-web-server/tree/1.x) branch.
 
-> A blazing fast static files-serving web server. :zap:
+> A blazing fast static files-serving web server. ⚡
 
 **Static Web Server** is a very small and fast production-ready web server to serving static web files or assets.
 
@@ -21,7 +20,7 @@ For stable `v1` and contributions please refer to [1.x](https://github.com/josel
 - Lightweight and configurable logging via [tracing](https://github.com/tokio-rs/tracing) crate.
 - [Termination signal](https://www.gnu.org/software/libc/manual/html_node/Termination-Signals.html) handling.
 - [HTTP/2](https://tools.ietf.org/html/rfc7540) + TLS support.
-- Customize number of worker threads.
+- Customizable number of worker threads.
 - Default and custom error pages.
 - [CORS](https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS) support.
 - Configurable using CLI arguments or environment variables.
@@ -61,8 +60,8 @@ Server can be configured either via environment variables or their equivalent co
 CLI arguments listed with `static-web-server -h`.
 
 ```
-static-web-server 2.0.0-beta.2
-A blazing fast static files-serving web server
+static-web-server 2.0.0-beta.3
+A blazing fast static files-serving web server powered by Rust
 
 USAGE:
     static-web-server [OPTIONS]
@@ -73,15 +72,15 @@ FLAGS:
 
 OPTIONS:
     -x, --compression <compression>
-            Compression body support for web text-based file types. Values: "gzip" or "brotli". Use an empty
-            value to skip compression [env: SERVER_COMPRESSION=]  [default: gzip]
+            Compression body support for text-based web file types only. Values: "gzip" or "brotli". Use an empty value
+            to skip compression [env: SERVER_COMPRESSION=]  [default: gzip]
     -c, --cors-allow-origins <cors-allow-origins>
-            Specify a optional CORS list of allowed origin hosts separated by comas. Host ports or protocols aren't
+            Specify an optional CORS list of allowed origin hosts separated by comas. Host ports or protocols aren't
             being checked. Use an asterisk (*) to allow any host [env: SERVER_CORS_ALLOW_ORIGINS=]  [default: ]
     -a, --host <host>
             Host address (E.g 127.0.0.1 or ::1) [env: SERVER_HOST=]  [default: ::]
 
-    -t, --http2 <http2>                              Enables HTTP/2 with TLS support [env: SERVER_HTTP2_TLS=]
+    -t, --http2 <http2>                              Enable HTTP/2 with TLS support [env: SERVER_HTTP2_TLS=]
         --http2-tls-cert <http2-tls-cert>
             Specify the file path to read the certificate [env: SERVER_HTTP2_TLS_CERT=]  [default: ]
 
@@ -89,8 +88,8 @@ OPTIONS:
             Specify the file path to read the private key [env: SERVER_HTTP2_TLS_KEY=]  [default: ]
 
     -g, --log-level <log-level>
-            Specify a logging level in lower case [env: SERVER_LOG_LEVEL=]  [default: error]
-
+            Specify a logging level in lower case. Values: error, warn, info, debug or trace [env: SERVER_LOG_LEVEL=]
+            [default: error]
         --page404 <page404>
             HTML file path for 404 errors. If path is not specified or simply don't exists then server will use a
             generic HTML error message [env: SERVER_ERROR_PAGE_404=]  [default: ./public/404.html]
@@ -118,7 +117,7 @@ version: "3.3"
 
 services:
   web:
-    image: joseluisq/static-web-server:2.0.0-beta.2
+    image: joseluisq/static-web-server:2.0.0-beta.3
     environment:
         - SERVER_HOST=127.0.0.1
         - SERVER_PORT=80
