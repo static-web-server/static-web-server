@@ -1139,7 +1139,7 @@ dependencies = [
 [[package]]
 name = "warp"
 version = "0.3.1"
-source = "git+https://github.com/joseluisq/warp.git?branch=0.3.x#fe231ca94e13684638301c163e07fe47f0efe821"
+source = "git+https://github.com/joseluisq/warp.git?branch=0.3.x#ca25ca76e62d3c1438f8b87c522120a629ec945a"
 dependencies = [
  "async-compression",
  "bytes",
