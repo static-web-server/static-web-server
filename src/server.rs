@@ -90,8 +90,8 @@ impl Server {
             "brotli" => tokio::task::spawn(async move {
                 let fs_dir_filter = warp::fs::dir(root_dir)
                     .map(cache::control_headers)
-                    .with(warp::trace::request())
                     .with(warp::compression::brotli(true))
+                    .with(warp::trace::request())
                     .recover(rejection::handle_rejection);
 
                 match cors_filter_opt {
@@ -145,8 +145,8 @@ impl Server {
             "gzip" => tokio::task::spawn(async move {
                 let fs_dir_filter = warp::fs::dir(root_dir)
                     .map(cache::control_headers)
-                    .with(warp::trace::request())
                     .with(warp::compression::gzip(true))
+                    .with(warp::trace::request())
                     .recover(rejection::handle_rejection);
 
                 match cors_filter_opt {
