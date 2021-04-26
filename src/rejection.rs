@@ -44,3 +44,17 @@ pub async fn handle_rejection(err: Rejection) -> Result<impl Reply, Infallible> 
 
     Ok(warp::reply::with_status(warp::reply::html(content), code))
 }
+
+/// Custom invalid request header rejection.
+#[derive(Debug)]
+pub struct InvalidHeader {
+    pub name: &'static str,
+}
+
+impl ::std::fmt::Display for InvalidHeader {
+    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+        write!(f, "Invalid request header {:?}", self.name)
+    }
+}
+
+impl warp::reject::Reject for InvalidHeader {}
