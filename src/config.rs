@@ -46,11 +46,6 @@ pub struct Config {
     /// HTML file path for 404 errors. If path is not specified or simply don't exists then server will use a generic HTML error message.
     pub page404: String,
 
-    #[structopt(long, short = "x", default_value = "gzip", env = "SERVER_COMPRESSION")]
-    /// Compression body support for text-based web file types only. Values: "gzip" or "brotli".
-    /// Use an empty value to skip compression.
-    pub compression: String,
-
     #[structopt(long, short = "g", default_value = "error", env = "SERVER_LOG_LEVEL")]
     /// Specify a logging level in lower case. Values: error, warn, info, debug or trace
     pub log_level: String,
