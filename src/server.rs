@@ -4,7 +4,7 @@ use structopt::StructOpt;
 use warp::Filter;
 
 use crate::config::{Config, CONFIG};
-use crate::{cache, cors, filters, helpers, logger, rejection, signals, Result};
+use crate::{cache, cors, filters, helpers, logger, rejection, Result};
 
 /// Define a multi-thread HTTP or HTTP/2 web server.
 pub struct Server {
@@ -119,17 +119,27 @@ impl Server {
             .await
         });
 
-        // Handle incoming signals for Unix-like OS's only
-        // TODO: make this more explicit like v1
-        // see https://github.com/joseluisq/static-web-server/blob/1.x/src/server.rs#L96
-        signals::wait(|sig: signals::Signal| {
-            let code = signals::as_int(sig);
-            tracing::warn!("Signal {} caught. Server execution exited.", code);
-            std::process::exit(code)
-        });
+        handle_signals();
 
         Ok(())
     }
+}
+
+#[cfg(not(windows))]
+/// Handle incoming signals for Unix-like OS's only
+fn handle_signals() {
+    use crate::signals;
+
+    signals::wait(|sig: signals::Signal| {
+        let code = signals::as_int(sig);
+        tracing::warn!("Signal {} caught. Server execution exited.", code);
+        std::process::exit(code)
+    });
+}
+
+#[cfg(windows)]
+fn handle_signals() {
+    // TODO: Windows signals...
 }
 
 /// It creates and starts a Warp HTTP or HTTP/2 server with Brotli compression.
