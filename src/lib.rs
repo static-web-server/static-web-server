@@ -4,6 +4,7 @@
 extern crate anyhow;
 
 pub mod cache;
+pub mod compression;
 pub mod config;
 pub mod cors;
 pub mod filters;

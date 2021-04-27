@@ -3,8 +3,11 @@ use std::path::PathBuf;
 use structopt::StructOpt;
 use warp::Filter;
 
-use crate::config::{Config, CONFIG};
-use crate::{cache, cors, filters, helpers, logger, rejection, Result};
+use crate::{cache, cors, helpers, logger, rejection, Result};
+use crate::{
+    compression::TEXT_MIME_TYPES,
+    config::{Config, CONFIG},
+};
 
 /// Define a multi-thread HTTP or HTTP/2 web server.
 pub struct Server {
@@ -74,54 +77,103 @@ impl Server {
         let http2_tls_cert_path = &opts.http2_tls_cert;
         let http2_tls_key_path = &opts.http2_tls_key;
 
-        // Spawn a new Tokio asynchronous server task determined by the given compression type (gzip, brotli or none)
-        // TODO: this can be simplified by replicating something similar to `warp::compression::auto()` but skipping `deflate
-        // see Warp PR #513 https://github.com/seanmonstar/warp/pull/513
-        tokio::task::spawn(async move {
-            if opts.compression == "brotli" {
-                run_server_with_brotli_compression(
-                    addr,
-                    root_dir,
-                    http2,
-                    http2_tls_cert_path,
-                    http2_tls_key_path,
-                    cors_filter_opt,
-                    cors_allowed_origins,
-                )
-                .await;
-                return;
-            }
-
-            if opts.compression == "gzip" {
-                run_server_with_gzip_compression(
-                    addr,
-                    root_dir,
-                    http2,
-                    http2_tls_cert_path,
-                    http2_tls_key_path,
-                    cors_filter_opt,
-                    cors_allowed_origins,
-                )
-                .await;
-                return;
-            }
-
-            // Fallback HTTP or HTTP/2 server with no compression
-            run_server_with_no_compression(
-                addr,
-                root_dir,
-                http2,
-                http2_tls_cert_path,
-                http2_tls_key_path,
-                cors_filter_opt,
-                cors_allowed_origins,
-            )
-            .await
-        });
+        // Spawn a new Tokio asynchronous server task determined by the given options
+        tokio::task::spawn(run_server_with_options(
+            addr,
+            root_dir,
+            http2,
+            http2_tls_cert_path,
+            http2_tls_key_path,
+            cors_filter_opt,
+            cors_allowed_origins,
+        ));
 
         handle_signals();
 
         Ok(())
+    }
+}
+
+impl Default for Server {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+/// It creates and starts a Warp HTTP or HTTP/2 server with its options.
+pub async fn run_server_with_options(
+    addr: SocketAddr,
+    root_dir: PathBuf,
+    http2: bool,
+    http2_tls_cert_path: &'static str,
+    http2_tls_key_path: &'static str,
+    cors_filter_opt: Option<warp::filters::cors::Builder>,
+    cors_allowed_origins: String,
+) {
+    // Base fs directory filter
+    let base_fs_dir_filter = warp::fs::dir(root_dir.clone())
+        .map(cache::control_headers)
+        .with(warp::trace::request())
+        .recover(rejection::handle_rejection);
+
+    // Public HEAD endpoint
+    let public_head = warp::head().and(base_fs_dir_filter.clone());
+
+    // Public GET endpoint (default)
+    let public_get_default = warp::get().and(base_fs_dir_filter);
+
+    // Current fs directory filter
+    let fs_dir_filter = warp::fs::dir(root_dir)
+        .map(cache::control_headers)
+        .with(warp::compression::auto(|headers| {
+            // Skip compression for non-text-based MIME types
+            if let Some(content_type) = headers.get("content-type") {
+                !TEXT_MIME_TYPES.iter().any(|h| h == content_type)
+            } else {
+                false
+            }
+        }))
+        .with(warp::trace::request())
+        .recover(rejection::handle_rejection);
+
+    // Determine CORS filter
+    if let Some(cors_filter) = cors_filter_opt {
+        tracing::info!(
+            cors_enabled = ?true,
+            allowed_origins = ?cors_allowed_origins
+        );
+
+        let public_head = public_head.with(cors_filter.clone());
+        let public_get_default = public_get_default.with(cors_filter.clone());
+        let public_get = warp::get().and(fs_dir_filter).with(cors_filter.clone());
+
+        let server = warp::serve(public_head.or(public_get).or(public_get_default));
+
+        if http2 {
+            server
+                .tls()
+                .cert_path(http2_tls_cert_path)
+                .key_path(http2_tls_key_path)
+                .run(addr)
+                .await
+        } else {
+            server.run(addr).await
+        }
+    } else {
+        let public_get = warp::get().and(fs_dir_filter);
+
+        let server = warp::serve(public_head.or(public_get).or(public_get_default));
+
+        if http2 {
+            server
+                .tls()
+                .cert_path(http2_tls_cert_path)
+                .key_path(http2_tls_key_path)
+                .run(addr)
+                .await
+        } else {
+            server.run(addr).await
+        }
     }
 }
 
@@ -140,221 +192,4 @@ fn handle_signals() {
 #[cfg(windows)]
 fn handle_signals() {
     // TODO: Windows signals...
-}
-
-/// It creates and starts a Warp HTTP or HTTP/2 server with Brotli compression.
-pub async fn run_server_with_brotli_compression(
-    addr: SocketAddr,
-    root_dir: PathBuf,
-    http2: bool,
-    http2_tls_cert_path: &'static str,
-    http2_tls_key_path: &'static str,
-    cors_filter_opt: Option<warp::filters::cors::Builder>,
-    cors_allowed_origins: String,
-) {
-    // Base fs directory filter
-    let base_fs_dir_filter = warp::fs::dir(root_dir.clone())
-        .map(cache::control_headers)
-        .with(warp::trace::request())
-        .recover(rejection::handle_rejection);
-
-    // Public HEAD endpoint
-    let public_head = warp::head().and(base_fs_dir_filter.clone());
-
-    // Public GET endpoint (default)
-    let public_get_default = warp::get().and(base_fs_dir_filter);
-
-    // Current fs directory filter
-    let fs_dir_filter = warp::fs::dir(root_dir)
-        .map(cache::control_headers)
-        .with(warp::compression::brotli(true))
-        .with(warp::trace::request())
-        .recover(rejection::handle_rejection);
-
-    // Determine CORS filter
-    if let Some(cors_filter) = cors_filter_opt {
-        tracing::info!(
-            cors_enabled = ?true,
-            allowed_origins = ?cors_allowed_origins
-        );
-
-        let public_head = public_head.with(cors_filter.clone());
-        let public_get_default = public_get_default.with(cors_filter.clone());
-
-        let public_get = warp::get()
-            .and(filters::has_accept_encoding("br"))
-            .and(fs_dir_filter)
-            .with(cors_filter.clone());
-
-        let server = warp::serve(public_head.or(public_get).or(public_get_default));
-
-        if http2 {
-            server
-                .tls()
-                .cert_path(http2_tls_cert_path)
-                .key_path(http2_tls_key_path)
-                .run(addr)
-                .await
-        } else {
-            server.run(addr).await
-        }
-    } else {
-        let public_get = warp::get()
-            .and(filters::has_accept_encoding("br"))
-            .and(fs_dir_filter);
-
-        let server = warp::serve(public_head.or(public_get).or(public_get_default));
-
-        if http2 {
-            server
-                .tls()
-                .cert_path(http2_tls_cert_path)
-                .key_path(http2_tls_key_path)
-                .run(addr)
-                .await
-        } else {
-            server.run(addr).await
-        }
-    }
-}
-
-/// It creates and starts a Warp HTTP or HTTP/2 server with GZIP compression.
-pub async fn run_server_with_gzip_compression(
-    addr: SocketAddr,
-    root_dir: PathBuf,
-    http2: bool,
-    http2_tls_cert_path: &'static str,
-    http2_tls_key_path: &'static str,
-    cors_filter_opt: Option<warp::filters::cors::Builder>,
-    cors_allowed_origins: String,
-) {
-    // Base fs directory filter
-    let base_fs_dir_filter = warp::fs::dir(root_dir.clone())
-        .map(cache::control_headers)
-        .with(warp::trace::request())
-        .recover(rejection::handle_rejection);
-
-    // Public HEAD endpoint
-    let public_head = warp::head().and(base_fs_dir_filter.clone());
-
-    // Public GET endpoint (default)
-    let public_get_default = warp::get().and(base_fs_dir_filter);
-
-    // Current fs directory filter
-    let fs_dir_filter = warp::fs::dir(root_dir)
-        .map(cache::control_headers)
-        .with(warp::compression::gzip(true))
-        .with(warp::trace::request())
-        .recover(rejection::handle_rejection);
-
-    // Determine CORS filter
-    if let Some(cors_filter) = cors_filter_opt {
-        tracing::info!(
-            cors_enabled = ?true,
-            allowed_origins = ?cors_allowed_origins
-        );
-
-        let public_head = public_head.with(cors_filter.clone());
-        let public_get_default = public_get_default.with(cors_filter.clone());
-
-        let public_get = warp::get()
-            .and(filters::has_accept_encoding("gzip"))
-            .and(fs_dir_filter)
-            .with(cors_filter.clone());
-
-        let server = warp::serve(public_head.or(public_get).or(public_get_default));
-
-        if http2 {
-            server
-                .tls()
-                .cert_path(http2_tls_cert_path)
-                .key_path(http2_tls_key_path)
-                .run(addr)
-                .await
-        } else {
-            server.run(addr).await
-        }
-    } else {
-        let public_get = warp::get()
-            .and(filters::has_accept_encoding("gzip"))
-            .and(fs_dir_filter);
-
-        let server = warp::serve(public_head.or(public_get).or(public_get_default));
-
-        if http2 {
-            server
-                .tls()
-                .cert_path(http2_tls_cert_path)
-                .key_path(http2_tls_key_path)
-                .run(addr)
-                .await
-        } else {
-            server.run(addr).await
-        }
-    }
-}
-
-/// It creates and starts a Warp HTTP or HTTP/2 server with no compression.
-pub async fn run_server_with_no_compression(
-    addr: SocketAddr,
-    root_dir: PathBuf,
-    http2: bool,
-    http2_tls_cert_path: &'static str,
-    http2_tls_key_path: &'static str,
-    cors_filter_opt: Option<warp::filters::cors::Builder>,
-    cors_allowed_origins: String,
-) {
-    // Base fs directory filter
-    let base_fs_dir_filter = warp::fs::dir(root_dir.clone())
-        .map(cache::control_headers)
-        .with(warp::trace::request())
-        .recover(rejection::handle_rejection);
-
-    // Public HEAD endpoint
-    let public_head = warp::head().and(base_fs_dir_filter.clone());
-
-    // Public GET endpoint (default)
-    let public_get_default = warp::get().and(base_fs_dir_filter);
-
-    // Determine CORS filter
-    if let Some(cors_filter) = cors_filter_opt {
-        tracing::info!(
-            cors_enabled = ?true,
-            allowed_origins = ?cors_allowed_origins
-        );
-
-        let public_get = public_get_default.with(cors_filter.clone());
-
-        let server = warp::serve(public_head.or(public_get));
-
-        if http2 {
-            server
-                .tls()
-                .cert_path(http2_tls_cert_path)
-                .key_path(http2_tls_key_path)
-                .run(addr)
-                .await
-        } else {
-            server.run(addr).await
-        }
-    } else {
-        let server = warp::serve(public_head.or(public_get_default));
-
-        if http2 {
-            server
-                .tls()
-                .cert_path(http2_tls_cert_path)
-                .key_path(http2_tls_key_path)
-                .run(addr)
-                .await
-        } else {
-            server.run(addr).await
-        }
-    }
-}
-
-impl Default for Server {
-    fn default() -> Self {
-        Self::new()
-    }
 }

@@ -182,6 +182,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "either"
+version = "1.6.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e78d4f1cc4ae33bbfc157ed5d5a5ef3bc29227303d595861deb238fcec4e9457"
+
+[[package]]
 name = "flate2"
 version = "1.0.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -314,14 +320,14 @@ checksum = "d7afe4a420e3fe79967a00898cc1f4db7c8a49a9333a29f8a4bd76a253d5cd04"
 [[package]]
 name = "headers"
 version = "0.3.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f0b7591fb62902706ae8e7aaff416b1b0fa2c0fd0878b46dc13baa3712d8a855"
+source = "git+https://github.com/joseluisq/hyper-headers.git?branch=headers_encoding#ca704fcb605adf33f327d0f5a41d5072606058a1"
 dependencies = [
  "base64",
  "bitflags",
  "bytes",
  "headers-core",
  "http",
+ "itertools",
  "mime",
  "sha-1",
  "time",
@@ -330,8 +336,7 @@ dependencies = [
 [[package]]
 name = "headers-core"
 version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e7f66481bfee273957b1f20485a4ff3362987f85b2c236580d81b4eb7a326429"
+source = "git+https://github.com/joseluisq/hyper-headers.git?branch=headers_encoding#ca704fcb605adf33f327d0f5a41d5072606058a1"
 dependencies = [
  "http",
 ]
@@ -420,6 +425,15 @@ checksum = "824845a0bf897a9042383849b02c1bc219c2383772efcd5c6f9766fa4b81aef3"
 dependencies = [
  "autocfg",
  "hashbrown",
+]
+
+[[package]]
+name = "itertools"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "284f18f85651fe11e8a991b2adb42cb078325c996ed026d994719efcfca1d54b"
+dependencies = [
+ "either",
 ]
 
 [[package]]
@@ -1139,7 +1153,7 @@ dependencies = [
 [[package]]
 name = "warp"
 version = "0.3.1"
-source = "git+https://github.com/joseluisq/warp.git?branch=0.3.x#ca25ca76e62d3c1438f8b87c522120a629ec945a"
+source = "git+https://github.com/joseluisq/warp.git?branch=0.3.x#f638f8958addb953501a08d427aae64a4c4f5a21"
 dependencies = [
  "async-compression",
  "bytes",
