@@ -3,15 +3,13 @@
 #[macro_use]
 extern crate anyhow;
 
-pub mod cache;
-pub mod compression;
 pub mod config;
-pub mod cors;
+pub mod controller;
+pub mod error_page;
+pub mod fs;
 pub mod helpers;
 pub mod logger;
-pub mod rejection;
 pub mod server;
-pub mod signals;
 
 #[macro_use]
 pub mod error;

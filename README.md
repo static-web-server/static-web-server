@@ -10,7 +10,7 @@
 
 - Built with [Rust](https://rust-lang.org) which is focused on [safety, speed, and concurrency](https://kornel.ski/rust-c-speed).
 - Memory safety and very reduced CPU and RAM overhead.
-- Blazing fast static files-serving and asynchronous powered by [Warp](https://github.com/seanmonstar/warp/) `v0.3` ([Hyper](https://github.com/hyperium/hyper/) `v0.14`), [Tokio](https://github.com/tokio-rs/tokio) `v1` and a set of [awesome crates](./Cargo.toml).
+- Blazing fast static files-serving and asynchronous powered by [Hyper](https://github.com/hyperium/hyper/) `v0.14`, [Tokio](https://github.com/tokio-rs/tokio) `v1` and a set of [awesome crates](./Cargo.toml).
 - Suitable for lightweight [GNU/Linux Docker containers](https://hub.docker.com/r/joseluisq/static-web-server/tags). It's a fully __5MB__ static binary thanks to [Rust and Musl libc](https://doc.rust-lang.org/edition-guide/rust-2018/platform-and-target-support/musl-support-for-fully-static-binaries.html).
 - GZip, Deflate or Brotli compression for text-based web files only.
 - Compression on demand via [Accept-Encoding](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Accept-Encoding) header.
