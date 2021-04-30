@@ -23,9 +23,11 @@ impl Server {
         CONFIG.set(Config::from_args()).unwrap();
         let opts = Config::global();
 
+        // Configure number of worker threads
+        let cpus = num_cpus::get();
         let threads = match opts.threads_multiplier {
-            0 | 1 => 1,
-            _ => num_cpus::get() * opts.threads_multiplier,
+            0 | 1 => cpus,
+            n => cpus * n,
         };
 
         Self { threads }
