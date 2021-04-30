@@ -10,6 +10,7 @@ pub mod fs;
 pub mod helpers;
 pub mod logger;
 pub mod server;
+pub mod signals;
 
 #[macro_use]
 pub mod error;

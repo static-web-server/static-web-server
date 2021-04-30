@@ -3,7 +3,6 @@ use hyper::service::{make_service_fn, service_fn};
 use std::net::{IpAddr, SocketAddr};
 use std::sync::Arc;
 use structopt::StructOpt;
-use tokio::signal;
 
 use crate::{
     config::{Config, CONFIG},
@@ -76,30 +75,26 @@ impl Server {
 
         // TODO: HTTP/2 + TLS
 
-        // Spawn a new Tokio asynchronous server task determined by the given options
+        // Spawn a new Tokio asynchronous server task with its given options
+        tokio::task::spawn(async move {
+            let span = tracing::info_span!("Server::run", ?addr, threads = ?self.threads);
+            tracing::info!(parent: &span, "listening on http://{}", addr);
 
-        let span = tracing::info_span!("Server::run", ?addr, threads = ?self.threads);
-        tracing::info!(parent: &span, "listening on http://{}", addr);
+            let root_dir = ArcPath(Arc::new(root_dir));
+            let create_service = make_service_fn(move |_| {
+                let root_dir = root_dir.clone();
+                async move {
+                    Ok::<_, error::Error>(service_fn(move |req| {
+                        let root_dir = root_dir.clone();
+                        async move { handle(root_dir.as_ref(), req).await }
+                    }))
+                }
+            });
 
-        let root_dir = ArcPath(Arc::new(root_dir));
-        let create_service = make_service_fn(move |_| {
-            let root_dir = root_dir.clone();
-            async move {
-                Ok::<_, error::Error>(service_fn(move |req| {
-                    let root_dir = root_dir.clone();
-                    async move { handle(root_dir.as_ref(), req).await }
-                }))
-            }
+            HyperServer::bind(&addr).serve(create_service).await
         });
-        HyperServer::bind(&addr)
-            .serve(create_service)
-            .with_graceful_shutdown(async {
-                signal::ctrl_c()
-                    .await
-                    .expect("failed to install CTRL+C signal handler");
-                tracing::warn!(parent: &span, "CTRL+C signal caught and execution exited");
-            })
-            .await?;
+
+        handle_signals();
 
         Ok(())
     }
@@ -109,4 +104,21 @@ impl Default for Server {
     fn default() -> Self {
         Self::new()
     }
+}
+
+#[cfg(not(windows))]
+/// Handle incoming signals for Unix-like OS's only
+fn handle_signals() {
+    use crate::signals;
+
+    signals::wait(|sig: signals::Signal| {
+        let code = signals::as_int(sig);
+        tracing::warn!("Signal {} caught. Server execution exited.", code);
+        std::process::exit(code)
+    });
+}
+
+#[cfg(windows)]
+fn handle_signals() {
+    // TODO: Windows signals...
 }
