@@ -40,20 +40,47 @@ pub async fn handle_request(
     path: &str,
 ) -> Result<Response<Body>, StatusCode> {
     let base = Arc::new(base.into());
-    let path = path_from_tail(base, path).await?;
-    file_reply(headers, path).await
+    let res = path_from_tail(base, path).await?;
+    file_reply(headers, res).await
+}
+
+fn path_from_tail(
+    base: Arc<PathBuf>,
+    tail: &str,
+) -> impl Future<Output = Result<(ArcPath, Metadata, bool), StatusCode>> + Send {
+    future::ready(sanitize_path(base.as_ref(), tail)).and_then(|mut buf| async {
+        match tokio::fs::metadata(&buf).await {
+            Ok(meta) => {
+                let mut auto_index = false;
+                if meta.is_dir() {
+                    tracing::debug!("dir: appending index.html to directory path");
+                    buf.push("index.html");
+                    auto_index = true;
+                }
+                tracing::trace!("dir: {:?}", buf);
+                Ok((ArcPath(Arc::new(buf)), meta, auto_index))
+            }
+            Err(err) => {
+                tracing::debug!("file not found: {:?}", err);
+                Err(StatusCode::NOT_FOUND)
+            }
+        }
+    })
 }
 
 /// Reply with a file content.
 fn file_reply(
     headers: &HeaderMap<HeaderValue>,
-    path: ArcPath,
+    res: (ArcPath, Metadata, bool),
 ) -> impl Future<Output = Result<Response<Body>, StatusCode>> + Send {
+    // TODO: directory listing
+
+    let (path, meta, auto_index) = res;
     let conditionals = get_conditional_headers(headers);
     TkFile::open(path.clone()).then(move |res| match res {
-        Ok(f) => Either::Left(file_conditional(f, path, conditionals)),
+        Ok(f) => Either::Left(file_conditional(f, path, meta, auto_index, conditionals)),
         Err(err) => {
-            let rej = match err.kind() {
+            let status = match err.kind() {
                 io::ErrorKind::NotFound => {
                     tracing::debug!("file not found: {:?}", path.as_ref().display());
                     StatusCode::NOT_FOUND
@@ -71,7 +98,7 @@ fn file_reply(
                     StatusCode::INTERNAL_SERVER_ERROR
                 }
             };
-            Either::Right(future::err(rej))
+            Either::Right(future::err(status))
         }
     })
 }
@@ -88,25 +115,6 @@ fn get_conditional_headers(header_list: &HeaderMap<HeaderValue>) -> Conditionals
         if_range,
         range,
     }
-}
-
-fn path_from_tail(
-    base: Arc<PathBuf>,
-    tail: &str,
-) -> impl Future<Output = Result<ArcPath, StatusCode>> + Send {
-    future::ready(sanitize_path(base.as_ref(), tail)).and_then(|mut buf| async {
-        let is_dir = tokio::fs::metadata(buf.clone())
-            .await
-            .map(|m| m.is_dir())
-            .unwrap_or(false);
-
-        if is_dir {
-            tracing::debug!("dir: appending index.html to directory path");
-            buf.push("index.html");
-        }
-        tracing::trace!("dir: {:?}", buf);
-        Ok(ArcPath(Arc::new(buf)))
-    })
 }
 
 fn sanitize_path(base: impl AsRef<Path>, tail: &str) -> Result<PathBuf, StatusCode> {
@@ -198,64 +206,80 @@ impl Conditionals {
 fn file_conditional(
     f: TkFile,
     path: ArcPath,
+    meta: Metadata,
+    auto_index: bool,
     conditionals: Conditionals,
 ) -> impl Future<Output = Result<Response<Body>, StatusCode>> + Send {
-    file_metadata(f).map_ok(move |(file, meta)| {
-        let mut len = meta.len();
-        let modified = meta.modified().ok().map(LastModified::from);
-
-        match conditionals.check(modified) {
-            Cond::NoBody(resp) => resp,
-            Cond::WithBody(range) => {
-                bytes_range(range, len)
-                    .map(|(start, end)| {
-                        let sub_len = end - start;
-                        let buf_size = optimal_buf_size(&meta);
-                        let stream = file_stream(file, buf_size, (start, end));
-                        let body = Body::wrap_stream(stream);
-
-                        let mut resp = Response::new(body);
-
-                        if sub_len != len {
-                            *resp.status_mut() = StatusCode::PARTIAL_CONTENT;
-                            resp.headers_mut().typed_insert(
-                                ContentRange::bytes(start..end, len).expect("valid ContentRange"),
-                            );
-
-                            len = sub_len;
-                        }
-
-                        let mime = mime_guess::from_path(path.as_ref()).first_or_octet_stream();
-
-                        resp.headers_mut().typed_insert(ContentLength(len));
-                        resp.headers_mut().typed_insert(ContentType::from(mime));
-                        resp.headers_mut().typed_insert(AcceptRanges::bytes());
-
-                        if let Some(last_modified) = modified {
-                            resp.headers_mut().typed_insert(last_modified);
-                        }
-
-                        resp
-                    })
-                    .unwrap_or_else(|BadRange| {
-                        // bad byte range
-                        let mut resp = Response::new(Body::empty());
-                        *resp.status_mut() = StatusCode::RANGE_NOT_SATISFIABLE;
-                        resp.headers_mut()
-                            .typed_insert(ContentRange::unsatisfied_bytes(len));
-                        resp
-                    })
-            }
-        }
-    })
+    file_metadata(f, meta, auto_index)
+        .map_ok(|(file, meta)| response_body(file, meta, path, conditionals))
 }
 
-async fn file_metadata(f: TkFile) -> Result<(TkFile, Metadata), StatusCode> {
+async fn file_metadata(
+    f: TkFile,
+    meta: Metadata,
+    auto_index: bool,
+) -> Result<(TkFile, Metadata), StatusCode> {
+    if !auto_index {
+        return Ok((f, meta));
+    }
     match f.metadata().await {
         Ok(meta) => Ok((f, meta)),
         Err(err) => {
             tracing::debug!("file metadata error: {}", err);
             Err(StatusCode::INTERNAL_SERVER_ERROR)
+        }
+    }
+}
+
+fn response_body(
+    file: TkFile,
+    meta: Metadata,
+    path: ArcPath,
+    conditionals: Conditionals,
+) -> Response<Body> {
+    let mut len = meta.len();
+    let modified = meta.modified().ok().map(LastModified::from);
+    match conditionals.check(modified) {
+        Cond::NoBody(resp) => resp,
+        Cond::WithBody(range) => {
+            bytes_range(range, len)
+                .map(|(start, end)| {
+                    let sub_len = end - start;
+                    let buf_size = optimal_buf_size(&meta);
+                    let stream = file_stream(file, buf_size, (start, end));
+                    let body = Body::wrap_stream(stream);
+
+                    let mut resp = Response::new(body);
+
+                    if sub_len != len {
+                        *resp.status_mut() = StatusCode::PARTIAL_CONTENT;
+                        resp.headers_mut().typed_insert(
+                            ContentRange::bytes(start..end, len).expect("valid ContentRange"),
+                        );
+
+                        len = sub_len;
+                    }
+
+                    let mime = mime_guess::from_path(path.as_ref()).first_or_octet_stream();
+
+                    resp.headers_mut().typed_insert(ContentLength(len));
+                    resp.headers_mut().typed_insert(ContentType::from(mime));
+                    resp.headers_mut().typed_insert(AcceptRanges::bytes());
+
+                    if let Some(last_modified) = modified {
+                        resp.headers_mut().typed_insert(last_modified);
+                    }
+
+                    resp
+                })
+                .unwrap_or_else(|BadRange| {
+                    // bad byte range
+                    let mut resp = Response::new(Body::empty());
+                    *resp.status_mut() = StatusCode::RANGE_NOT_SATISFIABLE;
+                    resp.headers_mut()
+                        .typed_insert(ContentRange::unsatisfied_bytes(len));
+                    resp
+                })
         }
     }
 }
@@ -280,7 +304,14 @@ fn bytes_range(range: Option<Range>, max_len: u64) -> Result<(u64, u64), BadRang
 
             let end = match end {
                 Bound::Unbounded => max_len,
-                Bound::Included(s) => s + 1,
+                Bound::Included(s) => {
+                    // For the special case where s == the file size
+                    if s == max_len {
+                        s
+                    } else {
+                        s + 1
+                    }
+                }
                 Bound::Excluded(s) => s,
             };
 
@@ -379,4 +410,42 @@ fn get_block_size(metadata: &Metadata) -> usize {
 #[cfg(not(unix))]
 fn get_block_size(_metadata: &Metadata) -> usize {
     DEFAULT_READ_BUF_SIZE
+}
+
+#[cfg(test)]
+mod tests {
+    use super::sanitize_path;
+    use bytes::BytesMut;
+
+    #[test]
+    fn test_sanitize_path() {
+        let base = "/var/www";
+
+        fn p(s: &str) -> &::std::path::Path {
+            s.as_ref()
+        }
+
+        assert_eq!(
+            sanitize_path(base, "/foo.html").unwrap(),
+            p("/var/www/foo.html")
+        );
+
+        // bad paths
+        sanitize_path(base, "/../foo.html").expect_err("dot dot");
+
+        sanitize_path(base, "/C:\\/foo.html").expect_err("C:\\");
+    }
+
+    #[test]
+    fn test_reserve_at_least() {
+        let mut buf = BytesMut::new();
+        let cap = 8_192;
+
+        assert_eq!(buf.len(), 0);
+        assert_eq!(buf.capacity(), 0);
+
+        super::reserve_at_least(&mut buf, cap);
+        assert_eq!(buf.len(), 0);
+        assert_eq!(buf.capacity(), cap);
+    }
 }
