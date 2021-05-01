@@ -1,4 +1,5 @@
-// Most of the this file is borrowed from https://github.com/seanmonstar/warp/blob/master/src/filters/fs.rs
+// Static File handler
+// -> Most of the file is borrowed from https://github.com/seanmonstar/warp/blob/master/src/filters/fs.rs
 
 use bytes::{Bytes, BytesMut};
 use futures::future::Either;
@@ -37,10 +38,10 @@ impl AsRef<Path> for ArcPath {
 pub async fn handle_request(
     base: &Path,
     headers: &HeaderMap<HeaderValue>,
-    path: &str,
+    uri_path: &str,
 ) -> Result<Response<Body>, StatusCode> {
     let base = Arc::new(base.into());
-    let res = path_from_tail(base, path).await?;
+    let res = path_from_tail(base, uri_path).await?;
     file_reply(headers, res).await
 }
 

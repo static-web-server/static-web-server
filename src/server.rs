@@ -8,8 +8,8 @@ use crate::{
     config::{Config, CONFIG},
     error_page,
 };
-use crate::{controller::handle, fs::ArcPath};
 use crate::{error, helpers, logger, Result};
+use crate::{handler, static_files::ArcPath};
 
 /// Define a multi-thread HTTP or HTTP/2 web server.
 pub struct Server {
@@ -88,7 +88,7 @@ impl Server {
                 async move {
                     Ok::<_, error::Error>(service_fn(move |req| {
                         let root_dir = root_dir.clone();
-                        async move { handle(root_dir.as_ref(), req).await }
+                        async move { handler::handle_request(root_dir.as_ref(), req).await }
                     }))
                 }
             });
