@@ -5,10 +5,9 @@ use async_compression::tokio::bufread::{BrotliEncoder, DeflateEncoder, GzipEncod
 use bytes::Bytes;
 use futures::Stream;
 use headers::{AcceptEncoding, ContentCoding, ContentType, HeaderMap, HeaderMapExt};
-use http::header::HeaderValue;
 use hyper::{
-    header::{CONTENT_ENCODING, CONTENT_LENGTH},
-    Body, Response,
+    header::{HeaderValue, CONTENT_ENCODING, CONTENT_LENGTH},
+    Body, Method, Response,
 };
 use pin_project::pin_project;
 use std::convert::TryFrom;
@@ -42,7 +41,16 @@ pub const TEXT_MIME_TYPES: [&str; 16] = [
 /// using `gzip`, `deflate` or `brotli` if is specified in the `Accept-Encoding` header, adding
 /// `content-encoding: <coding>` to the Response's [`HeaderMap`](hyper::HeaderMap)
 /// It also provides the ability to apply compression for text-based MIME types only.
-pub fn auto(headers: &HeaderMap<HeaderValue>, resp: Response<Body>) -> Result<Response<Body>> {
+pub fn auto(
+    method: &Method,
+    headers: &HeaderMap<HeaderValue>,
+    resp: Response<Body>,
+) -> Result<Response<Body>> {
+    // Skip compression for HEAD request methods
+    if method == Method::HEAD {
+        return Ok(resp);
+    }
+
     // Skip compression for non-text-based MIME types
     if let Some(content_type) = resp.headers().typed_get::<ContentType>() {
         let content_type = content_type.to_string();

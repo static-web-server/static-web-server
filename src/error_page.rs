@@ -74,7 +74,7 @@ pub fn get_error_response(method: &Method, status_code: &StatusCode) -> Result<R
     let mut body = Body::empty();
     let len = error_page_content.len() as u64;
 
-    if method == Method::GET {
+    if method != Method::HEAD {
         body = Body::from(error_page_content)
     }
 

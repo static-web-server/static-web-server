@@ -8,7 +8,7 @@ use headers::{
     AcceptRanges, ContentLength, ContentRange, ContentType, HeaderMap, HeaderMapExt, HeaderValue,
     IfModifiedSince, IfRange, IfUnmodifiedSince, LastModified, Range,
 };
-use hyper::{Body, Response, StatusCode};
+use hyper::{Body, Method, Response, StatusCode};
 use percent_encoding::percent_decode_str;
 use std::fs::Metadata;
 use std::future::Future;
@@ -36,10 +36,16 @@ impl AsRef<Path> for ArcPath {
 /// Entry point to handle web server requests which map to specific files
 /// on file system and return a file response.
 pub async fn handle_request(
-    base: &Path,
+    method: &Method,
     headers: &HeaderMap<HeaderValue>,
+    base: &Path,
     uri_path: &str,
 ) -> Result<Response<Body>, StatusCode> {
+    // Reject requests for non HEAD or GET methods
+    if !(method == Method::HEAD || method == Method::GET) {
+        return Err(StatusCode::METHOD_NOT_ALLOWED);
+    }
+
     let base = Arc::new(base.into());
     let res = path_from_tail(base, uri_path).await?;
     file_reply(headers, res).await
