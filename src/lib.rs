@@ -3,6 +3,7 @@
 #[macro_use]
 extern crate anyhow;
 
+pub mod compression;
 pub mod config;
 pub mod error_page;
 pub mod handler;
