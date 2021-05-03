@@ -51,16 +51,17 @@ pub fn auto(
         return Ok(resp);
     }
 
-    // Skip compression for non-text-based MIME types
-    if let Some(content_type) = resp.headers().typed_get::<ContentType>() {
-        let content_type = content_type.to_string();
-        if !TEXT_MIME_TYPES.iter().any(|h| *h == content_type) {
-            return Ok(resp);
-        }
-    }
-
+    // Compress response based on Accept-Encoding header
     if let Some(ref accept_encoding) = headers.typed_get::<AcceptEncoding>() {
         if let Some(encoding) = accept_encoding.prefered_encoding() {
+            // Skip compression for non-text-based MIME types
+            if let Some(content_type) = resp.headers().typed_get::<ContentType>() {
+                let content_type = &content_type.to_string();
+                if !TEXT_MIME_TYPES.iter().any(|h| *h == content_type) {
+                    return Ok(resp);
+                }
+            }
+
             if encoding == ContentCoding::GZIP {
                 let (head, body) = resp.into_parts();
                 return Ok(gzip(head, body.into()));

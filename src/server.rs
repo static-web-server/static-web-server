@@ -88,7 +88,7 @@ impl Server {
                 async move {
                     Ok::<_, error::Error>(service_fn(move |req| {
                         let root_dir = root_dir.clone();
-                        async move { handler::handle_request(root_dir.as_ref(), req).await }
+                        async move { handler::handle_request(root_dir.as_ref(), &req).await }
                     }))
                 }
             });
