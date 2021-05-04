@@ -1,27 +1,26 @@
 use hyper::server::Server as HyperServer;
 use hyper::service::{make_service_fn, service_fn};
-use std::net::{IpAddr, SocketAddr};
-use std::sync::Arc;
+use std::{
+    net::{IpAddr, SocketAddr},
+    sync::Arc,
+};
 use structopt::StructOpt;
 
-use crate::{
-    config::{Config, CONFIG},
-    error_page,
-};
+use crate::{config::Config, error_page};
 use crate::{error, helpers, logger, Result};
 use crate::{handler, static_files::ArcPath};
 
 /// Define a multi-thread HTTP or HTTP/2 web server.
 pub struct Server {
+    opts: Config,
     threads: usize,
 }
 
 impl Server {
     /// Create new multi-thread server instance.
-    pub fn new() -> Self {
-        // Initialize global config
-        CONFIG.set(Config::from_args()).unwrap();
-        let opts = Config::global();
+    pub fn new() -> Server {
+        // Get server config
+        let opts = Config::from_args();
 
         // Configure number of worker threads
         let cpus = num_cpus::get();
@@ -30,15 +29,15 @@ impl Server {
             n => cpus * n,
         };
 
-        Self { threads }
+        Server { opts, threads }
     }
 
     /// Build and run the multi-thread `Server`.
     pub fn run(self) -> Result {
         tokio::runtime::Builder::new_multi_thread()
-            .enable_all()
-            .thread_name("static-web-server")
             .worker_threads(self.threads)
+            .thread_name("static-web-server")
+            .enable_all()
             .build()?
             .block_on(async {
                 let r = self.start_server().await;
@@ -52,7 +51,7 @@ impl Server {
 
     /// Run the inner Hyper `HyperServer` forever on the current thread with the given configuration.
     async fn start_server(self) -> Result {
-        let opts = Config::global();
+        let opts = &self.opts;
 
         logger::init(&opts.log_level)?;
 
@@ -64,6 +63,7 @@ impl Server {
 
         // Check for a valid root directory
         let root_dir = helpers::get_valid_dirpath(&opts.root)?;
+        let root_dir = ArcPath(Arc::new(root_dir));
 
         // Custom error pages content
         error_page::PAGE_404
@@ -82,8 +82,7 @@ impl Server {
             let span = tracing::info_span!("Server::run", ?addr, threads = ?self.threads);
             tracing::info!(parent: &span, "listening on http://{}", addr);
 
-            let root_dir = ArcPath(Arc::new(root_dir));
-            let create_service = make_service_fn(move |_| {
+            let make_service = make_service_fn(move |_| {
                 let root_dir = root_dir.clone();
                 async move {
                     Ok::<_, error::Error>(service_fn(move |req| {
@@ -93,7 +92,7 @@ impl Server {
                 }
             });
 
-            HyperServer::bind(&addr).serve(create_service).await
+            HyperServer::bind(&addr).serve(make_service).await
         });
 
         handle_signals();

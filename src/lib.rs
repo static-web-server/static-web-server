@@ -16,6 +16,6 @@ pub mod static_files;
 #[macro_use]
 pub mod error;
 
-pub use config::{Config, CONFIG};
+pub use config::Config;
 pub use error::*;
 pub use server::Server;
