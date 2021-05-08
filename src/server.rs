@@ -1,42 +1,47 @@
+use hyper::server::conn::AddrIncoming;
+use hyper::server::Server as HyperServer;
+use hyper::service::{make_service_fn, service_fn};
 use std::net::{IpAddr, SocketAddr};
-use std::path::PathBuf;
+use std::sync::Arc;
 use structopt::StructOpt;
-use warp::Filter;
 
-use crate::{cache, cors, helpers, logger, rejection, Result};
-use crate::{
-    compression::TEXT_MIME_TYPES,
-    config::{Config, CONFIG},
-};
+use crate::config::Config;
+use crate::static_files::ArcPath;
+use crate::tls::{TlsAcceptor, TlsConfigBuilder};
+use crate::Result;
+use crate::{error, error_page, handler, helpers, logger};
 
 /// Define a multi-thread HTTP or HTTP/2 web server.
 pub struct Server {
+    opts: Config,
     threads: usize,
 }
 
 impl Server {
     /// Create new multi-thread server instance.
-    pub fn new() -> Self {
-        // Initialize global config
-        CONFIG.set(Config::from_args()).unwrap();
-        let opts = Config::global();
+    pub fn new() -> Server {
+        // Get server config
+        let opts = Config::from_args();
 
+        // Configure number of worker threads
+        let cpus = num_cpus::get();
         let threads = match opts.threads_multiplier {
-            0 | 1 => 1,
-            _ => num_cpus::get() * opts.threads_multiplier,
+            0 | 1 => cpus,
+            n => cpus * n,
         };
-        Self { threads }
+
+        Server { opts, threads }
     }
 
-    /// Build and run the multi-thread `Server` spawning a new Tokio asynchronous task for it.
+    /// Build and run the multi-thread `Server`.
     pub fn run(self) -> Result {
         tokio::runtime::Builder::new_multi_thread()
-            .enable_all()
-            .thread_name("static-web-server")
             .worker_threads(self.threads)
+            .thread_name("static-web-server")
+            .enable_all()
             .build()?
             .block_on(async {
-                let r = self.run_server_with_config().await;
+                let r = self.start_server().await;
                 if r.is_err() {
                     panic!("Server error during start up: {:?}", r.unwrap_err())
                 }
@@ -45,9 +50,9 @@ impl Server {
         Ok(())
     }
 
-    /// Create and run the `Warp` server spawning a new Tokio asynchronous task with the given configuration.
-    async fn run_server_with_config(self) -> Result {
-        let opts = Config::global();
+    /// Run the inner Hyper `HyperServer` forever on the current thread with the given configuration.
+    async fn start_server(self) -> Result {
+        let opts = &self.opts;
 
         logger::init(&opts.log_level)?;
 
@@ -59,34 +64,85 @@ impl Server {
 
         // Check for a valid root directory
         let root_dir = helpers::get_valid_dirpath(&opts.root)?;
+        let root_dir = ArcPath(Arc::new(root_dir));
 
         // Custom error pages content
-        rejection::PAGE_404
+        error_page::PAGE_404
             .set(helpers::read_file_content(opts.page404.as_ref()))
             .expect("page 404 is not initialized");
-        rejection::PAGE_50X
+        error_page::PAGE_50X
             .set(helpers::read_file_content(opts.page50x.as_ref()))
             .expect("page 50x is not initialized");
 
-        // CORS support
-        let (cors_filter_opt, cors_allowed_origins) =
-            cors::get_opt_cors_filter(opts.cors_allow_origins.as_ref());
+        // TODO: CORS support
 
-        // HTTP/2 + TLS
-        let http2 = opts.http2;
-        let http2_tls_cert_path = &opts.http2_tls_cert;
-        let http2_tls_key_path = &opts.http2_tls_key;
+        // Spawn a new Tokio asynchronous server task with its given options
+        let threads = self.threads;
 
-        // Spawn a new Tokio asynchronous server task determined by the given options
-        tokio::task::spawn(run_server_with_options(
-            addr,
-            root_dir,
-            http2,
-            http2_tls_cert_path,
-            http2_tls_key_path,
-            cors_filter_opt,
-            cors_allowed_origins,
-        ));
+        if opts.http2 {
+            // HTTP/2 + TLS
+
+            let cert_path = opts.http2_tls_cert.clone();
+            let key_path = opts.http2_tls_key.clone();
+
+            tokio::task::spawn(async move {
+                let make_service = make_service_fn(move |_| {
+                    let root_dir = root_dir.clone();
+                    async move {
+                        Ok::<_, error::Error>(service_fn(move |req| {
+                            let root_dir = root_dir.clone();
+                            async move { handler::handle_request(root_dir.as_ref(), &req).await }
+                        }))
+                    }
+                });
+
+                let mut incoming = AddrIncoming::bind(&addr)?;
+                incoming.set_nodelay(true);
+
+                let tls = TlsConfigBuilder::new()
+                    .cert_path(cert_path)
+                    .key_path(key_path)
+                    .build()
+                    .unwrap();
+
+                let server =
+                    HyperServer::builder(TlsAcceptor::new(tls, incoming)).serve(make_service);
+
+                tracing::info!(
+                    parent: tracing::info_span!("Server::start_server", ?addr, ?threads),
+                    "listening on https://{}",
+                    addr
+                );
+
+                server.await
+            });
+        } else {
+            // HTTP/1
+
+            tokio::task::spawn(async move {
+                let make_service = make_service_fn(move |_| {
+                    let root_dir = root_dir.clone();
+                    async move {
+                        Ok::<_, error::Error>(service_fn(move |req| {
+                            let root_dir = root_dir.clone();
+                            async move { handler::handle_request(root_dir.as_ref(), &req).await }
+                        }))
+                    }
+                });
+
+                let server = HyperServer::bind(&addr)
+                    .tcp_nodelay(true)
+                    .serve(make_service);
+
+                tracing::info!(
+                    parent: tracing::info_span!("Server::start_server", ?addr, ?threads),
+                    "listening on http://{}",
+                    addr
+                );
+
+                server.await
+            });
+        }
 
         handle_signals();
 
@@ -97,83 +153,6 @@ impl Server {
 impl Default for Server {
     fn default() -> Self {
         Self::new()
-    }
-}
-
-/// It creates and starts a Warp HTTP or HTTP/2 server with its options.
-pub async fn run_server_with_options(
-    addr: SocketAddr,
-    root_dir: PathBuf,
-    http2: bool,
-    http2_tls_cert_path: &'static str,
-    http2_tls_key_path: &'static str,
-    cors_filter_opt: Option<warp::filters::cors::Builder>,
-    cors_allowed_origins: String,
-) {
-    // Base fs directory filter
-    let base_fs_dir_filter = warp::fs::dir(root_dir.clone())
-        .map(cache::control_headers)
-        .with(warp::trace::request())
-        .recover(rejection::handle_rejection);
-
-    // Public HEAD endpoint
-    let public_head = warp::head().and(base_fs_dir_filter.clone());
-
-    // Public GET endpoint (default)
-    let public_get_default = warp::get().and(base_fs_dir_filter);
-
-    // Current fs directory filter
-    let fs_dir_filter = warp::fs::dir(root_dir)
-        .map(cache::control_headers)
-        .with(warp::compression::auto(|headers| {
-            // Skip compression for non-text-based MIME types
-            if let Some(content_type) = headers.get("content-type") {
-                !TEXT_MIME_TYPES.iter().any(|h| h == content_type)
-            } else {
-                false
-            }
-        }))
-        .with(warp::trace::request())
-        .recover(rejection::handle_rejection);
-
-    // Determine CORS filter
-    if let Some(cors_filter) = cors_filter_opt {
-        tracing::info!(
-            cors_enabled = ?true,
-            allowed_origins = ?cors_allowed_origins
-        );
-
-        let public_head = public_head.with(cors_filter.clone());
-        let public_get_default = public_get_default.with(cors_filter.clone());
-        let public_get = warp::get().and(fs_dir_filter).with(cors_filter.clone());
-
-        let server = warp::serve(public_head.or(public_get).or(public_get_default));
-
-        if http2 {
-            server
-                .tls()
-                .cert_path(http2_tls_cert_path)
-                .key_path(http2_tls_key_path)
-                .run(addr)
-                .await
-        } else {
-            server.run(addr).await
-        }
-    } else {
-        let public_get = warp::get().and(fs_dir_filter);
-
-        let server = warp::serve(public_head.or(public_get).or(public_get_default));
-
-        if http2 {
-            server
-                .tls()
-                .cert_path(http2_tls_cert_path)
-                .key_path(http2_tls_key_path)
-                .run(addr)
-                .await
-        } else {
-            server.run(addr).await
-        }
     }
 }
 

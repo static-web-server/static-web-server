@@ -1,7 +1,4 @@
-use once_cell::sync::OnceCell;
 use structopt::StructOpt;
-
-pub static CONFIG: OnceCell<Config> = OnceCell::new();
 
 /// A blazing fast static files-serving web server powered by Rust
 #[derive(Debug, StructOpt)]
@@ -17,12 +14,12 @@ pub struct Config {
     #[structopt(
         long,
         short = "n",
-        default_value = "8",
+        default_value = "1",
         env = "SERVER_THREADS_MULTIPLIER"
     )]
     /// Number of worker threads multiplier that'll be multiplied by the number of system CPUs
     /// using the formula: `worker threads = number of CPUs * n` where `n` is the value that changes here.
-    /// When multiplier value is 0 or 1 then the `number of CPUs` is used.
+    /// When multiplier value is 0 or 1 then one thread per core is used.
     /// Number of worker threads result should be a number between 1 and 32,768 though it is advised to keep this value on the smaller side.
     pub threads_multiplier: usize,
 
@@ -70,10 +67,4 @@ pub struct Config {
     #[structopt(long, default_value = "", env = "SERVER_HTTP2_TLS_KEY")]
     /// Specify the file path to read the private key.
     pub http2_tls_key: String,
-}
-
-impl Config {
-    pub fn global() -> &'static Config {
-        CONFIG.get().expect("Config is not initialized")
-    }
 }
