@@ -1,14 +1,15 @@
+use hyper::server::conn::AddrIncoming;
 use hyper::server::Server as HyperServer;
 use hyper::service::{make_service_fn, service_fn};
-use std::{
-    net::{IpAddr, SocketAddr},
-    sync::Arc,
-};
+use std::net::{IpAddr, SocketAddr};
+use std::sync::Arc;
 use structopt::StructOpt;
 
-use crate::{config::Config, error_page};
-use crate::{error, helpers, logger, Result};
-use crate::{handler, static_files::ArcPath};
+use crate::config::Config;
+use crate::static_files::ArcPath;
+use crate::tls::{TlsAcceptor, TlsConfigBuilder};
+use crate::Result;
+use crate::{error, error_page, handler, helpers, logger};
 
 /// Define a multi-thread HTTP or HTTP/2 web server.
 pub struct Server {
@@ -75,25 +76,73 @@ impl Server {
 
         // TODO: CORS support
 
-        // TODO: HTTP/2 + TLS
-
         // Spawn a new Tokio asynchronous server task with its given options
-        tokio::task::spawn(async move {
-            let span = tracing::info_span!("Server::run", ?addr, threads = ?self.threads);
-            tracing::info!(parent: &span, "listening on http://{}", addr);
+        let threads = self.threads;
 
-            let make_service = make_service_fn(move |_| {
-                let root_dir = root_dir.clone();
-                async move {
-                    Ok::<_, error::Error>(service_fn(move |req| {
-                        let root_dir = root_dir.clone();
-                        async move { handler::handle_request(root_dir.as_ref(), &req).await }
-                    }))
-                }
+        if opts.http2 {
+            // HTTP/2 + TLS
+
+            let cert_path = opts.http2_tls_cert.clone();
+            let key_path = opts.http2_tls_key.clone();
+
+            tokio::task::spawn(async move {
+                let make_service = make_service_fn(move |_| {
+                    let root_dir = root_dir.clone();
+                    async move {
+                        Ok::<_, error::Error>(service_fn(move |req| {
+                            let root_dir = root_dir.clone();
+                            async move { handler::handle_request(root_dir.as_ref(), &req).await }
+                        }))
+                    }
+                });
+
+                let mut incoming = AddrIncoming::bind(&addr)?;
+                incoming.set_nodelay(true);
+
+                let tls = TlsConfigBuilder::new()
+                    .cert_path(cert_path)
+                    .key_path(key_path)
+                    .build()
+                    .unwrap();
+
+                let server =
+                    HyperServer::builder(TlsAcceptor::new(tls, incoming)).serve(make_service);
+
+                tracing::info!(
+                    parent: tracing::info_span!("Server::start_server", ?addr, ?threads),
+                    "listening on https://{}",
+                    addr
+                );
+
+                server.await
             });
+        } else {
+            // HTTP/1
 
-            HyperServer::bind(&addr).serve(make_service).await
-        });
+            tokio::task::spawn(async move {
+                let make_service = make_service_fn(move |_| {
+                    let root_dir = root_dir.clone();
+                    async move {
+                        Ok::<_, error::Error>(service_fn(move |req| {
+                            let root_dir = root_dir.clone();
+                            async move { handler::handle_request(root_dir.as_ref(), &req).await }
+                        }))
+                    }
+                });
+
+                let server = HyperServer::bind(&addr)
+                    .tcp_nodelay(true)
+                    .serve(make_service);
+
+                tracing::info!(
+                    parent: tracing::info_span!("Server::start_server", ?addr, ?threads),
+                    "listening on http://{}",
+                    addr
+                );
+
+                server.await
+            });
+        }
 
         handle_signals();
 
