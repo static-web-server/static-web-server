@@ -45,6 +45,7 @@ pin-project = "1.0"
 tokio-rustls = { version = "0.22" }
 humansize = "1.1"
 time = "0.1"
+listenfd = "0.3.3"
 
 [target.'cfg(not(windows))'.dependencies.nix]
 version = "0.14"

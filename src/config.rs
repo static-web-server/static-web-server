@@ -13,6 +13,19 @@ pub struct Config {
 
     #[structopt(
         long,
+        short = "f",
+        env = "SERVER_LISTEN_FD",
+        conflicts_with_all(&["host", "port"])
+    )]
+    /// Instead of binding to a TCP port, accept incoming connections to an already-bound TCP
+    /// socket listener on the specified file descriptor number (usually zero). Requires that the
+    /// parent process (e.g. inetd, launchd, or systemd) binds an address and port on behalf of
+    /// static-web-server, before arranging for the resulting file descriptor to be inherited by
+    /// static-web-server. Cannot be used in conjunction with the port and host arguments.
+    pub fd: Option<usize>,
+
+    #[structopt(
+        long,
         short = "n",
         default_value = "1",
         env = "SERVER_THREADS_MULTIPLIER"
