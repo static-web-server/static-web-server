@@ -1,3 +1,4 @@
+use std::io;
 use tracing::Level;
 use tracing_subscriber::fmt::format::FmtSpan;
 
@@ -7,6 +8,7 @@ use crate::Result;
 pub fn init(level: &str) -> Result {
     let level = level.parse::<Level>()?;
     match tracing_subscriber::fmt()
+        .with_writer(io::stderr)
         .with_max_level(level)
         .with_span_events(FmtSpan::CLOSE)
         .try_init()
