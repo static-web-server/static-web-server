@@ -67,4 +67,8 @@ pub struct Config {
     #[structopt(long, default_value = "", env = "SERVER_HTTP2_TLS_KEY")]
     /// Specify the file path to read the private key.
     pub http2_tls_key: String,
+
+    #[structopt(long, short = "z", env = "SERVER_DIRECTORY_LISTING")]
+    /// Enable directory listing for all requests ending with the slash character (‘/’).
+    pub directory_listing: Option<bool>,
 }

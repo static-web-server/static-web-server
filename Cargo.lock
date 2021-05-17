@@ -387,6 +387,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "05842d0d43232b23ccb7060ecb0f0626922c21f30012e97b767b30afd4a5d4b9"
 
 [[package]]
+name = "humansize"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b6cab2627acfc432780848602f3f558f7e9dd427352224b0d9324025796d2a5e"
+
+[[package]]
 name = "hyper"
 version = "0.14.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -848,6 +854,7 @@ dependencies = [
  "futures",
  "headers",
  "http",
+ "humansize",
  "hyper",
  "jemallocator",
  "mime_guess",
@@ -858,6 +865,7 @@ dependencies = [
  "pin-project",
  "signal",
  "structopt",
+ "time",
  "tokio",
  "tokio-rustls",
  "tokio-util",

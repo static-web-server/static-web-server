@@ -9,7 +9,8 @@ pub async fn handle_request(base: &Path, req: &Request<Body>) -> Result<Response
     let headers = req.headers();
     let method = req.method();
 
-    match static_files::handle_request(method, headers, base, req.uri().path()).await {
+    // TODO: replace `dir_listing` arg with the corresponding config option
+    match static_files::handle_request(method, headers, base, req.uri().path(), true).await {
         Ok(resp) => {
             // Compression on demand based on`Accept-Encoding` header
             let mut resp = compression::auto(method, headers, resp)?;
