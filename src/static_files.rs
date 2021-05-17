@@ -197,14 +197,17 @@ async fn read_directory_entries(
     );
 
     let mut resp = Response::new(Body::empty());
-    let len = page_str.len() as u64;
+    resp.headers_mut()
+        .typed_insert(ContentLength(page_str.len() as u64));
 
+    // We skip the body for HEAD requests
     if is_head {
-        resp.headers_mut().typed_insert(ContentLength(len));
         return Ok(resp);
     }
 
-    Ok(Response::new(Body::from(page_str)))
+    *resp.body_mut() = Body::from(page_str);
+
+    Ok(resp)
 }
 
 fn parse_last_modified(modified: SystemTime) -> Result<time::Tm, Box<dyn std::error::Error>> {
