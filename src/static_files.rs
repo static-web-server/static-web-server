@@ -180,9 +180,9 @@ async fn read_directory_entries(
         if meta.is_dir() {
             name = format!("{}/", name);
             filesize_str = String::from("-");
-            dirs_count = dirs_count + 1;
+            dirs_count += 1;
         } else {
-            files_count = files_count + 1;
+            files_count += 1;
         }
 
         let uri = format!("{}{}", base_path, name);
@@ -206,7 +206,7 @@ async fn read_directory_entries(
     } else {
         "directories"
     };
-    let files_str = if files_count > 1 { "files" } else { "file" };
+    let files_str = if files_count == 1 { "file" } else { "files" };
     let summary_str = format!(
         "<div>{} {}, {} {}</div>",
         dirs_count, dirs_str, files_count, files_str
