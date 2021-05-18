@@ -183,7 +183,7 @@ async fn read_directory_entries(
         let modified = parse_last_modified(meta.modified()?).unwrap();
 
         entries_str = format!(
-            "{}<tr><td><a href=\"{}\" title=\"{}\">{}</a></td><td style=\"width: 160px;\">{}</td><td align=\"right\" style=\"width: 140px;\">{}</td></tr>",
+            "{}<tr><td><a href=\"{}\" title=\"{}\">{}</a></td><td style=\"width: 160px;\">{}</td><td align=\"right\">{}</td></tr>",
             entries_str,
             uri,
             name,
@@ -194,8 +194,11 @@ async fn read_directory_entries(
     }
 
     let current_path = percent_decode_str(&base_path).decode_utf8()?.to_string();
+
+    let style_str = r#"<style>html{background-color:#fff;-moz-osx-font-smoothing:grayscale;-webkit-font-smoothing:antialiased;min-width:20rem;text-rendering:optimizeLegibility;-webkit-text-size-adjust:100%;-moz-text-size-adjust:100%;text-size-adjust:100%}body{padding:1rem;font-family:Consolas,'Liberation Mono',Menlo,monospace;font-size:.875rem;max-width:70rem;margin:0 auto;color:#4a4a4a;font-weight:400;line-height:1.5}h1{margin:0;padding:0 .5rem;font-size:1.375rem;}table{width:100%}table td{padding:.2rem .5rem;white-space:nowrap;vertical-align:top}table td a{display:inline-block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:95%;vertical-align:top}table tr:hover td{background-color:#f5f5f5}footer{padding-top:0.5rem}</style>"#;
+    let footer_str = r#"<footer>Powered by <a target="_blank" href="https://git.io/static-web-server">static-web-server</a> | MIT &amp; Apache 2.0</footer>"#;
     let page_str = format!(
-        "<html><head><meta charset=\"utf-8\"><title>Index of {}</title></head><body><h1>Index of {}</h1><table style=\"min-width:680px;\"><tr><th colspan=\"3\"><hr></th></tr>{}<tr><th colspan=\"3\"><hr></th></tr></table></body></html>", current_path, current_path, entries_str
+        "<!DOCTYPE html><html><head><meta charset=\"utf-8\"><title>Index of {}</title>{}</head><body><h1>Index of {}</h1><table><tr><th colspan=\"3\"><hr></th></tr>{}<tr><th colspan=\"3\"><hr></th></tr></table>{}</body></html>", current_path, style_str, current_path, entries_str, footer_str
     );
 
     let mut resp = Response::new(Body::empty());
