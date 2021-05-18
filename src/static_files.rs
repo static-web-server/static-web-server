@@ -162,10 +162,13 @@ async fn read_directory_entries(
     if base_path != "/" {
         entries_str = String::from(r#"<tr><td colspan="3"><a href="../">../</a></td></tr>"#);
     }
+    let mut dirs_count: usize = 0;
+    let mut files_count: usize = 0;
     while let Some(entry) = entries.next_entry().await? {
         let meta = entry.metadata().await?;
-        let mut filesize = meta
-            .len()
+        let filesize = meta.len();
+
+        let mut filesize_str = filesize
             .file_size(file_size_opts::DECIMAL)
             .map_err(anyhow::Error::msg)?;
 
@@ -176,7 +179,10 @@ async fn read_directory_entries(
 
         if meta.is_dir() {
             name = format!("{}/", name);
-            filesize = String::from("-")
+            filesize_str = String::from("-");
+            dirs_count = dirs_count + 1;
+        } else {
+            files_count = files_count + 1;
         }
 
         let uri = format!("{}{}", base_path, name);
@@ -189,16 +195,26 @@ async fn read_directory_entries(
             name,
             name,
             modified.to_local().strftime("%F %T").unwrap(),
-            filesize
+            filesize_str
         );
     }
 
     let current_path = percent_decode_str(&base_path).decode_utf8()?.to_string();
 
-    let style_str = r#"<style>html{background-color:#fff;-moz-osx-font-smoothing:grayscale;-webkit-font-smoothing:antialiased;min-width:20rem;text-rendering:optimizeLegibility;-webkit-text-size-adjust:100%;-moz-text-size-adjust:100%;text-size-adjust:100%}body{padding:1rem;font-family:Consolas,'Liberation Mono',Menlo,monospace;font-size:.875rem;max-width:70rem;margin:0 auto;color:#4a4a4a;font-weight:400;line-height:1.5}h1{margin:0;padding:0 .5rem;font-size:1.375rem;}table{width:100%}table td{padding:.2rem .5rem;white-space:nowrap;vertical-align:top}table td a{display:inline-block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:95%;vertical-align:top}table tr:hover td{background-color:#f5f5f5}footer{padding-top:0.5rem}</style>"#;
+    let dirs_str = if dirs_count == 1 {
+        "directory"
+    } else {
+        "directories"
+    };
+    let files_str = if files_count > 1 { "files" } else { "file" };
+    let summary_str = format!(
+        "<div>{} {}, {} {}</div>",
+        dirs_count, dirs_str, files_count, files_str
+    );
+    let style_str = r#"<style>html{background-color:#fff;-moz-osx-font-smoothing:grayscale;-webkit-font-smoothing:antialiased;min-width:20rem;text-rendering:optimizeLegibility;-webkit-text-size-adjust:100%;-moz-text-size-adjust:100%;text-size-adjust:100%}body{padding:1rem;font-family:Consolas,'Liberation Mono',Menlo,monospace;font-size:.875rem;max-width:70rem;margin:0 auto;color:#4a4a4a;font-weight:400;line-height:1.5}h1{margin:0;padding:0;font-size:1.375rem;}table{width:100%}table td{padding:.2rem .5rem;white-space:nowrap;vertical-align:top}table td a{display:inline-block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:95%;vertical-align:top}table tr:hover td{background-color:#f5f5f5}footer{padding-top:0.5rem}</style>"#;
     let footer_str = r#"<footer>Powered by <a target="_blank" href="https://git.io/static-web-server">static-web-server</a> | MIT &amp; Apache 2.0</footer>"#;
     let page_str = format!(
-        "<!DOCTYPE html><html><head><meta charset=\"utf-8\"><title>Index of {}</title>{}</head><body><h1>Index of {}</h1><table><tr><th colspan=\"3\"><hr></th></tr>{}<tr><th colspan=\"3\"><hr></th></tr></table>{}</body></html>", current_path, style_str, current_path, entries_str, footer_str
+        "<!DOCTYPE html><html><head><meta charset=\"utf-8\"><title>Index of {}</title>{}</head><body><h1>Index of {}</h1>{}<table><tr><th colspan=\"3\"><hr></th></tr>{}<tr><th colspan=\"3\"><hr></th></tr></table>{}</body></html>", current_path, style_str, current_path, summary_str, entries_str, footer_str
     );
 
     let mut resp = Response::new(Body::empty());
