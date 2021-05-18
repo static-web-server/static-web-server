@@ -25,6 +25,8 @@ use tokio::fs::File as TkFile;
 use tokio::io::AsyncSeekExt;
 use tokio_util::io::poll_read_buf;
 
+use crate::error::Result;
+
 /// A small Arch `PathBuf` wrapper since Arc<PathBuf> doesn't implement AsRef<Path>.
 #[derive(Clone, Debug)]
 pub struct ArcPath(pub Arc<PathBuf>);
@@ -155,7 +157,7 @@ async fn read_directory_entries(
     mut entries: tokio::fs::ReadDir,
     base_path: &str,
     is_head: bool,
-) -> crate::error::Result<Response<Body>> {
+) -> Result<Response<Body>> {
     let mut entries_str = String::new();
     if base_path != "/" {
         entries_str = String::from(r#"<tr><td colspan="3"><a href="../">../</a></td></tr>"#);
@@ -230,8 +232,6 @@ fn file_reply(
     headers: &HeaderMap<HeaderValue>,
     res: (ArcPath, Metadata, bool),
 ) -> impl Future<Output = Result<Response<Body>, StatusCode>> + Send {
-    // TODO: directory listing
-
     let (path, meta, auto_index) = res;
     let conditionals = get_conditional_headers(headers);
     TkFile::open(path.clone()).then(move |res| match res {
