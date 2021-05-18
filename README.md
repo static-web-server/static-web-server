@@ -1,6 +1,6 @@
 # Static Web Server [![CI](https://github.com/joseluisq/static-web-server/workflows/CI/badge.svg)](https://github.com/joseluisq/static-web-server/actions?query=workflow%3ACI) [![Docker Image Version (tag latest semver)](https://img.shields.io/docker/v/joseluisq/static-web-server/1)](https://hub.docker.com/r/joseluisq/static-web-server/) [![Docker Image Size (tag)](https://img.shields.io/docker/image-size/joseluisq/static-web-server/1)](https://hub.docker.com/r/joseluisq/static-web-server/tags) [![Docker Image](https://img.shields.io/docker/pulls/joseluisq/static-web-server.svg)](https://hub.docker.com/r/joseluisq/static-web-server/)
 
-**Status:** WIP `v2` release under **active** development. For the stable `v1` and contributions please refer to [1.x](https://github.com/joseluisq/static-web-server/tree/1.x) branch.
+**Status:** `v2` is under **active** development. For the stable `v1` please refer to [1.x](https://github.com/joseluisq/static-web-server/tree/1.x) branch.
 
 > A blazing fast static files-serving web server. ⚡
 
@@ -21,8 +21,9 @@
 - [Termination signal](https://www.gnu.org/software/libc/manual/html_node/Termination-Signals.html) handling.
 - [HTTP/2](https://tools.ietf.org/html/rfc7540) + TLS support.
 - Customizable number of worker threads.
-- Default and custom error pages.
+- Optional directory listing.
 - [CORS](https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS) support.
+- Default and custom error pages.
 - Configurable using CLI arguments or environment variables.
 - First-class [Docker](https://docs.docker.com/get-started/overview/) support. [Scratch](https://hub.docker.com/_/scratch) and latest [Alpine Linux](https://hub.docker.com/_/alpine) Docker images available.
 - MacOs binary support thanks to [Rust Linux / Darwin Builder](https://github.com/joseluisq/rust-linux-darwin-builder).
@@ -53,6 +54,7 @@ Server can be configured either via environment variables or their equivalent co
 | `SERVER_HTTP2_TLS_CERT`     | Specify the file path to read the certificate. | Default empty |
 | `SERVER_HTTP2_TLS_KEY`      | Specify the file path to read the private key. | Default empty |
 | `SERVER_CORS_ALLOW_ORIGINS` | Specify a optional CORS list of allowed origin hosts separated by comas. Host ports or protocols aren't being checked. Use an asterisk (*) to allow any host. | Default empty (which means CORS is disabled) |
+| `SERVER_DIRECTORY_LISTING`  | Enable directory listing for all requests ending with the slash character (‘/’) | Default `false` (disabled) |
 
 ### Command-line arguments
 
@@ -73,6 +75,9 @@ OPTIONS:
     -c, --cors-allow-origins <cors-allow-origins>
             Specify an optional CORS list of allowed origin hosts separated by comas. Host ports or protocols aren't
             being checked. Use an asterisk (*) to allow any host [env: SERVER_CORS_ALLOW_ORIGINS=]  [default: ]
+    -z, --directory-listing <directory-listing>
+            Enable directory listing for all requests ending with the slash character (‘/’) [env:
+            SERVER_DIRECTORY_LISTING=]
     -a, --host <host>
             Host address (E.g 127.0.0.1 or ::1) [env: SERVER_HOST=]  [default: ::]
 
