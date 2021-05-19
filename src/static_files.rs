@@ -8,6 +8,7 @@ use headers::{
     AcceptRanges, ContentLength, ContentRange, ContentType, HeaderMap, HeaderMapExt, HeaderValue,
     IfModifiedSince, IfRange, IfUnmodifiedSince, LastModified, Range,
 };
+use humansize::{file_size_opts, FileSize};
 use hyper::{Body, Method, Response, StatusCode};
 use percent_encoding::percent_decode_str;
 use std::fs::Metadata;
@@ -18,10 +19,13 @@ use std::path::PathBuf;
 use std::pin::Pin;
 use std::sync::Arc;
 use std::task::Poll;
+use std::time::{SystemTime, UNIX_EPOCH};
 use std::{cmp, path::Path};
 use tokio::fs::File as TkFile;
 use tokio::io::AsyncSeekExt;
 use tokio_util::io::poll_read_buf;
+
+use crate::error::Result;
 
 /// A small Arch `PathBuf` wrapper since Arc<PathBuf> doesn't implement AsRef<Path>.
 #[derive(Clone, Debug)]
@@ -40,6 +44,7 @@ pub async fn handle_request(
     headers: &HeaderMap<HeaderValue>,
     base: &Path,
     uri_path: &str,
+    dir_listing: bool,
 ) -> Result<Response<Body>, StatusCode> {
     // Reject requests for non HEAD or GET methods
     if !(method == Method::HEAD || method == Method::GET) {
@@ -47,8 +52,30 @@ pub async fn handle_request(
     }
 
     let base = Arc::new(base.into());
-    let res = path_from_tail(base, uri_path).await?;
-    file_reply(headers, res).await
+    let (path, meta, auto_index) = path_from_tail(base, uri_path).await?;
+
+    // Directory listing
+    // 1. Check if "directory listing" feature is enabled,
+    // if current path is a valid directory and
+    // if it does not contain an `index.html` file
+    if dir_listing && auto_index && !path.as_ref().exists() {
+        // Redirect if current path does not end with a slash
+        let current_path = uri_path;
+        if !current_path.ends_with('/') {
+            let uri = [current_path, "/"].concat();
+            let loc = HeaderValue::from_str(uri.as_str()).unwrap();
+            let mut resp = Response::new(Body::empty());
+
+            resp.headers_mut().insert(hyper::header::LOCATION, loc);
+            *resp.status_mut() = StatusCode::PERMANENT_REDIRECT;
+
+            return Ok(resp);
+        }
+
+        return directory_listing(method, (current_path.to_string(), path)).await;
+    }
+
+    file_reply(headers, (path, meta, auto_index)).await
 }
 
 fn path_from_tail(
@@ -75,13 +102,155 @@ fn path_from_tail(
     })
 }
 
+fn directory_listing(
+    method: &Method,
+    res: (String, ArcPath),
+) -> impl Future<Output = Result<Response<Body>, StatusCode>> + Send {
+    let (current_path, path) = res;
+    let is_head = method == Method::HEAD;
+    let parent = path.as_ref().parent().unwrap();
+    let parent = PathBuf::from(parent);
+
+    tokio::fs::read_dir(parent).then(move |res| match res {
+        Ok(entries) => Either::Left(async move {
+            match read_directory_entries(entries, &current_path, is_head).await {
+                Ok(resp) => Ok(resp),
+                Err(err) => {
+                    tracing::error!(
+                        "error during directory entries reading (path={:?}): {} ",
+                        path.as_ref().parent().unwrap().display(),
+                        err
+                    );
+                    Err(StatusCode::INTERNAL_SERVER_ERROR)
+                }
+            }
+        }),
+        Err(err) => {
+            let status = match err.kind() {
+                io::ErrorKind::NotFound => {
+                    tracing::debug!("entry file not found: {:?}", path.as_ref().display());
+                    StatusCode::NOT_FOUND
+                }
+                io::ErrorKind::PermissionDenied => {
+                    tracing::warn!(
+                        "entry file permission denied: {:?}",
+                        path.as_ref().display()
+                    );
+                    StatusCode::FORBIDDEN
+                }
+                _ => {
+                    tracing::error!(
+                        "directory entries error (path={:?}): {} ",
+                        path.as_ref().display(),
+                        err
+                    );
+                    StatusCode::INTERNAL_SERVER_ERROR
+                }
+            };
+            Either::Right(future::err(status))
+        }
+    })
+}
+
+// It reads current directory entries and create the index page content. Otherwise returns a status error.
+async fn read_directory_entries(
+    mut entries: tokio::fs::ReadDir,
+    base_path: &str,
+    is_head: bool,
+) -> Result<Response<Body>> {
+    let mut entries_str = String::new();
+    if base_path != "/" {
+        entries_str = String::from(r#"<tr><td colspan="3"><a href="../">../</a></td></tr>"#);
+    }
+    let mut dirs_count: usize = 0;
+    let mut files_count: usize = 0;
+    while let Some(entry) = entries.next_entry().await? {
+        let meta = entry.metadata().await?;
+        let filesize = meta.len();
+
+        let mut filesize_str = filesize
+            .file_size(file_size_opts::DECIMAL)
+            .map_err(anyhow::Error::msg)?;
+
+        let mut name = entry
+            .file_name()
+            .into_string()
+            .map_err(|err| anyhow::anyhow!(err.into_string().unwrap_or_default()))?;
+
+        if meta.is_dir() {
+            name = format!("{}/", name);
+            filesize_str = String::from("-");
+            dirs_count += 1;
+        } else {
+            files_count += 1;
+        }
+
+        let uri = format!("{}{}", base_path, name);
+        let modified = parse_last_modified(meta.modified()?).unwrap();
+
+        entries_str = format!(
+            "{}<tr><td><a href=\"{}\" title=\"{}\">{}</a></td><td style=\"width: 160px;\">{}</td><td align=\"right\">{}</td></tr>",
+            entries_str,
+            uri,
+            name,
+            name,
+            modified.to_local().strftime("%F %T").unwrap(),
+            filesize_str
+        );
+    }
+
+    let current_path = percent_decode_str(&base_path).decode_utf8()?.to_string();
+
+    let dirs_str = if dirs_count == 1 {
+        "directory"
+    } else {
+        "directories"
+    };
+    let files_str = if files_count == 1 { "file" } else { "files" };
+    let summary_str = format!(
+        "<div>{} {}, {} {}</div>",
+        dirs_count, dirs_str, files_count, files_str
+    );
+    let style_str = r#"<style>html{background-color:#fff;-moz-osx-font-smoothing:grayscale;-webkit-font-smoothing:antialiased;min-width:20rem;text-rendering:optimizeLegibility;-webkit-text-size-adjust:100%;-moz-text-size-adjust:100%;text-size-adjust:100%}body{padding:1rem;font-family:Consolas,'Liberation Mono',Menlo,monospace;font-size:.875rem;max-width:70rem;margin:0 auto;color:#4a4a4a;font-weight:400;line-height:1.5}h1{margin:0;padding:0;font-size:1.375rem;line-height:1.25;margin-bottom:0.5rem;}table{width:100%}table td{padding:.2rem .5rem;white-space:nowrap;vertical-align:top}table td a{display:inline-block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:95%;vertical-align:top}table tr:hover td{background-color:#f5f5f5}footer{padding-top:0.5rem}</style>"#;
+    let footer_str = r#"<footer>Powered by <a target="_blank" href="https://git.io/static-web-server">static-web-server</a> | MIT &amp; Apache 2.0</footer>"#;
+    let page_str = format!(
+        "<!DOCTYPE html><html><head><meta charset=\"utf-8\"><title>Index of {}</title>{}</head><body><h1>Index of {}</h1>{}<table><tr><th colspan=\"3\"><hr></th></tr>{}<tr><th colspan=\"3\"><hr></th></tr></table>{}</body></html>", current_path, style_str, current_path, summary_str, entries_str, footer_str
+    );
+
+    let mut resp = Response::new(Body::empty());
+    resp.headers_mut()
+        .typed_insert(ContentLength(page_str.len() as u64));
+
+    // We skip the body for HEAD requests
+    if is_head {
+        return Ok(resp);
+    }
+
+    *resp.body_mut() = Body::from(page_str);
+
+    Ok(resp)
+}
+
+fn parse_last_modified(modified: SystemTime) -> Result<time::Tm, Box<dyn std::error::Error>> {
+    let since_epoch = modified.duration_since(UNIX_EPOCH)?;
+    // HTTP times don't have nanosecond precision, so we truncate
+    // the modification time.
+    // Converting to i64 should be safe until we get beyond the
+    // planned lifetime of the universe
+    //
+    // TODO: Investigate how to write a test for this. Changing
+    // the modification time of a file with greater than second
+    // precision appears to be something that only is possible to
+    // do on Linux.
+    let ts = time::Timespec::new(since_epoch.as_secs() as i64, 0);
+    Ok(time::at_utc(ts))
+}
+
 /// Reply with a file content.
 fn file_reply(
     headers: &HeaderMap<HeaderValue>,
     res: (ArcPath, Metadata, bool),
 ) -> impl Future<Output = Result<Response<Body>, StatusCode>> + Send {
-    // TODO: directory listing
-
     let (path, meta, auto_index) = res;
     let conditionals = get_conditional_headers(headers);
     TkFile::open(path.clone()).then(move |res| match res {
