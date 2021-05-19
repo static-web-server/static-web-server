@@ -76,7 +76,7 @@ impl Server {
         // TODO: CORS support
 
         // Directory listing option
-        let dir_listing = opts.directory_listing.unwrap_or_default();
+        let dir_listing = opts.directory_listing;
 
         // Spawn a new Tokio asynchronous server task with its given options
         let threads = self.threads;
