@@ -56,7 +56,7 @@ impl Server {
 
         logger::init(&opts.log_level)?;
 
-        tracing::info!("runtime worker threads {}", self.threads);
+        tracing::info!("runtime worker threads: {}", self.threads);
 
         let ip = opts.host.parse::<IpAddr>()?;
         let addr = SocketAddr::from((ip, opts.port));
@@ -75,11 +75,13 @@ impl Server {
 
         // TODO: CORS support
 
-        // Directory listing option
-        let dir_listing = opts.directory_listing;
-
         // Auto compression based on the `Accept-Encoding` header
         let compression = opts.compression;
+        tracing::info!("auto compression compression: enabled={}", compression);
+
+        // Directory listing option
+        let dir_listing = opts.directory_listing;
+        tracing::info!("directory listing: enabled={}", dir_listing);
 
         // Spawn a new Tokio asynchronous server task with its given options
         let threads = self.threads;
