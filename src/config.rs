@@ -56,7 +56,13 @@ pub struct Config {
     /// Specify an optional CORS list of allowed origin hosts separated by comas. Host ports or protocols aren't being checked. Use an asterisk (*) to allow any host.
     pub cors_allow_origins: String,
 
-    #[structopt(long, short = "t", env = "SERVER_HTTP2_TLS")]
+    #[structopt(
+        long,
+        short = "t",
+        parse(try_from_str),
+        default_value = "false",
+        env = "SERVER_HTTP2_TLS"
+    )]
     /// Enable HTTP/2 with TLS support.
     pub http2: bool,
 
@@ -72,6 +78,7 @@ pub struct Config {
         long,
         short = "z",
         parse(try_from_str),
+        default_value = "false",
         env = "SERVER_DIRECTORY_LISTING"
     )]
     /// Enable directory listing for all requests ending with the slash character (‘/’).
