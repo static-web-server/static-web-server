@@ -54,6 +54,7 @@ Server can be configured either via environment variables or their equivalent co
 | `SERVER_HTTP2_TLS_CERT`     | Specify the file path to read the certificate. | Default empty |
 | `SERVER_HTTP2_TLS_KEY`      | Specify the file path to read the private key. | Default empty |
 | `SERVER_CORS_ALLOW_ORIGINS` | Specify a optional CORS list of allowed origin hosts separated by comas. Host ports or protocols aren't being checked. Use an asterisk (*) to allow any host. | Default empty (which means CORS is disabled) |
+| `SERVER_COMPRESSION`  | Gzip, Deflate or Brotli compression on demand determined by the *Accept-Encoding* header and applied to text-based web file types only. See [ad-hoc mime-type list](https://github.com/joseluisq/static-web-server/blob/master/src/compression.rs#L20) | Default `true` (enabled) |
 | `SERVER_DIRECTORY_LISTING`  | Enable directory listing for all requests ending with the slash character (‘/’) | Default `false` (disabled) |
 
 ### Command-line arguments
@@ -72,16 +73,21 @@ FLAGS:
     -V, --version    Prints version information
 
 OPTIONS:
+    -x, --compression <compression>
+            Gzip, Deflate or Brotli compression on demand determined by the Accept-Encoding header and applied to text-
+            based web file types only [env: SERVER_COMPRESSION=]  [default: true]
     -c, --cors-allow-origins <cors-allow-origins>
             Specify an optional CORS list of allowed origin hosts separated by comas. Host ports or protocols aren't
             being checked. Use an asterisk (*) to allow any host [env: SERVER_CORS_ALLOW_ORIGINS=]  [default: ]
     -z, --directory-listing <directory-listing>
             Enable directory listing for all requests ending with the slash character (‘/’) [env:
-            SERVER_DIRECTORY_LISTING=]
+            SERVER_DIRECTORY_LISTING=]  [default: false]
     -a, --host <host>
             Host address (E.g 127.0.0.1 or ::1) [env: SERVER_HOST=]  [default: ::]
 
-    -t, --http2 <http2>                              Enable HTTP/2 with TLS support [env: SERVER_HTTP2_TLS=]
+    -t, --http2 <http2>
+            Enable HTTP/2 with TLS support [env: SERVER_HTTP2_TLS=]  [default: false]
+
         --http2-tls-cert <http2-tls-cert>
             Specify the file path to read the certificate [env: SERVER_HTTP2_TLS_CERT=]  [default: ]
 

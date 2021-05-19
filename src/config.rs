@@ -76,6 +76,16 @@ pub struct Config {
 
     #[structopt(
         long,
+        short = "x",
+        parse(try_from_str),
+        default_value = "true",
+        env = "SERVER_COMPRESSION"
+    )]
+    /// Gzip, Deflate or Brotli compression on demand determined by the Accept-Encoding header and applied to text-based web file types only.
+    pub compression: bool,
+
+    #[structopt(
+        long,
         short = "z",
         parse(try_from_str),
         default_value = "false",

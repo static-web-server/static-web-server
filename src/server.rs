@@ -78,6 +78,9 @@ impl Server {
         // Directory listing option
         let dir_listing = opts.directory_listing;
 
+        // Auto compression based on the `Accept-Encoding` header
+        let compression = opts.compression;
+
         // Spawn a new Tokio asynchronous server task with its given options
         let threads = self.threads;
 
@@ -94,7 +97,13 @@ impl Server {
                         Ok::<_, error::Error>(service_fn(move |req| {
                             let root_dir = root_dir.clone();
                             async move {
-                                handler::handle_request(root_dir.as_ref(), dir_listing, &req).await
+                                handler::handle_request(
+                                    root_dir.as_ref(),
+                                    compression,
+                                    dir_listing,
+                                    &req,
+                                )
+                                .await
                             }
                         }))
                     }
@@ -130,7 +139,13 @@ impl Server {
                         Ok::<_, error::Error>(service_fn(move |req| {
                             let root_dir = root_dir.clone();
                             async move {
-                                handler::handle_request(root_dir.as_ref(), dir_listing, &req).await
+                                handler::handle_request(
+                                    root_dir.as_ref(),
+                                    compression,
+                                    dir_listing,
+                                    &req,
+                                )
+                                .await
                             }
                         }))
                     }
