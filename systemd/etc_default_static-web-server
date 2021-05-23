@@ -1,0 +1,5 @@
+SERVER_ROOT=/var/www/html
+SERVER_HTTP2_TLS=true
+SERVER_HTTP2_TLS_CERT=/etc/static-web-server/example_org_fullchain.pem
+SERVER_HTTP2_TLS_KEY=/etc/static-web-server/example_org_privkey.pem
+SERVER_LOG_LEVEL=warn

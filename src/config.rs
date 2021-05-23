@@ -21,7 +21,9 @@ pub struct Config {
     /// socket listener on the specified file descriptor number (usually zero). Requires that the
     /// parent process (e.g. inetd, launchd, or systemd) binds an address and port on behalf of
     /// static-web-server, before arranging for the resulting file descriptor to be inherited by
-    /// static-web-server. Cannot be used in conjunction with the port and host arguments.
+    /// static-web-server. Cannot be used in conjunction with the port and host arguments. The
+    /// included systemd unit file utilises this feature to increase security by allowing the
+    /// static-web-server to be sandboxed more completely.
     pub fd: Option<usize>,
 
     #[structopt(
