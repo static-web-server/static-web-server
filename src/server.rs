@@ -42,7 +42,10 @@ pub fn run(opts: Options) {
                 listening,
                 server_type: "HTTPS".to_string(),
             }),
-            Err(err) => panic!("{:?}", err),
+            Err(err) => {
+                error!("Error binding to address {} for https: {}", addr, err);
+                std::process::exit(1)
+            }
         }
 
         // Launch redirect HTTP server (if requested)
@@ -59,7 +62,13 @@ pub fn run(opts: Options) {
                     listening,
                     server_type: "Redirect HTTP".to_string(),
                 }),
-                Err(err) => panic!("{:?}", err),
+                Err(err) => {
+                    error!(
+                        "Error binding to address {} for http redirection: {}",
+                        addr, err
+                    );
+                    std::process::exit(1)
+                }
             }
         }
     } else {
@@ -69,7 +78,10 @@ pub fn run(opts: Options) {
                 listening,
                 server_type: "HTTP".to_string(),
             }),
-            Err(err) => panic!("{:?}", err),
+            Err(err) => {
+                error!("Error binding to address {} for http: {}", addr, err);
+                std::process::exit(1)
+            }
         }
     }
 
