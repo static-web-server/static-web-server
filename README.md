@@ -27,6 +27,7 @@
 - Configurable using CLI arguments or environment variables.
 - First-class [Docker](https://docs.docker.com/get-started/overview/) support. [Scratch](https://hub.docker.com/_/scratch) and latest [Alpine Linux](https://hub.docker.com/_/alpine) Docker images available.
 - MacOs binary support thanks to [Rust Linux / Darwin Builder](https://github.com/joseluisq/rust-linux-darwin-builder).
+- The ability to accept a socket listener as a file descriptor for use in sandboxing and on-demand applications.
 
 ## Releases
 
@@ -45,6 +46,7 @@ Server can be configured either via environment variables or their equivalent co
 | --- | --- | --- |
 | `SERVER_HOST` | Host address (E.g 127.0.0.1). | Default `[::]`. |
 | `SERVER_PORT` | Host port. | Default `80`. |
+| `SERVER_LISTEN_FD` | Optional file descriptor number (e.g. `0`) to inherit an already-opened TCP listener on (instead of using `SERVER_HOST` and/or `SERVER_PORT` ). |
 | `SERVER_ROOT` | Root directory path of static | Default `./public`. |
 | `SERVER_LOG_LEVEL`          | Specify a logging level in lower case. (Values `error`, `warn`, `info`, `debug`, `trace`). | Default `error` |
 | `SERVER_ERROR_PAGE_404`     | HTML file path for 404 errors. | If path is not specified or simply don't exists then server will use a generic HTML error message. Default `./public/404.html`. |
@@ -82,6 +84,12 @@ OPTIONS:
     -z, --directory-listing <directory-listing>
             Enable directory listing for all requests ending with the slash character (‘/’) [env:
             SERVER_DIRECTORY_LISTING=]  [default: false]
+    -f, --fd <fd>
+            Instead of binding to a TCP port, accept incoming connections to an already-bound TCP socket listener on the
+            specified file descriptor number (usually zero). Requires that the parent process (e.g. inetd, launchd, or
+            systemd) binds an address and port on behalf of static-web-server, before arranging for the resulting file
+            descriptor to be inherited by static-web-server. Cannot be used in conjunction with the port and host
+            arguments [env: SERVER_LISTEN_FD=]
     -a, --host <host>
             Host address (E.g 127.0.0.1 or ::1) [env: SERVER_HOST=]  [default: ::]
 
@@ -114,6 +122,16 @@ OPTIONS:
             32,768 though it is advised to keep this value on the smaller side [env: SERVER_THREADS_MULTIPLIER=]
             [default: 1]
 ```
+
+## Use of file descriptor socket passing
+
+Example `systemd` unit files for socket activation are included in the [`systemd/`](systemd/) directory.  If
+using `inetd`, its "`wait`" option should be used in conjunction with static-web-server's `--fd 0`
+option.
+
+Alternatively, the light-weight [`systemfd`](https://github.com/mitsuhiko/systemfd) utility may be
+useful - especially for testing e.g.
+`systemfd --no-pid -s http::8091 -- path/to/static-web-server --fd 0`
 
 ## Docker stack
 

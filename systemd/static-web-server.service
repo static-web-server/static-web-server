@@ -1,0 +1,107 @@
+# Example systemd service unit file (see systemd.service(5) man page) for use
+# with the --fd option of static-web-server.  This allows e.g. binding the
+# server to a TCP port number 0 - 1023 without running the server as root,
+# and/or running sws in an isolated network name space.
+#
+# This also allows sws to be started on-demand.  If sws is restart (e.g. after
+# updating its SSL certificates, or reconfiguring its content directory), new
+# inbound connections will be queued until sws is up and running again.
+#
+# A comprehensive description can be found in:
+# http://0pointer.de/blog/projects/socket-activation.html
+# ...and the linked articles.
+
+[Unit]
+Description=Static Web Server
+Wants=static-web-server.socket
+After=static-web-server.socket
+
+# The options below reflect a reasonably comprehensive sandboxing based on the
+# features available in systemd v247.  Newer versions of systemd may offer
+# additional options for sandboxing.
+#
+# The options below focus on security, when making changes to this unit file
+# you may wish to evaluated the output of:
+# systemd-analyze security static-web-server.service
+#
+# Beyond the limits used here, additional limits can be placed on CPU, memory,
+# and disk I/O, as well as network traffic filters (via eBPF and other
+# mechanisms), and implemented for this server using the systemd override
+# facilities.  See systemd.resource-control(5) for details.
+
+[Service]
+Type=simple
+
+# An example environment file for static-web-server is included in the file:
+# systemd/etc_default_static-web-server
+EnvironmentFile=/etc/default/static-web-server
+
+# File descriptor 0 corresponds to the standard input...
+ExecStart=/usr/local/bin/static-web-server --fd 0
+
+# ...so the following line attaches fd 0 of the static web server process to
+# the socket defined by the corresponding `static-web-server.socket` unit file.
+# Each instance of static-web-server currently only supports listening on a
+# single socket.
+StandardInput=fd:static-web-server.socket
+
+# Debug and tracing output goes to stderr, and can be viewed with e.g.
+# `journalctl -u static-web-server.service`.
+StandardError=journal
+
+Restart=always
+RestartSec=5
+DynamicUser=true
+SupplementaryGroups=www-data
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+CapabilityBoundingSet=
+RestrictNamespaces=true
+
+#RestrictAddressFamilies=none
+# ☟ workaround to implement ☝in older versions of systemd.
+#   see: https://github.com/systemd/systemd/issues/15753
+RestrictAddressFamilies=AF_UNIX
+RestrictAddressFamilies=~AF_UNIX
+
+PrivateDevices=true
+PrivateUsers=true
+PrivateNetwork=true
+ProtectClock=true
+ProtectControlGroups=true
+ProtectKernelLogs=true
+ProtectKernelModules=true
+ProtectKernelTunables=true
+ProtectProc=invisible
+ProcSubset=pid
+RestrictSUIDSGID=true
+SystemCallArchitectures=native
+RestrictRealtime=true
+LockPersonality=true
+RemoveIPC=true
+MemoryDenyWriteExecute=true
+UMask=077
+ProtectHostname=true
+
+# Restrict the use of exotic system calls (bugs in seldom-used syscalls are a
+# historical source of kernel vulnerabilities)...
+SystemCallFilter=@system-service
+# ... It may be possible to restrict this further.  e.g.
+#SystemCallFilter=@signal @basic-io @io-event @network-io @process statx fstat sched_getaffinity getrandom
+# but a process to discover the set of system calls used (e.g. as part of the
+# unit tests) will probably be needed to avoid regressions e.g. due to changes
+# in crates which are used by static-web-server. The following may be useful to
+# record system calls performed:
+# "/usr/bin/strace --summary-only -o sws.syscallstats -- static-web-server [...]"
+# You can view the sets of system calls defined by systemd using:
+# "systemd-analyze syscall-filter"
+
+DevicePolicy=strict
+DeviceAllow=/dev/null rw
+DeviceAllow=/dev/random r
+DeviceAllow=/dev/urandom r
+
+[Install]
+WantedBy=multi-user.target

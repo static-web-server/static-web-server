@@ -1,0 +1,18 @@
+# Example systemd socket unit file (see systemd.socket(5) man page) for use
+# with the --fd option of static-web-server.  This allows e.g. binding the
+# server to a TCP port number 0 - 1023 without running the server as root,
+# and/or running sws in an isolated network name space.
+#
+# A comprehensive description can be found in:
+# http://0pointer.de/blog/projects/socket-activation.html
+# ...and the linked articles.
+
+[Unit]
+Description=Static Web Server Socket
+
+[Socket]
+ListenStream=443
+Accept=no
+
+[Install]
+WantedBy=sockets.target

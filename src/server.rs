@@ -1,7 +1,8 @@
 use hyper::server::conn::AddrIncoming;
 use hyper::server::Server as HyperServer;
 use hyper::service::{make_service_fn, service_fn};
-use std::net::{IpAddr, SocketAddr};
+use listenfd::ListenFd;
+use std::net::{IpAddr, SocketAddr, TcpListener};
 use std::sync::Arc;
 use structopt::StructOpt;
 
@@ -58,8 +59,26 @@ impl Server {
 
         tracing::info!("runtime worker threads: {}", self.threads);
 
-        let ip = opts.host.parse::<IpAddr>()?;
-        let addr = SocketAddr::from((ip, opts.port));
+        let (tcplistener, addr_string);
+        match opts.fd {
+            Some(fd) => {
+                addr_string = format!("@FD({})", fd);
+                tcplistener = ListenFd::from_env()
+                    .take_tcp_listener(fd)?
+                    .expect("Failed to convert inherited FD into a a TCP listener");
+                tracing::info!(
+                    "Converted inherited file descriptor {} to a TCP listener",
+                    fd
+                );
+            }
+            None => {
+                let ip = opts.host.parse::<IpAddr>()?;
+                let addr = SocketAddr::from((ip, opts.port));
+                tcplistener = TcpListener::bind(addr)?;
+                addr_string = format!("{:?}", addr);
+                tracing::info!("Bound to TCP socket {}", addr_string);
+            }
+        }
 
         // Check for a valid root directory
         let root_dir = helpers::get_valid_dirpath(&opts.root)?;
@@ -111,7 +130,12 @@ impl Server {
                     }
                 });
 
-                let mut incoming = AddrIncoming::bind(&addr)?;
+                tcplistener
+                    .set_nonblocking(true)
+                    .expect("Cannot set non-blocking");
+                let listener = tokio::net::TcpListener::from_std(tcplistener)
+                    .expect("Failed to create tokio::net::TcpListener");
+                let mut incoming = AddrIncoming::from_listener(listener)?;
                 incoming.set_nodelay(true);
 
                 let tls = TlsConfigBuilder::new()
@@ -124,9 +148,9 @@ impl Server {
                     HyperServer::builder(TlsAcceptor::new(tls, incoming)).serve(make_service);
 
                 tracing::info!(
-                    parent: tracing::info_span!("Server::start_server", ?addr, ?threads),
+                    parent: tracing::info_span!("Server::start_server", ?addr_string, ?threads),
                     "listening on https://{}",
-                    addr
+                    addr_string
                 );
 
                 server.await
@@ -153,14 +177,15 @@ impl Server {
                     }
                 });
 
-                let server = HyperServer::bind(&addr)
+                let server = HyperServer::from_tcp(tcplistener)
+                    .unwrap()
                     .tcp_nodelay(true)
                     .serve(make_service);
 
                 tracing::info!(
-                    parent: tracing::info_span!("Server::start_server", ?addr, ?threads),
+                    parent: tracing::info_span!("Server::start_server", ?addr_string, ?threads),
                     "listening on http://{}",
-                    addr
+                    addr_string
                 );
 
                 server.await
