@@ -11,6 +11,7 @@ pub mod handler;
 pub mod helpers;
 pub mod logger;
 pub mod server;
+pub mod service;
 pub mod signals;
 pub mod static_files;
 pub mod tls;

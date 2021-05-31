@@ -1,16 +1,14 @@
 use hyper::server::conn::AddrIncoming;
 use hyper::server::Server as HyperServer;
-use hyper::service::{make_service_fn, service_fn};
 use listenfd::ListenFd;
 use std::net::{IpAddr, SocketAddr, TcpListener};
-use std::sync::Arc;
 use structopt::StructOpt;
 
-use crate::config::Config;
-use crate::static_files::ArcPath;
+use crate::handler::{RequestHandler, RequestHandlerOpts};
 use crate::tls::{TlsAcceptor, TlsConfigBuilder};
 use crate::Result;
-use crate::{error, error_page, handler, helpers, logger};
+use crate::{config::Config, service::RouterService};
+use crate::{error_page, helpers, logger};
 
 /// Define a multi-thread HTTP or HTTP/2 web server.
 pub struct Server {
@@ -82,7 +80,6 @@ impl Server {
 
         // Check for a valid root directory
         let root_dir = helpers::get_valid_dirpath(&opts.root)?;
-        let root_dir = ArcPath(Arc::new(root_dir));
 
         // Custom error pages content
         error_page::PAGE_404
@@ -105,6 +102,15 @@ impl Server {
         // Spawn a new Tokio asynchronous server task with its given options
         let threads = self.threads;
 
+        // Create a service router for Hyper
+        let router_service = RouterService::new(RequestHandler {
+            opts: RequestHandlerOpts {
+                root_dir,
+                compression,
+                dir_listing,
+            },
+        });
+
         if opts.http2 {
             // HTTP/2 + TLS
 
@@ -112,24 +118,6 @@ impl Server {
             let key_path = opts.http2_tls_key.clone();
 
             tokio::task::spawn(async move {
-                let make_service = make_service_fn(move |_| {
-                    let root_dir = root_dir.clone();
-                    async move {
-                        Ok::<_, error::Error>(service_fn(move |req| {
-                            let root_dir = root_dir.clone();
-                            async move {
-                                handler::handle_request(
-                                    root_dir.as_ref(),
-                                    compression,
-                                    dir_listing,
-                                    &req,
-                                )
-                                .await
-                            }
-                        }))
-                    }
-                });
-
                 tcplistener
                     .set_nonblocking(true)
                     .expect("Cannot set non-blocking");
@@ -145,7 +133,7 @@ impl Server {
                     .unwrap();
 
                 let server =
-                    HyperServer::builder(TlsAcceptor::new(tls, incoming)).serve(make_service);
+                    HyperServer::builder(TlsAcceptor::new(tls, incoming)).serve(router_service);
 
                 tracing::info!(
                     parent: tracing::info_span!("Server::start_server", ?addr_string, ?threads),
@@ -159,28 +147,10 @@ impl Server {
             // HTTP/1
 
             tokio::task::spawn(async move {
-                let make_service = make_service_fn(move |_| {
-                    let root_dir = root_dir.clone();
-                    async move {
-                        Ok::<_, error::Error>(service_fn(move |req| {
-                            let root_dir = root_dir.clone();
-                            async move {
-                                handler::handle_request(
-                                    root_dir.as_ref(),
-                                    compression,
-                                    dir_listing,
-                                    &req,
-                                )
-                                .await
-                            }
-                        }))
-                    }
-                });
-
                 let server = HyperServer::from_tcp(tcplistener)
                     .unwrap()
                     .tcp_nodelay(true)
-                    .serve(make_service);
+                    .serve(router_service);
 
                 tracing::info!(
                     parent: tracing::info_span!("Server::start_server", ?addr_string, ?threads),
