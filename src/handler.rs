@@ -1,7 +1,8 @@
+use http::StatusCode;
 use hyper::{Body, Request, Response};
-use std::{future::Future, path::PathBuf};
+use std::{future::Future, path::PathBuf, sync::Arc};
 
-use crate::{compression, control_headers, static_files};
+use crate::{compression, control_headers, cors, static_files};
 use crate::{error_page, Error, Result};
 
 // It defines options for a request handler.
@@ -9,6 +10,7 @@ pub struct RequestHandlerOpts {
     pub root_dir: PathBuf,
     pub compression: bool,
     pub dir_listing: bool,
+    pub cors: Option<Arc<cors::Configured>>,
 }
 
 // It defines the main request handler for Hyper service request.
@@ -23,11 +25,27 @@ impl RequestHandler {
     ) -> impl Future<Output = Result<Response<Body>, Error>> + Send + 'a {
         let method = req.method();
         let headers = req.headers();
+
         let root_dir = self.opts.root_dir.as_path();
         let uri_path = req.uri().path();
         let dir_listing = self.opts.dir_listing;
 
         async move {
+            // CORS
+            if self.opts.cors.is_some() {
+                let cors = self.opts.cors.as_ref().unwrap();
+                match cors.check_request(method, headers) {
+                    Ok(r) => {
+                        tracing::debug!("cors ok: {:?}", r);
+                    }
+                    Err(e) => {
+                        tracing::debug!("cors error kind: {:?}", e);
+                        return error_page::get_error_response(method, &StatusCode::FORBIDDEN);
+                    }
+                };
+            }
+
+            // Static files
             match static_files::handle_request(method, headers, root_dir, uri_path, dir_listing)
                 .await
             {
