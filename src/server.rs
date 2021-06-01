@@ -8,7 +8,7 @@ use crate::handler::{RequestHandler, RequestHandlerOpts};
 use crate::tls::{TlsAcceptor, TlsConfigBuilder};
 use crate::Result;
 use crate::{config::Config, service::RouterService};
-use crate::{error_page, helpers, logger};
+use crate::{cors, error_page, helpers, logger};
 
 /// Define a multi-thread HTTP or HTTP/2 web server.
 pub struct Server {
@@ -89,8 +89,6 @@ impl Server {
             .set(helpers::read_file_content(opts.page50x.as_ref()))
             .expect("page 50x is not initialized");
 
-        // TODO: CORS support
-
         // Auto compression based on the `Accept-Encoding` header
         let compression = opts.compression;
         tracing::info!("auto compression compression: enabled={}", compression);
@@ -102,12 +100,16 @@ impl Server {
         // Spawn a new Tokio asynchronous server task with its given options
         let threads = self.threads;
 
+        // CORS support
+        let cors = cors::new(opts.cors_allow_origins.trim().to_string());
+
         // Create a service router for Hyper
         let router_service = RouterService::new(RequestHandler {
             opts: RequestHandlerOpts {
                 root_dir,
                 compression,
                 dir_listing,
+                cors,
             },
         });
 
