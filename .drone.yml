@@ -61,14 +61,6 @@ platform:
   arch: amd64
 
 steps:
-- name: test
-  image: joseluisq/rust-linux-darwin-builder:1.52.1
-  commands:
-    - make test
-  when:
-    event:
-    - tag
-
 - name: release
   image: joseluisq/rust-linux-darwin-builder:1.52.1
   commands:
@@ -172,14 +164,6 @@ platform:
   arch: amd64
 
 steps:
-- name: test
-  image: joseluisq/rust-linux-darwin-builder:1.52.1
-  commands:
-    - make test
-  when:
-    event:
-    - tag
-
 - name: release
   image: joseluisq/rust-linux-darwin-builder:1.52.1
   commands:

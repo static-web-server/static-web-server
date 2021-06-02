@@ -1,9 +1,9 @@
 [package]
 name = "static-web-server"
-version = "2.0.0-beta.3"
+version = "2.0.0-beta.4"
 authors = ["Jose Quintana <https://git.io/joseluisq>"]
 license = "MIT OR Apache-2.0"
-description = "A blazing fast static files-serving web server."
+description = "A blazing fast and asynchronous web server for static files-serving."
 repository = "https://github.com/joseluisq/static-web-server"
 readme = "README.md"
 keywords = [

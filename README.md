@@ -2,7 +2,7 @@
 
 **Status:** `v2` is under **active** development. For the stable `v1` please refer to [1.x](https://github.com/joseluisq/static-web-server/tree/1.x) branch.
 
-> A blazing fast static files-serving web server. ⚡
+> A blazing fast and asynchronous web server for static files-serving. ⚡
 
 **Static Web Server** is a very small and fast production-ready web server to serving static web files or assets.
 
@@ -10,8 +10,8 @@
 
 - Built with [Rust](https://rust-lang.org) which is focused on [safety, speed, and concurrency](https://kornel.ski/rust-c-speed).
 - Memory safety and very reduced CPU and RAM overhead.
-- Blazing fast static files-serving and asynchronous powered by [Hyper](https://github.com/hyperium/hyper/) `v0.14`, [Tokio](https://github.com/tokio-rs/tokio) `v1` and a set of [awesome crates](./Cargo.toml).
-- Suitable for lightweight [GNU/Linux Docker containers](https://hub.docker.com/r/joseluisq/static-web-server/tags). It's a fully __5MB__ static binary thanks to [Rust and Musl libc](https://doc.rust-lang.org/edition-guide/rust-2018/platform-and-target-support/musl-support-for-fully-static-binaries.html).
+- Blazing fast static files-serving and asynchronous powered by latest [Hyper](https://github.com/hyperium/hyper/), [Tokio](https://github.com/tokio-rs/tokio) and a set of [awesome crates](./Cargo.toml).
+- Single __4MB__ and fully static binary with no dependencies ([Musl libc](https://doc.rust-lang.org/edition-guide/rust-2018/platform-and-target-support/musl-support-for-fully-static-binaries.html)). Suitable for running on [any Linux distro](https://en.wikipedia.org/wiki/Linux_distribution) or [Docker container](https://hub.docker.com/r/joseluisq/static-web-server/tags).
 - GZip, Deflate or Brotli compression for text-based web files only.
 - Compression on demand via [Accept-Encoding](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Accept-Encoding) header.
 - [Partial Content Delivery](https://en.wikipedia.org/wiki/Byte_serving) support for byte-serving of large files.
@@ -26,8 +26,8 @@
 - Default and custom error pages.
 - Configurable using CLI arguments or environment variables.
 - First-class [Docker](https://docs.docker.com/get-started/overview/) support. [Scratch](https://hub.docker.com/_/scratch) and latest [Alpine Linux](https://hub.docker.com/_/alpine) Docker images available.
+- The ability to accept a socket listener as a file descriptor for use in sandboxing and on-demand applications (E.g [systemd](http://0pointer.de/blog/projects/socket-activation.html)).
 - MacOs binary support thanks to [Rust Linux / Darwin Builder](https://github.com/joseluisq/rust-linux-darwin-builder).
-- The ability to accept a socket listener as a file descriptor for use in sandboxing and on-demand applications.
 
 ## Releases
 
@@ -64,7 +64,7 @@ Server can be configured either via environment variables or their equivalent co
 CLI arguments listed with `static-web-server -h`.
 
 ```
-static-web-server 2.0.0-beta.3
+static-web-server 2.0.0-beta.4
 A blazing fast static files-serving web server powered by Rust
 
 USAGE:
@@ -142,7 +142,7 @@ version: "3.3"
 
 services:
   web:
-    image: joseluisq/static-web-server:2.0.0-beta.3
+    image: joseluisq/static-web-server:2.0.0-beta.4
     environment:
         - SERVER_HOST=127.0.0.1
         - SERVER_PORT=80
