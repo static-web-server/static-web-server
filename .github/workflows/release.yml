@@ -1,0 +1,180 @@
+name: release
+on:
+  push:
+    tags:
+    - 'v[0-9]+.[0-9]+.[0-9]+'
+    - 'v[0-9]+.[0-9]+.[0-9]+-beta.[0-9]+'
+
+jobs:
+  create-release:
+    name: create-release
+    runs-on: ubuntu-20.04
+    outputs:
+      upload_url: ${{ steps.release.outputs.upload_url }}
+      sws_version: ${{ env.SWS_VERSION }}
+    steps:
+      - name: Get the release version from the tag
+        shell: bash
+        if: env.SWS_VERSION == ''
+        run: |
+          # Apparently, this is the right way to get a tag name. Really?
+          #
+          # See: https://github.community/t5/GitHub-Actions/How-to-get-just-the-tag-name/m-p/32167/highlight/true#M1027
+          echo "SWS_VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
+          echo "version is: ${{ env.SWS_VERSION }}"
+      - name: Create GitHub release
+        id: release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ env.SWS_VERSION }}
+          draft: true
+          release_name: ${{ env.SWS_VERSION }}
+
+  build-release:
+    name: build-release
+    needs: ['create-release']
+    runs-on: ${{ matrix.os }}
+    env:
+      # For some builds, we use cross to test on 32-bit and big-endian
+      # systems.
+      CARGO: cargo
+      # When CARGO is set to CROSS, this is set to `--target matrix.target`.
+      TARGET_FLAGS: ""
+      # When CARGO is set to CROSS, TARGET_DIR includes matrix.target.
+      TARGET_DIR: ./target
+      # Emit backtraces on panics.
+      RUST_BACKTRACE: 1
+    strategy:
+      matrix:
+        build: [linux, linux-gnu, linux-arm64, linux-arm-gnueabihf, macos, macos-arm]
+        include:
+        - build: linux
+          os: ubuntu-20.04
+          rust: nightly
+          target: x86_64-unknown-linux-musl
+        - build: linux-gnu
+          os: ubuntu-20.04
+          rust: nightly
+          target: x86_64-unknown-linux-gnu
+        - build: linux-arm64
+          os: ubuntu-20.04
+          rust: nightly
+          target: aarch64-unknown-linux-gnu
+        - build: linux-arm-gnueabihf
+          os: ubuntu-20.04
+          rust: nightly
+          target: arm-unknown-linux-gnueabihf
+        - build: macos
+          os: macos-latest
+          rust: nightly
+          target: x86_64-apple-darwin
+        - build: macos-arm
+          os: macos-latest
+          rust: nightly
+          target: aarch64-apple-darwin
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+      with:
+        fetch-depth: 1
+
+    - name: Install Rust
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: ${{ matrix.rust }}
+        profile: minimal
+        override: true
+        target: ${{ matrix.target }}
+
+    - name: Use Cross
+      shell: bash
+      run: |
+        cargo install cross
+        echo "CARGO=cross" >> $GITHUB_ENV
+        echo "TARGET_FLAGS=--target ${{ matrix.target }}" >> $GITHUB_ENV
+        echo "TARGET_DIR=./target/${{ matrix.target }}" >> $GITHUB_ENV
+
+    - name: Show command used for Cargo
+      run: |
+        echo "cargo command is: ${{ env.CARGO }}"
+        echo "target flag is: ${{ env.TARGET_FLAGS }}"
+        echo "target dir is: ${{ env.TARGET_DIR }}"
+
+    - name: Build release binary macos
+      if: matrix.build == 'macos' || matrix.build == 'macos-arm'
+      run: |
+        # Use the beta compiler
+        sudo xcode-select -s /Applications/Xcode_12.2.app/Contents/Developer/
+
+        # Set SDK environment variables
+        echo "SDKROOT=$(xcrun -sdk macosx11.0 --show-sdk-path)" >> $GITHUB_ENV
+        echo "MACOSX_DEPLOYMENT_TARGET=$(xcrun -sdk macosx11.0 --show-sdk-platform-version)" >> $GITHUB_ENV
+
+    - name: aarch64 specific items
+      if: matrix.build == 'macos-arm'
+      run: |
+        # Use the beta compiler
+        sudo xcode-select -s /Applications/Xcode_12.2.app/Contents/Developer/
+
+        # Set SDK environment variables
+        echo "SDKROOT=$(xcrun -sdk macosx11.0 --show-sdk-path)" >> $GITHUB_ENV
+        echo "MACOSX_DEPLOYMENT_TARGET=$(xcrun -sdk macosx11.0 --show-sdk-platform-version)" >> $GITHUB_ENV
+
+    - name: Build release binary
+      run: ${{ env.CARGO }} build --verbose --release ${{ env.TARGET_FLAGS }}
+
+    - name: Strip release binary (linux and macos)
+      if: matrix.build != 'linux-arm-gnueabihf' && matrix.build != 'linux-arm64'
+      run: strip "target/${{ matrix.target }}/release/static-web-server"
+
+    - name: Strip release binary (linux-arm-gnueabihf)
+      if: matrix.build == 'linux-arm-gnueabihf'
+      run: |
+        docker run --rm -v \
+          "$PWD/target:/target:Z" \
+          rustembedded/cross:arm-unknown-linux-gnueabihf \
+          arm-linux-gnueabihf-strip \
+          /target/arm-unknown-linux-gnueabihf/release/static-web-server
+
+    - name: Strip release binary (linux-arm64)
+      if: matrix.build == 'linux-arm64'
+      run: |
+        docker run --rm -v \
+          "$PWD/target:/target:Z" \
+          rustembedded/cross:aarch64-unknown-linux-gnu \
+          aarch64-linux-gnu-strip \
+          /target/aarch64-unknown-linux-gnu/release/static-web-server
+
+    - name: Build archive
+      shell: bash
+      run: |
+        staging="static-web-server-${{ needs.create-release.outputs.sws_version }}-${{ matrix.target }}"
+        mkdir -p "$staging/"
+        mkdir -p bin
+
+        cp {README.md,LICENSE-APACHE,LICENSE-MIT} "$staging/"
+
+        if [ "${{ matrix.os }}" = "windows-2019" ]; then
+          cp "target/${{ matrix.target }}/release/static-web-server.exe" "$staging/"
+          7z a "$staging.zip" "$staging"
+          echo "ASSET=$staging.zip" >> $GITHUB_ENV
+        else
+          # The man page is only generated on Unix systems.
+          cp "target/${{ matrix.target }}/release/static-web-server" "$staging/"
+          cp "$staging/static-web-server" bin/
+          tar czf "$staging.tar.gz" "$staging"
+          echo "ASSET=$staging.tar.gz" >> $GITHUB_ENV
+        fi
+
+    - name: Upload release archive
+      uses: actions/upload-release-asset@v1.0.1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ needs.create-release.outputs.upload_url }}
+        asset_path: ${{ env.ASSET }}
+        asset_name: ${{ env.ASSET }}
+        asset_content_type: application/octet-stream
