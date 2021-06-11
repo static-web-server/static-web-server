@@ -1,6 +1,6 @@
 # Static Web Server [![CI](https://github.com/joseluisq/static-web-server/workflows/CI/badge.svg)](https://github.com/joseluisq/static-web-server/actions?query=workflow%3ACI) [![Docker Image Version (tag latest semver)](https://img.shields.io/docker/v/joseluisq/static-web-server/1)](https://hub.docker.com/r/joseluisq/static-web-server/) [![Docker Image Size (tag)](https://img.shields.io/docker/image-size/joseluisq/static-web-server/1)](https://hub.docker.com/r/joseluisq/static-web-server/tags) [![Docker Image](https://img.shields.io/docker/pulls/joseluisq/static-web-server.svg)](https://hub.docker.com/r/joseluisq/static-web-server/)
 
-**Status:** `v2` is under **active** development. For the stable `v1` please refer to [1.x](https://github.com/joseluisq/static-web-server/tree/1.x) branch.
+**Status:** `v2` under **active** development. For the stable `v1` please refer to [1.x](https://github.com/joseluisq/static-web-server/tree/1.x) branch.
 
 > A blazing fast and asynchronous web server for static files-serving. ⚡
 
@@ -27,14 +27,35 @@
 - Configurable using CLI arguments or environment variables.
 - First-class [Docker](https://docs.docker.com/get-started/overview/) support. [Scratch](https://hub.docker.com/_/scratch) and latest [Alpine Linux](https://hub.docker.com/_/alpine) Docker images available.
 - The ability to accept a socket listener as a file descriptor for use in sandboxing and on-demand applications (E.g [systemd](http://0pointer.de/blog/projects/socket-activation.html)).
-- MacOs binary support thanks to [Rust Linux / Darwin Builder](https://github.com/joseluisq/rust-linux-darwin-builder).
+- Cross-platform. Binaries available for Linux, macOS and Windows\* x86_64/ARM64.
 
 ## Releases
 
-Available for download/install via following methods:
+### Docker image
 
-- **Docker Image** on [hub.docker.com/r/joseluisq/static-web-server/](https://hub.docker.com/r/joseluisq/static-web-server/)
-- **Release binaries** for `GNU/Linux` and `MacOS` x86_64 on [github.com/joseluisq/static-web-server/releases](https://github.com/joseluisq/static-web-server/releases).
+Available on [hub.docker.com/r/joseluisq/static-web-server](https://hub.docker.com/r/joseluisq/static-web-server/)
+
+### Release binaries
+
+Available to download on [github.com/joseluisq/static-web-server/releases](https://github.com/joseluisq/static-web-server/releases).
+
+Below the current supported targets.
+
+#### Linux
+
+- x86_64-unknown-linux-musl (64-bit)
+- x86_64-unknown-linux-gnu (64-bit)
+- aarch64-unknown-linux-gnu (ARM64)
+- arm-unknown-linux-gnueabihf (ARM64)
+
+#### macOS
+
+- x86_64-apple-darwin (64-bit)
+- aarch64-apple-darwin (ARM64)
+
+#### Windows
+
+\* **Note:** Windows support is on the TODO list yet.
 
 ## Usage
 
@@ -58,6 +79,7 @@ Server can be configured either via environment variables or their equivalent co
 | `SERVER_CORS_ALLOW_ORIGINS` | Specify a optional CORS list of allowed origin hosts separated by comas. Host ports or protocols aren't being checked. Use an asterisk (*) to allow any host. | Default empty (which means CORS is disabled) |
 | `SERVER_COMPRESSION`  | Gzip, Deflate or Brotli compression on demand determined by the *Accept-Encoding* header and applied to text-based web file types only. See [ad-hoc mime-type list](https://github.com/joseluisq/static-web-server/blob/master/src/compression.rs#L20) | Default `true` (enabled) |
 | `SERVER_DIRECTORY_LISTING`  | Enable directory listing for all requests ending with the slash character (‘/’) | Default `false` (disabled) |
+| `SERVER_SECURITY_HEADERS` | Enable security headers by default when HTTP/2 feature is activated. Headers included: `Strict-Transport-Security: max-age=63072000; includeSubDomains; preload` (2 years max-age), `X-Frame-Options: DENY`, `X-XSS-Protection: 1; mode=block` and `Content-Security-Policy: frame-ancestors 'self'` | Default `false` (disabled) |
 
 ### Command-line arguments
 
@@ -89,7 +111,8 @@ OPTIONS:
             specified file descriptor number (usually zero). Requires that the parent process (e.g. inetd, launchd, or
             systemd) binds an address and port on behalf of static-web-server, before arranging for the resulting file
             descriptor to be inherited by static-web-server. Cannot be used in conjunction with the port and host
-            arguments [env: SERVER_LISTEN_FD=]
+            arguments. The included systemd unit file utilises this feature to increase security by allowing the static-
+            web-server to be sandboxed more completely [env: SERVER_LISTEN_FD=]
     -a, --host <host>
             Host address (E.g 127.0.0.1 or ::1) [env: SERVER_HOST=]  [default: ::]
 
@@ -115,6 +138,11 @@ OPTIONS:
     -d, --root <root>
             Root directory path of static files [env: SERVER_ROOT=]  [default: ./public]
 
+        --security-headers <security-headers>
+            Enable security headers by default when HTTP/2 feature is activated. Headers included: "Strict-Transport-
+            Security: max-age=63072000; includeSubDomains; preload" (2 years max-age), "X-Frame-
+            Options: DENY", "X-XSS-Protection: 1; mode=block" and "Content-Security-Policy: frame-ancestors
+            'self'" [env: SERVER_SECURITY_HEADERS=]  [default: false]
     -n, --threads-multiplier <threads-multiplier>
             Number of worker threads multiplier that'll be multiplied by the number of system CPUs using the formula:
             `worker threads = number of CPUs * n` where `n` is the value that changes here. When multiplier value is 0
@@ -125,13 +153,12 @@ OPTIONS:
 
 ## Use of file descriptor socket passing
 
-Example `systemd` unit files for socket activation are included in the [`systemd/`](systemd/) directory.  If
+Example `systemd` unit files for socket activation are included in the [`systemd/`](systemd/) directory. If
 using `inetd`, its "`wait`" option should be used in conjunction with static-web-server's `--fd 0`
 option.
 
 Alternatively, the light-weight [`systemfd`](https://github.com/mitsuhiko/systemfd) utility may be
-useful - especially for testing e.g.
-`systemfd --no-pid -s http::8091 -- path/to/static-web-server --fd 0`
+useful - especially for testing e.g. `systemfd --no-pid -s http::8091 -- path/to/static-web-server --fd 0`
 
 ## Docker stack
 
