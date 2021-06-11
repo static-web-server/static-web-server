@@ -89,9 +89,13 @@ impl Server {
             .set(helpers::read_file_content(opts.page50x.as_ref()))
             .expect("page 50x is not initialized");
 
+        // Security Headers option
+        let security_headers = opts.security_headers;
+        tracing::info!("security headers: enabled={}", security_headers);
+
         // Auto compression based on the `Accept-Encoding` header
         let compression = opts.compression;
-        tracing::info!("auto compression compression: enabled={}", compression);
+        tracing::info!("auto compression: enabled={}", compression);
 
         // Directory listing option
         let dir_listing = opts.directory_listing;
@@ -110,6 +114,7 @@ impl Server {
                 compression,
                 dir_listing,
                 cors,
+                security_headers,
             },
         });
 

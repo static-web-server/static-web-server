@@ -11,6 +11,7 @@ pub mod error_page;
 pub mod handler;
 pub mod helpers;
 pub mod logger;
+pub mod security_headers;
 pub mod server;
 pub mod service;
 pub mod signals;
