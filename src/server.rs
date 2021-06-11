@@ -137,7 +137,9 @@ impl Server {
                     .cert_path(cert_path)
                     .key_path(key_path)
                     .build()
-                    .unwrap();
+                    .expect(
+                        "error during TLS server initialization, probably cert or key file missing",
+                    );
 
                 let server =
                     HyperServer::builder(TlsAcceptor::new(tls, incoming)).serve(router_service);
