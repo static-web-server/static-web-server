@@ -108,4 +108,17 @@ pub struct Config {
     )]
     /// Enable directory listing for all requests ending with the slash character (‘/’).
     pub directory_listing: bool,
+
+    #[structopt(
+        long,
+        parse(try_from_str),
+        required_if("http2", "true"),
+        default_value_if("http2", Some("true"), "true"),
+        default_value = "false",
+        env = "SERVER_SECURITY_HEADERS"
+    )]
+    /// Enable security headers by default when HTTP/2 feature is activated.
+    /// Headers included: "Strict-Transport-Security: max-age=63072000; includeSubDomains; preload" (2 years max-age),
+    /// "X-Frame-Options: DENY", "X-XSS-Protection: 1; mode=block" and "Content-Security-Policy: frame-ancestors 'self'".
+    pub security_headers: bool,
 }

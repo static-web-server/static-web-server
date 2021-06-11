@@ -2,7 +2,7 @@ use http::StatusCode;
 use hyper::{Body, Request, Response};
 use std::{future::Future, path::PathBuf, sync::Arc};
 
-use crate::{compression, control_headers, cors, static_files};
+use crate::{compression, control_headers, cors, security_headers, static_files};
 use crate::{error_page, Error, Result};
 
 // It defines options for a request handler.
@@ -11,6 +11,7 @@ pub struct RequestHandlerOpts {
     pub compression: bool,
     pub dir_listing: bool,
     pub cors: Option<Arc<cors::Configured>>,
+    pub security_headers: bool,
 }
 
 // It defines the main request handler for Hyper service request.
@@ -50,6 +51,11 @@ impl RequestHandler {
                 .await
             {
                 Ok(mut resp) => {
+                    // Append Security Headers
+                    if self.opts.security_headers {
+                        security_headers::with_security_headers(&mut resp);
+                    }
+
                     // Auto compression based on the `Accept-Encoding` header
                     if self.opts.compression {
                         resp = compression::auto(method, headers, resp)?;
