@@ -107,6 +107,9 @@ impl Server {
         // CORS support
         let cors = cors::new(opts.cors_allow_origins.trim().to_string());
 
+        // TryFiles support
+        let try_files = opts.try_files.split_whitespace().map(|s| String::from(s)).collect();
+
         // Create a service router for Hyper
         let router_service = RouterService::new(RequestHandler {
             opts: RequestHandlerOpts {
@@ -115,6 +118,7 @@ impl Server {
                 dir_listing,
                 cors,
                 security_headers,
+                try_files,
             },
         });
 

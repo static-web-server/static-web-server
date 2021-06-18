@@ -131,4 +131,12 @@ pub struct Config {
     /// Headers included: "Strict-Transport-Security: max-age=63072000; includeSubDomains; preload" (2 years max-age),
     /// "X-Frame-Options: DENY", "X-XSS-Protection: 1; mode=block" and "Content-Security-Policy: frame-ancestors 'self'".
     pub security_headers: bool,
+
+    #[structopt(
+        long,
+        default_value = "$uri",
+        env = "SERVER_TRY_FILES"
+    )]
+    /// The files to try and serve for each request. Falls through each option before returning a 404 error.
+    pub try_files: String,
 }

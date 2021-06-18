@@ -149,6 +149,9 @@ OPTIONS:
             or 1 then one thread per core is used. Number of worker threads result should be a number between 1 and
             32,768 though it is advised to keep this value on the smaller side [env: SERVER_THREADS_MULTIPLIER=]
             [default: 1]
+        --try-files <try-files>
+            The files to try and serve for each request. Falls through each option before returning a 404 error [env:
+            SERVER_TRY_FILES=]  [default: $uri]
 ```
 
 ## Use of file descriptor socket passing

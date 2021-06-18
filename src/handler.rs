@@ -12,6 +12,7 @@ pub struct RequestHandlerOpts {
     pub dir_listing: bool,
     pub cors: Option<Arc<cors::Configured>>,
     pub security_headers: bool,
+    pub try_files: Vec<String>,
 }
 
 // It defines the main request handler for Hyper service request.
@@ -30,6 +31,7 @@ impl RequestHandler {
         let root_dir = self.opts.root_dir.as_path();
         let uri_path = req.uri().path();
         let dir_listing = self.opts.dir_listing;
+        let try_files = self.opts.try_files.clone();
 
         async move {
             // CORS
@@ -47,28 +49,37 @@ impl RequestHandler {
             }
 
             // Static files
-            match static_files::handle_request(method, headers, root_dir, uri_path, dir_listing)
-                .await
-            {
-                Ok(mut resp) => {
-                    // Append Security Headers
-                    if self.opts.security_headers {
-                        security_headers::with_security_headers(&mut resp);
+            let mut response = error_page::get_error_response(method, &http::StatusCode::from_u16(404).unwrap());
+            for try_file in try_files.into_iter() {
+                let search_uri_path = try_file.replace("$uri", uri_path);
+                match static_files::handle_request(method, headers, root_dir, &search_uri_path, dir_listing)
+                    .await
+                {
+                    Ok(mut resp) => {
+                        // Append Security Headers
+                        if self.opts.security_headers {
+                            security_headers::with_security_headers(&mut resp);
+                        }
+
+                        // Auto compression based on the `Accept-Encoding` header
+                        if self.opts.compression {
+                            resp = compression::auto(method, headers, resp)?;
+                        }
+
+                        // Append `Cache-Control` headers for web assets
+                        let ext = uri_path.to_lowercase();
+                        control_headers::with_cache_control(&ext, &mut resp);
+
+                        response = Ok(resp);
+                        break;
                     }
-
-                    // Auto compression based on the `Accept-Encoding` header
-                    if self.opts.compression {
-                        resp = compression::auto(method, headers, resp)?;
+                    Err(status) => {
+                        response = error_page::get_error_response(method, &status);
                     }
-
-                    // Append `Cache-Control` headers for web assets
-                    let ext = uri_path.to_lowercase();
-                    control_headers::with_cache_control(&ext, &mut resp);
-
-                    Ok(resp)
-                }
-                Err(status) => error_page::get_error_response(method, &status),
+                };
             }
+
+            response
         }
     }
 }
