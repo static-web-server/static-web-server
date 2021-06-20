@@ -23,11 +23,7 @@ pub fn new(origins_str: String) -> Option<Arc<Configured>> {
     } else if origins_str == "*" {
         Some(cors.allow_any_origin().allow_methods(vec!["GET", "HEAD"]))
     } else {
-        let hosts = origins_str
-            .split(',')
-            .map(|s| s.trim().as_ref())
-            .collect::<Vec<_>>();
-
+        let hosts = origins_str.split(',').map(|s| s.trim()).collect::<Vec<_>>();
         if hosts.is_empty() {
             None
         } else {
