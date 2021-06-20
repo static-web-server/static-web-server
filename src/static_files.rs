@@ -17,7 +17,6 @@ use std::io;
 use std::ops::Bound;
 use std::path::PathBuf;
 use std::pin::Pin;
-use std::sync::Arc;
 use std::task::Poll;
 use std::time::{SystemTime, UNIX_EPOCH};
 use std::{cmp, path::Path};
@@ -26,16 +25,6 @@ use tokio::io::AsyncSeekExt;
 use tokio_util::io::poll_read_buf;
 
 use crate::error::Result;
-
-/// A small Arch `PathBuf` wrapper since Arc<PathBuf> doesn't implement AsRef<Path>.
-#[derive(Clone, Debug)]
-pub struct ArcPath(pub Arc<PathBuf>);
-
-impl AsRef<Path> for ArcPath {
-    fn as_ref(&self) -> &Path {
-        (*self.0).as_ref()
-    }
-}
 
 /// Entry point to handle web server requests which map to specific files
 /// on file system and return a file response.
@@ -51,14 +40,13 @@ pub async fn handle_request(
         return Err(StatusCode::METHOD_NOT_ALLOWED);
     }
 
-    let base = Arc::new(base.into());
-    let (path, meta, auto_index) = path_from_tail(base, uri_path).await?;
+    let (path, meta, auto_index) = path_from_tail(base.into(), uri_path).await?;
 
     // Directory listing
     // 1. Check if "directory listing" feature is enabled,
     // if current path is a valid directory and
     // if it does not contain an `index.html` file
-    if dir_listing && auto_index && !path.as_ref().exists() {
+    if dir_listing && auto_index && !path.exists() {
         // Redirect if current path does not end with a slash
         let current_path = uri_path;
         if !current_path.ends_with('/') {
@@ -79,10 +67,10 @@ pub async fn handle_request(
 }
 
 fn path_from_tail(
-    base: Arc<PathBuf>,
+    base: PathBuf,
     tail: &str,
-) -> impl Future<Output = Result<(ArcPath, Metadata, bool), StatusCode>> + Send {
-    future::ready(sanitize_path(base.as_ref(), tail)).and_then(|mut buf| async {
+) -> impl Future<Output = Result<(PathBuf, Metadata, bool), StatusCode>> + Send {
+    future::ready(sanitize_path(base, tail)).and_then(|mut buf| async {
         match tokio::fs::metadata(&buf).await {
             Ok(meta) => {
                 let mut auto_index = false;
@@ -92,7 +80,7 @@ fn path_from_tail(
                     auto_index = true;
                 }
                 tracing::trace!("dir: {:?}", buf);
-                Ok((ArcPath(Arc::new(buf)), meta, auto_index))
+                Ok((buf, meta, auto_index))
             }
             Err(err) => {
                 tracing::debug!("file not found: {:?}", err);
@@ -104,11 +92,11 @@ fn path_from_tail(
 
 fn directory_listing(
     method: &Method,
-    res: (String, ArcPath),
+    res: (String, PathBuf),
 ) -> impl Future<Output = Result<Response<Body>, StatusCode>> + Send {
     let (current_path, path) = res;
     let is_head = method == Method::HEAD;
-    let parent = path.as_ref().parent().unwrap();
+    let parent = path.parent().unwrap();
     let parent = PathBuf::from(parent);
 
     tokio::fs::read_dir(parent).then(move |res| match res {
@@ -118,7 +106,7 @@ fn directory_listing(
                 Err(err) => {
                     tracing::error!(
                         "error during directory entries reading (path={:?}): {} ",
-                        path.as_ref().parent().unwrap().display(),
+                        path.parent().unwrap().display(),
                         err
                     );
                     Err(StatusCode::INTERNAL_SERVER_ERROR)
@@ -128,20 +116,17 @@ fn directory_listing(
         Err(err) => {
             let status = match err.kind() {
                 io::ErrorKind::NotFound => {
-                    tracing::debug!("entry file not found: {:?}", path.as_ref().display());
+                    tracing::debug!("entry file not found: {:?}", path.display());
                     StatusCode::NOT_FOUND
                 }
                 io::ErrorKind::PermissionDenied => {
-                    tracing::warn!(
-                        "entry file permission denied: {:?}",
-                        path.as_ref().display()
-                    );
+                    tracing::warn!("entry file permission denied: {:?}", path.display());
                     StatusCode::FORBIDDEN
                 }
                 _ => {
                     tracing::error!(
                         "directory entries error (path={:?}): {} ",
-                        path.as_ref().display(),
+                        path.display(),
                         err
                     );
                     StatusCode::INTERNAL_SERVER_ERROR
@@ -249,7 +234,7 @@ fn parse_last_modified(modified: SystemTime) -> Result<time::Tm, Box<dyn std::er
 /// Reply with a file content.
 fn file_reply(
     headers: &HeaderMap<HeaderValue>,
-    res: (ArcPath, Metadata, bool),
+    res: (PathBuf, Metadata, bool),
 ) -> impl Future<Output = Result<Response<Body>, StatusCode>> + Send {
     let (path, meta, auto_index) = res;
     let conditionals = get_conditional_headers(headers);
@@ -258,19 +243,15 @@ fn file_reply(
         Err(err) => {
             let status = match err.kind() {
                 io::ErrorKind::NotFound => {
-                    tracing::debug!("file not found: {:?}", path.as_ref().display());
+                    tracing::debug!("file not found: {:?}", path.display());
                     StatusCode::NOT_FOUND
                 }
                 io::ErrorKind::PermissionDenied => {
-                    tracing::warn!("file permission denied: {:?}", path.as_ref().display());
+                    tracing::warn!("file permission denied: {:?}", path.display());
                     StatusCode::FORBIDDEN
                 }
                 _ => {
-                    tracing::error!(
-                        "file open error (path={:?}): {} ",
-                        path.as_ref().display(),
-                        err
-                    );
+                    tracing::error!("file open error (path={:?}): {} ", path.display(), err);
                     StatusCode::INTERNAL_SERVER_ERROR
                 }
             };
@@ -293,8 +274,7 @@ fn get_conditional_headers(header_list: &HeaderMap<HeaderValue>) -> Conditionals
     }
 }
 
-fn sanitize_path(base: impl AsRef<Path>, tail: &str) -> Result<PathBuf, StatusCode> {
-    let mut buf = PathBuf::from(base.as_ref());
+fn sanitize_path(mut buf: PathBuf, tail: &str) -> Result<PathBuf, StatusCode> {
     let p = match percent_decode_str(tail).decode_utf8() {
         Ok(p) => p,
         Err(err) => {
@@ -302,7 +282,7 @@ fn sanitize_path(base: impl AsRef<Path>, tail: &str) -> Result<PathBuf, StatusCo
             return Err(StatusCode::UNSUPPORTED_MEDIA_TYPE);
         }
     };
-    tracing::trace!("dir? base={:?}, route={:?}", base.as_ref(), p);
+    tracing::trace!("dir? base={:?}, route={:?}", buf, p);
     for seg in p.split('/') {
         if seg.starts_with("..") {
             tracing::warn!("dir: rejecting segment starting with '..'");
@@ -381,13 +361,13 @@ impl Conditionals {
 
 fn file_conditional(
     f: TkFile,
-    path: ArcPath,
+    path: PathBuf,
     meta: Metadata,
     auto_index: bool,
     conditionals: Conditionals,
 ) -> impl Future<Output = Result<Response<Body>, StatusCode>> + Send {
     file_metadata(f, meta, auto_index)
-        .map_ok(|(file, meta)| response_body(file, meta, path, conditionals))
+        .map_ok(|(file, meta)| response_body(file, &meta, path, conditionals))
 }
 
 async fn file_metadata(
@@ -409,8 +389,8 @@ async fn file_metadata(
 
 fn response_body(
     file: TkFile,
-    meta: Metadata,
-    path: ArcPath,
+    meta: &Metadata,
+    path: PathBuf,
     conditionals: Conditionals,
 ) -> Response<Body> {
     let mut len = meta.len();
@@ -421,7 +401,7 @@ fn response_body(
             bytes_range(range, len)
                 .map(|(start, end)| {
                     let sub_len = end - start;
-                    let buf_size = optimal_buf_size(&meta);
+                    let buf_size = optimal_buf_size(meta);
                     let stream = file_stream(file, buf_size, (start, end));
                     let body = Body::wrap_stream(stream);
 
@@ -436,7 +416,7 @@ fn response_body(
                         len = sub_len;
                     }
 
-                    let mime = mime_guess::from_path(path.as_ref()).first_or_octet_stream();
+                    let mime = mime_guess::from_path(path).first_or_octet_stream();
 
                     resp.headers_mut().typed_insert(ContentLength(len));
                     resp.headers_mut().typed_insert(ContentType::from(mime));
@@ -602,14 +582,14 @@ mod tests {
         }
 
         assert_eq!(
-            sanitize_path(base, "/foo.html").unwrap(),
+            sanitize_path(base.into(), "/foo.html").unwrap(),
             p("/var/www/foo.html")
         );
 
         // bad paths
-        sanitize_path(base, "/../foo.html").expect_err("dot dot");
+        sanitize_path(base.into(), "/../foo.html").expect_err("dot dot");
 
-        sanitize_path(base, "/C:\\/foo.html").expect_err("C:\\");
+        sanitize_path(base.into(), "/C:\\/foo.html").expect_err("C:\\");
     }
 
     #[test]
