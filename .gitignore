@@ -14,9 +14,10 @@
 **/.DS_Store
 **/*.env
 **/*.svg
-**/*.data
+**/*.data*
 **/*.zst
 **/*.out*
+**/*.perf*
 release
 .vscode
 TODO
