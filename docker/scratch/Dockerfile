@@ -7,7 +7,7 @@ LABEL version="${SERVER_VERSION}" \
     description="A blazing fast static files-serving web server powered by Rust Iron." \
     maintainer="Jose Quintana <joseluisq.net>"
 
-COPY ./bin/static-web-server /
+COPY --from=joseluisq/static-web-server:${SERVER_VERSION}-alpine /usr/local/bin/static-web-server /
 COPY ./public /public
 
 EXPOSE 80
