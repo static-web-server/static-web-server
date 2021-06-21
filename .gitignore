@@ -13,6 +13,9 @@
 **/*.gz
 **/.DS_Store
 **/*.env
+**/*.data*
+**/*.perf*
+**/*.out*
 release
 .vscode
 TODO
