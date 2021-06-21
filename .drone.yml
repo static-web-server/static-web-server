@@ -9,7 +9,7 @@ platform:
 
 steps:
 - name: test
-  image: joseluisq/rust-linux-darwin-builder:1.52.1
+  image: joseluisq/rust-linux-darwin-builder:1.53.0
   volumes:
     - name: cargo-target
       path: /drone/src/target
@@ -143,7 +143,7 @@ platform:
 
 steps:
 - name: test
-  image: joseluisq/rust-linux-darwin-builder:1.52.1
+  image: joseluisq/rust-linux-darwin-builder:1.53.0
   volumes:
     - name: cargo-target
       path: /drone/src/target
@@ -155,7 +155,7 @@ steps:
     - make test
 
 - name: release
-  image: joseluisq/rust-linux-darwin-builder:1.52.1
+  image: joseluisq/rust-linux-darwin-builder:1.53.0
   volumes:
     - name: cargo-target
       path: /drone/src/target
