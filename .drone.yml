@@ -8,35 +8,28 @@ platform:
   arch: amd64
 
 steps:
-- name: restore-cache
-  image: drillster/drone-volume-cache
-  volumes:
-    - name: cache
-      path: /cache
-  settings:
-    restore: true
-    mount:
-      - ./target
-
 - name: test
   image: joseluisq/rust-linux-darwin-builder:1.52.1
+  volumes:
+    - name: cargo-target
+      path: /drone/src/target
+    - name: cargo-git
+      path: /root/.cargo/git
+    - name: cargo-registry
+      path: /root/.cargo/registry
   commands:
     - make test
 
-- name: rebuild-cache
-  image: drillster/drone-volume-cache
-  volumes:
-    - name: cache
-      path: /cache
-  settings:
-    rebuild: true
-    mount:
-      - ./target
-
 volumes:
-  - name: cache
+  - name: cargo-target
     host:
-      path: /tmp/cache
+      path: /var/ci-volumes/cargo-target
+  - name: cargo-git
+    host:
+      path: /var/ci-volumes/cargo-git
+  - name: cargo-registry
+    host:
+      path: /var/ci-volumes/cargo-registry
 
 trigger:
   event:
@@ -64,6 +57,13 @@ platform:
 steps:
 - name: test
   image: joseluisq/rust-linux-darwin-builder:1.52.1
+  volumes:
+    - name: cargo-target
+      path: /drone/src/target
+    - name: cargo-git
+      path: /root/.cargo/git
+    - name: cargo-registry
+      path: /root/.cargo/registry
   commands:
     - make test
   when:
@@ -72,6 +72,13 @@ steps:
 
 - name: release
   image: joseluisq/rust-linux-darwin-builder:1.52.1
+  volumes:
+    - name: cargo-target
+      path: /drone/src/target
+    - name: cargo-git
+      path: /root/.cargo/git
+    - name: cargo-registry
+      path: /root/.cargo/registry
   commands:
     - make prod.release
 
@@ -150,6 +157,17 @@ steps:
     auto_tag: true
     auto_tag_suffix: alpine
 
+volumes:
+  - name: cargo-target
+    host:
+      path: /var/ci-volumes/cargo-target
+  - name: cargo-git
+    host:
+      path: /var/ci-volumes/cargo-git
+  - name: cargo-registry
+    host:
+      path: /var/ci-volumes/cargo-registry
+
 trigger:
   ref:
     include:
@@ -175,11 +193,25 @@ platform:
 steps:
 - name: test
   image: joseluisq/rust-linux-darwin-builder:1.52.1
+  volumes:
+    - name: cargo-target
+      path: /drone/src/target
+    - name: cargo-git
+      path: /root/.cargo/git
+    - name: cargo-registry
+      path: /root/.cargo/registry
   commands:
     - make test
 
 - name: release
   image: joseluisq/rust-linux-darwin-builder:1.52.1
+  volumes:
+    - name: cargo-target
+      path: /drone/src/target
+    - name: cargo-git
+      path: /root/.cargo/git
+    - name: cargo-registry
+      path: /root/.cargo/registry
   commands:
     - make prod.release
 
@@ -211,6 +243,17 @@ steps:
     tags:
       - v1-dev-alpine
 
+volumes:
+  - name: cargo-target
+    host:
+      path: /var/ci-volumes/cargo-target
+  - name: cargo-git
+    host:
+      path: /var/ci-volumes/cargo-git
+  - name: cargo-registry
+    host:
+      path: /var/ci-volumes/cargo-registry
+
 trigger:
   target:
   - staging
@@ -225,6 +268,9 @@ name: notification
 platform:
   os: linux
   arch: amd64
+
+clone:
+  disable: true
 
 steps:
 - name: notify
