@@ -124,16 +124,6 @@ jobs:
         echo "target flag is: ${{ env.TARGET_FLAGS }}"
         echo "target dir is: ${{ env.TARGET_DIR }}"
 
-    - name: Build release binary macos
-      if: matrix.build == 'macos' || matrix.build == 'macos-arm64'
-      run: |
-        # Use the beta compiler
-        sudo xcode-select -s /Applications/Xcode_12.2.app/Contents/Developer/
-
-        # Set SDK environment variables
-        echo "SDKROOT=$(xcrun -sdk macosx11.0 --show-sdk-path)" >> $GITHUB_ENV
-        echo "MACOSX_DEPLOYMENT_TARGET=$(xcrun -sdk macosx11.0 --show-sdk-platform-version)" >> $GITHUB_ENV
-
     - name: aarch64 specific items
       if: matrix.build == 'macos-arm64'
       run: |
