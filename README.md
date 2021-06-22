@@ -20,6 +20,7 @@
 - Lightweight and configurable logging via [tracing](https://github.com/tokio-rs/tracing) crate.
 - [Termination signal](https://www.gnu.org/software/libc/manual/html_node/Termination-Signals.html) handling.
 - [HTTP/2](https://tools.ietf.org/html/rfc7540) + TLS support.
+- [Security headers](https://web.dev/security-headers/) for HTTP/2 by default.
 - Customizable number of worker threads.
 - Optional directory listing.
 - [CORS](https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS) support.
