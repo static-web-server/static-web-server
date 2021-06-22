@@ -9,18 +9,17 @@ LABEL version="${SERVER_VERSION}" \
 
 RUN apk --no-cache add ca-certificates tzdata
 RUN set -ex; \
-    apkArch="$(apk --print-arch)"; \
-    case "$apkArch" in \
-    armhf) arch='armv6' ;; \
-    aarch64) arch='arm64' ;; \
-    x86_64) arch='amd64' ;; \
-    *) echo >&2 "error: unsupported architecture: $apkArch"; exit 1 ;; \
-    esac;
+	wget --quiet -O /tmp/static-web-server.tar.gz "https://github.com/joseluisq/static-web-server/releases/download/v$SERVER_VERSION/static-web-server-v$SERVER_VERSION-x86_64-unknown-linux-musl.tar.gz"; \
+    tar xzvf /tmp/static-web-server.tar.gz; \
+    cp static-web-server-v${SERVER_VERSION}-x86_64-unknown-linux-musl/static-web-server /usr/local/bin/; \
+	rm -rf /tmp/static-web-server.tar.gz static-web-server-v${SERVER_VERSION}-x86_64-unknown-linux-musl; \
+	chmod +x /usr/local/bin/static-web-server
 
 COPY ./docker/alpine/entrypoint.sh /
-COPY ./bin/static-web-server /usr/local/bin/
 COPY ./public /public
+
 EXPOSE 80
+VOLUME ["/public"]
 ENTRYPOINT ["/entrypoint.sh"]
 CMD ["static-web-server"]
 

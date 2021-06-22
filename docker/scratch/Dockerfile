@@ -1,3 +1,7 @@
+ARG SERVER_VERSION=0.0.0
+
+FROM joseluisq/static-web-server:${SERVER_VERSION}-alpine AS latest
+
 FROM scratch
 
 ARG SERVER_VERSION=0.0.0
@@ -7,7 +11,7 @@ LABEL version="${SERVER_VERSION}" \
     description="A blazing fast and asynchronous web server for static files-serving." \
     maintainer="Jose Quintana <joseluisq.net>"
 
-COPY ./bin/static-web-server /
+COPY --from=latest /usr/local/bin/static-web-server /
 COPY ./public /public
 
 EXPOSE 80
