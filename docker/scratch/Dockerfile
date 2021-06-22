@@ -4,6 +4,7 @@ FROM joseluisq/static-web-server:${SERVER_VERSION}-alpine AS latest
 
 FROM scratch
 
+ARG SERVER_VERSION=0.0.0
 ENV SERVER_VERSION=${SERVER_VERSION}
 
 LABEL version="${SERVER_VERSION}" \
