@@ -2,8 +2,8 @@ name: release
 on:
   push:
     tags:
-    - 'v[0-9]+.[0-9]+.[0-9]+'
-    - 'v[0-9]+.[0-9]+.[0-9]+-beta.[0-9]+'
+    - 'v2.[0-9]+.[0-9]+'
+    - 'v2.[0-9]+.[0-9]+-beta.[0-9]+'
 
 jobs:
   create-release:
@@ -48,17 +48,30 @@ jobs:
       RUST_BACKTRACE: 1
     strategy:
       matrix:
-        build: [linux, linux-gnu, linux-arm64, linux-arm-gnueabihf, macos, macos-arm]
+        build:
+          - linux-musl
+          - linux-musl-arm64
+          - linux-gnu
+          - linux-gnu-arm64
+          - linux-arm-gnueabihf
+          - macos
+          - macos-arm64
+          # - windows-msvc
+          # - windows-msvc-arm64
         include:
-        - build: linux
+        - build: linux-musl
           os: ubuntu-20.04
           rust: nightly
           target: x86_64-unknown-linux-musl
+        - build: linux-musl-arm64
+          os: ubuntu-20.04
+          rust: nightly
+          target: aarch64-unknown-linux-musl
         - build: linux-gnu
           os: ubuntu-20.04
           rust: nightly
           target: x86_64-unknown-linux-gnu
-        - build: linux-arm64
+        - build: linux-gnu-arm64
           os: ubuntu-20.04
           rust: nightly
           target: aarch64-unknown-linux-gnu
@@ -70,10 +83,18 @@ jobs:
           os: macos-latest
           rust: nightly
           target: x86_64-apple-darwin
-        - build: macos-arm
+        - build: macos-arm64
           os: macos-latest
           rust: nightly
           target: aarch64-apple-darwin
+        # - build: windows-msvc
+        #   os: windows-2019
+        #   rust: nightly
+        #   target: x86_64-pc-windows-msvc
+        # - build: windows-msvc-arm64
+        #   os: windows-2019
+        #   rust: nightly
+        #   target: aarch64-pc-windows-msvc
 
     steps:
     - name: Checkout repository
@@ -104,7 +125,7 @@ jobs:
         echo "target dir is: ${{ env.TARGET_DIR }}"
 
     - name: Build release binary macos
-      if: matrix.build == 'macos' || matrix.build == 'macos-arm'
+      if: matrix.build == 'macos' || matrix.build == 'macos-arm64'
       run: |
         # Use the beta compiler
         sudo xcode-select -s /Applications/Xcode_12.2.app/Contents/Developer/
@@ -114,7 +135,7 @@ jobs:
         echo "MACOSX_DEPLOYMENT_TARGET=$(xcrun -sdk macosx11.0 --show-sdk-platform-version)" >> $GITHUB_ENV
 
     - name: aarch64 specific items
-      if: matrix.build == 'macos-arm'
+      if: matrix.build == 'macos-arm64'
       run: |
         # Use the beta compiler
         sudo xcode-select -s /Applications/Xcode_12.2.app/Contents/Developer/
@@ -127,7 +148,7 @@ jobs:
       run: ${{ env.CARGO }} build --verbose --release ${{ env.TARGET_FLAGS }}
 
     - name: Strip release binary (linux and macos)
-      if: matrix.build != 'linux-arm-gnueabihf' && matrix.build != 'linux-arm64'
+      if: matrix.os != 'windows-2019' && matrix.build != 'linux-arm-gnueabihf' && matrix.build != 'linux-gnu-arm64' && matrix.build != 'linux-musl-arm64'
       run: strip "target/${{ matrix.target }}/release/static-web-server"
 
     - name: Strip release binary (linux-arm-gnueabihf)
@@ -139,14 +160,23 @@ jobs:
           arm-linux-gnueabihf-strip \
           /target/arm-unknown-linux-gnueabihf/release/static-web-server
 
-    - name: Strip release binary (linux-arm64)
-      if: matrix.build == 'linux-arm64'
+    - name: Strip release binary (linux-gnu-arm64)
+      if: matrix.build == 'linux-gnu-arm64'
       run: |
         docker run --rm -v \
           "$PWD/target:/target:Z" \
           rustembedded/cross:aarch64-unknown-linux-gnu \
           aarch64-linux-gnu-strip \
           /target/aarch64-unknown-linux-gnu/release/static-web-server
+
+    - name: Strip release binary (linux-musl-arm64)
+      if: matrix.build == 'linux-musl-arm64'
+      run: |
+        docker run --rm -v \
+          "$PWD/target:/target:Z" \
+          rustembedded/cross:aarch64-unknown-linux-musl \
+          aarch64-linux-musl-strip \
+          /target/aarch64-unknown-linux-musl/release/static-web-server
 
     - name: Build archive
       shell: bash
