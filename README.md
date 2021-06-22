@@ -1,8 +1,8 @@
 # Static Web Server [![CI](https://github.com/joseluisq/static-web-server/workflows/CI/badge.svg?branch=1.x)](https://github.com/joseluisq/static-web-server/actions?query=workflow%3ACI) [![Docker Image Version (tag latest semver)](https://img.shields.io/docker/v/joseluisq/static-web-server/1)](https://hub.docker.com/r/joseluisq/static-web-server/) [![Docker Image Size (tag)](https://img.shields.io/docker/image-size/joseluisq/static-web-server/1)](https://hub.docker.com/r/joseluisq/static-web-server/tags) [![Docker Image](https://img.shields.io/docker/pulls/joseluisq/static-web-server.svg)](https://hub.docker.com/r/joseluisq/static-web-server/)
 
-*This the stable `v1`. For the `v2` upcoming refer to [master](https://github.com/joseluisq/static-web-server) branch.*
+*This is stable `v1`. For the `v2` upcoming refer to [master](https://github.com/joseluisq/static-web-server) branch.*
 
-> A blazing fast static files-serving web server powered by [Rust Iron](https://github.com/iron/iron). :zap:
+> A blazing fast static files-serving web server powered by [Rust Iron](https://github.com/iron/iron). ⚡
 
 **Static Web Server** is a very small and fast production-ready web server to serving static web files or assets.
 
@@ -23,7 +23,7 @@
 - Optional HTTP to HTTPS redirection.
 - First-class [Docker](https://docs.docker.com/get-started/overview/) support. [Scratch](https://hub.docker.com/_/scratch) and latest [Alpine Linux](https://hub.docker.com/_/alpine) Docker images.
 - Server configurable via CLI arguments or their equivalent environment variables.
-- Cross-platform. Binaries available for Linux, macOS and Windows x86_64.
+- Cross-platform. Binaries available for Linux, macOS and Windows x86_64/ARM64.
 
 ## Releases
 
@@ -33,9 +33,28 @@ Available for download/install via following methods:
 
 [hub.docker.com/r/joseluisq/static-web-server/](https://hub.docker.com/r/joseluisq/static-web-server/)
 
-#### Release binaries (Linux, macOS and Windows x86_64)
+#### Release binaries
 
-[github.com/joseluisq/static-web-server/releases](https://github.com/joseluisq/static-web-server/releases)
+Available to download on [github.com/joseluisq/static-web-server/releases](https://github.com/joseluisq/static-web-server/releases).
+
+Below the current supported targets.
+
+#### Linux
+
+- x86_64-unknown-linux-musl (64-bit)
+- x86_64-unknown-linux-gnu (64-bit)
+- aarch64-unknown-linux-gnu (ARM64)
+- arm-unknown-linux-gnueabihf (ARM64)
+
+#### macOS
+
+- x86_64-apple-darwin (64-bit)
+- aarch64-apple-darwin (ARM64)
+
+#### Windows
+
+- x86_64-pc-windows-msvc (64-bit)
+- aarch64-pc-windows-msvc (ARM64)
 
 ## Usage
 
@@ -43,23 +62,23 @@ Server can be configured either via environment variables or their equivalent co
 
 ### Environment Variables
 
-| Variable                    | Description                                                                                                                                                                                                                                                                                          | Default                                                                                                                         |
-| --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| `SERVER_NAME`               | Name for server.                                                                                                                                                                                                                                                                                     | Default `my-static-server`.                                                                                                     |
-| `SERVER_HOST`               | Host address (E.g 127.0.0.1).                                                                                                                                                                                                                                                                        | Default `[::]`.                                                                                                                 |
-| `SERVER_PORT`               | Host port.                                                                                                                                                                                                                                                                                           | Default `80`.                                                                                                                   |
-| `SERVER_ROOT`               | Root directory path of static files.                                                                                                                                                                                                                                                                 | Default `./public`.                                                                                                             |
-| `SERVER_ASSETS`             | Assets directory path for add cache headers functionality.                                                                                                                                                                                                                                           | Default `./public/assets`.                                                                                                      |
-| `SERVER_LOG_LEVEL`          | Specify a logging level in lower case (see [log::LevelFilter](https://docs.rs/log/0.4.10/log/enum.LevelFilter.html)).                                                                                                                                                                                | Default `error`                                                                                                                 |
-| `SERVER_ERROR_PAGE_404`     | HTML file path for 404 errors.                                                                                                                                                                                                                                                                       | If path is not specified or simply don't exists then server will use a generic HTML error message. Default file path `./public/404.html`. |
-| `SERVER_ERROR_PAGE_50X`     | HTML file path for 50x errors.                                                                                                                                                                                                                                                                       | If path is not specified or simply don't exists then server will use a generic HTML error message. Default file path `./public/50x.html`  |
-| `SERVER_TLS`                | Enables TLS/SSL support. Make sure also to adjust current server port.                                                                                                                                                                                                                               | Default `false`                                                                                                                 |
-| `SERVER_TLS_PKCS12`         | A cryptographic identity [PKCS #12](https://docs.rs/native-tls/0.2.3/native_tls/struct.Identity.html#method.from_pkcs12) bundle file path containing a [X509 certificate](https://en.wikipedia.org/wiki/X.509) along with its corresponding private key and chain of certificates to a trusted root. | Default empty                                                                                                                   |
-| `SERVER_TLS_PKCS12_PASSWD`  | A specified password to decrypt the private key.                                                                                                                                                                                                                                                     | Default empty                                                                                                                   |
-| `SERVER_TLS_REDIRECT_FROM`  | Host port for redirecting HTTP requests to HTTPS. This option enables the HTTP redirect feature                                                                                                                                                                                                      | Default empty (disabled)                                                                                                        |
-| `SERVER_TLS_REDIRECT_HOST`  | Host name of HTTPS site for redirecting HTTP requests to.                                                                                                                                                                                                                                            | Default host address                                                                                                            |
-| `SERVER_CORS_ALLOW_ORIGINS` | Specify a CORS list of allowed origin hosts separated by comas. Host ports or protocols aren't being checked. Use an asterisk (*) to allow any host. See [Iron CORS crate](https://docs.rs/iron-cors/0.8.0/iron_cors/#mode-1-whitelist).                                                             | Default empty (disabled)                                                                                    |
-| `SERVER_DIRECTORY_LISTING`  | Enable directory listing for all requests ending with the slash character (‘/’)                                                                                                                                                                                                                      | Default `false` (disabled)                                                                                    |
+| Variable | Description | Default |
+| --- | --- | --- |
+| `SERVER_NAME` | Name for server. | Default `my-static-server`. |
+| `SERVER_HOST` | Host address (E.g 127.0.0.1). | Default `[::]`. |
+| `SERVER_PORT` | Host port. | Default `80`. |
+| `SERVER_ROOT` | Root directory path of static files. | Default `./public`. |
+| `SERVER_ASSETS` | Assets directory path for add cache headers functionality. | Default `./public/assets`. |
+| `SERVER_LOG_LEVEL` | Specify a logging level in lower case (see [log::LevelFilter](https://docs.rs/log/0.4.10/log/enum.LevelFilter.html)). | Default `error` |
+| `SERVER_ERROR_PAGE_404` | HTML file path for 404 errors. | If path is not specified or simply don't exists then server will use a generic HTML error message. Default file path `./public/404.html`. |
+| `SERVER_ERROR_PAGE_50X` | HTML file path for 50x errors. | If path is not specified or simply don't exists then server will use a generic HTML error message. Default file path `./public/50x.html` |
+| `SERVER_TLS` | Enables TLS/SSL support. Make sure also to adjust current server port. | Default `false` |
+| `SERVER_TLS_PKCS12` | A cryptographic identity [PKCS #12](https://docs.rs/native-tls/0.2.3/native_tls/struct.Identity.html#method.from_pkcs12) bundle file path containing a [X509 certificate](https://en.wikipedia.org/wiki/X.509) along with its corresponding private key and chain of certificates to a trusted root. | Default empty |
+| `SERVER_TLS_PKCS12_PASSWD` | A specified password to decrypt the private key. | Default empty |
+| `SERVER_TLS_REDIRECT_FROM` | Host port for redirecting HTTP requests to HTTPS. This option enables the HTTP redirect feature | Default empty (disabled) |
+| `SERVER_TLS_REDIRECT_HOST` | Host name of HTTPS site for redirecting HTTP requests to. | Default host address |
+| `SERVER_CORS_ALLOW_ORIGINS` | Specify a CORS list of allowed origin hosts separated by comas. Host ports or protocols aren't being checked. Use an asterisk (*) to allow any host. See [Iron CORS crate](https://docs.rs/iron-cors/0.8.0/iron_cors/#mode-1-whitelist). | Default empty (disabled) |
+| `SERVER_DIRECTORY_LISTING` | Enable directory listing for all requests ending with the slash character (‘/’) | Default `false` (disabled) |
 
 ### Command-line arguments
 
