@@ -44,8 +44,9 @@ Below the current supported targets.
 
 #### Linux
 
-- x86_64-unknown-linux-musl (64-bit)
 - x86_64-unknown-linux-gnu (64-bit)
+- x86_64-unknown-linux-musl (64-bit)
+- aarch64-unknown-linux-musl (ARM64)
 - aarch64-unknown-linux-gnu (ARM64)
 - arm-unknown-linux-gnueabihf (ARM64)
 
