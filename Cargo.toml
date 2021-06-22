@@ -51,7 +51,7 @@ version = "0.3"
 openssl = { version = "0.10", features = ["vendored"] }
 hyper = "0.10"
 iron-test = "0.6"
-tempdir = "0.3"
+tempfile = "3"
 
 [profile.release]
 opt-level = 3

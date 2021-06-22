@@ -63,6 +63,8 @@ impl Staticfile {
         };
 
         let base_path = if is_assets { &self.assets } else { &self.root };
+        let base_path = PathBuf::from(helpers::adjust_canonicalization(base_path.canonicalize()?));
+
         let path_resolved = PathBuf::from(helpers::adjust_canonicalization(
             path_resolved.canonicalize()?,
         ));
@@ -318,7 +320,7 @@ fn parse_last_modified(modified: SystemTime) -> Result<time::Tm, Box<dyn error::
 mod test {
     extern crate hyper;
     extern crate iron_test;
-    extern crate tempdir;
+    extern crate tempfile;
 
     use super::*;
 
@@ -327,14 +329,14 @@ mod test {
 
     use self::hyper::header::Headers;
     use self::iron_test::request;
-    use self::tempdir::TempDir;
+    use self::tempfile::TempDir;
     use iron::status;
 
     struct TestFilesystemSetup(TempDir);
 
     impl TestFilesystemSetup {
         fn new() -> Self {
-            TestFilesystemSetup(TempDir::new("test").expect("Could not create test directory"))
+            TestFilesystemSetup(TempDir::new().expect("Could not create test directory"))
         }
 
         fn path(&self) -> &Path {

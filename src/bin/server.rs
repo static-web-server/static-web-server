@@ -15,7 +15,7 @@ fn main() {
 mod test {
     extern crate hyper;
     extern crate iron_test;
-    extern crate tempdir;
+    extern crate tempfile;
 
     use super::*;
     use static_web_server::config::Options;
@@ -27,7 +27,7 @@ mod test {
 
     use self::hyper::header::Headers;
     use self::iron_test::{request, response};
-    use self::tempdir::TempDir;
+    use self::tempfile::TempDir;
     use iron::headers::{ContentLength, ContentType};
     use iron::status;
 
@@ -35,7 +35,7 @@ mod test {
 
     impl TestFilesystemSetup {
         fn new() -> Self {
-            TestFilesystemSetup(TempDir::new("test").expect("Could not create test directory"))
+            TestFilesystemSetup(TempDir::new().expect("Could not create test directory"))
         }
 
         fn path(&self) -> &Path {
