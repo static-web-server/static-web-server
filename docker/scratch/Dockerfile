@@ -1,13 +1,16 @@
+ARG SERVER_VERSION=0.0.0
+
+FROM joseluisq/static-web-server:${SERVER_VERSION}-alpine AS latest
+
 FROM scratch
 
-ARG SERVER_VERSION=0.0.0
 ENV SERVER_VERSION=${SERVER_VERSION}
 
 LABEL version="${SERVER_VERSION}" \
     description="A blazing fast static files-serving web server powered by Rust Iron." \
     maintainer="Jose Quintana <joseluisq.net>"
 
-COPY --from=joseluisq/static-web-server:${SERVER_VERSION}-alpine /usr/local/bin/static-web-server /
+COPY --from=latest /usr/local/bin/static-web-server /
 COPY ./public /public
 
 EXPOSE 80
