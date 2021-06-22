@@ -8,35 +8,28 @@ platform:
   arch: amd64
 
 steps:
-- name: restore-cache
-  image: drillster/drone-volume-cache
-  volumes:
-    - name: cache
-      path: /cache
-  settings:
-    restore: true
-    mount:
-      - ./target
-
 - name: test
-  image: joseluisq/rust-linux-darwin-builder:1.52.1
+  image: joseluisq/rust-linux-darwin-builder:1.53.0
+  volumes:
+    - name: cargo-target
+      path: /drone/src/target
+    - name: cargo-git
+      path: /root/.cargo/git
+    - name: cargo-registry
+      path: /root/.cargo/registry
   commands:
     - make test
 
-- name: rebuild-cache
-  image: drillster/drone-volume-cache
-  volumes:
-    - name: cache
-      path: /cache
-  settings:
-    rebuild: true
-    mount:
-      - ./target
-
 volumes:
-  - name: cache
+  - name: cargo-target
     host:
-      path: /tmp/cache
+      path: /var/ci-volumes/cargo-target
+  - name: cargo-git
+    host:
+      path: /var/ci-volumes/cargo-git
+  - name: cargo-registry
+    host:
+      path: /var/ci-volumes/cargo-registry
 
 trigger:
   event:
@@ -61,22 +54,31 @@ platform:
   arch: amd64
 
 steps:
-- name: release
-  image: joseluisq/rust-linux-darwin-builder:1.52.1
-  commands:
-    - make prod.release
-
-- name: publish-scratch
+- name: publish-public-alpine
   image: joseluisq/drone-docker
   privileged: true
   settings:
-    registry: registry.joseluisq.net
-    repo: registry.joseluisq.net/static-web-server
+    repo: joseluisq/static-web-server
+    dockerfile: ./docker/alpine/Dockerfile
+    username:
+      from_secret: dockerhub_username
+    password:
+      from_secret: dockerhub_password
+    build_args:
+      - SERVER_VERSION=${DRONE_TAG##v}
+    auto_tag: true
+    auto_tag_suffix: alpine
+
+- name: publish-public-scratch
+  image: joseluisq/drone-docker
+  privileged: true
+  settings:
+    repo: joseluisq/static-web-server
     dockerfile: ./docker/scratch/Dockerfile
     username:
-      from_secret: registry_username
+      from_secret: dockerhub_username
     password:
-      from_secret: registry_password
+      from_secret: dockerhub_password
     build_args:
       - SERVER_VERSION=${DRONE_TAG##v}
     auto_tag: true
@@ -99,47 +101,22 @@ steps:
     auto_tag: true
     auto_tag_suffix: alpine
 
-- name: github-release
-  image: plugins/github-release
-  settings:
-    api_key:
-      from_secret: github_token
-    files:
-      - ./bin/*.tar.gz
-      - ./bin/*-SHA256SUM
-    title: ${DRONE_TAG}
-    draft: true
-
-- name: publish-public-scratch
+- name: publish-scratch
   image: joseluisq/drone-docker
   privileged: true
   settings:
-    repo: joseluisq/static-web-server
+    registry: registry.joseluisq.net
+    repo: registry.joseluisq.net/static-web-server
     dockerfile: ./docker/scratch/Dockerfile
     username:
-      from_secret: dockerhub_username
+      from_secret: registry_username
     password:
-      from_secret: dockerhub_password
+      from_secret: registry_password
     build_args:
       - SERVER_VERSION=${DRONE_TAG##v}
     auto_tag: true
     auto_tag_aliases:
       - latest
-
-- name: publish-public-alpine
-  image: joseluisq/drone-docker
-  privileged: true
-  settings:
-    repo: joseluisq/static-web-server
-    dockerfile: ./docker/alpine/Dockerfile
-    username:
-      from_secret: dockerhub_username
-    password:
-      from_secret: dockerhub_password
-    build_args:
-      - SERVER_VERSION=${DRONE_TAG##v}
-    auto_tag: true
-    auto_tag_suffix: alpine
 
 trigger:
   ref:
@@ -164,67 +141,6 @@ platform:
   arch: amd64
 
 steps:
-- name: release
-  image: joseluisq/rust-linux-darwin-builder:1.52.1
-  commands:
-    - make prod.release
-
-- name: publish-scratch
-  image: joseluisq/drone-docker
-  privileged: true
-  settings:
-    registry: registry.joseluisq.net
-    repo: registry.joseluisq.net/static-web-server
-    dockerfile: ./docker/scratch/Dockerfile
-    username:
-      from_secret: registry_username
-    password:
-      from_secret: registry_password
-    build_args:
-      - SERVER_VERSION=${DRONE_TAG##v}
-    auto_tag: true
-
-- name: publish-alpine
-  image: joseluisq/drone-docker
-  privileged: true
-  settings:
-    registry: registry.joseluisq.net
-    repo: registry.joseluisq.net/static-web-server
-    dockerfile: ./docker/alpine/Dockerfile
-    username:
-      from_secret: registry_username
-    password:
-      from_secret: registry_password
-    build_args:
-      - SERVER_VERSION=${DRONE_TAG##v}
-    auto_tag: true
-    auto_tag_suffix: alpine
-
-- name: github-release
-  image: plugins/github-release
-  settings:
-    api_key:
-      from_secret: github_token
-    files:
-      - ./bin/*.tar.gz
-      - ./bin/*-SHA256SUM
-    title: ${DRONE_TAG}
-    draft: true
-
-- name: publish-public-scratch
-  image: joseluisq/drone-docker
-  privileged: true
-  settings:
-    repo: joseluisq/static-web-server
-    dockerfile: ./docker/scratch/Dockerfile
-    username:
-      from_secret: dockerhub_username
-    password:
-      from_secret: dockerhub_password
-    build_args:
-      - SERVER_VERSION=${DRONE_TAG##v}
-    auto_tag: true
-
 - name: publish-public-alpine
   image: joseluisq/drone-docker
   privileged: true
@@ -240,46 +156,19 @@ steps:
     auto_tag: true
     auto_tag_suffix: alpine
 
-trigger:
-  ref:
-    include:
-    - refs/tags/**beta**
-
-
-
----
-kind: pipeline
-type: docker
-name: staging
-
-platform:
-  os: linux
-  arch: amd64
-
-steps:
-- name: test
-  image: joseluisq/rust-linux-darwin-builder:1.52.1
-  commands:
-    - make test
-
-- name: release
-  image: joseluisq/rust-linux-darwin-builder:1.52.1
-  commands:
-    - make prod.release
-
-- name: publish-scratch
+- name: publish-public-scratch
   image: joseluisq/drone-docker
   privileged: true
   settings:
-    registry: registry.joseluisq.net
-    repo: registry.joseluisq.net/static-web-server
+    repo: joseluisq/static-web-server
     dockerfile: ./docker/scratch/Dockerfile
     username:
-      from_secret: registry_username
+      from_secret: dockerhub_username
     password:
-      from_secret: registry_password
-    tags:
-      - v1-dev
+      from_secret: dockerhub_password
+    build_args:
+      - SERVER_VERSION=${DRONE_TAG##v}
+    auto_tag: true
 
 - name: publish-alpine
   image: joseluisq/drone-docker
@@ -292,12 +181,30 @@ steps:
       from_secret: registry_username
     password:
       from_secret: registry_password
-    tags:
-      - v1-dev-alpine
+    build_args:
+      - SERVER_VERSION=${DRONE_TAG##v}
+    auto_tag: true
+    auto_tag_suffix: alpine
+
+- name: publish-scratch
+  image: joseluisq/drone-docker
+  privileged: true
+  settings:
+    registry: registry.joseluisq.net
+    repo: registry.joseluisq.net/static-web-server
+    dockerfile: ./docker/scratch/Dockerfile
+    username:
+      from_secret: registry_username
+    password:
+      from_secret: registry_password
+    build_args:
+      - SERVER_VERSION=${DRONE_TAG##v}
+    auto_tag: true
 
 trigger:
-  target:
-  - staging
+  ref:
+    include:
+    - refs/tags/**beta**
 
 
 
@@ -323,7 +230,6 @@ steps:
 
 depends_on:
 - development
-- staging
 - production
 - production-beta
 
