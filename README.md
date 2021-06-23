@@ -4,7 +4,7 @@
 
 > A blazing fast and asynchronous web server for static files-serving. ⚡
 
-**Static Web Server** is a very small and fast production-ready web server to serving static web files or assets.
+**Static Web Server** (or `SWServer` abbreviated) is a very small and fast production-ready web server suitable to serve static web files or assets.
 
 ## Features
 
@@ -27,8 +27,8 @@
 - Default and custom error pages.
 - Configurable using CLI arguments or environment variables.
 - First-class [Docker](https://docs.docker.com/get-started/overview/) support. [Scratch](https://hub.docker.com/_/scratch) and latest [Alpine Linux](https://hub.docker.com/_/alpine) Docker images available.
-- The ability to accept a socket listener as a file descriptor for use in sandboxing and on-demand applications (E.g [systemd](http://0pointer.de/blog/projects/socket-activation.html)).
-- Cross-platform. Binaries available for Linux, macOS and Windows\* x86_64/ARM64.
+- Ability to accept a socket listener as a file descriptor for use in sandboxing and on-demand applications (E.g [systemd](http://0pointer.de/blog/projects/socket-activation.html)).
+- Cross-platform. Binaries available for Linux, macOS and Windows x86_64 / ARM.
 
 ## Releases
 
@@ -38,27 +38,19 @@ Available on [hub.docker.com/r/joseluisq/static-web-server](https://hub.docker.c
 
 ### Release binaries
 
-Available to download on [github.com/joseluisq/static-web-server/releases](https://github.com/joseluisq/static-web-server/releases).
+Available to download from [github.com/joseluisq/static-web-server/releases](https://github.com/joseluisq/static-web-server/releases).
 
 Below the current supported targets.
 
-#### Linux
-
-- x86_64-unknown-linux-gnu (64-bit)
-- x86_64-unknown-linux-musl (64-bit)
-- aarch64-unknown-linux-musl (ARM64)
-- aarch64-unknown-linux-gnu (ARM64)
-- arm-unknown-linux-gnueabihf (ARM)
-
-#### macOS
-
-- x86_64-apple-darwin (64-bit)
-- aarch64-apple-darwin (ARM64)
-
-#### Windows
-
-- x86_64-pc-windows-msvc (64-bit)
-- aarch64-pc-windows-msvc (ARM64)
+| **Linux**                     | **macOS**              | **Windows**               |
+| ----------------------------- | ---------------------- | ------------------------- |
+| **x86_64**                    |                        |                           |
+| `x86_64-unknown-linux-gnu`    | `x86_64-apple-darwin`  | `x86_64-pc-windows-msvc`  |
+| `x86_64-unknown-linux-musl`   |                        |                           |
+| **ARM**                       |                        |                           |
+| `aarch64-unknown-linux-musl`  | `aarch64-apple-darwin` | `aarch64-pc-windows-msvc` |
+| `aarch64-unknown-linux-gnu`   |                        |                           |
+| `arm-unknown-linux-gnueabihf` |                        |                           |
 
 ## Usage
 
@@ -89,8 +81,9 @@ Server can be configured either via environment variables or their equivalent co
 CLI arguments listed with `static-web-server -h`.
 
 ```
-static-web-server 2.0.0-beta.4
-A blazing fast static files-serving web server powered by Rust
+static-web-server 2.0.0-beta.5
+Jose Quintana <https://git.io/joseluisq>
+A blazing fast and asynchronous web server for static files-serving.
 
 USAGE:
     static-web-server [OPTIONS]
