@@ -1,7 +1,7 @@
 use structopt::StructOpt;
 
-/// A blazing fast static files-serving web server powered by Rust
 #[derive(Debug, StructOpt)]
+#[structopt(about, author)]
 pub struct Config {
     #[structopt(long, short = "a", default_value = "::", env = "SERVER_HOST")]
     /// Host address (E.g 127.0.0.1 or ::1)
