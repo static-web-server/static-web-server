@@ -8,7 +8,7 @@ use crate::handler::{RequestHandler, RequestHandlerOpts};
 use crate::tls::{TlsAcceptor, TlsConfigBuilder};
 use crate::Result;
 use crate::{config::Config, service::RouterService};
-use crate::{cors, error_page, helpers, logger};
+use crate::{cors, error_page, helpers, logger, signals};
 
 /// Define a multi-thread HTTP or HTTP/2 web server.
 pub struct Server {
@@ -171,9 +171,7 @@ impl Server {
             });
         }
 
-        handle_signals();
-
-        Ok(())
+        signals::wait_for_ctrl_c()
     }
 }
 
@@ -181,21 +179,4 @@ impl Default for Server {
     fn default() -> Self {
         Self::new()
     }
-}
-
-#[cfg(not(windows))]
-/// Handle incoming signals for Unix-like OS's only
-fn handle_signals() {
-    use crate::signals;
-
-    signals::wait(|sig: signals::Signal| {
-        let code = signals::as_int(sig);
-        tracing::warn!("Signal {} caught. Server execution exited.", code);
-        std::process::exit(code)
-    });
-}
-
-#[cfg(windows)]
-fn handle_signals() {
-    // TODO: Windows signals...
 }

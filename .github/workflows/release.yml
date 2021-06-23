@@ -56,8 +56,8 @@ jobs:
           - linux-arm-gnueabihf
           - macos
           - macos-arm64
-          # - windows-msvc
-          # - windows-msvc-arm64
+          - windows-msvc
+          - windows-msvc-arm64
         include:
         - build: linux-musl
           os: ubuntu-20.04
@@ -87,14 +87,14 @@ jobs:
           os: macos-latest
           rust: nightly
           target: aarch64-apple-darwin
-        # - build: windows-msvc
-        #   os: windows-2019
-        #   rust: nightly
-        #   target: x86_64-pc-windows-msvc
-        # - build: windows-msvc-arm64
-        #   os: windows-2019
-        #   rust: nightly
-        #   target: aarch64-pc-windows-msvc
+        - build: windows-msvc
+          os: windows-2019
+          rust: nightly
+          target: x86_64-pc-windows-msvc
+        - build: windows-msvc-arm64
+          os: windows-2019
+          rust: nightly
+          target: aarch64-pc-windows-msvc
 
     steps:
     - name: Checkout repository

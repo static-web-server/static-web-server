@@ -48,7 +48,7 @@ Below the current supported targets.
 - x86_64-unknown-linux-musl (64-bit)
 - aarch64-unknown-linux-musl (ARM64)
 - aarch64-unknown-linux-gnu (ARM64)
-- arm-unknown-linux-gnueabihf (ARM64)
+- arm-unknown-linux-gnueabihf (ARM)
 
 #### macOS
 
@@ -57,7 +57,8 @@ Below the current supported targets.
 
 #### Windows
 
-\* **Note:** Windows support is on the TODO list yet.
+- x86_64-pc-windows-msvc (64-bit)
+- aarch64-pc-windows-msvc (ARM64)
 
 ## Usage
 
