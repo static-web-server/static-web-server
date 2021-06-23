@@ -60,7 +60,7 @@ pub async fn handle_request(
             return Ok(resp);
         }
 
-        return directory_listing(method, (current_path.to_string(), path)).await;
+        return directory_listing(method, (current_path.to_owned(), path)).await;
     }
 
     file_reply(headers, (path, meta, auto_index)).await
@@ -151,23 +151,37 @@ async fn read_directory_entries(
     let mut files_count: usize = 0;
     while let Some(entry) = entries.next_entry().await? {
         let meta = entry.metadata().await?;
-        let filesize = meta.len();
-
-        let mut filesize_str = filesize
-            .file_size(file_size_opts::DECIMAL)
-            .map_err(anyhow::Error::msg)?;
 
         let mut name = entry
             .file_name()
             .into_string()
             .map_err(|err| anyhow::anyhow!(err.into_string().unwrap_or_default()))?;
 
+        let mut filesize_str = String::from("-");
+
         if meta.is_dir() {
             name = format!("{}/", name);
-            filesize_str = String::from("-");
             dirs_count += 1;
-        } else {
+        } else if meta.is_file() {
+            filesize_str = meta
+                .len()
+                .file_size(file_size_opts::DECIMAL)
+                .map_err(anyhow::Error::msg)?;
             files_count += 1;
+        } else if meta.file_type().is_symlink() {
+            let m = tokio::fs::symlink_metadata(entry.path().canonicalize()?).await?;
+            if m.is_dir() {
+                name = format!("{}/", name);
+                dirs_count += 1;
+            } else {
+                filesize_str = meta
+                    .len()
+                    .file_size(file_size_opts::DECIMAL)
+                    .map_err(anyhow::Error::msg)?;
+                files_count += 1;
+            }
+        } else {
+            continue;
         }
 
         let uri = format!("{}{}", base_path, name);
@@ -184,8 +198,7 @@ async fn read_directory_entries(
         );
     }
 
-    let current_path = percent_decode_str(&base_path).decode_utf8()?.to_string();
-
+    let current_path = percent_decode_str(&base_path).decode_utf8()?.to_owned();
     let dirs_str = if dirs_count == 1 {
         "directory"
     } else {
