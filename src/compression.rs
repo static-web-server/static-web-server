@@ -161,9 +161,7 @@ where
         use std::io::{Error, ErrorKind};
 
         let pin = self.project();
-        // TODO: Use `.map_err()` (https://github.com/rust-lang/rust/issues/63514) once it is stabilized
-        S::poll_next(pin.body, ctx)
-            .map(|err| err.map(|res| res.map_err(|_| Error::from(ErrorKind::InvalidData))))
+        S::poll_next(pin.body, ctx).map_err(|_| Error::from(ErrorKind::InvalidData))
     }
 }
 
