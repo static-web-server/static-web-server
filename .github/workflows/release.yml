@@ -51,18 +51,26 @@ jobs:
         build:
           - linux-musl
           - linux-musl-arm64
+          - linux-musl-i686
           - linux-gnu
           - linux-gnu-arm64
+          - linux-gnu-i686
           - linux-arm-gnueabihf
           - macos
           - macos-arm64
           - windows-msvc
-          - windows-msvc-arm64
+          - windows-msvc-i686
+          - windows-pc-gnu
+          # - windows-msvc-arm64
         include:
         - build: linux-musl
           os: ubuntu-20.04
           rust: nightly
           target: x86_64-unknown-linux-musl
+        - build: linux-musl-i686
+          os: ubuntu-20.04
+          rust: nightly
+          target: i686-unknown-linux-musl
         - build: linux-musl-arm64
           os: ubuntu-20.04
           rust: nightly
@@ -71,6 +79,10 @@ jobs:
           os: ubuntu-20.04
           rust: nightly
           target: x86_64-unknown-linux-gnu
+        - build: linux-gnu-i686
+          os: ubuntu-20.04
+          rust: nightly
+          target: i686-unknown-linux-gnu
         - build: linux-gnu-arm64
           os: ubuntu-20.04
           rust: nightly
@@ -91,10 +103,18 @@ jobs:
           os: windows-2019
           rust: nightly
           target: x86_64-pc-windows-msvc
-        - build: windows-msvc-arm64
+        - build: windows-msvc-i686
           os: windows-2019
           rust: nightly
-          target: aarch64-pc-windows-msvc
+          target: i686-pc-windows-msvc
+        - build: windows-pc-gnu
+          os: windows-2019
+          rust: nightly-x86_64-gnu
+          target: x86_64-pc-windows-gnu
+        # - build: windows-msvc-arm64
+        #   os: windows-2019
+        #   rust: nightly
+        #   target: aarch64-pc-windows-msvc
 
     steps:
     - name: Checkout repository
@@ -124,16 +144,6 @@ jobs:
         echo "target flag is: ${{ env.TARGET_FLAGS }}"
         echo "target dir is: ${{ env.TARGET_DIR }}"
 
-    - name: Build release binary macos
-      if: matrix.build == 'macos' || matrix.build == 'macos-arm64'
-      run: |
-        # Use the beta compiler
-        sudo xcode-select -s /Applications/Xcode_12.2.app/Contents/Developer/
-
-        # Set SDK environment variables
-        echo "SDKROOT=$(xcrun -sdk macosx11.0 --show-sdk-path)" >> $GITHUB_ENV
-        echo "MACOSX_DEPLOYMENT_TARGET=$(xcrun -sdk macosx11.0 --show-sdk-platform-version)" >> $GITHUB_ENV
-
     - name: aarch64 specific items
       if: matrix.build == 'macos-arm64'
       run: |
@@ -148,35 +158,36 @@ jobs:
       run: ${{ env.CARGO }} build --verbose --release ${{ env.TARGET_FLAGS }}
 
     - name: Strip release binary (linux and macos)
-      if: matrix.os != 'windows-2019' && matrix.build != 'linux-arm-gnueabihf' && matrix.build != 'linux-gnu-arm64' && matrix.build != 'linux-musl-arm64'
+      if: matrix.os != 'windows-2019' && matrix.build != 'linux-arm-gnueabihf' && matrix.build != 'linux-gnu-arm64' && matrix.build != 'linux-musl-arm64' && matrix.build != 'linux-musl-i686'
       run: strip "target/${{ matrix.target }}/release/static-web-server"
 
     - name: Strip release binary (linux-arm-gnueabihf)
       if: matrix.build == 'linux-arm-gnueabihf'
       run: |
-        docker run --rm -v \
-          "$PWD/target:/target:Z" \
+        docker run --rm -v "$PWD/target:/target:Z" \
           rustembedded/cross:arm-unknown-linux-gnueabihf \
-          arm-linux-gnueabihf-strip \
-          /target/arm-unknown-linux-gnueabihf/release/static-web-server
+          arm-linux-gnueabihf-strip /target/arm-unknown-linux-gnueabihf/release/static-web-server
 
     - name: Strip release binary (linux-gnu-arm64)
       if: matrix.build == 'linux-gnu-arm64'
       run: |
-        docker run --rm -v \
-          "$PWD/target:/target:Z" \
+        docker run --rm -v "$PWD/target:/target:Z" \
           rustembedded/cross:aarch64-unknown-linux-gnu \
-          aarch64-linux-gnu-strip \
-          /target/aarch64-unknown-linux-gnu/release/static-web-server
+          aarch64-linux-gnu-strip /target/aarch64-unknown-linux-gnu/release/static-web-server
 
     - name: Strip release binary (linux-musl-arm64)
       if: matrix.build == 'linux-musl-arm64'
       run: |
-        docker run --rm -v \
-          "$PWD/target:/target:Z" \
+        docker run --rm -v "$PWD/target:/target:Z" \
           rustembedded/cross:aarch64-unknown-linux-musl \
-          aarch64-linux-musl-strip \
-          /target/aarch64-unknown-linux-musl/release/static-web-server
+          aarch64-linux-musl-strip /target/aarch64-unknown-linux-musl/release/static-web-server
+
+    - name: Strip release binary (linux-musl-i686)
+      if: matrix.build == 'linux-musl-i686'
+      run: |
+        docker run --rm -v "$PWD/target:/target:Z" \
+          rustembedded/cross:i686-unknown-linux-musl \
+          i686-linux-musl-strip /target/i686-unknown-linux-musl/release/static-web-server
 
     - name: Build archive
       shell: bash
