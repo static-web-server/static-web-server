@@ -32,25 +32,44 @@
 
 ## Releases
 
-### Docker image
+### Docker images
 
-Available on [hub.docker.com/r/joseluisq/static-web-server](https://hub.docker.com/r/joseluisq/static-web-server/)
+[hub.docker.com/r/joseluisq/static-web-server](https://hub.docker.com/r/joseluisq/static-web-server/)
 
 ### Release binaries
 
-Available to download from [github.com/joseluisq/static-web-server/releases](https://github.com/joseluisq/static-web-server/releases).
+[github.com/joseluisq/static-web-server/releases](https://github.com/joseluisq/static-web-server/releases).
 
-Below the current supported targets.
+#### Linux
 
-| **Linux**                     | **macOS**              | **Windows**               |
-| ----------------------------- | ---------------------- | ------------------------- |
-| **x86_64**                    |                        |                           |
-| `x86_64-unknown-linux-gnu`    | `x86_64-apple-darwin`  | `x86_64-pc-windows-msvc`  |
-| `x86_64-unknown-linux-musl`   |                        |                           |
-| **ARM**                       |                        |                           |
-| `aarch64-unknown-linux-musl`  | `aarch64-apple-darwin` | `aarch64-pc-windows-msvc` |
-| `aarch64-unknown-linux-gnu`   |                        |                           |
-| `arm-unknown-linux-gnueabihf` |                        |                           |
+- **x86**
+  - `i686-unknown-linux-gnu` 
+  - `i686-unknown-linux-musl`
+- **x86_64**
+  - `x86_64-unknown-linux-gnu`
+  - `x86_64-unknown-linux-musl`
+- **ARM**
+  - `arm-unknown-linux-gnueabihf`
+- **ARM64**
+  - `aarch64-unknown-linux-musl`
+  - `aarch64-unknown-linux-gnu`
+
+#### macOS
+
+- **x86_64**
+  - `x86_64-apple-darwin`
+- **ARM64**
+  - `aarch64-apple-darwin`
+
+#### Windows
+
+- **x86**
+  - `i686-pc-windows-msvc`
+- **x86_64**
+  - `x86_64-pc-windows-msvc`
+  - `x86_64-pc-windows-gnu`
+- **ARM64**
+  - ~~`aarch64-pc-windows-msvc`~~ (temporarily disabled until [briansmith/ring#1167](https://github.com/briansmith/ring/issues/1167))
 
 ## Usage
 
