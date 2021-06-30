@@ -1,7 +1,7 @@
 use structopt::StructOpt;
 
-/// A blazing fast static files-serving web server powered by Rust Iron
 #[derive(Debug, StructOpt)]
+#[structopt(about, author)]
 pub struct Options {
     #[structopt(long, short = "l", env = "SERVER_NAME")]
     /// Name for server

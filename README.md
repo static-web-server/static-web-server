@@ -1,6 +1,6 @@
 # Static Web Server [![CI](https://github.com/joseluisq/static-web-server/workflows/CI/badge.svg?branch=1.x)](https://github.com/joseluisq/static-web-server/actions?query=workflow%3ACI) [![Docker Image Version (tag latest semver)](https://img.shields.io/docker/v/joseluisq/static-web-server/1)](https://hub.docker.com/r/joseluisq/static-web-server/) [![Docker Image Size (tag)](https://img.shields.io/docker/image-size/joseluisq/static-web-server/1)](https://hub.docker.com/r/joseluisq/static-web-server/tags) [![Docker Image](https://img.shields.io/docker/pulls/joseluisq/static-web-server.svg)](https://hub.docker.com/r/joseluisq/static-web-server/)
 
-*This is stable `v1`. For the `v2` upcoming refer to [master](https://github.com/joseluisq/static-web-server) branch.*
+*This is the stable `v1`. For the `v2` upcoming refer to [master](https://github.com/joseluisq/static-web-server) branch.*
 
 > A blazing fast static files-serving web server powered by [Rust Iron](https://github.com/iron/iron). ⚡
 
@@ -29,15 +29,13 @@
 
 Available for download/install via following methods:
 
-### Docker Image (Linux x86_64)
+### Docker Images (Linux x86_64)
 
 [hub.docker.com/r/joseluisq/static-web-server/](https://hub.docker.com/r/joseluisq/static-web-server/)
 
 ### Release binaries
 
-Available to download on [github.com/joseluisq/static-web-server/releases](https://github.com/joseluisq/static-web-server/releases).
-
-Below the current supported targets.
+[github.com/joseluisq/static-web-server/releases](https://github.com/joseluisq/static-web-server/releases).
 
 #### Linux
 
@@ -45,7 +43,7 @@ Below the current supported targets.
 - x86_64-unknown-linux-musl (64-bit)
 - aarch64-unknown-linux-musl (ARM64)
 - aarch64-unknown-linux-gnu (ARM64)
-- arm-unknown-linux-gnueabihf (ARM64)
+- arm-unknown-linux-gnueabihf (ARM)
 
 #### macOS
 
@@ -86,7 +84,7 @@ Server can be configured either via environment variables or their equivalent co
 CLI arguments listed with `static-web-server -h`.
 
 ```
-static-web-server 1.16.0
+static-web-server 1.17.1
 A blazing fast static files-serving web server powered by Rust Iron
 
 USAGE:
