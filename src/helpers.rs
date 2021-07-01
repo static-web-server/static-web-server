@@ -22,7 +22,7 @@ where
 {
     let path = get_valid_dirpath(path)?;
     match path.iter().last() {
-        Some(v) => Ok(v.to_str().unwrap().to_string()),
+        Some(v) => Ok(v.to_str().unwrap().to_owned()),
         _ => bail!("directory name for path \"{:?}\" was not determined", path),
     }
 }

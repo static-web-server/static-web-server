@@ -121,7 +121,7 @@ impl Cors {
 
 impl Default for Cors {
     fn default() -> Self {
-        Self::new("*".to_string())
+        Self::new("*".to_owned())
     }
 }
 

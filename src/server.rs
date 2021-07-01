@@ -105,7 +105,7 @@ impl Server {
         let threads = self.threads;
 
         // CORS support
-        let cors = cors::new(opts.cors_allow_origins.trim().to_string());
+        let cors = cors::new(opts.cors_allow_origins.trim().to_owned());
 
         // Create a service router for Hyper
         let router_service = RouterService::new(RequestHandler {
