@@ -50,11 +50,6 @@ impl RequestHandler {
             // Static files
             match static_files::handle(method, headers, root_dir, uri_path, dir_listing).await {
                 Ok(mut resp) => {
-                    // Append security headers
-                    if self.opts.security_headers {
-                        security_headers::append_headers(&mut resp);
-                    }
-
                     // Auto compression based on the `Accept-Encoding` header
                     if self.opts.compression {
                         resp = compression::auto(method, headers, resp)?;
@@ -63,6 +58,11 @@ impl RequestHandler {
                     // Append `Cache-Control` headers for web assets
                     let ext = uri_path.to_lowercase();
                     control_headers::append_headers(&ext, &mut resp);
+
+                    // Append security headers
+                    if self.opts.security_headers {
+                        security_headers::append_headers(&mut resp);
+                    }
 
                     Ok(resp)
                 }
