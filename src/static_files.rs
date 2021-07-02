@@ -24,11 +24,11 @@ use tokio::fs::File as TkFile;
 use tokio::io::AsyncSeekExt;
 use tokio_util::io::poll_read_buf;
 
-use crate::error::Result;
+use crate::Result;
 
-/// Entry point to handle web server requests which map to specific files
+/// Entry point to handle incoming requests which map to specific files
 /// on file system and return a file response.
-pub async fn handle_request(
+pub async fn handle(
     method: &Method,
     headers: &HeaderMap<HeaderValue>,
     base: &Path,
@@ -72,6 +72,8 @@ pub async fn handle_request(
     file_reply(headers, (filepath, meta, auto_index)).await
 }
 
+/// Convert an incoming uri into a valid and sanitized path then returns a tuple
+// with the path as well as its file metadata and an auto index check if it's a directory.
 fn path_from_tail(
     base: PathBuf,
     tail: &str,
@@ -96,6 +98,9 @@ fn path_from_tail(
     })
 }
 
+/// Provides directory listing support for the current request.
+/// Note that this function is a highly dependent on `path_from_tail()`
+// function which must be called first. See `handle()` more for details.
 fn directory_listing<'a>(
     method: &'a Method,
     current_path: &'a str,
@@ -103,10 +108,11 @@ fn directory_listing<'a>(
 ) -> impl Future<Output = Result<Response<Body>, StatusCode>> + Send + 'a {
     let is_head = method == Method::HEAD;
 
-    // Note: it's safe to call `parent()` since `filepath` value
-    // always maps to a file on root directory boundaries.
-    // See `path_from_tail()` function which sanitizes
-    // the requested path before to be delegated here.
+    // Note: it's safe to call `parent()` here since `filepath`
+    // value always refer to a path with file ending and under
+    // a root directory boundary.
+    // See `path_from_tail()` function which sanitizes the requested
+    // path before to be delegated here.
     let parent = filepath.parent().unwrap_or(filepath);
 
     tokio::fs::read_dir(parent).then(move |res| match res {

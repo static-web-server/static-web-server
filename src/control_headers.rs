@@ -1,5 +1,5 @@
 // An arbitrary `Cache-Control` headers functionality for incoming requests based on a set of file types.
-// Note: Since it's a ad-hoc feature it could be subject to change.
+// Note: Since it's an ad-hoc feature it could be subject to change in the future.
 // See https://github.com/joseluisq/static-web-server/issues/30
 
 use headers::{CacheControl, HeaderMapExt};
@@ -13,7 +13,7 @@ const CACHE_EXT_ONE_YEAR: [&str; 30] = [
 ];
 
 /// It appends a `Cache-Control` header to a response if that one is part of a set of file types.
-pub fn with_cache_control(ext: &str, resp: &mut Response<Body>) {
+pub fn append_headers(ext: &str, resp: &mut Response<Body>) {
     // Default max-age value in seconds (one day)
     let mut max_age = 60 * 60 * 24_u64;
 

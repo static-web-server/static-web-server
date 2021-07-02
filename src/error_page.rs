@@ -2,16 +2,16 @@ use headers::{AcceptRanges, ContentLength, ContentType, HeaderMapExt};
 use hyper::{Body, Method, Response, StatusCode};
 use once_cell::sync::OnceCell;
 
-use crate::error::Result;
+use crate::Result;
 
 pub static PAGE_404: OnceCell<String> = OnceCell::new();
 pub static PAGE_50X: OnceCell<String> = OnceCell::new();
 
 /// It returns a HTTP error response which also handles available `404` or `50x` HTML content.
-pub fn get_error_response(method: &Method, status_code: &StatusCode) -> Result<Response<Body>> {
+pub fn error_response(method: &Method, status_code: &StatusCode) -> Result<Response<Body>> {
     tracing::warn!(method = ?method, status = status_code.as_u16(), error = ?status_code.to_owned());
 
-    // Check for 4xx and 50x status codes and handle their corresponding HTML content
+    // Check for 4xx/50x status codes and handle their corresponding HTML content
     let mut error_page_content = String::new();
     let status_code = match status_code {
         // 4xx
@@ -57,7 +57,7 @@ pub fn get_error_response(method: &Method, status_code: &StatusCode) -> Result<R
         | &StatusCode::VARIANT_ALSO_NEGOTIATES
         | &StatusCode::INSUFFICIENT_STORAGE
         | &StatusCode::LOOP_DETECTED => {
-            // HTML content for error status codes 50x and their HTML content
+            // HTML content check for status codes 50x
             error_page_content = match PAGE_50X.get() {
                 Some(s) => s.to_owned(),
                 None => {

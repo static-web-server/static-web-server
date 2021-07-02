@@ -2,10 +2,10 @@ use http::StatusCode;
 use hyper::{Body, Request, Response};
 use std::{future::Future, path::PathBuf, sync::Arc};
 
-use crate::{compression, control_headers, cors, security_headers, static_files};
-use crate::{error_page, Error, Result};
+use crate::{compression, control_headers, cors, error_page, security_headers, static_files};
+use crate::{Error, Result};
 
-// It defines options for a request handler.
+/// It defines options for a request handler.
 pub struct RequestHandlerOpts {
     pub root_dir: PathBuf,
     pub compression: bool,
@@ -14,12 +14,13 @@ pub struct RequestHandlerOpts {
     pub security_headers: bool,
 }
 
-// It defines the main request handler for Hyper service request.
+/// It defines the main request handler used by the Hyper service request.
 pub struct RequestHandler {
     pub opts: RequestHandlerOpts,
 }
 
 impl RequestHandler {
+    /// Main entry point for incoming requests.
     pub fn handle<'a>(
         &'a self,
         req: &'a mut Request<Body>,
@@ -41,19 +42,17 @@ impl RequestHandler {
                     }
                     Err(e) => {
                         tracing::debug!("cors error kind: {:?}", e);
-                        return error_page::get_error_response(method, &StatusCode::FORBIDDEN);
+                        return error_page::error_response(method, &StatusCode::FORBIDDEN);
                     }
                 };
             }
 
             // Static files
-            match static_files::handle_request(method, headers, root_dir, uri_path, dir_listing)
-                .await
-            {
+            match static_files::handle(method, headers, root_dir, uri_path, dir_listing).await {
                 Ok(mut resp) => {
-                    // Append Security Headers
+                    // Append security headers
                     if self.opts.security_headers {
-                        security_headers::with_security_headers(&mut resp);
+                        security_headers::append_headers(&mut resp);
                     }
 
                     // Auto compression based on the `Accept-Encoding` header
@@ -63,11 +62,11 @@ impl RequestHandler {
 
                     // Append `Cache-Control` headers for web assets
                     let ext = uri_path.to_lowercase();
-                    control_headers::with_cache_control(&ext, &mut resp);
+                    control_headers::append_headers(&ext, &mut resp);
 
                     Ok(resp)
                 }
-                Err(status) => error_page::get_error_response(method, &status),
+                Err(status) => error_page::error_response(method, &status),
             }
         }
     }

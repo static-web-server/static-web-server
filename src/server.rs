@@ -6,8 +6,7 @@ use structopt::StructOpt;
 
 use crate::handler::{RequestHandler, RequestHandlerOpts};
 use crate::tls::{TlsAcceptor, TlsConfigBuilder};
-use crate::Result;
-use crate::{config::Config, service::RouterService};
+use crate::{config::Config, service::RouterService, Result};
 use crate::{cors, error_page, helpers, logger, signals};
 
 /// Define a multi-thread HTTP or HTTP/2 web server.
@@ -49,13 +48,12 @@ impl Server {
         Ok(())
     }
 
-    /// Run the inner Hyper `HyperServer` forever on the current thread with the given configuration.
+    /// Run the inner Hyper `HyperServer` (HTTP1/HTTP2) forever on the current thread
+    // using the given configuration.
     async fn start_server(self) -> Result {
         let opts = &self.opts;
 
         logger::init(&opts.log_level)?;
-
-        tracing::info!("runtime worker threads: {}", self.threads);
 
         let (tcplistener, addr_string);
         match opts.fd {
@@ -89,6 +87,10 @@ impl Server {
             .set(helpers::read_file_content(opts.page50x.as_ref()))
             .expect("page 50x is not initialized");
 
+        // Number of worker threads option
+        let threads = self.threads;
+        tracing::info!("runtime worker threads: {}", self.threads);
+
         // Security Headers option
         let security_headers = opts.security_headers;
         tracing::info!("security headers: enabled={}", security_headers);
@@ -101,10 +103,7 @@ impl Server {
         let dir_listing = opts.directory_listing;
         tracing::info!("directory listing: enabled={}", dir_listing);
 
-        // Spawn a new Tokio asynchronous server task with its given options
-        let threads = self.threads;
-
-        // CORS support
+        // CORS option
         let cors = cors::new(opts.cors_allow_origins.trim().to_owned());
 
         // Create a service router for Hyper
@@ -117,6 +116,8 @@ impl Server {
                 security_headers,
             },
         });
+
+        // Spawn a new Tokio asynchronous task with its given options
 
         if opts.http2 {
             // HTTP/2 + TLS
