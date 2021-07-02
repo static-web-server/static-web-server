@@ -18,13 +18,20 @@ use tokio_util::io::{ReaderStream, StreamReader};
 use crate::Result;
 
 /// Contains a fixed list of common text-based MIME types in order to apply compression.
-pub const TEXT_MIME_TYPES: [&str; 16] = [
+pub const TEXT_MIME_TYPES: [&str; 23] = [
     "text/html",
     "text/css",
     "text/javascript",
     "text/xml",
     "text/plain",
+    "text/csv",
+    "text/calendar",
+    "text/markdown",
+    "text/x-yaml",
+    "text/x-toml",
     "text/x-component",
+    "application/rtf",
+    "application/xhtml+xml",
     "application/javascript",
     "application/x-javascript",
     "application/json",
