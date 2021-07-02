@@ -6,9 +6,9 @@ freebsd_instance:
 # 64-bit kernel and in a 64-bit environment. Our tests don't execute
 # any of the system's binaries, so the environment shouldn't matter.
 task:
-  name: FreeBSD
+  name: freebsd-test
+  only_if: $CIRRUS_TAG == ''
   env:
-    LOOM_MAX_PREEMPTIONS: 2
     RUSTFLAGS: -Dwarnings
   setup_script:
     - pkg install -y bash curl
@@ -30,3 +30,37 @@ task:
     - . $HOME/.cargo/env
     - |
       cargo build --verbose
+
+task:
+  name: freebsd-release
+  only_if: $CIRRUS_TAG != ''
+  env:
+    RUSTFLAGS: -Dwarnings
+    GITHUB_TOKEN: ENCRYPTED[d1766ef328d83729917d2ffb875d64c35d1c0177edf8f32e66ec464daf5c1b7b145d65fc6c044a73fffe2235d3b38349]
+  setup_script:
+    - pkg install -y bash curl
+    - curl https://sh.rustup.rs -sSf --output rustup.sh
+    - sh rustup.sh -y --profile minimal --default-toolchain stable
+    - . $HOME/.cargo/env
+    - rustup target add i686-unknown-freebsd
+    - |
+      echo "~~~~ rustc --version ~~~~"
+      rustc --version
+  build_script:
+    - cargo build --verbose --release --target=x86_64-unknown-freebsd
+    - cargo build --verbose --release --target=i686-unknown-freebsd
+  archive_x86_64_script:
+    - |
+      staging="static-web-server-$CIRRUS_TAG-x86_64-unknown-freebsd"
+      mkdir -p "$staging/"
+      cp "target/release/static-web-server" "$staging/"
+      cp {README.md,LICENSE-APACHE,LICENSE-MIT} "$staging/"
+      tar czf "$staging.tar.gz" "$staging"
+  archive_i686_script:
+    - |
+      staging="static-web-server-$CIRRUS_TAG-i686-unknown-freebsd"
+      mkdir -p "$staging/"
+      cp "target/i686-unknown-freebsd/release/static-web-server" "$staging/"
+      cp {README.md,LICENSE-APACHE,LICENSE-MIT} "$staging/"
+      tar czf "$staging.tar.gz" "$staging"
+  upload_script: ./scripts/release.sh
