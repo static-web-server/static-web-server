@@ -52,7 +52,16 @@ impl RequestHandler {
                 Ok(mut resp) => {
                     // Auto compression based on the `Accept-Encoding` header
                     if self.opts.compression {
-                        resp = compression::auto(method, headers, resp)?;
+                        resp = match compression::auto(method, headers, resp) {
+                            Ok(res) => res,
+                            Err(err) => {
+                                tracing::debug!("error during body compression: {:?}", err);
+                                return error_page::error_response(
+                                    method,
+                                    &StatusCode::INTERNAL_SERVER_ERROR,
+                                );
+                            }
+                        };
                     }
 
                     // Append `Cache-Control` headers for web assets
