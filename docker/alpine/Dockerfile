@@ -16,7 +16,7 @@ RUN set -ex; \
 	chmod +x /usr/local/bin/static-web-server
 
 COPY ./docker/alpine/entrypoint.sh /
-COPY ./public /public
+COPY ./docker/public /public
 
 EXPOSE 80
 VOLUME ["/public"]

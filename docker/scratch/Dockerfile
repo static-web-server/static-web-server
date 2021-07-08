@@ -12,7 +12,7 @@ LABEL version="${SERVER_VERSION}" \
     maintainer="Jose Quintana <joseluisq.net>"
 
 COPY --from=latest /usr/local/bin/static-web-server /
-COPY ./public /public
+COPY ./docker/public /public
 
 EXPOSE 80
 VOLUME ["/public"]
