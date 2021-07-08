@@ -38,7 +38,7 @@ task:
     RUSTFLAGS: -Dwarnings
     GITHUB_TOKEN: ENCRYPTED[d1766ef328d83729917d2ffb875d64c35d1c0177edf8f32e66ec464daf5c1b7b145d65fc6c044a73fffe2235d3b38349]
   setup_script:
-    - pkg install -y bash curl
+    - pkg install -y bash curl jq
     - curl https://sh.rustup.rs -sSf --output rustup.sh
     - sh rustup.sh -y --profile minimal --default-toolchain stable
     - . $HOME/.cargo/env
@@ -46,21 +46,72 @@ task:
     - |
       echo "~~~~ rustc --version ~~~~"
       rustc --version
-  build_script:
-    - cargo build --verbose --release --target=x86_64-unknown-freebsd
-    - cargo build --verbose --release --target=i686-unknown-freebsd
-  archive_x86_64_script:
-    - |
-      staging="static-web-server-$CIRRUS_TAG-x86_64-unknown-freebsd"
-      mkdir -p "$staging/"
-      cp "target/release/static-web-server" "$staging/"
-      cp {README.md,LICENSE-APACHE,LICENSE-MIT} "$staging/"
-      tar czf "$staging.tar.gz" "$staging"
-  archive_i686_script:
-    - |
-      staging="static-web-server-$CIRRUS_TAG-i686-unknown-freebsd"
-      mkdir -p "$staging/"
-      cp "target/i686-unknown-freebsd/release/static-web-server" "$staging/"
-      cp {README.md,LICENSE-APACHE,LICENSE-MIT} "$staging/"
-      tar czf "$staging.tar.gz" "$staging"
-  upload_script: ./scripts/release.sh
+  build_script: |
+    . $HOME/.cargo/env
+    cargo build --verbose --release --target=x86_64-unknown-freebsd
+    cargo build --verbose --release --target=i686-unknown-freebsd
+  archive_x86_64_script: |
+    . $HOME/.cargo/env
+    staging="static-web-server-$CIRRUS_TAG-x86_64-unknown-freebsd"
+    mkdir -p "$staging/"
+    cp "target/x86_64-unknown-freebsd/release/static-web-server" "$staging/"
+    strip "$staging/static-web-server"
+    cp {README.md,LICENSE-APACHE,LICENSE-MIT} "$staging/"
+    tar czf "$staging.tar.gz" "$staging"
+  archive_i686_script: |
+    . $HOME/.cargo/env
+    staging="static-web-server-$CIRRUS_TAG-i686-unknown-freebsd"
+    mkdir -p "$staging/"
+    cp "target/i686-unknown-freebsd/release/static-web-server" "$staging/"
+    strip "$staging/static-web-server"
+    cp {README.md,LICENSE-APACHE,LICENSE-MIT} "$staging/"
+    tar czf "$staging.tar.gz" "$staging"
+  upload_script: |
+    #!/usr/bin/env bash
+
+    set -e
+
+    . $HOME/.cargo/env
+
+    if [[ "$GITHUB_TOKEN" == "" ]]; then
+      echo "GitHub access token GITHUB_TOKEN env is not provided!"
+      exit 1
+    fi
+
+    RETRIES=0
+    until [ $RETRIES -eq 20 ]
+    do
+      echo "Finding the GitHub release associated with '$CIRRUS_TAG' tag..."
+      CIRRUS_RELEASE=$(curl -sL -H "Authorization: token $GITHUB_TOKEN" -H "Accept: application/vnd.github.v3+json" https://api.github.com/repos/$CIRRUS_REPO_FULL_NAME/releases | jq -c "[ .[] | select( .tag_name | contains(\"$CIRRUS_TAG\")) ] | .[0]" | jq -r '.id')
+      [[ "$CIRRUS_RELEASE" != "null" ]] && break
+      RETRIES=$((RETRIES+1))
+      sleep 30
+    done
+
+    if [[ "$CIRRUS_RELEASE" == "null" ]]; then
+        echo "Can not find the associated GitHub '$CIRRUS_TAG' release!"
+        exit 1
+    fi
+
+    echo "GitHub release '$CIRRUS_TAG' found. Preparing asset files to upload..."
+
+    file_content_type="application/octet-stream"
+    files_to_upload=(
+      static-web-server-$CIRRUS_TAG-i686-unknown-freebsd.tar.gz
+      static-web-server-$CIRRUS_TAG-x86_64-unknown-freebsd.tar.gz
+    )
+
+    for fpath in "${files_to_upload[@]}"
+    do
+      echo "Uploading GitHub release asset '$fpath'..."
+      name=$(basename "$fpath")
+      url_to_upload="https://uploads.github.com/repos/$CIRRUS_REPO_FULL_NAME/releases/$CIRRUS_RELEASE/assets?name=$name"
+      curl -LX POST \
+        --data-binary @$fpath \
+        --header "Authorization: token $GITHUB_TOKEN" \
+        --header "Content-Type: $file_content_type" \
+        $url_to_upload
+    done
+
+    echo
+    echo "GitHub release '$CIRRUS_TAG' assets uploaded successfully."
