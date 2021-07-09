@@ -7,7 +7,7 @@ use crate::{Error, Result};
 
 /// It defines options for a request handler.
 pub struct RequestHandlerOpts {
-    pub root_dir: PathBuf,
+    pub root_dir: Arc<PathBuf>,
     pub compression: bool,
     pub dir_listing: bool,
     pub cors: Option<Arc<cors::Configured>>,
@@ -28,7 +28,7 @@ impl RequestHandler {
         let method = req.method();
         let headers = req.headers();
 
-        let root_dir = self.opts.root_dir.as_path();
+        let root_dir = self.opts.root_dir.as_ref();
         let uri_path = req.uri().path();
         let dir_listing = self.opts.dir_listing;
 

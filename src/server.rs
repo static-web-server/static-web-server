@@ -2,6 +2,7 @@ use hyper::server::conn::AddrIncoming;
 use hyper::server::Server as HyperServer;
 use listenfd::ListenFd;
 use std::net::{IpAddr, SocketAddr, TcpListener};
+use std::sync::Arc;
 use structopt::StructOpt;
 
 use crate::handler::{RequestHandler, RequestHandlerOpts};
@@ -77,7 +78,7 @@ impl Server {
         }
 
         // Check for a valid root directory
-        let root_dir = helpers::get_valid_dirpath(&opts.root)?;
+        let root_dir = Arc::new(helpers::get_valid_dirpath(&opts.root)?);
 
         // Custom error pages content
         error_page::PAGE_404

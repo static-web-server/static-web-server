@@ -18,6 +18,7 @@ use std::io;
 use std::ops::Bound;
 use std::path::PathBuf;
 use std::pin::Pin;
+use std::sync::Arc;
 use std::task::Poll;
 use std::time::{SystemTime, UNIX_EPOCH};
 use std::{cmp, path::Path};
@@ -27,12 +28,22 @@ use tokio_util::io::poll_read_buf;
 
 use crate::Result;
 
+/// Arc `PathBuf` reference wrapper since Arc<PathBuf> doesn't implement AsRef<Path>.
+#[derive(Clone, Debug)]
+pub struct ArcPath(pub Arc<PathBuf>);
+
+impl AsRef<Path> for ArcPath {
+    fn as_ref(&self) -> &Path {
+        (*self.0).as_ref()
+    }
+}
+
 /// Entry point to handle incoming requests which map to specific files
 /// on file system and return a file response.
 pub async fn handle(
     method: &Method,
     headers: &HeaderMap<HeaderValue>,
-    base: &Path,
+    path: impl Into<PathBuf>,
     uri_path: &str,
     dir_listing: bool,
 ) -> Result<Response<Body>, StatusCode> {
@@ -41,13 +52,14 @@ pub async fn handle(
         return Err(StatusCode::METHOD_NOT_ALLOWED);
     }
 
-    let (filepath, meta, auto_index) = path_from_tail(base.to_owned(), uri_path).await?;
+    let base = Arc::new(path.into());
+    let (filepath, meta, auto_index) = path_from_tail(base, uri_path).await?;
 
     // Directory listing
     // 1. Check if "directory listing" feature is enabled,
     // if current path is a valid directory and
     // if it does not contain an `index.html` file
-    if dir_listing && auto_index && !filepath.exists() {
+    if dir_listing && auto_index && !filepath.as_ref().exists() {
         // Redirect if current path does not end with a slash char
         if !uri_path.ends_with('/') {
             let uri = [uri_path, "/"].concat();
@@ -67,19 +79,19 @@ pub async fn handle(
             return Ok(resp);
         }
 
-        return directory_listing(method, uri_path, &filepath).await;
+        return directory_listing(method, uri_path, filepath.as_ref()).await;
     }
 
-    file_reply(headers, (filepath, meta, auto_index)).await
+    file_reply(headers, (filepath, &meta, auto_index)).await
 }
 
 /// Convert an incoming uri into a valid and sanitized path then returns a tuple
 // with the path as well as its file metadata and an auto index check if it's a directory.
 fn path_from_tail(
-    base: PathBuf,
+    base: Arc<PathBuf>,
     tail: &str,
-) -> impl Future<Output = Result<(PathBuf, Metadata, bool), StatusCode>> + Send {
-    future::ready(sanitize_path(base, tail)).and_then(|mut buf| async {
+) -> impl Future<Output = Result<(ArcPath, Metadata, bool), StatusCode>> + Send {
+    future::ready(sanitize_path(base.as_ref(), tail)).and_then(|mut buf| async {
         match tokio::fs::metadata(&buf).await {
             Ok(meta) => {
                 let mut auto_index = false;
@@ -89,7 +101,7 @@ fn path_from_tail(
                     auto_index = true;
                 }
                 tracing::trace!("dir: {:?}", buf);
-                Ok((buf, meta, auto_index))
+                Ok((ArcPath(Arc::new(buf)), meta, auto_index))
             }
             Err(err) => {
                 tracing::debug!("file not found: {:?}", err);
@@ -273,10 +285,10 @@ fn parse_last_modified(modified: SystemTime) -> Result<time::Tm, Box<dyn std::er
 }
 
 /// Reply with a file content.
-fn file_reply(
-    headers: &HeaderMap<HeaderValue>,
-    res: (PathBuf, Metadata, bool),
-) -> impl Future<Output = Result<Response<Body>, StatusCode>> + Send {
+fn file_reply<'a>(
+    headers: &'a HeaderMap<HeaderValue>,
+    res: (ArcPath, &'a Metadata, bool),
+) -> impl Future<Output = Result<Response<Body>, StatusCode>> + Send + 'a {
     let (path, meta, auto_index) = res;
     let conditionals = get_conditional_headers(headers);
     TkFile::open(path.clone()).then(move |res| match res {
@@ -284,15 +296,19 @@ fn file_reply(
         Err(err) => {
             let status = match err.kind() {
                 io::ErrorKind::NotFound => {
-                    tracing::debug!("file not found: {:?}", path.display());
+                    tracing::debug!("file not found: {:?}", path.as_ref().display());
                     StatusCode::NOT_FOUND
                 }
                 io::ErrorKind::PermissionDenied => {
-                    tracing::warn!("file permission denied: {:?}", path.display());
+                    tracing::warn!("file permission denied: {:?}", path.as_ref().display());
                     StatusCode::FORBIDDEN
                 }
                 _ => {
-                    tracing::error!("file open error (path={:?}): {} ", path.display(), err);
+                    tracing::error!(
+                        "file open error (path={:?}): {} ",
+                        path.as_ref().display(),
+                        err
+                    );
                     StatusCode::INTERNAL_SERVER_ERROR
                 }
             };
@@ -315,7 +331,8 @@ fn get_conditional_headers(header_list: &HeaderMap<HeaderValue>) -> Conditionals
     }
 }
 
-fn sanitize_path(mut buf: PathBuf, tail: &str) -> Result<PathBuf, StatusCode> {
+fn sanitize_path(base: impl AsRef<Path>, tail: &str) -> Result<PathBuf, StatusCode> {
+    let mut buf = PathBuf::from(base.as_ref());
     let p = match percent_decode_str(tail).decode_utf8() {
         Ok(p) => p,
         Err(err) => {
@@ -400,30 +417,22 @@ impl Conditionals {
     }
 }
 
-fn file_conditional(
+async fn file_conditional(
     f: TkFile,
-    path: PathBuf,
-    meta: Metadata,
+    path: ArcPath,
+    meta: &Metadata,
     auto_index: bool,
     conditionals: Conditionals,
-) -> impl Future<Output = Result<Response<Body>, StatusCode>> + Send {
-    file_metadata(f, meta, auto_index)
-        .map_ok(|(file, meta)| response_body(file, &meta, path, conditionals))
-}
-
-async fn file_metadata(
-    f: TkFile,
-    meta: Metadata,
-    auto_index: bool,
-) -> Result<(TkFile, Metadata), StatusCode> {
+) -> Result<Response<Body>, StatusCode> {
     if !auto_index {
-        return Ok((f, meta));
-    }
-    match f.metadata().await {
-        Ok(meta) => Ok((f, meta)),
-        Err(err) => {
-            tracing::debug!("file metadata error: {}", err);
-            Err(StatusCode::INTERNAL_SERVER_ERROR)
+        Ok(response_body(f, meta, path, conditionals))
+    } else {
+        match f.metadata().await {
+            Ok(meta) => Ok(response_body(f, &meta, path, conditionals)),
+            Err(err) => {
+                tracing::debug!("file metadata error: {}", err);
+                Err(StatusCode::INTERNAL_SERVER_ERROR)
+            }
         }
     }
 }
@@ -431,7 +440,7 @@ async fn file_metadata(
 fn response_body(
     file: TkFile,
     meta: &Metadata,
-    path: PathBuf,
+    path: ArcPath,
     conditionals: Conditionals,
 ) -> Response<Body> {
     let mut len = meta.len();
@@ -623,14 +632,14 @@ mod tests {
         }
 
         assert_eq!(
-            sanitize_path(base.into(), "/foo.html").unwrap(),
+            sanitize_path(base, "/foo.html").unwrap(),
             p("/var/www/foo.html")
         );
 
         // bad paths
-        sanitize_path(base.into(), "/../foo.html").expect_err("dot dot");
+        sanitize_path(base, "/../foo.html").expect_err("dot dot");
 
-        sanitize_path(base.into(), "/C:\\/foo.html").expect_err("C:\\");
+        sanitize_path(base, "/C:\\/foo.html").expect_err("C:\\");
     }
 
     #[test]
