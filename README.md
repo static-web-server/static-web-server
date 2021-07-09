@@ -100,7 +100,7 @@ Server can be configured either via environment variables or their equivalent co
 CLI arguments listed with `static-web-server -h`.
 
 ```
-static-web-server 2.0.0-beta.6
+static-web-server 2.0.0-beta.7
 Jose Quintana <https://git.io/joseluisq>
 A blazing fast and asynchronous web server for static files-serving.
 
@@ -175,34 +175,57 @@ option.
 Alternatively, the light-weight [`systemfd`](https://github.com/mitsuhiko/systemfd) utility may be
 useful - especially for testing e.g. `systemfd --no-pid -s http::8091 -- path/to/static-web-server --fd 0`
 
-## Docker stack
+## Docker
 
-Example using [Traefik Proxy](https://traefik.io/):
+### Run a container
+
+```sh
+# Scratch image (just the binary)
+docker run --rm -it -p 8787:80 joseluisq/static-web-server:2.0.0-beta.7
+
+# Or Alpine image
+docker run --rm -it -p 8787:80 joseluisq/static-web-server:2.0.0-beta.7-alpine
+```
+
+### Dockerfile
+
+```Dockerfile
+# Scratch image (just the binary)
+FROM joseluisq/static-web-server:2.0.0-beta.7
+
+# Or Alpine image
+FROM joseluisq/static-web-server:2.0.0-beta.7-alpine
+```
+
+### Docker stack
+
+[Docker Compose](https://docs.docker.com/compose/) example using [Traefik Proxy](https://traefik.io/):
 
 ```yaml
 version: "3.3"
 
 services:
   web:
-    image: joseluisq/static-web-server:2.0.0-beta.4
+    image: joseluisq/static-web-server:2.0.0-beta.7
     environment:
-        - SERVER_HOST=127.0.0.1
-        - SERVER_PORT=80
-        - SERVER_ROOT=/public
+      # Note: those envs are customizable but also optional
+      - SERVER_HOST=127.0.0.1
+      - SERVER_PORT=80
+      - SERVER_ROOT=/public
     volumes:
-        - ./some-dir-path:/public
+      - ./some-dir-path:/public
     labels:
-        - "traefik.enable=true"
-        - "traefik.frontend.entryPoints=https"
-        - "traefik.backend=localhost_dev"
-        - "traefik.frontend.rule=Host:localhost.dev"
-        - "traefik.port=80"
+      - "traefik.enable=true"
+      - "traefik.frontend.entryPoints=https"
+      - "traefik.backend=localhost_dev"
+      - "traefik.frontend.rule=Host:localhost.dev"
+      - "traefik.port=80"
     networks:
-        - traefik_net
+      - traefik_net
 
 networks:
-    traefik_net:
-        external: true
+  traefik_net:
+    external: true
 ```
 
 ## Contributions
