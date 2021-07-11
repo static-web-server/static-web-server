@@ -3,7 +3,7 @@ use iron::{Chain, Iron, Listening};
 
 use crate::staticfile_middleware::HttpToHttpsRedirect;
 use crate::staticfiles::*;
-use crate::{config::Options, logger};
+use crate::{config::Options, logger, signals};
 
 /// Struct for holding a reference to a running iron server instance
 #[derive(Debug)]
@@ -102,24 +102,5 @@ fn on_server_running(server_name: &str, running_servers: &[RunningServer]) {
         ))
     });
 
-    handle_signals()
-}
-
-#[cfg(not(windows))]
-fn handle_signals() {
-    use crate::signal_manager;
-
-    // Wait for incoming signals (E.g Ctrl+C (SIGINT), SIGTERM, etc
-    signal_manager::wait_for_signal(|sig: signal::Signal| {
-        let code = signal_manager::signal_to_int(sig);
-
-        println!();
-        warn!("Signal {} caught. Server execution exited.", code);
-        std::process::exit(code)
-    })
-}
-
-#[cfg(windows)]
-fn handle_signals() {
-    // TODO: Windows signals...
+    signals::wait_for_ctrl_c()
 }

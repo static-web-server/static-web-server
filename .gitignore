@@ -16,6 +16,7 @@
 **/*.data*
 **/*.perf*
 **/*.out*
+**/*.zst
 release
 .vscode
 TODO
