@@ -12,6 +12,8 @@ pub struct RequestHandlerOpts {
     pub dir_listing: bool,
     pub cors: Option<Arc<cors::Configured>>,
     pub security_headers: bool,
+    pub page404: Arc<str>,
+    pub page50x: Arc<str>,
 }
 
 /// It defines the main request handler used by the Hyper service request.
@@ -42,7 +44,12 @@ impl RequestHandler {
                     }
                     Err(e) => {
                         tracing::debug!("cors error kind: {:?}", e);
-                        return error_page::error_response(method, &StatusCode::FORBIDDEN);
+                        return error_page::error_response(
+                            method,
+                            &StatusCode::FORBIDDEN,
+                            self.opts.page404.as_ref(),
+                            self.opts.page50x.as_ref(),
+                        );
                     }
                 };
             }
@@ -59,6 +66,8 @@ impl RequestHandler {
                                 return error_page::error_response(
                                     method,
                                     &StatusCode::INTERNAL_SERVER_ERROR,
+                                    self.opts.page404.as_ref(),
+                                    self.opts.page50x.as_ref(),
                                 );
                             }
                         };
@@ -75,7 +84,12 @@ impl RequestHandler {
 
                     Ok(resp)
                 }
-                Err(status) => error_page::error_response(method, &status),
+                Err(status) => error_page::error_response(
+                    method,
+                    &status,
+                    self.opts.page404.as_ref(),
+                    self.opts.page50x.as_ref(),
+                ),
             }
         }
     }

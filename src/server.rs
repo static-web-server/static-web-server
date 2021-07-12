@@ -8,7 +8,7 @@ use structopt::StructOpt;
 use crate::handler::{RequestHandler, RequestHandlerOpts};
 use crate::tls::{TlsAcceptor, TlsConfigBuilder};
 use crate::{config::Config, service::RouterService, Result};
-use crate::{cors, error_page, helpers, logger, signals};
+use crate::{cors, helpers, logger, signals};
 
 /// Define a multi-thread HTTP or HTTP/2 web server.
 pub struct Server {
@@ -81,12 +81,8 @@ impl Server {
         let root_dir = Arc::new(helpers::get_valid_dirpath(&opts.root)?);
 
         // Custom error pages content
-        error_page::PAGE_404
-            .set(helpers::read_file_content(opts.page404.as_ref()))
-            .expect("page 404 is not initialized");
-        error_page::PAGE_50X
-            .set(helpers::read_file_content(opts.page50x.as_ref()))
-            .expect("page 50x is not initialized");
+        let page404 = Arc::from(helpers::read_file_content(opts.page404.as_ref()).as_str());
+        let page50x = Arc::from(helpers::read_file_content(opts.page50x.as_ref()).as_str());
 
         // Number of worker threads option
         let threads = self.threads;
@@ -115,6 +111,8 @@ impl Server {
                 dir_listing,
                 cors,
                 security_headers,
+                page404,
+                page50x,
             },
         });
 

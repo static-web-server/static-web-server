@@ -1,15 +1,16 @@
 use headers::{AcceptRanges, ContentLength, ContentType, HeaderMapExt, HeaderValue};
 use http::header::CONTENT_TYPE;
 use hyper::{Body, Method, Response, StatusCode};
-use once_cell::sync::OnceCell;
 
 use crate::Result;
 
-pub static PAGE_404: OnceCell<String> = OnceCell::new();
-pub static PAGE_50X: OnceCell<String> = OnceCell::new();
-
 /// It returns a HTTP error response which also handles available `404` or `50x` HTML content.
-pub fn error_response(method: &Method, status_code: &StatusCode) -> Result<Response<Body>> {
+pub fn error_response(
+    method: &Method,
+    status_code: &StatusCode,
+    page404: &str,
+    page50x: &str,
+) -> Result<Response<Body>> {
     tracing::warn!(method = ?method, status = status_code.as_u16(), error = ?status_code.to_owned());
 
     // Check for 4xx/50x status codes and handle their corresponding HTML content
@@ -36,15 +37,7 @@ pub fn error_response(method: &Method, status_code: &StatusCode) -> Result<Respo
         | &StatusCode::EXPECTATION_FAILED => {
             // Extra check for 404 status code and its HTML content
             if status_code == &StatusCode::NOT_FOUND {
-                error_page_content = match PAGE_404.get() {
-                    Some(s) => s.to_owned(),
-                    None => {
-                        tracing::error!(
-                            "404 error page content is not accessible or `PAGE_404` uninitialized"
-                        );
-                        String::new()
-                    }
-                };
+                error_page_content = page404.to_owned();
             }
             status_code
         }
@@ -59,15 +52,7 @@ pub fn error_response(method: &Method, status_code: &StatusCode) -> Result<Respo
         | &StatusCode::INSUFFICIENT_STORAGE
         | &StatusCode::LOOP_DETECTED => {
             // HTML content check for status codes 50x
-            error_page_content = match PAGE_50X.get() {
-                Some(s) => s.to_owned(),
-                None => {
-                    tracing::error!(
-                        "50x error page content is not accessible or `PAGE_50X` uninitialized"
-                    );
-                    String::new()
-                }
-            };
+            error_page_content = page50x.to_owned();
             status_code
         }
         // other status codes
@@ -75,10 +60,18 @@ pub fn error_response(method: &Method, status_code: &StatusCode) -> Result<Respo
     };
 
     if error_page_content.is_empty() {
-        error_page_content = format!(
-            "<html><head><title>{}</title></head><body><center><h1>{}</h1></center></body></html>",
-            status_code, status_code
-        );
+        error_page_content = [
+            "<html><head><title>",
+            status_code.as_str(),
+            " ",
+            status_code.canonical_reason().unwrap_or_default(),
+            "</title></head><body><center><h1>",
+            status_code.as_str(),
+            " ",
+            status_code.canonical_reason().unwrap_or_default(),
+            "</h1></center></body></html>",
+        ]
+        .concat();
     }
 
     let mut body = Body::empty();
