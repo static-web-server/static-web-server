@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _**Note:** See changelog for v1 under the [1.x](https://github.com/joseluisq/static-web-server/blob/1.x/CHANGELOG.md) branch._
 
-## [2.0.0-beta.7] - 2021-07-09
+## v2.0.0-beta.7 - 2021-07-09
 
 Seventh and last beta release `v2.0.0-beta.7` with notable changes.
 
@@ -31,7 +31,7 @@ __Codebase__
 
 - [2aa130d](https://github.com/joseluisq/static-web-server/commit/2aa130d) Move source `./public` to `./docker` dir.
 
-## [2.0.0-beta.6] - 2021-07-07
+## v2.0.0-beta.6 - 2021-07-07
 
 Sixth beta release `v2.0.0-beta.6` with notable changes.
 
@@ -77,7 +77,7 @@ __Release notes__
 
 FreeBSD i686/x86_64 binaries are coming in next and last beta release which is very close to the final v2 releasing.
 
-## [2.0.0-beta.5] - 2021-06-22
+## v2.0.0-beta.5 - 2021-06-22
 
 Fifth beta release `v2.0.0-beta.5` with notable changes.
 
@@ -111,7 +111,7 @@ __Refactorings__
 - [77d231c](https://github.com/joseluisq/static-web-server/commit/77d231c) Drop redudant reference on CORS module.
 - [d5189ec](https://github.com/joseluisq/static-web-server/commit/d5189ec) Drop root arc-path on static files module.
 
-## [2.0.0-beta.4] - 2021-06-02
+## v2.0.0-beta.4 - 2021-06-02
 
 Fourth beta release `v2.0.0-beta.4` with notable changes.
 
@@ -141,7 +141,7 @@ __Docs__
 
 All feature flags as well as their equivalent environment variables are described on the updated [README](https://github.com/joseluisq/static-web-server#usage) file.
 
-## [2.0.0-beta.3] - 2021-04-20
+## v2.0.0-beta.3 - 2021-04-20
 
 Third beta release `v2.0.0-beta.3` with notable changes.
 
@@ -167,7 +167,7 @@ __Docs__
 
 - [3c36c9b](https://github.com/joseluisq/static-web-server/commit/3c36c9b) Minor README description improvements.
 
-## [2.0.0-beta.2] - 2021-01-30
+## v2.0.0-beta.2 - 2021-01-30
 
 Second beta release `v2.0.0-beta.2` with notable changes.
 
@@ -207,7 +207,7 @@ __Docs__
 - [933a3c4](https://github.com/joseluisq/static-web-server/commit/933a3c4) Feature documentations updates (also [0ef21c4](https://github.com/joseluisq/static-web-server/commit/0ef21c4))
 - [78033d0](https://github.com/joseluisq/static-web-server/commit/78033d0) CLI arguments and environment variables descriptions.
 
-## [2.0.0-beta.1] - 2021-01-12
+## v2.0.0-beta.1 - 2021-01-12
 
 First major beta release `v2.0.0-beta.1` with notable changes.
 
