@@ -74,8 +74,7 @@ impl RequestHandler {
                     }
 
                     // Append `Cache-Control` headers for web assets
-                    let ext = uri_path.to_lowercase();
-                    control_headers::append_headers(&ext, &mut resp);
+                    control_headers::append_headers(&uri_path, &mut resp);
 
                     // Append security headers
                     if self.opts.security_headers {

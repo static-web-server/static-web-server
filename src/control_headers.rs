@@ -13,18 +13,18 @@ const CACHE_EXT_ONE_YEAR: [&str; 30] = [
 ];
 
 /// It appends a `Cache-Control` header to a response if that one is part of a set of file types.
-pub fn append_headers(ext: &str, resp: &mut Response<Body>) {
+pub fn append_headers(uri: &str, resp: &mut Response<Body>) {
     // Default max-age value in seconds (one day)
     let mut max_age = 60 * 60 * 24_u64;
 
     if CACHE_EXT_ONE_HOUR
         .iter()
-        .any(|x| ext.ends_with(&[".", *x].concat()))
+        .any(|x| uri.ends_with(&[".", *x].concat()))
     {
         max_age = 60 * 60;
     } else if CACHE_EXT_ONE_YEAR
         .iter()
-        .any(|x| ext.ends_with(&[".", *x].concat()))
+        .any(|x| uri.ends_with(&[".", *x].concat()))
     {
         max_age = 60 * 60 * 24 * 365;
     }
