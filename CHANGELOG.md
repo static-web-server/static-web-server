@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _**Note:** See changelog for v2 under the [master](https://github.com/joseluisq/static-web-server/blob/master/CHANGELOG.md) branch._
 
-## [1.17.1] - 2021-06-30
+## v1.17.1 - 2021-06-30
 
 __Fixes__
 
@@ -26,7 +26,7 @@ __Refactorings__
 
 - [34cd35b](https://github.com/joseluisq/static-web-server/commit/34cd35b) Minor config project updates.
 
-## [1.17.0] - 2021-06-21
+## v1.17.0 - 2021-06-21
 
 __Updates__
 
@@ -56,14 +56,14 @@ For more details about it see [Rust Nightly targets supported](https://doc.rust-
 However clarify that the `static-web-server` project is not using any nightly feature but only _**stable Rust**_ ones and also the project is tested against nightly and stable Rust on CI recurrently in order to be notified in case of _"regressions or bugs introduced in Nightly Rust"_. However it is [known](https://stackoverflow.com/a/56067977/2510591) that the nightly compiler is very stable therefore the reason why we have chosen it for release targets via CI like many other popular Rust projects.
 In any case, don't hesitate to file an issue.
 
-## [1.16.0] - 2021-05-26
+## v1.16.0 - 2021-05-26
 
 __Updates__
 
 - [b0593ff](https://github.com/joseluisq/static-web-server/commit/b0593ff) Binaries compiled with latest Rust [1.52.1](https://blog.rust-lang.org/2021/05/10/Rust-1.52.1.html) release.
 - [c96cd48](https://github.com/joseluisq/static-web-server/commit/c96cd48) Update dependencies 26.05.2021
 
-## [1.15.0] - 2021-04-20
+## v1.15.0 - 2021-04-20
 
 __Features__
 
@@ -79,7 +79,7 @@ __Docs__
 
 - [304288c](https://github.com/joseluisq/static-web-server/commit/304288c) Minor README clarifications.
 
-## [1.14.0] - 2021-02-14
+## v1.14.0 - 2021-02-14
 
 __Features__
 
@@ -113,7 +113,7 @@ __Docs__
 
 - [6887624](https://github.com/joseluisq/static-web-server/commit/6887624) Remove whitespace description for CORS option.
 
-## [1.13.0] - 2021-01-24
+## v1.13.0 - 2021-01-24
 
 __Updates__
 
@@ -134,7 +134,7 @@ __Codebase__
 
 - [f3008f3](https://github.com/joseluisq/static-web-server/commit/f3008f3) Github Actions as new CI.
 
-## [1.12.0] - 2021-01-02
+## v1.12.0 - 2021-01-02
 
 __Updates__
 
@@ -163,7 +163,7 @@ __Codebase__
 
 - [7581c99](https://github.com/joseluisq/static-web-server/commit/7581c99) Ignore some project directories.
 
-## [1.11.0] - 2020-10-15
+## v1.11.0 - 2020-10-15
 
 __Updates__
 
@@ -184,7 +184,7 @@ __Codebase__
 
 - [cbe1783](https://github.com/joseluisq/static-web-server/commit/cbe1783) Automate Docker images versioning with Drone pipelines.
 
-## [1.10.0] - 2020-07-07
+## v1.10.0 - 2020-07-07
 
 __Updates__
 
@@ -203,13 +203,13 @@ __Codebase__
 
 - [8e5a3c7](https://github.com/joseluisq/static-web-server/commit/8e5a3c7) Refactor project dev structure.
 
-## [1.9.2] - 2020-06-08
+## v1.9.2 - 2020-06-08
 
 __Bugfixes__
 
 - [034263e](https://github.com/joseluisq/static-web-server/commit/034263e) Fix regression introduced by commit c0d2891 which displays wrong content type `text/plain` instead of `text/html` for 404/50x error pages.
 
-## [1.9.1] - 2020-06-08
+## v1.9.1 - 2020-06-08
 
 __Updates__
 
@@ -227,7 +227,7 @@ __Refactors__
 - [f7564f6](https://github.com/joseluisq/static-web-server/commit/f7564f6) Remove unnecessary `to_string` conversion on server address.
 - [23a6a15](https://github.com/joseluisq/static-web-server/commit/23a6a15) Remove git tag `latest` of release tag target.
 
-## [1.9.0] - 2020-05-09
+## v1.9.0 - 2020-05-09
 
 __Features__
 
@@ -252,7 +252,7 @@ __Codebase__
 - [4bda5f3](https://github.com/joseluisq/static-web-server/commit/4bda5f3) Simplify Gzip middleware.
 - [9a109d7](https://github.com/joseluisq/static-web-server/commit/9a109d7) Staging CI pipeline.
 
-## [1.8.0] - 2020-04-21
+## v1.8.0 - 2020-04-21
 
 __Overview__
 
@@ -314,7 +314,7 @@ __Codebase__
 * [ff4ec6e](https://github.com/joseluisq/static-web-server/commit/ff4ec6e) - Static file unit test cases.
 * [48b92ef](https://github.com/joseluisq/static-web-server/commit/48b92ef) - Skip files of Docker build context.
 
-## [1.7.0] - 2020-04-04
+## v1.7.0 - 2020-04-04
 
 __Features__
 
@@ -329,7 +329,7 @@ __Codebase__
 - [18a6cd5](https://github.com/joseluisq/static-web-server/commit/18a6cd5) - Simplify makefile build tagets. Includes checksum task (also [1c3abdf](https://github.com/joseluisq/static-web-server/commit/1c3abdf))
 - Among other project structural improvements
 
-## [1.6.0] - 2020-03-04
+## v1.6.0 - 2020-03-04
 
 __Features__
 
@@ -353,14 +353,14 @@ __Codebase__
 - [34e0c59](https://github.com/joseluisq/static-web-server/commit/34e0c59) Minor documentation updates.
 
 
-## [1.5.0] - 2020-02-02
+## v1.5.0 - 2020-02-02
 
 __Features__
 
 - [6dc5056](https://github.com/joseluisq/static-web-server/commit/6dc5056) Feat: gzip compression on demand via `accept-encoding` header (PR [#12](https://github.com/joseluisq/static-web-server/pull/12) resolves [#10](https://github.com/joseluisq/static-web-server/issues/10)). 
 - [eaebf82](https://github.com/joseluisq/static-web-server/commit/eaebf82) Feat: Update dependencies Feb 02, 2020. It also resolves [#11](https://github.com/joseluisq/static-web-server/issues/11) `head` request method feature.
 - 
-## [1.4.0] - 2020-01-15
+## v1.4.0 - 2020-01-15
 
 __Features__
 
@@ -375,7 +375,7 @@ __Misc__
 - [a7d55ad](https://github.com/joseluisq/static-web-server/commit/a7d55ad) Fix: Permissions for Rust project directory
 - [86f8d8a](https://github.com/joseluisq/static-web-server/commit/86f8d8a) Feat: Add more sections to Cargo manifest file
 
-## [1.3.0] - 2020-01-07
+## v1.3.0 - 2020-01-07
 
 __Features__
 
@@ -388,7 +388,7 @@ __Misc__
 - [a7a6d61](https://github.com/joseluisq/static-web-server/commit/a7a6d61) Fix tarball and shrinking makefile tasks
 - [56c425a](https://github.com/joseluisq/static-web-server/commit/56c425a) Remove Github release step from Drone pipeline
 
-## [1.2.0] - 2019-12-26
+## v1.2.0 - 2019-12-26
 
 __Features__
 
@@ -404,7 +404,7 @@ __Misc__
 - [593ca98](https://github.com/joseluisq/static-web-server/commit/593ca98) Minor documentation updates
 - [9f63108](https://github.com/joseluisq/static-web-server/commit/9f63108) Disable Travis CI email notifications
 
-## [1.1.0] - 2019-12-25
+## v1.1.0 - 2019-12-25
 
 __Features__
 
@@ -442,7 +442,7 @@ __Refactors__
 - New updated fork dependency [iron-staticfile-middleware](https://github.com/joseluisq/iron-staticfile-middleware)
 - Minor project code base improvements
 
-## [1.0.0] - 2019-11-28
+## v1.0.0 - 2019-11-28
 
 This is the first major release :zap:
 
@@ -451,7 +451,7 @@ __Features__
 - Rust [v1.39.0](https://blog.rust-lang.org/2019/11/07/Rust-1.39.0.html) ([4560ea788](https://github.com/joseluisq/static-web-server/commit/4560ea788) 2019-11-04)
 - Binary size reduction for this current release from `1.6MB` to `1.4MB`.
 
-## [1.0.0-beta.4] - 2019-11-28
+## v1.0.0-beta.4 - 2019-11-28
 
 __Updates__
 
@@ -468,9 +468,9 @@ __Misc__
 
 - Binary size reduction for this current release from `1.6M` to `1.4M`.
 
-## [1.0.0-beta.3] - 2019-10-10
+## v1.0.0-beta.3 - 2019-10-10
 __Features__
 
 - Add [Rust v1.38.0](https://blog.rust-lang.org/2019/09/26/Rust-1.38.0.html) ([625451e](https://github.com/joseluisq/static-web-server/commit/625451e) 2019-09-23) compiling support.
 
-## [1.0.0-beta.2] - 2019-09-05
+## v1.0.0-beta.2 - 2019-09-05
