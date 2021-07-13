@@ -28,7 +28,7 @@
 - Configurable using CLI arguments or environment variables.
 - First-class [Docker](https://docs.docker.com/get-started/overview/) support. [Scratch](https://hub.docker.com/_/scratch) and latest [Alpine Linux](https://hub.docker.com/_/alpine) Docker images available.
 - Ability to accept a socket listener as a file descriptor for use in sandboxing and on-demand applications (E.g [systemd](http://0pointer.de/blog/projects/socket-activation.html)).
-- Cross-platform. Binaries available for Linux, macOS and Windows x86_64 / ARM.
+- Cross-platform. Binaries available for Linux, macOS, Windows & FreeBSD x86_64 / ARM.
 
 ## Releases
 
@@ -70,6 +70,13 @@
   - `x86_64-pc-windows-gnu`
 - **ARM64**
   - ~~`aarch64-pc-windows-msvc`~~ (temporarily disabled until [briansmith/ring#1167](https://github.com/briansmith/ring/issues/1167))
+
+#### FreeBSD
+
+- **x86**
+  - `i686-unknown-freebsd`
+- **x86_64**
+  - `x86_64-unknown-freebsd`
 
 ## Usage
 
