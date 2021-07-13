@@ -42,7 +42,7 @@ impl Server {
             .block_on(async {
                 let r = self.start_server().await;
                 if r.is_err() {
-                    panic!("Server error during start up: {:?}", r.unwrap_err())
+                    panic!("server error during start up: {:?}", r.unwrap_err())
                 }
             });
 
@@ -54,26 +54,28 @@ impl Server {
     async fn start_server(self) -> Result {
         let opts = &self.opts;
 
+        // Initialize logging system
         logger::init(&opts.log_level)?;
 
-        let (tcplistener, addr_string);
+        // Determine TCP listener either file descriptor or TCP socket
+        let (tcp_listener, addr_str);
         match opts.fd {
             Some(fd) => {
-                addr_string = format!("@FD({})", fd);
-                tcplistener = ListenFd::from_env()
+                addr_str = format!("@FD({})", fd);
+                tcp_listener = ListenFd::from_env()
                     .take_tcp_listener(fd)?
-                    .expect("Failed to convert inherited FD into a a TCP listener");
+                    .expect("failed to convert inherited FD into a TCP listener");
                 tracing::info!(
-                    "Converted inherited file descriptor {} to a TCP listener",
+                    "converted inherited file descriptor {} to a TCP listener",
                     fd
                 );
             }
             None => {
                 let ip = opts.host.parse::<IpAddr>()?;
                 let addr = SocketAddr::from((ip, opts.port));
-                tcplistener = TcpListener::bind(addr)?;
-                addr_string = format!("{:?}", addr);
-                tracing::info!("Bound to TCP socket {}", addr_string);
+                tcp_listener = TcpListener::bind(addr)?;
+                addr_str = addr.to_string();
+                tracing::info!("bound to TCP socket {}", addr_str);
             }
         }
 
@@ -125,11 +127,11 @@ impl Server {
             let key_path = opts.http2_tls_key.clone();
 
             tokio::task::spawn(async move {
-                tcplistener
+                tcp_listener
                     .set_nonblocking(true)
-                    .expect("Cannot set non-blocking");
-                let listener = tokio::net::TcpListener::from_std(tcplistener)
-                    .expect("Failed to create tokio::net::TcpListener");
+                    .expect("cannot set non-blocking");
+                let listener = tokio::net::TcpListener::from_std(tcp_listener)
+                    .expect("failed to create tokio::net::TcpListener");
                 let mut incoming = AddrIncoming::from_listener(listener)?;
                 incoming.set_nodelay(true);
 
@@ -145,9 +147,9 @@ impl Server {
                     HyperServer::builder(TlsAcceptor::new(tls, incoming)).serve(router_service);
 
                 tracing::info!(
-                    parent: tracing::info_span!("Server::start_server", ?addr_string, ?threads),
+                    parent: tracing::info_span!("Server::start_server", ?addr_str, ?threads),
                     "listening on https://{}",
-                    addr_string
+                    addr_str
                 );
 
                 server.await
@@ -156,15 +158,15 @@ impl Server {
             // HTTP/1
 
             tokio::task::spawn(async move {
-                let server = HyperServer::from_tcp(tcplistener)
+                let server = HyperServer::from_tcp(tcp_listener)
                     .unwrap()
                     .tcp_nodelay(true)
                     .serve(router_service);
 
                 tracing::info!(
-                    parent: tracing::info_span!("Server::start_server", ?addr_string, ?threads),
+                    parent: tracing::info_span!("Server::start_server", ?addr_str, ?threads),
                     "listening on http://{}",
-                    addr_string
+                    addr_str
                 );
 
                 server.await
