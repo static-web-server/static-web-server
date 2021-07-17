@@ -43,7 +43,7 @@ impl AsRef<Path> for ArcPath {
 pub async fn handle(
     method: &Method,
     headers: &HeaderMap<HeaderValue>,
-    path: impl Into<PathBuf>,
+    base_path: impl Into<PathBuf>,
     uri_path: &str,
     dir_listing: bool,
 ) -> Result<Response<Body>, StatusCode> {
@@ -52,7 +52,7 @@ pub async fn handle(
         return Err(StatusCode::METHOD_NOT_ALLOWED);
     }
 
-    let base = Arc::new(path.into());
+    let base = Arc::new(base_path.into());
     let (filepath, meta, auto_index) = path_from_tail(base, uri_path).await?;
 
     // Directory listing
@@ -190,7 +190,7 @@ async fn read_directory_entries(
         let mut filesize_str = String::from("-");
 
         if meta.is_dir() {
-            name = format!("{}/", name);
+            name += "/";
             dirs_count += 1;
         } else if meta.is_file() {
             filesize_str = meta
@@ -201,7 +201,7 @@ async fn read_directory_entries(
         } else if meta.file_type().is_symlink() {
             let m = tokio::fs::symlink_metadata(entry.path().canonicalize()?).await?;
             if m.is_dir() {
-                name = format!("{}/", name);
+                name += "/";
                 dirs_count += 1;
             } else {
                 filesize_str = meta
@@ -214,7 +214,7 @@ async fn read_directory_entries(
             continue;
         }
 
-        let uri = format!("{}{}", base_path, name);
+        let uri = [base_path, &name].concat();
         let modified = match parse_last_modified(meta.modified()?) {
             Ok(tm) => tm.to_local().strftime("%F %T")?.to_string(),
             Err(err) => {
@@ -240,10 +240,9 @@ async fn read_directory_entries(
     } else {
         "directories"
     };
-    let files_str = if files_count == 1 { "file" } else { "files" };
     let summary_str = format!(
         "<div>{} {}, {} {}</div>",
-        dirs_count, dirs_str, files_count, files_str
+        dirs_count, dirs_str, files_count, "file(s)"
     );
     let style_str = r#"<style>html{background-color:#fff;-moz-osx-font-smoothing:grayscale;-webkit-font-smoothing:antialiased;min-width:20rem;text-rendering:optimizeLegibility;-webkit-text-size-adjust:100%;-moz-text-size-adjust:100%;text-size-adjust:100%}body{padding:1rem;font-family:Consolas,'Liberation Mono',Menlo,monospace;font-size:.875rem;max-width:70rem;margin:0 auto;color:#4a4a4a;font-weight:400;line-height:1.5}h1{margin:0;padding:0;font-size:1.375rem;line-height:1.25;margin-bottom:0.5rem;}table{width:100%}table td{padding:.2rem .5rem;white-space:nowrap;vertical-align:top}table td a{display:inline-block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:95%;vertical-align:top}table tr:hover td{background-color:#f5f5f5}footer{padding-top:0.5rem}</style>"#;
     let footer_str = r#"<footer>Powered by <a target="_blank" href="https://git.io/static-web-server">static-web-server</a> | MIT &amp; Apache 2.0</footer>"#;
@@ -292,7 +291,7 @@ fn file_reply<'a>(
     let (path, meta, auto_index) = res;
     let conditionals = get_conditional_headers(headers);
     TkFile::open(path.clone()).then(move |res| match res {
-        Ok(f) => Either::Left(file_conditional(f, path, meta, auto_index, conditionals)),
+        Ok(file) => Either::Left(file_conditional(file, path, meta, auto_index, conditionals)),
         Err(err) => {
             let status = match err.kind() {
                 io::ErrorKind::NotFound => {
@@ -418,22 +417,22 @@ impl Conditionals {
 }
 
 async fn file_conditional(
-    f: TkFile,
+    file: TkFile,
     path: ArcPath,
     meta: &Metadata,
     auto_index: bool,
     conditionals: Conditionals,
 ) -> Result<Response<Body>, StatusCode> {
-    if !auto_index {
-        Ok(response_body(f, meta, path, conditionals))
-    } else {
-        match f.metadata().await {
-            Ok(meta) => Ok(response_body(f, &meta, path, conditionals)),
+    if auto_index {
+        match file.metadata().await {
+            Ok(meta) => Ok(response_body(file, &meta, path, conditionals)),
             Err(err) => {
                 tracing::debug!("file metadata error: {}", err);
                 Err(StatusCode::INTERNAL_SERVER_ERROR)
             }
         }
+    } else {
+        Ok(response_body(file, meta, path, conditionals))
     }
 }
 
