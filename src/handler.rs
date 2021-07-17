@@ -12,6 +12,7 @@ pub struct RequestHandlerOpts {
     pub dir_listing: bool,
     pub cors: Option<Arc<cors::Configured>>,
     pub security_headers: bool,
+    pub cache_control_headers: bool,
     pub page404: Arc<str>,
     pub page50x: Arc<str>,
 }
@@ -74,7 +75,9 @@ impl RequestHandler {
                     }
 
                     // Append `Cache-Control` headers for web assets
-                    control_headers::append_headers(&uri_path, &mut resp);
+                    if self.opts.cache_control_headers {
+                        control_headers::append_headers(&uri_path, &mut resp);
+                    }
 
                     // Append security headers
                     if self.opts.security_headers {

@@ -102,6 +102,10 @@ impl Server {
         let dir_listing = opts.directory_listing;
         tracing::info!("directory listing: enabled={}", dir_listing);
 
+        // Cache control headers option
+        let cache_control_headers = opts.cache_control_headers;
+        tracing::info!("cache control headers: enabled={}", cache_control_headers);
+
         // CORS option
         let cors = cors::new(opts.cors_allow_origins.trim().to_owned());
 
@@ -113,6 +117,7 @@ impl Server {
                 dir_listing,
                 cors,
                 security_headers,
+                cache_control_headers,
                 page404,
                 page50x,
             },

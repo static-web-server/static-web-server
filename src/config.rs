@@ -131,4 +131,14 @@ pub struct Config {
     /// Headers included: "Strict-Transport-Security: max-age=63072000; includeSubDomains; preload" (2 years max-age),
     /// "X-Frame-Options: DENY", "X-XSS-Protection: 1; mode=block" and "Content-Security-Policy: frame-ancestors 'self'".
     pub security_headers: bool,
+
+    #[structopt(
+        long,
+        short = "e",
+        parse(try_from_str),
+        default_value = "true",
+        env = "SERVER_CACHE_CONTROL_HEADERS"
+    )]
+    /// Enable cache control headers for incoming requests based on a set of file types. The file type list can be found on `src/control_headers.rs` file.
+    pub cache_control_headers: bool,
 }
