@@ -1,10 +1,10 @@
 # Static Web Server [![CI](https://github.com/joseluisq/static-web-server/workflows/CI/badge.svg)](https://github.com/joseluisq/static-web-server/actions?query=workflow%3ACI) [![Docker Image Version (tag latest semver)](https://img.shields.io/docker/v/joseluisq/static-web-server/1)](https://hub.docker.com/r/joseluisq/static-web-server/) [![Docker Image Size (tag)](https://img.shields.io/docker/image-size/joseluisq/static-web-server/1)](https://hub.docker.com/r/joseluisq/static-web-server/tags) [![Docker Image](https://img.shields.io/docker/pulls/joseluisq/static-web-server.svg)](https://hub.docker.com/r/joseluisq/static-web-server/)
 
-**Status:** `v2` under **active** development. For the stable `v1` please refer to [1.x](https://github.com/joseluisq/static-web-server/tree/1.x) branch.
-
 > A blazing fast and asynchronous web server for static files-serving. ⚡
 
 **Static Web Server** (or `SWServer` abbreviated) is a very small and fast production-ready web server suitable to serve static web files or assets.
+
+_**Note:** For `v1` please refer to [1.x](https://github.com/joseluisq/static-web-server/tree/1.x) branch._
 
 ## Features
 
@@ -15,7 +15,7 @@
 - GZip, Deflate or Brotli compression for text-based web files only.
 - Compression on demand via [Accept-Encoding](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Accept-Encoding) header.
 - [Partial Content Delivery](https://en.wikipedia.org/wiki/Byte_serving) support for byte-serving of large files.
-- [Cache Control](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Cache-Control) headers for assets.
+- Optional [Cache Control](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Cache-Control) headers for assets.
 - [HEAD](https://tools.ietf.org/html/rfc7231#section-4.3.2) responses.
 - Lightweight and configurable logging via [tracing](https://github.com/tokio-rs/tracing) crate.
 - [Termination signal](https://www.gnu.org/software/libc/manual/html_node/Termination-Signals.html) handling.
@@ -101,13 +101,14 @@ Server can be configured either via environment variables or their equivalent co
 | `SERVER_COMPRESSION`  | Gzip, Deflate or Brotli compression on demand determined by the *Accept-Encoding* header and applied to text-based web file types only. See [ad-hoc mime-type list](https://github.com/joseluisq/static-web-server/blob/master/src/compression.rs#L20) | Default `true` (enabled) |
 | `SERVER_DIRECTORY_LISTING`  | Enable directory listing for all requests ending with the slash character (‘/’) | Default `false` (disabled) |
 | `SERVER_SECURITY_HEADERS` | Enable security headers by default when HTTP/2 feature is activated. Headers included: `Strict-Transport-Security: max-age=63072000; includeSubDomains; preload` (2 years max-age), `X-Frame-Options: DENY`, `X-XSS-Protection: 1; mode=block` and `Content-Security-Policy: frame-ancestors 'self'` | Default `false` (disabled) |
+| `SERVER_CACHE_CONTROL_HEADERS` | Enable cache control headers for incoming requests based on a set of file types. The file type list can be found on [`src/control_headers.rs`](./src/control_headers.rs) file. | Default `true` (enabled) |
 
 ### Command-line arguments
 
 CLI arguments listed with `static-web-server -h`.
 
 ```
-static-web-server 2.0.0-beta.7
+static-web-server 2.0.0
 Jose Quintana <https://git.io/joseluisq>
 A blazing fast and asynchronous web server for static files-serving.
 
@@ -119,6 +120,9 @@ FLAGS:
     -V, --version    Prints version information
 
 OPTIONS:
+    -e, --cache-control-headers <cache-control-headers>
+            Enable cache control headers for incoming requests based on a set of file types. The file type list can be
+            found on `src/control_headers.rs` file [env: SERVER_CACHE_CONTROL_HEADERS=]  [default: true]
     -x, --compression <compression>
             Gzip, Deflate or Brotli compression on demand determined by the Accept-Encoding header and applied to text-
             based web file types only [env: SERVER_COMPRESSION=]  [default: true]
@@ -156,7 +160,7 @@ OPTIONS:
         --page50x <page50x>
             HTML file path for 50x errors. If path is not specified or simply don't exists then server will use a
             generic HTML error message [env: SERVER_ERROR_PAGE_50X=]  [default: ./public/50x.html]
-    -p, --port <port>                                Host port [env: SERVER_PORT=]  [default: 80]
+    -p, --port <port>                                      Host port [env: SERVER_PORT=]  [default: 80]
     -d, --root <root>
             Root directory path of static files [env: SERVER_ROOT=]  [default: ./public]
 
@@ -188,20 +192,20 @@ useful - especially for testing e.g. `systemfd --no-pid -s http::8091 -- path/to
 
 ```sh
 # Scratch image (just the binary)
-docker run --rm -it -p 8787:80 joseluisq/static-web-server:2.0.0-beta.7
+docker run --rm -it -p 8787:80 joseluisq/static-web-server:2
 
 # Or Alpine image
-docker run --rm -it -p 8787:80 joseluisq/static-web-server:2.0.0-beta.7-alpine
+docker run --rm -it -p 8787:80 joseluisq/static-web-server:2-alpine
 ```
 
 ### Dockerfile
 
 ```Dockerfile
 # Scratch image (just the binary)
-FROM joseluisq/static-web-server:2.0.0-beta.7
+FROM joseluisq/static-web-server:2
 
 # Or Alpine image
-FROM joseluisq/static-web-server:2.0.0-beta.7-alpine
+FROM joseluisq/static-web-server:2-alpine
 ```
 
 ### Docker stack
@@ -213,7 +217,7 @@ version: "3.3"
 
 services:
   web:
-    image: joseluisq/static-web-server:2.0.0-beta.7
+    image: joseluisq/static-web-server:2
     environment:
       # Note: those envs are customizable but also optional
       - SERVER_HOST=127.0.0.1

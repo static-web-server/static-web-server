@@ -7,6 +7,68 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _**Note:** See changelog for v1 under the [1.x](https://github.com/joseluisq/static-web-server/blob/1.x/CHANGELOG.md) branch._
 
+## v2.0.0 - 2021-07-18
+
+The second major stable release is finally available after around half a year of work. It introduces notable changes including new features, performance improvements and new targets support like ARM64 and OSes like FreeBSD.
+
+This version was re-written almost from scratch on top of [Hyper](https://github.com/hyperium/hyper) and [Tokio](https://github.com/tokio-rs/tokio) runtime which give us the [Rust asynchronous ability](https://rust-lang.github.io/async-book/01_getting_started/02_why_async.html) by default and latest HTTP/1 - HTTP/2 implementation improvements.
+However it still try to keep the same principles of its first version: lightness and easy to use. Therefore a migration should not be a big deal.
+
+Your feedback is very appreciated.
+
+### Features
+
+This list only shows new features not present in previous v1.
+
+- Static Web Server is now asynchronous by default powered by latest Hyper and Tokio.
+- It supports opt-in GZip, Deflate and Brotli compression for text-based web files only.
+- HTTP/2 + TLS support (via `--http2` option).
+- [Security headers](https://github.com/joseluisq/static-web-server/pull/44) like STS, CSP and others for HTTP/2 by default.
+- Customizable number of worker threads (via `--threads-multiplier` option).
+- [Redesigned directory listing](https://github.com/joseluisq/static-web-server/pull/41) (via `--directory-listing` option).
+- Cache control header is now optional (via `--cache-control-headers`).
+- Ability to accept a socket listener as a file descriptor for use in sandboxing and on-demand applications (E.g [systemd](http://0pointer.de/blog/projects/socket-activation.html)). Via `--fd` option. Thanks to [@tim-seoss](https://github.com/tim-seoss).
+- Binaries for various i686/x86_64 targets (Linux/Windows/FreeBSD) and ARM/ARM64 (Linux/Macos M1)
+
+For the full list, options details and usage please check it out the [README](./README.md) file.
+
+### Breaking changes
+
+This major version has few breaking changes.
+However a migration should not represent a problem. Please have in mind the following changes:
+
+- The server supports now only a root directory path (via `--root` or its equivalent env) so an assets path option is no longer required.
+- Cache control headers is applied to assets in an arbitrary manner. See [src/control_headers.rs](src/control_headers.rs) for more details.
+- OpenSSL TLS for HTTP/1 is not longer supported instead for the HTTP/2 + TLS (via `--http2` option) the server uses [h2](https://github.com/hyperium/h2) which is on top of [Rustls](https://github.com/ctz/rustls). It means that instead of using a .p12 or .pfx file you can now use only a certificate file along with its private key. More details on [README](./README.md) file.
+
+The rest of known options are equivalent to v1 except the new ones of course.
+However it's worth to always recommend to test this server update first with your applications on a development environment or similar.
+
+Please see the full list of options with their details on the [README](./README.md) file.
+
+---
+
+Changes after the latest `v2.0.0-beta.7` release:
+
+__Performance__
+
+- [157ade1](https://github.com/joseluisq/static-web-server/commit/157ade1) Decrease few allocations during 404/50x error page responses.
+- [941572c](https://github.com/joseluisq/static-web-server/commit/941572c) Reduce few allocations on control headers checking.
+
+__Features__
+
+- [012b626](https://github.com/joseluisq/static-web-server/commit/012b626) Cache control headers optional via `--cache-control-headers`.
+
+__Refactorings__
+
+- [5aa587f](https://github.com/joseluisq/static-web-server/commit/5aa587f) Minor syntax improvements on static file module.
+- [45988db](https://github.com/joseluisq/static-web-server/commit/45988db) Minor style updates on server module.
+
+__Docs__
+
+- [5bcc629](https://github.com/joseluisq/static-web-server/commit/5bcc629) FreeBSD targets description.
+- [dffdf5c](https://github.com/joseluisq/static-web-server/commit/dffdf5c) Changelog support.
+
 ## v2.0.0-beta.7 - 2021-07-09
 
 Seventh and last beta release `v2.0.0-beta.7` with notable changes.
