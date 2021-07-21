@@ -50,6 +50,9 @@ ctrlc = { version = "3.1", features = ["termination"] }
 [target.'cfg(all(target_env = "musl", target_pointer_width = "64"))'.dependencies.jemallocator]
 version = "0.3"
 
+[dev-dependencies]
+bytes = "1.0"
+
 [profile.release]
 opt-level = 3
 lto = "fat"
