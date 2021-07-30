@@ -76,7 +76,7 @@ impl RequestHandler {
 
                     // Append `Cache-Control` headers for web assets
                     if self.opts.cache_control_headers {
-                        control_headers::append_headers(&uri_path, &mut resp);
+                        control_headers::append_headers(uri_path, &mut resp);
                     }
 
                     // Append security headers

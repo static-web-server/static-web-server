@@ -234,7 +234,7 @@ async fn read_directory_entries(
         );
     }
 
-    let current_path = percent_decode_str(&base_path).decode_utf8()?.to_owned();
+    let current_path = percent_decode_str(base_path).decode_utf8()?.to_owned();
     let dirs_str = if dirs_count == 1 {
         "directory"
     } else {
