@@ -46,7 +46,7 @@ jobs:
           # Specific Rust channels 
           - build: pinned
             os: ubuntu-20.04
-            rust: 1.53.0
+            rust: 1.54.0
           - build: stable
             os: ubuntu-20.04
             rust: stable
