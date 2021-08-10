@@ -498,22 +498,21 @@ fn bytes_range(range: Option<Range>, max_len: u64) -> Result<(u64, u64), BadRang
         return Ok((0, max_len));
     };
 
-    let ret = range
+    let res = range
         .iter()
         .map(|(start, end)| {
             let (start, end) = match (start, end) {
                 (Bound::Unbounded, Bound::Unbounded) => (0, max_len),
                 (Bound::Included(a), Bound::Included(b)) => {
-                    // For the special case where e == the file size
-                    let e = if b == max_len { b } else { b + 1 };
-                    (a, e)
+                    // For the special case where b == the file size
+                    (a, if b == max_len { b } else { b + 1 })
                 }
-                (Bound::Included(s), Bound::Unbounded) => (s, max_len),
-                (Bound::Unbounded, Bound::Included(e)) => {
-                    if e > max_len {
+                (Bound::Included(a), Bound::Unbounded) => (a, max_len),
+                (Bound::Unbounded, Bound::Included(b)) => {
+                    if b > max_len {
                         return Err(BadRange);
                     }
-                    (max_len - e, max_len)
+                    (max_len - b, max_len)
                 }
                 _ => unreachable!(),
             };
@@ -527,7 +526,7 @@ fn bytes_range(range: Option<Range>, max_len: u64) -> Result<(u64, u64), BadRang
         })
         .next()
         .unwrap_or(Ok((0, max_len)));
-    ret
+    res
 }
 
 fn file_stream(

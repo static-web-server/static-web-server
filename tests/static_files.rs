@@ -46,7 +46,7 @@ mod tests {
 
         let body = hyper::body::to_bytes(res.body_mut())
             .await
-            .expect("unexpected bytes error during `body` convertion");
+            .expect("unexpected bytes error during `body` conversion");
 
         assert_eq!(body, buf);
     }
@@ -82,27 +82,225 @@ mod tests {
 
         let body = hyper::body::to_bytes(res.body_mut())
             .await
-            .expect("unexpected bytes error during `body` convertion");
+            .expect("unexpected bytes error during `body` conversion");
 
         assert_eq!(body, buf);
     }
 
     #[tokio::test]
     async fn handle_file_not_found() {
-        match static_files::handle(
-            &Method::GET,
-            &HeaderMap::new(),
-            root_dir(),
-            "xyz.html",
-            false,
-        )
-        .await
-        {
-            Ok(_) => {
-                panic!("expected a status error 404 but not status 200")
+        for method in [Method::HEAD, Method::GET] {
+            match static_files::handle(&method, &HeaderMap::new(), root_dir(), "xyz.html", false)
+                .await
+            {
+                Ok(_) => {
+                    panic!("expected a status error 404 but not status 200")
+                }
+                Err(status) => {
+                    assert_eq!(status, StatusCode::NOT_FOUND);
+                }
             }
-            Err(status) => {
-                assert_eq!(status, StatusCode::NOT_FOUND);
+        }
+    }
+
+    #[tokio::test]
+    async fn handle_append_index_on_dir() {
+        let buf = fs::read(root_dir().join("index.html"))
+            .expect("unexpected error during index.html reading");
+        let buf = Bytes::from(buf);
+
+        for method in [Method::HEAD, Method::GET] {
+            for uri in ["", "/"] {
+                match static_files::handle(&method, &HeaderMap::new(), root_dir(), uri, false).await
+                {
+                    Ok(res) => {
+                        assert_eq!(res.status(), 200);
+                        assert_eq!(res.headers()["content-length"], buf.len().to_string());
+                    }
+                    Err(_) => {
+                        panic!("expected a status 200 but not a status error")
+                    }
+                }
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn handle_file_encoded() {
+        let buf = fs::read(root_dir().join("index.html"))
+            .expect("unexpected error during index.html reading");
+        let buf = Bytes::from(buf);
+
+        for method in [Method::HEAD, Method::GET] {
+            match static_files::handle(
+                &method,
+                &HeaderMap::new(),
+                root_dir(),
+                "/index%2ehtml",
+                false,
+            )
+            .await
+            {
+                Ok(res) => {
+                    assert_eq!(res.status(), 200);
+                    assert_eq!(res.headers()["content-length"], buf.len().to_string());
+                }
+                Err(_) => {
+                    panic!("expected a status 200 but not a status error")
+                }
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn handle_bad_encoded_path() {
+        for method in [Method::HEAD, Method::GET] {
+            match static_files::handle(
+                &method,
+                &HeaderMap::new(),
+                root_dir(),
+                "/%2E%2e.html",
+                false,
+            )
+            .await
+            {
+                Ok(_) => {
+                    panic!("expected a status 200 but not a status error")
+                }
+                Err(status) => {
+                    assert_eq!(status, 404);
+                }
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn handle_not_modified() {
+        let buf = fs::read(root_dir().join("index.html"))
+            .expect("unexpected error during index.html reading");
+        let buf = Bytes::from(buf);
+
+        for method in [Method::HEAD, Method::GET] {
+            let res1 = match static_files::handle(
+                &method,
+                &HeaderMap::new(),
+                root_dir(),
+                "index.html",
+                false,
+            )
+            .await
+            {
+                Ok(res) => {
+                    assert_eq!(res.status(), 200);
+                    assert_eq!(res.headers()["content-length"], buf.len().to_string());
+                    res
+                }
+                Err(_) => {
+                    panic!("expected a status 200 but not a status error")
+                }
+            };
+
+            // if-modified-since
+            let mut headers = HeaderMap::new();
+            headers.insert(
+                "if-modified-since",
+                res1.headers()["last-modified"].to_owned(),
+            );
+
+            match static_files::handle(&method, &headers, root_dir(), "index.html", false).await {
+                Ok(mut res) => {
+                    assert_eq!(res.status(), 304);
+                    assert_eq!(res.headers().get("content-length"), None);
+                    let body = hyper::body::to_bytes(res.body_mut())
+                        .await
+                        .expect("unexpected bytes error during `body` conversion");
+                    assert_eq!(body, "");
+                }
+                Err(_) => {
+                    panic!("expected a status 304 but not a status error")
+                }
+            }
+
+            // clearly too old
+            let mut headers = HeaderMap::new();
+            headers.insert(
+                "if-modified-since",
+                "Mon, 18 Nov 1974 00:00:00 GMT".parse().unwrap(),
+            );
+
+            match static_files::handle(&method, &headers, root_dir(), "index.html", false).await {
+                Ok(mut res) => {
+                    assert_eq!(res.status(), 200);
+                    let body = hyper::body::to_bytes(res.body_mut())
+                        .await
+                        .expect("unexpected bytes error during `body` conversion");
+                    assert_eq!(body, buf);
+                    assert_eq!(res1.headers()["content-length"], buf.len().to_string());
+                }
+                Err(_) => {
+                    panic!("expected a status 200 but not a status error")
+                }
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn handle_precondition() {
+        for method in [Method::HEAD, Method::GET] {
+            let res1 = match static_files::handle(
+                &method,
+                &HeaderMap::new(),
+                root_dir(),
+                "index.html",
+                false,
+            )
+            .await
+            {
+                Ok(res) => {
+                    assert_eq!(res.status(), 200);
+                    res
+                }
+                Err(_) => {
+                    panic!("expected a status 200 but not a status error")
+                }
+            };
+
+            // if-unmodified-since
+            let mut headers = HeaderMap::new();
+            headers.insert(
+                "if-unmodified-since",
+                res1.headers()["last-modified"].to_owned(),
+            );
+
+            match static_files::handle(&method, &headers, root_dir(), "index.html", false).await {
+                Ok(res) => {
+                    assert_eq!(res.status(), 200);
+                }
+                Err(_) => {
+                    panic!("expected a status 200 but not a status error")
+                }
+            }
+
+            // clearly too old
+            let mut headers = HeaderMap::new();
+            headers.insert(
+                "if-unmodified-since",
+                "Mon, 18 Nov 1974 00:00:00 GMT".parse().unwrap(),
+            );
+
+            match static_files::handle(&method, &headers, root_dir(), "index.html", false).await {
+                Ok(mut res) => {
+                    assert_eq!(res.status(), 412);
+
+                    let body = hyper::body::to_bytes(res.body_mut())
+                        .await
+                        .expect("unexpected bytes error during `body` conversion");
+
+                    assert_eq!(body, "");
+                }
+                Err(_) => {
+                    panic!("expected a status 200 but not a status error")
+                }
             }
         }
     }
@@ -146,7 +344,7 @@ mod tests {
 
                         let body = hyper::body::to_bytes(res.body_mut())
                             .await
-                            .expect("unexpected bytes error during `body` convertion");
+                            .expect("unexpected bytes error during `body` conversion");
 
                         assert_eq!(body, buf);
                     }
@@ -219,21 +417,23 @@ mod tests {
             .expect("unexpected error during index.html reading");
         let buf = Bytes::from(buf);
 
-        match static_files::handle(&Method::GET, &headers, root_dir(), "index.html", false).await {
-            Ok(mut res) => {
-                assert_eq!(res.status(), 206);
-                assert_eq!(
-                    res.headers()["content-range"],
-                    format!("bytes 100-200/{}", buf.len())
-                );
-                assert_eq!(res.headers()["content-length"], "101");
-                let body = hyper::body::to_bytes(res.body_mut())
-                    .await
-                    .expect("unexpected bytes error during `body` convertion");
-                assert_eq!(body, &buf[100..=200]);
-            }
-            Err(_) => {
-                panic!("expected a normal response rather than a status error")
+        for method in [Method::HEAD, Method::GET] {
+            match static_files::handle(&method, &headers, root_dir(), "index.html", false).await {
+                Ok(mut res) => {
+                    assert_eq!(res.status(), 206);
+                    assert_eq!(
+                        res.headers()["content-range"],
+                        format!("bytes 100-200/{}", buf.len())
+                    );
+                    assert_eq!(res.headers()["content-length"], "101");
+                    let body = hyper::body::to_bytes(res.body_mut())
+                        .await
+                        .expect("unexpected bytes error during `body` conversion");
+                    assert_eq!(body, &buf[100..=200]);
+                }
+                Err(_) => {
+                    panic!("expected a normal response rather than a status error")
+                }
             }
         }
     }
@@ -247,21 +447,23 @@ mod tests {
             .expect("unexpected error during index.html reading");
         let buf = Bytes::from(buf);
 
-        match static_files::handle(&Method::GET, &headers, root_dir(), "index.html", false).await {
-            Ok(mut res) => {
-                assert_eq!(res.status(), 416);
-                assert_eq!(
-                    res.headers()["content-range"],
-                    format!("bytes */{}", buf.len())
-                );
-                assert_eq!(res.headers().get("content-length"), None);
-                let body = hyper::body::to_bytes(res.body_mut())
-                    .await
-                    .expect("unexpected bytes error during `body` convertion");
-                assert_eq!(body, "");
-            }
-            Err(_) => {
-                panic!("expected a normal response rather than a status error")
+        for method in [Method::HEAD, Method::GET] {
+            match static_files::handle(&method, &headers, root_dir(), "index.html", false).await {
+                Ok(mut res) => {
+                    assert_eq!(res.status(), 416);
+                    assert_eq!(
+                        res.headers()["content-range"],
+                        format!("bytes */{}", buf.len())
+                    );
+                    assert_eq!(res.headers().get("content-length"), None);
+                    let body = hyper::body::to_bytes(res.body_mut())
+                        .await
+                        .expect("unexpected bytes error during `body` conversion");
+                    assert_eq!(body, "");
+                }
+                Err(_) => {
+                    panic!("expected a normal response rather than a status error")
+                }
             }
         }
     }
@@ -276,14 +478,16 @@ mod tests {
             .expect("unexpected error during index.html reading");
         let buf = Bytes::from(buf);
 
-        match static_files::handle(&Method::GET, &headers, root_dir(), "index.html", false).await {
-            Ok(res) => {
-                assert_eq!(res.status(), 200);
-                assert_eq!(res.headers()["content-length"], buf.len().to_string());
-                assert_eq!(res.headers().get("content-range"), None);
-            }
-            Err(_) => {
-                panic!("expected a normal response rather than a status error")
+        for method in [Method::HEAD, Method::GET] {
+            match static_files::handle(&method, &headers, root_dir(), "index.html", false).await {
+                Ok(res) => {
+                    assert_eq!(res.status(), 200);
+                    assert_eq!(res.headers()["content-length"], buf.len().to_string());
+                    assert_eq!(res.headers().get("content-range"), None);
+                }
+                Err(_) => {
+                    panic!("expected a normal response rather than a status error")
+                }
             }
         }
     }
@@ -297,24 +501,26 @@ mod tests {
             .expect("unexpected error during index.html reading");
         let buf = Bytes::from(buf);
 
-        match static_files::handle(&Method::GET, &headers, root_dir(), "index.html", false).await {
-            Ok(mut res) => {
-                assert_eq!(res.status(), 206);
-                assert_eq!(
-                    res.headers()["content-range"],
-                    format!("bytes 100-{}/{}", buf.len() - 1, buf.len())
-                );
-                assert_eq!(
-                    res.headers()["content-length"],
-                    &buf[100..].len().to_string()
-                );
-                let body = hyper::body::to_bytes(res.body_mut())
-                    .await
-                    .expect("unexpected bytes error during `body` convertion");
-                assert_eq!(body, &buf[100..]);
-            }
-            Err(_) => {
-                panic!("expected a normal response rather than a status error")
+        for method in [Method::HEAD, Method::GET] {
+            match static_files::handle(&method, &headers, root_dir(), "index.html", false).await {
+                Ok(mut res) => {
+                    assert_eq!(res.status(), 206);
+                    assert_eq!(
+                        res.headers()["content-range"],
+                        format!("bytes 100-{}/{}", buf.len() - 1, buf.len())
+                    );
+                    assert_eq!(
+                        res.headers()["content-length"],
+                        &buf[100..].len().to_string()
+                    );
+                    let body = hyper::body::to_bytes(res.body_mut())
+                        .await
+                        .expect("unexpected bytes error during `body` conversion");
+                    assert_eq!(body, &buf[100..]);
+                }
+                Err(_) => {
+                    panic!("expected a normal response rather than a status error")
+                }
             }
         }
     }
@@ -328,21 +534,23 @@ mod tests {
             .expect("unexpected error during index.html reading");
         let buf = Bytes::from(buf);
 
-        match static_files::handle(&Method::GET, &headers, root_dir(), "index.html", false).await {
-            Ok(mut res) => {
-                assert_eq!(res.status(), 206);
-                assert_eq!(
-                    res.headers()["content-range"],
-                    format!("bytes {}-{}/{}", buf.len() - 100, buf.len() - 1, buf.len())
-                );
-                assert_eq!(res.headers()["content-length"], "100");
-                let body = hyper::body::to_bytes(res.body_mut())
-                    .await
-                    .expect("unexpected bytes error during `body` convertion");
-                assert_eq!(body, &buf[buf.len() - 100..]);
-            }
-            Err(_) => {
-                panic!("expected a normal response rather than a status error")
+        for method in [Method::HEAD, Method::GET] {
+            match static_files::handle(&method, &headers, root_dir(), "index.html", false).await {
+                Ok(mut res) => {
+                    assert_eq!(res.status(), 206);
+                    assert_eq!(
+                        res.headers()["content-range"],
+                        format!("bytes {}-{}/{}", buf.len() - 100, buf.len() - 1, buf.len())
+                    );
+                    assert_eq!(res.headers()["content-length"], "100");
+                    let body = hyper::body::to_bytes(res.body_mut())
+                        .await
+                        .expect("unexpected bytes error during `body` conversion");
+                    assert_eq!(body, &buf[buf.len() - 100..]);
+                }
+                Err(_) => {
+                    panic!("expected a normal response rather than a status error")
+                }
             }
         }
     }
@@ -356,21 +564,23 @@ mod tests {
             .expect("unexpected error during index.html reading");
         let buf = Bytes::from(buf);
 
-        match static_files::handle(&Method::GET, &headers, root_dir(), "index.html", false).await {
-            Ok(mut res) => {
-                assert_eq!(res.status(), 416);
-                assert_eq!(
-                    res.headers()["content-range"],
-                    format!("bytes */{}", buf.len())
-                );
-                assert_eq!(res.headers().get("content-length"), None);
-                let body = hyper::body::to_bytes(res.body_mut())
-                    .await
-                    .expect("unexpected bytes error during `body` convertion");
-                assert_eq!(body, "");
-            }
-            Err(_) => {
-                panic!("expected a normal response rather than a status error")
+        for method in [Method::HEAD, Method::GET] {
+            match static_files::handle(&method, &headers, root_dir(), "index.html", false).await {
+                Ok(mut res) => {
+                    assert_eq!(res.status(), 416);
+                    assert_eq!(
+                        res.headers()["content-range"],
+                        format!("bytes */{}", buf.len())
+                    );
+                    assert_eq!(res.headers().get("content-length"), None);
+                    let body = hyper::body::to_bytes(res.body_mut())
+                        .await
+                        .expect("unexpected bytes error during `body` conversion");
+                    assert_eq!(body, "");
+                }
+                Err(_) => {
+                    panic!("expected a normal response rather than a status error")
+                }
             }
         }
     }
@@ -387,21 +597,23 @@ mod tests {
             format!("bytes=-{}", buf.len() + 1).parse().unwrap(),
         );
 
-        match static_files::handle(&Method::GET, &headers, root_dir(), "index.html", false).await {
-            Ok(mut res) => {
-                assert_eq!(res.status(), 416);
-                assert_eq!(
-                    res.headers()["content-range"],
-                    format!("bytes */{}", buf.len())
-                );
-                assert_eq!(res.headers().get("content-length"), None);
-                let body = hyper::body::to_bytes(res.body_mut())
-                    .await
-                    .expect("unexpected bytes error during `body` convertion");
-                assert_eq!(body, "");
-            }
-            Err(_) => {
-                panic!("expected a normal response rather than a status error")
+        for method in [Method::HEAD, Method::GET] {
+            match static_files::handle(&method, &headers, root_dir(), "index.html", false).await {
+                Ok(mut res) => {
+                    assert_eq!(res.status(), 416);
+                    assert_eq!(
+                        res.headers()["content-range"],
+                        format!("bytes */{}", buf.len())
+                    );
+                    assert_eq!(res.headers().get("content-length"), None);
+                    let body = hyper::body::to_bytes(res.body_mut())
+                        .await
+                        .expect("unexpected bytes error during `body` conversion");
+                    assert_eq!(body, "");
+                }
+                Err(_) => {
+                    panic!("expected a normal response rather than a status error")
+                }
             }
         }
     }
@@ -416,16 +628,18 @@ mod tests {
         // Range::Unbounded for beginning and end
         headers.insert("range", "bytes=".parse().unwrap());
 
-        match static_files::handle(&Method::GET, &headers, root_dir(), "index.html", false).await {
-            Ok(mut res) => {
-                assert_eq!(res.status(), 200);
-                let body = hyper::body::to_bytes(res.body_mut())
-                    .await
-                    .expect("unexpected bytes error during `body` convertion");
-                assert_eq!(body, buf);
-            }
-            Err(_) => {
-                panic!("expected a normal response rather than a status error")
+        for method in [Method::HEAD, Method::GET] {
+            match static_files::handle(&method, &headers, root_dir(), "index.html", false).await {
+                Ok(mut res) => {
+                    assert_eq!(res.status(), 200);
+                    let body = hyper::body::to_bytes(res.body_mut())
+                        .await
+                        .expect("unexpected bytes error during `body` conversion");
+                    assert_eq!(body, buf);
+                }
+                Err(_) => {
+                    panic!("expected a normal response rather than a status error")
+                }
             }
         }
     }
@@ -440,24 +654,26 @@ mod tests {
         // range including end of file (non-inclusive result)
         headers.insert("range", format!("bytes=100-{}", buf.len()).parse().unwrap());
 
-        match static_files::handle(&Method::GET, &headers, root_dir(), "index.html", false).await {
-            Ok(mut res) => {
-                assert_eq!(res.status(), 206);
-                assert_eq!(
-                    res.headers()["content-range"],
-                    format!("bytes 100-{}/{}", buf.len() - 1, buf.len())
-                );
-                assert_eq!(
-                    res.headers()["content-length"],
-                    format!("{}", buf.len() - 100)
-                );
-                let body = hyper::body::to_bytes(res.body_mut())
-                    .await
-                    .expect("unexpected bytes error during `body` convertion");
-                assert_eq!(body, &buf[100..=buf.len() - 1]);
-            }
-            Err(_) => {
-                panic!("expected a normal response rather than a status error")
+        for method in [Method::HEAD, Method::GET] {
+            match static_files::handle(&method, &headers, root_dir(), "index.html", false).await {
+                Ok(mut res) => {
+                    assert_eq!(res.status(), 206);
+                    assert_eq!(
+                        res.headers()["content-range"],
+                        format!("bytes 100-{}/{}", buf.len() - 1, buf.len())
+                    );
+                    assert_eq!(
+                        res.headers()["content-length"],
+                        format!("{}", buf.len() - 100)
+                    );
+                    let body = hyper::body::to_bytes(res.body_mut())
+                        .await
+                        .expect("unexpected bytes error during `body` conversion");
+                    assert_eq!(body, &buf[100..=buf.len() - 1]);
+                }
+                Err(_) => {
+                    panic!("expected a normal response rather than a status error")
+                }
             }
         }
     }
@@ -475,24 +691,26 @@ mod tests {
             format!("bytes=100-{}", buf.len() - 1).parse().unwrap(),
         );
 
-        match static_files::handle(&Method::GET, &headers, root_dir(), "index.html", false).await {
-            Ok(mut res) => {
-                assert_eq!(res.status(), 206);
-                assert_eq!(
-                    res.headers()["content-range"],
-                    format!("bytes 100-{}/{}", buf.len() - 1, buf.len())
-                );
-                assert_eq!(
-                    res.headers()["content-length"],
-                    format!("{}", buf.len() - 100)
-                );
-                let body = hyper::body::to_bytes(res.body_mut())
-                    .await
-                    .expect("unexpected bytes error during `body` convertion");
-                assert_eq!(body, &buf[100..=buf.len() - 1]);
-            }
-            Err(_) => {
-                panic!("expected a normal response rather than a status error")
+        for method in [Method::HEAD, Method::GET] {
+            match static_files::handle(&method, &headers, root_dir(), "index.html", false).await {
+                Ok(mut res) => {
+                    assert_eq!(res.status(), 206);
+                    assert_eq!(
+                        res.headers()["content-range"],
+                        format!("bytes 100-{}/{}", buf.len() - 1, buf.len())
+                    );
+                    assert_eq!(
+                        res.headers()["content-length"],
+                        format!("{}", buf.len() - 100)
+                    );
+                    let body = hyper::body::to_bytes(res.body_mut())
+                        .await
+                        .expect("unexpected bytes error during `body` conversion");
+                    assert_eq!(body, &buf[100..=buf.len() - 1]);
+                }
+                Err(_) => {
+                    panic!("expected a normal response rather than a status error")
+                }
             }
         }
     }
