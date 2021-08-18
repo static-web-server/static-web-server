@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _**Note:** See changelog for v1 under the [1.x](https://github.com/joseluisq/static-web-server/blob/1.x/CHANGELOG.md) branch._
 
+## v2.0.1 - 2021-08-18
+
+__Fixes__
+
+* [2459ec4](https://github.com/joseluisq/static-web-server/commit/2459ec4) Return incorrect first bytes range when final bytes are requested. For example a request using `Range: bytes=-10` header returned incorrectly the first 10 bytes rather than the last 10 ones.
+
+__Updates__
+
+* [122e1bd](https://github.com/joseluisq/static-web-server/commit/122e1bd) Update dependencies including Hyper and Tokio bug fixes, Brotli, Serde and related crates (also [0b413f9](https://github.com/joseluisq/static-web-server/commit/0b413f9), [fa130fa](https://github.com/joseluisq/static-web-server/commit/fa130fa), [167e1de](https://github.com/joseluisq/static-web-server/commit/167e1de), [fa32375](https://github.com/joseluisq/static-web-server/commit/fa32375), [2d1c5f3](https://github.com/joseluisq/static-web-server/commit/2d1c5f3))
+
+__Refactorings__
+
+* [8fc1812](https://github.com/joseluisq/static-web-server/commit/8fc1812) Remove needless borrow on static file and handle modules.
+* [27f5687](https://github.com/joseluisq/static-web-server/commit/27f5687) UTF-8 for default Docker `index.html` file.
+* [ffb2e54](https://github.com/joseluisq/static-web-server/commit/ffb2e54) Update Rust stable to 1.54.0 on CI.
+
+__Tests__
+
+* [5cdcffc](https://github.com/joseluisq/static-web-server/commit/5cdcffc) More directory listing test cases.
+* [c7e8ec9](https://github.com/joseluisq/static-web-server/commit/c7e8ec9) More static files test cases.
+* [37f2371](https://github.com/joseluisq/static-web-server/commit/37f2371) More static file methods and compression test cases.
+* [dd7f995](https://github.com/joseluisq/static-web-server/commit/dd7f995) More static file test cases for during request handling.
+
+__Docs__
+
+* [f389cbc](https://github.com/joseluisq/static-web-server/commit/f389cbc) Minor badges and link updates.
+
 ## v2.0.0 - 2021-07-18
 
 The second major stable release is finally available after around half a year of work. It introduces notable changes including new features, performance improvements and new targets support like ARM64 and OSes like FreeBSD.

@@ -9,7 +9,7 @@ platform:
 
 steps:
 - name: test
-  image: joseluisq/rust-linux-darwin-builder:1.53.0
+  image: joseluisq/rust-linux-darwin-builder:1.54.0
   volumes:
     - name: cargo-target
       path: /drone/src/target
