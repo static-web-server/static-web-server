@@ -56,7 +56,7 @@ pub fn run(opts: Options) {
                 None => &opts.host,
             };
             let handler =
-                Chain::new(HttpToHttpsRedirect::new(&host_redirect, opts.port).permanent());
+                Chain::new(HttpToHttpsRedirect::new(host_redirect, opts.port).permanent());
             match Iron::new(handler).http(addr_redirect) {
                 Ok(listening) => running_servers.push(RunningServer {
                     listening,
