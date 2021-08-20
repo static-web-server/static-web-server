@@ -84,7 +84,7 @@ Server can be configured either via environment variables or their equivalent co
 CLI arguments listed with `static-web-server -h`.
 
 ```
-static-web-server 1.17.1
+static-web-server 1.18.0
 A blazing fast static files-serving web server powered by Rust Iron
 
 USAGE:

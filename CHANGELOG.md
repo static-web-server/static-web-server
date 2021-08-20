@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _**Note:** See changelog for v2 under the [master](https://github.com/joseluisq/static-web-server/blob/master/CHANGELOG.md) branch._
 
+## v1.18.0 - 2021-08-20
+
+__Updates__
+
+- [806a276](https://github.com/joseluisq/static-web-server/commit/806a276) Update dependencies including OpenSSL, httparse and related crates.
+
+__Refactorings__
+
+- [c9e7222](https://github.com/joseluisq/static-web-server/commit/c9e7222) Cross-platform `ctrl-c` signal handling including Windows support.
+- [3c7d9f6](https://github.com/joseluisq/static-web-server/commit/3c7d9f6) Remove needless borrow on server module.
+
+__Docs__
+
+- [5a14787](https://github.com/joseluisq/static-web-server/commit/5a14787) Changelog support for v1. PR [#50](https://github.com/joseluisq/static-web-server/pull/50)
+
 ## v1.17.1 - 2021-06-30
 
 __Fixes__
