@@ -83,8 +83,6 @@ steps:
     build_args:
       - SERVER_VERSION=${DRONE_TAG##v}
     auto_tag: true
-    auto_tag_aliases:
-      - latest
 
 - name: publish-alpine
   image: joseluisq/drone-docker
@@ -116,8 +114,6 @@ steps:
     build_args:
       - SERVER_VERSION=${DRONE_TAG##v}
     auto_tag: true
-    auto_tag_aliases:
-      - latest
 
 trigger:
   ref:
