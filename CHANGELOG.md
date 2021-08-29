@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _**Note:** See changelog for v1 under the [1.x](https://github.com/joseluisq/static-web-server/blob/1.x/CHANGELOG.md) branch._
 
+
+## v2.0.2 - 2021-08-29
+
+__Fixes__
+
+* [ab83e2a](https://github.com/joseluisq/static-web-server/commit/ab83e2a) Update dependencies including Hyper, h2, httparse bug fixes. Tokio leak fix and related crates (also [adb8ca6](https://github.com/joseluisq/static-web-server/commit/adb8ca6))
+
 ## v2.0.1 - 2021-08-18
 
 __Fixes__
