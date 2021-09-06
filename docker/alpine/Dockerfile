@@ -19,7 +19,6 @@ COPY ./docker/alpine/entrypoint.sh /
 COPY ./docker/public /public
 
 EXPOSE 80
-VOLUME ["/public"]
 ENTRYPOINT ["/entrypoint.sh"]
 CMD ["static-web-server"]
 

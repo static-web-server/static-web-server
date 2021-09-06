@@ -15,7 +15,6 @@ COPY --from=latest /usr/local/bin/static-web-server /
 COPY ./docker/public /public
 
 EXPOSE 80
-VOLUME ["/public"]
 ENTRYPOINT ["/static-web-server"]
 
 # Metadata
