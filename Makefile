@@ -117,10 +117,18 @@ fmt:
 	@cargo fmt --all
 .PHONY: fmt
 
+docker.image:
+	@echo "Creating Docker Scratch image..."
+	@docker build \
+		--rm=true -f ./docker/scratch/Dockerfile \
+		--build-arg SERVER_VERSION="${PKG_TAG}" -t joseluisq/${PKG_NAME}:devel . --pull=true
+.PHONY: docker.image
+
 docker.image.alpine:
+	@echo "Creating Docker Alpine image..."
 	@docker build \
 		--rm=true -f ./docker/alpine/Dockerfile \
-		--build-arg SERVER_VERSION="alpine" -t ${PKG_NAME}:alpine . --pull=true
+		--build-arg SERVER_VERSION="${PKG_TAG}" -t joseluisq/${PKG_NAME}:devel-alpine . --pull=true
 .PHONY: docker.image.alpine
 
 
