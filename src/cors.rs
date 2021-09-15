@@ -11,13 +11,12 @@ pub struct Cors {
     allowed_headers: HashSet<HeaderName>,
     max_age: Option<u64>,
     allowed_methods: HashSet<http::Method>,
-    origins_str: String,
     origins: Option<HashSet<HeaderValue>>,
 }
 
 /// It builds a new CORS instance.
 pub fn new(origins_str: String) -> Option<Arc<Configured>> {
-    let cors = Cors::new(origins_str.clone());
+    let cors = Cors::new();
     let cors = if origins_str.is_empty() {
         None
     } else if origins_str == "*" {
@@ -41,13 +40,12 @@ pub fn new(origins_str: String) -> Option<Arc<Configured>> {
 
 impl Cors {
     /// Creates a new Cors instance.
-    pub fn new(origins_str: String) -> Self {
+    pub fn new() -> Self {
         Self {
             origins: None,
             allowed_headers: HashSet::new(),
             allowed_methods: HashSet::new(),
             max_age: None,
-            origins_str,
         }
     }
 
@@ -121,7 +119,7 @@ impl Cors {
 
 impl Default for Cors {
     fn default() -> Self {
-        Self::new("*".to_owned())
+        Self::new()
     }
 }
 
