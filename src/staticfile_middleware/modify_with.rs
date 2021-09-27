@@ -17,7 +17,7 @@ impl<M> AfterMiddleware for ModifyWith<M>
 where
     M: Clone + Modifier<Response> + Send + Sync + 'static,
 {
-    fn after(&self, _req: &mut Request, mut res: Response) -> IronResult<Response> {
+    fn after(&self, _req: &mut Request<'_, '_>, mut res: Response) -> IronResult<Response> {
         self.modifier.clone().modify(&mut res);
         Ok(res)
     }

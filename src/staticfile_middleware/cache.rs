@@ -1,11 +1,10 @@
-use std::time::Duration;
-use std::{cmp, u32};
-
 use iron::headers::{CacheControl, CacheDirective};
 use iron::modifier::Modifier;
 use iron::modifiers::Header;
 use iron::prelude::*;
 use iron::status;
+use std::time::Duration;
+use std::{cmp, u32};
 
 /// Sets the Cache-Control header for successful responses.
 #[derive(Debug, Copy, Clone)]

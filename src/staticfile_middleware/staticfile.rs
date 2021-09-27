@@ -82,7 +82,7 @@ impl Staticfile {
 }
 
 impl Handler for Staticfile {
-    fn handle(&self, req: &mut Request) -> IronResult<Response> {
+    fn handle(&self, req: &mut Request<'_, '_>) -> IronResult<Response> {
         // Accept only HEAD and GET methods
         if !(req.method == Method::Head || req.method == Method::Get) {
             return Ok(Response::with(status::MethodNotAllowed));
@@ -318,9 +318,9 @@ fn parse_last_modified(modified: SystemTime) -> Result<time::Tm, Box<dyn error::
 
 #[cfg(test)]
 mod test {
-    extern crate hyper;
-    extern crate iron_test;
-    extern crate tempfile;
+    use hyper;
+    use iron_test;
+    use tempfile;
 
     use super::*;
 

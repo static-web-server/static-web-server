@@ -1,11 +1,8 @@
+#![deny(warnings)]
+#![deny(rust_2018_idioms)]
+
 #[macro_use]
 extern crate log;
-
-extern crate iron;
-extern crate mime;
-extern crate mime_guess;
-extern crate time;
-extern crate url;
 
 pub mod config;
 pub mod error_page;

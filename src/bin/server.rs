@@ -1,8 +1,9 @@
+#![deny(warnings)]
+#![deny(rust_2018_idioms)]
+
 #[cfg(all(target_env = "musl", target_pointer_width = "64"))]
 #[global_allocator]
 static ALLOC: jemallocator::Jemalloc = jemallocator::Jemalloc;
-
-extern crate static_web_server;
 
 use static_web_server::{server, Options};
 use structopt::StructOpt;
@@ -13,9 +14,9 @@ fn main() {
 
 #[cfg(test)]
 mod test {
-    extern crate hyper;
-    extern crate iron_test;
-    extern crate tempfile;
+    use hyper;
+    use iron_test;
+    use tempfile;
 
     use super::*;
     use static_web_server::config::Options;

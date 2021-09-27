@@ -1,7 +1,6 @@
 use iron::headers::ContentType;
 use iron::prelude::*;
 use iron::AfterMiddleware;
-
 use mime::Mime;
 
 /// Attempts to guess the content type of the response based on the
@@ -26,7 +25,7 @@ impl Default for GuessContentType {
 }
 
 impl AfterMiddleware for GuessContentType {
-    fn after(&self, req: &mut Request, mut res: Response) -> IronResult<Response> {
+    fn after(&self, req: &mut Request<'_, '_>, mut res: Response) -> IronResult<Response> {
         match res.headers.get::<ContentType>() {
             Some(_) => {}
             None => {

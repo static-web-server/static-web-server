@@ -15,7 +15,7 @@ impl Rewrite {
 }
 
 impl iron::BeforeMiddleware for Rewrite {
-    fn before(&self, req: &mut Request) -> IronResult<()> {
+    fn before(&self, req: &mut Request<'_, '_>) -> IronResult<()> {
         let should_rewrite = {
             let request_path = req.url.path();
             self.from

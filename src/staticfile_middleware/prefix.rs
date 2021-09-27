@@ -35,7 +35,7 @@ impl<M> AfterMiddleware for Prefix<M>
 where
     M: Clone + Modifier<Response> + Send + Sync + 'static,
 {
-    fn after(&self, req: &mut Request, mut res: Response) -> IronResult<Response> {
+    fn after(&self, req: &mut Request<'_, '_>, mut res: Response) -> IronResult<Response> {
         if self.prefix_matches(&req.url.path()) {
             self.modifier.clone().modify(&mut res);
         }

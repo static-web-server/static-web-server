@@ -9,7 +9,7 @@ use crate::staticfile_middleware::helpers;
 pub struct GzipMiddleware;
 
 impl AfterMiddleware for GzipMiddleware {
-    fn after(&self, req: &mut Request, mut resp: Response) -> IronResult<Response> {
+    fn after(&self, req: &mut Request<'_, '_>, mut resp: Response) -> IronResult<Response> {
         // Skip Gzip compression for HEAD requests
         if req.method == iron::method::Head {
             return Ok(resp);

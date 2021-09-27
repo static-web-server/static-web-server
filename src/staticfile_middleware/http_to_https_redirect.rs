@@ -33,7 +33,7 @@ impl HttpToHttpsRedirect {
 }
 
 impl iron::Handler for HttpToHttpsRedirect {
-    fn handle(&self, req: &mut Request) -> IronResult<Response> {
+    fn handle(&self, req: &mut Request<'_, '_>) -> IronResult<Response> {
         let mut url: url::Url = req.url.clone().into();
 
         url.set_scheme("https")

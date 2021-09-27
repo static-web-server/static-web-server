@@ -33,7 +33,7 @@ impl ErrorPage {
 }
 
 impl AfterMiddleware for ErrorPage {
-    fn after(&self, req: &mut Request, mut resp: Response) -> IronResult<Response> {
+    fn after(&self, req: &mut Request<'_, '_>, mut resp: Response) -> IronResult<Response> {
         let content_type = "text/html"
             .parse::<mime::Mime>()
             .expect("Unable to create a default content type header");

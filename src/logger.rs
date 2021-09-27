@@ -46,7 +46,7 @@ pub fn log_server(msg: &str) {
 pub struct Logger;
 
 impl AfterMiddleware for Logger {
-    fn after(&self, req: &mut Request, res: Response) -> IronResult<Response> {
+    fn after(&self, req: &mut Request<'_, '_>, res: Response) -> IronResult<Response> {
         info!(
             "Request [{}] {} - {}",
             req.method,
