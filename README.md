@@ -1,6 +1,8 @@
 # Static Web Server [![CI](https://github.com/joseluisq/static-web-server/workflows/CI/badge.svg?branch=1.x)](https://github.com/joseluisq/static-web-server/actions?query=workflow%3ACI) [![Docker Image Version (tag latest semver)](https://img.shields.io/docker/v/joseluisq/static-web-server/1)](https://hub.docker.com/r/joseluisq/static-web-server/) [![Docker Image Size (tag)](https://img.shields.io/docker/image-size/joseluisq/static-web-server/1)](https://hub.docker.com/r/joseluisq/static-web-server/tags) [![Docker Image](https://img.shields.io/docker/pulls/joseluisq/static-web-server.svg)](https://hub.docker.com/r/joseluisq/static-web-server/)
 
-*This is the stable `v1`. For the `v2` upcoming refer to [master](https://github.com/joseluisq/static-web-server) branch.*
+*This is the stable `v1`. For the `v2` refer to [master](https://github.com/joseluisq/static-web-server) branch.*
+
+_To migrate to `v2` please take a look at [v2.0.0](https://github.com/joseluisq/static-web-server/releases/tag/v2.0.0) release._
 
 > A blazing fast static files-serving web server powered by [Rust Iron](https://github.com/iron/iron). ⚡
 
