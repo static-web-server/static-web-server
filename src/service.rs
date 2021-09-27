@@ -26,7 +26,7 @@ impl<T> Service<T> for RouterService {
     type Error = Infallible;
     type Future = Ready<Result<Self::Response, Self::Error>>;
 
-    fn poll_ready(&mut self, _: &mut Context) -> Poll<Result<(), Self::Error>> {
+    fn poll_ready(&mut self, _: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         Poll::Ready(Ok(()))
     }
 
@@ -45,7 +45,7 @@ impl Service<Request<Body>> for RequestService {
     type Error = Error;
     type Future = Pin<Box<dyn Future<Output = Result<Response<Body>, Error>> + Send + 'static>>;
 
-    fn poll_ready(&mut self, _: &mut Context) -> Poll<Result<(), Error>> {
+    fn poll_ready(&mut self, _: &mut Context<'_>) -> Poll<Result<(), Error>> {
         Poll::Ready(Ok(()))
     }
 
