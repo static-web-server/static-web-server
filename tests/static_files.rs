@@ -1,4 +1,5 @@
 #![deny(warnings)]
+#![deny(rust_2018_idioms)]
 
 #[cfg(test)]
 mod tests {
@@ -8,7 +9,6 @@ mod tests {
     use std::fs;
     use std::path::PathBuf;
 
-    extern crate static_web_server;
     use static_web_server::{compression, static_files};
 
     fn root_dir() -> PathBuf {

@@ -1,4 +1,5 @@
 #![deny(warnings)]
+#![deny(rust_2018_idioms)]
 
 #[cfg(test)]
 mod tests {
@@ -6,7 +7,6 @@ mod tests {
     use http::{Method, StatusCode};
     use std::path::PathBuf;
 
-    extern crate static_web_server;
     use static_web_server::static_files;
 
     fn root_dir() -> PathBuf {
