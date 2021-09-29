@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _**Note:** See changelog for v1 under the [1.x](https://github.com/joseluisq/static-web-server/blob/1.x/CHANGELOG.md) branch._
 
+## v2.0.3 - 2021-09-29
+
+__Fixes__
+
+* [5de5874](https://github.com/joseluisq/static-web-server/commit/5de5874) Update dependencies including Hyper, Tokio, http, futures, tracing bug fixes and related crates (also [1c6c873](https://github.com/joseluisq/static-web-server/commit/1c6c873) [34efa49](https://github.com/joseluisq/static-web-server/commit/34efa49), [6fb832b](https://github.com/joseluisq/static-web-server/commit/6fb832b))
+
+__Refactorings__
+
+- [b2f09ab](https://github.com/joseluisq/static-web-server/commit/b2f09ab) Remove optional extra Docker volume `/public` of `scratch` and `alpine` images. PR [#52](https://github.com/joseluisq/static-web-server/pull/52) resolves [#51](https://github.com/joseluisq/static-web-server/issues/51) reported by [@bergi9](https://github.com/bergi9).
+- [906106f](https://github.com/joseluisq/static-web-server/commit/906106f) Remove never read `origins_str` field on Cors module.
+- [6f7a6bc](https://github.com/joseluisq/static-web-server/commit/6f7a6bc) Fix Rust edition idioms.
+
+__Tests__
+
+* [166e869](https://github.com/joseluisq/static-web-server/commit/166e869) More Cors test cases.
 
 ## v2.0.2 - 2021-08-29
 
