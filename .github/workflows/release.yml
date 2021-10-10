@@ -73,7 +73,7 @@ jobs:
           target: i686-unknown-linux-musl
         - build: linux-musl-arm64
           os: ubuntu-20.04
-          rust: nightly
+          rust: stable
           target: aarch64-unknown-linux-musl
         - build: linux-gnu
           os: ubuntu-20.04
