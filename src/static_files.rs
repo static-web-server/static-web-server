@@ -2,8 +2,8 @@
 // -> Most of the file is borrowed from https://github.com/seanmonstar/warp/blob/master/src/filters/fs.rs
 
 use bytes::{Bytes, BytesMut};
-use futures::future::Either;
-use futures::{future, ready, stream, FutureExt, Stream, StreamExt, TryFutureExt};
+use futures_util::future::Either;
+use futures_util::{future, ready, stream, FutureExt, Stream, StreamExt, TryFutureExt};
 use headers::{
     AcceptRanges, ContentLength, ContentRange, ContentType, HeaderMap, HeaderMapExt, HeaderValue,
     IfModifiedSince, IfRange, IfUnmodifiedSince, LastModified, Range,
