@@ -46,6 +46,7 @@ humansize = "1.1"
 time = "0.1"
 listenfd = "0.3"
 ctrlc = { version = "3.1", features = ["termination"] }
+bcrypt = "0.10"
 
 [target.'cfg(all(target_env = "musl", target_pointer_width = "64"))'.dependencies.jemallocator]
 version = "0.3"

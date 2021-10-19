@@ -4,6 +4,7 @@
 #[macro_use]
 extern crate anyhow;
 
+pub mod basic_auth;
 pub mod compression;
 pub mod config;
 pub mod control_headers;
