@@ -102,13 +102,14 @@ Server can be configured either via environment variables or their equivalent co
 | `SERVER_DIRECTORY_LISTING`  | Enable directory listing for all requests ending with the slash character (‘/’) | Default `false` (disabled) |
 | `SERVER_SECURITY_HEADERS` | Enable security headers by default when HTTP/2 feature is activated. Headers included: `Strict-Transport-Security: max-age=63072000; includeSubDomains; preload` (2 years max-age), `X-Frame-Options: DENY`, `X-XSS-Protection: 1; mode=block` and `Content-Security-Policy: frame-ancestors 'self'` | Default `false` (disabled) |
 | `SERVER_CACHE_CONTROL_HEADERS` | Enable cache control headers for incoming requests based on a set of file types. The file type list can be found on [`src/control_headers.rs`](./src/control_headers.rs) file. | Default `true` (enabled) |
+| `SERVER_BASIC_AUTH` | It provides [The "Basic" HTTP Authentication Scheme](https://datatracker.ietf.org/doc/html/rfc7617) using credentials as `user-id:password` pairs, encoded using `Base64`. Password must be encoded using the [BCrypt](https://en.wikipedia.org/wiki/Bcrypt) password-hashing function. | Default empty (disabled) |
 
 ### Command-line arguments
 
 CLI arguments listed with `static-web-server -h`.
 
 ```
-static-web-server 2.0.2
+static-web-server 2.0.3
 Jose Quintana <https://git.io/joseluisq>
 A blazing fast and asynchronous web server for static files-serving.
 
@@ -120,6 +121,9 @@ FLAGS:
     -V, --version    Prints version information
 
 OPTIONS:
+        --basic-auth <basic-auth>
+            It provides The "Basic" HTTP Authentication scheme using credentials as "user-id:password" pairs. Password
+            must be encoded using the "BCrypt" password-hashing function [env: SERVER_BASIC_AUTH=]  [default: ]
     -e, --cache-control-headers <cache-control-headers>
             Enable cache control headers for incoming requests based on a set of file types. The file type list can be
             found on `src/control_headers.rs` file [env: SERVER_CACHE_CONTROL_HEADERS=]  [default: true]
@@ -243,7 +247,7 @@ networks:
 
 Unless you explicitly state otherwise, any contribution intentionally submitted for inclusion in current work by you, as defined in the Apache-2.0 license, shall be dual licensed as described below, without any additional terms or conditions.
 
-Feel free to send some [Pull request](https://github.com/joseluisq/static-web-server/pulls) or [issue](https://github.com/joseluisq/static-web-server/issues).
+Feel free to send some [Pull request](https://github.com/joseluisq/static-web-server/pulls) or file an [issue](https://github.com/joseluisq/static-web-server/issues).
 
 ## License
 
