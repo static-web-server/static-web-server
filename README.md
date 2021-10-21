@@ -1,17 +1,39 @@
-# Static Web Server [![CI](https://github.com/joseluisq/static-web-server/workflows/CI/badge.svg)](https://github.com/joseluisq/static-web-server/actions?query=workflow%3ACI) [![Docker Image Version (tag latest semver)](https://img.shields.io/docker/v/joseluisq/static-web-server/2)](https://hub.docker.com/r/joseluisq/static-web-server/) [![Docker Image Size (tag)](https://img.shields.io/docker/image-size/joseluisq/static-web-server/2)](https://hub.docker.com/r/joseluisq/static-web-server/tags) [![Docker Image](https://img.shields.io/docker/pulls/joseluisq/static-web-server.svg)](https://hub.docker.com/r/joseluisq/static-web-server/)
+<div>
+  <div align="center">
+    <img
+      src="https://camo.githubusercontent.com/a08032a2db94aea229991af8f73c45cc95174c8066dc7a6b1f88a79c94cf1093/68747470733a2f2f75706c6f61642e77696b696d656469612e6f72672f77696b6970656469612f636f6d6d6f6e732f7468756d622f642f64352f527573745f70726f6772616d6d696e675f6c616e67756167655f626c61636b5f6c6f676f2e7376672f3130323470782d527573745f70726f6772616d6d696e675f6c616e67756167655f626c61636b5f6c6f676f2e7376672e706e67"
+      height="100" width="100"
+    />
+  </div>
 
-> A blazing fast and asynchronous web server for static files-serving. ⚡
+  <h1 align="center">Static Web Server</h1>
 
-**Static Web Server** (or `SWServer` abbreviated) is a very small and fast production-ready web server suitable to serve static web files or assets.
+  <h4 align="center">
+    A blazing fast and asynchronous web server for static files-serving ⚡
+  </h4>
 
-_**Note:** For `v1` please refer to [1.x](https://github.com/joseluisq/static-web-server/tree/1.x) branch._
+<div align="center">
+
+  [![CI](https://github.com/joseluisq/static-web-server/workflows/CI/badge.svg)](https://github.com/joseluisq/static-web-server/actions?query=workflow%3ACI) [![Docker Image Version (tag latest semver)](https://img.shields.io/docker/v/joseluisq/static-web-server/2)](https://hub.docker.com/r/joseluisq/static-web-server/) [![Docker Image Size (tag)](https://img.shields.io/docker/image-size/joseluisq/static-web-server/2)](https://hub.docker.com/r/joseluisq/static-web-server/tags) [![Docker Image](https://img.shields.io/docker/pulls/joseluisq/static-web-server.svg)](https://hub.docker.com/r/joseluisq/static-web-server/)
+
+</div>
+
+  <p align="center">
+    <strong>Static Web Server</strong> (or <code>SWS</code> abbreviated) is a very small and fast production-ready web server suitable to serve static web files or assets.
+  </p>
+</div>
+
+#### Notes
+
+- For `v1` please refer to [1.x](https://github.com/joseluisq/static-web-server/tree/1.x) branch.
+- To migrate from `v1` please take a look at [v2.0.0](https://github.com/joseluisq/static-web-server/releases/tag/v2.0.0) release.
 
 ## Features
 
 - Built with [Rust](https://rust-lang.org) which is focused on [safety, speed, and concurrency](https://kornel.ski/rust-c-speed).
 - Memory safety and very reduced CPU and RAM overhead.
 - Blazing fast static files-serving and asynchronous powered by latest [Hyper](https://github.com/hyperium/hyper/), [Tokio](https://github.com/tokio-rs/tokio) and a set of [awesome crates](./Cargo.toml).
-- Single __4MB__ and fully static binary with no dependencies ([Musl libc](https://doc.rust-lang.org/edition-guide/rust-2018/platform-and-target-support/musl-support-for-fully-static-binaries.html)). Suitable for running on [any Linux distro](https://en.wikipedia.org/wiki/Linux_distribution) or [Docker container](https://hub.docker.com/r/joseluisq/static-web-server/tags).
+- Single __4MB__ (uncompressed) and fully static binary with no dependencies ([Musl libc](https://doc.rust-lang.org/edition-guide/rust-2018/platform-and-target-support/musl-support-for-fully-static-binaries.html)). Suitable for running on [any Linux distro](https://en.wikipedia.org/wiki/Linux_distribution) or [Docker container](https://hub.docker.com/r/joseluisq/static-web-server/tags).
 - Optional GZip, Deflate or Brotli compression for text-based web files only.
 - Compression on demand via [Accept-Encoding](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Accept-Encoding) header.
 - [Partial Content Delivery](https://en.wikipedia.org/wiki/Byte_serving) support for byte-serving of large files.
@@ -24,6 +46,7 @@ _**Note:** For `v1` please refer to [1.x](https://github.com/joseluisq/static-we
 - Customizable number of worker threads.
 - Optional directory listing.
 - [CORS](https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS) support.
+- Basic HTTP Authentication.
 - Default and custom error pages.
 - Configurable using CLI arguments or environment variables.
 - First-class [Docker](https://docs.docker.com/get-started/overview/) support. [Scratch](https://hub.docker.com/_/scratch) and latest [Alpine Linux](https://hub.docker.com/_/alpine) Docker images available.
@@ -38,7 +61,7 @@ _**Note:** For `v1` please refer to [1.x](https://github.com/joseluisq/static-we
 
 ### Release binaries
 
-[github.com/joseluisq/static-web-server/releases](https://github.com/joseluisq/static-web-server/releases).
+[github.com/joseluisq/static-web-server/releases](https://github.com/joseluisq/static-web-server/releases)
 
 #### Linux
 
@@ -87,9 +110,9 @@ Server can be configured either via environment variables or their equivalent co
 | Variable | Description | Default |
 | --- | --- | --- |
 | `SERVER_HOST` | Host address (E.g 127.0.0.1). | Default `[::]`. |
-| `SERVER_PORT` | Host port. | Default `80`. |
+| `SERVER_PORT` | Host port | Default `80`. |
 | `SERVER_LISTEN_FD` | Optional file descriptor number (e.g. `0`) to inherit an already-opened TCP listener on (instead of using `SERVER_HOST` and/or `SERVER_PORT` ). |
-| `SERVER_ROOT` | Root directory path of static | Default `./public`. |
+| `SERVER_ROOT` | Root directory path of static files | Default `./public`. |
 | `SERVER_LOG_LEVEL`          | Specify a logging level in lower case. (Values `error`, `warn`, `info`, `debug`, `trace`). | Default `error` |
 | `SERVER_ERROR_PAGE_404`     | HTML file path for 404 errors. | If path is not specified or simply don't exists then server will use a generic HTML error message. Default `./public/404.html`. |
 | `SERVER_ERROR_PAGE_50X`     | HTML file path for 50x errors. | If path is not specified or simply don't exists then server will use a generic HTML error message. Default `./public/50x.html`  |
