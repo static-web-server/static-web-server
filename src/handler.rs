@@ -1,8 +1,9 @@
-use http::StatusCode;
-use hyper::{Body, Request, Response};
+use hyper::{header::WWW_AUTHENTICATE, Body, Request, Response, StatusCode};
 use std::{future::Future, path::PathBuf, sync::Arc};
 
-use crate::{compression, control_headers, cors, error_page, security_headers, static_files};
+use crate::{
+    basic_auth, compression, control_headers, cors, error_page, security_headers, static_files,
+};
 use crate::{Error, Result};
 
 /// It defines options for a request handler.
@@ -15,6 +16,7 @@ pub struct RequestHandlerOpts {
     pub cache_control_headers: bool,
     pub page404: Arc<str>,
     pub page50x: Arc<str>,
+    pub basic_auth: Arc<str>,
 }
 
 /// It defines the main request handler used by the Hyper service request.
@@ -40,11 +42,11 @@ impl RequestHandler {
             if self.opts.cors.is_some() {
                 let cors = self.opts.cors.as_ref().unwrap();
                 match cors.check_request(method, headers) {
-                    Ok(r) => {
-                        tracing::debug!("cors ok: {:?}", r);
+                    Ok(res) => {
+                        tracing::debug!("cors ok: {:?}", res);
                     }
-                    Err(e) => {
-                        tracing::debug!("cors error kind: {:?}", e);
+                    Err(err) => {
+                        tracing::error!("cors error kind: {:?}", err);
                         return error_page::error_response(
                             method,
                             &StatusCode::FORBIDDEN,
@@ -55,6 +57,36 @@ impl RequestHandler {
                 };
             }
 
+            // `Basic` HTTP Authorization Schema
+            if !self.opts.basic_auth.is_empty() {
+                if let Some((user_id, password)) = self.opts.basic_auth.split_once(':') {
+                    if let Err(err) = basic_auth::check_request(headers, user_id, password) {
+                        tracing::warn!("basic authentication failed {:?}", err);
+                        let mut resp = error_page::error_response(
+                            method,
+                            &StatusCode::UNAUTHORIZED,
+                            self.opts.page404.as_ref(),
+                            self.opts.page50x.as_ref(),
+                        )?;
+                        resp.headers_mut().insert(
+                            WWW_AUTHENTICATE,
+                            "Basic realm=\"Static Web Server\", charset=\"UTF-8\""
+                                .parse()
+                                .unwrap(),
+                        );
+                        return Ok(resp);
+                    }
+                } else {
+                    tracing::error!("invalid basic authentication `user_id:password` pairs");
+                    return error_page::error_response(
+                        method,
+                        &StatusCode::INTERNAL_SERVER_ERROR,
+                        self.opts.page404.as_ref(),
+                        self.opts.page50x.as_ref(),
+                    );
+                }
+            }
+
             // Static files
             match static_files::handle(method, headers, root_dir, uri_path, dir_listing).await {
                 Ok(mut resp) => {
@@ -63,7 +95,7 @@ impl RequestHandler {
                         resp = match compression::auto(method, headers, resp) {
                             Ok(res) => res,
                             Err(err) => {
-                                tracing::debug!("error during body compression: {:?}", err);
+                                tracing::error!("error during body compression: {:?}", err);
                                 return error_page::error_response(
                                     method,
                                     &StatusCode::INTERNAL_SERVER_ERROR,

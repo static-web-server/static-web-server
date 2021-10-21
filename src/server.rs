@@ -109,6 +109,9 @@ impl Server {
         // CORS option
         let cors = cors::new(opts.cors_allow_origins.trim().to_owned());
 
+        // `Basic` HTTP Authorization Schema option
+        let basic_auth = Arc::from(opts.basic_auth.trim());
+
         // Create a service router for Hyper
         let router_service = RouterService::new(RequestHandler {
             opts: RequestHandlerOpts {
@@ -120,6 +123,7 @@ impl Server {
                 cache_control_headers,
                 page404,
                 page50x,
+                basic_auth,
             },
         });
 

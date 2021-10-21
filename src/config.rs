@@ -141,4 +141,8 @@ pub struct Config {
     )]
     /// Enable cache control headers for incoming requests based on a set of file types. The file type list can be found on `src/control_headers.rs` file.
     pub cache_control_headers: bool,
+
+    /// It provides The "Basic" HTTP Authentication scheme using credentials as "user-id:password" pairs. Password must be encoded using the "BCrypt" password-hashing function.
+    #[structopt(long, default_value = "", env = "SERVER_BASIC_AUTH")]
+    pub basic_auth: String,
 }
