@@ -17,7 +17,7 @@ keywords = [
     "docker-image"
 ]
 categories = ["network-programming", "web-programming::http-server"]
-edition = "2018"
+edition = "2021"
 include = ["src/**/*", "Cargo.toml", "Cargo.lock"]
 
 [[bin]]
