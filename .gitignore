@@ -13,7 +13,6 @@
 **/*.gz
 **/.DS_Store
 **/*.env
-**/*.svg
 **/*.data*
 **/*.zst
 **/*.out*
@@ -23,3 +22,4 @@ release
 TODO
 
 !sample.env
+!/docs

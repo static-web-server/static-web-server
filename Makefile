@@ -249,6 +249,10 @@ prod.release.version:
 	git push
 .ONESHELL: prod.release.version
 
+docs-dev:
+	@docker run --rm -it -p 8088:8000 -v $(PWD):/docs squidfunk/mkdocs-material
+.PHONY: docs-dev
+
 promote:
 	@drone build promote joseluisq/static-web-server $(BUILD) $(ENV)
 .PHONY: promote
