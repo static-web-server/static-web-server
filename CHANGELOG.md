@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _**Note:** See changelog for v1 under the [1.x](https://github.com/joseluisq/static-web-server/blob/1.x/CHANGELOG.md) branch._
 
+## v2.1.0 - 2021-10-23
+
+__Fixes__
+
+* [5f3842b](https://github.com/joseluisq/static-web-server/commit/5f3842b) Update dependencies including Hyper, Tokio, h2, futures, tracing bug/security fixes and related crates (also [5528bcb](https://github.com/joseluisq/static-web-server/commit/5528bcb), [dc98fbb](https://github.com/joseluisq/static-web-server/commit/dc98fbb)).
+* [62e98c6](https://github.com/joseluisq/static-web-server/commit/62e98c6) `aarch64-unknown-linux-musl` build fails using Rust nightly.
+
+__Features__
+
+- [abc76a8](https://github.com/joseluisq/static-web-server/commit/abc76a8) Basic HTTP Authentication support via the new `--basic-auth` option. PR [#55](https://github.com/joseluisq/static-web-server/pull/55) resolves [#53](https://github.com/joseluisq/static-web-server/issues/53) suggested by [@bjornharrtell](https://github.com/bjornharrtell).
+
+__Refactorings__
+
+- [0273611](https://github.com/joseluisq/static-web-server/commit/0273611) Prefer `futures-util` over `futures` dependency.
+- [c3bfa68](https://github.com/joseluisq/static-web-server/commit/c3bfa68) Use [Rust 1.56.0 (2021 Edition)](https://blog.rust-lang.org/2021/10/21/Rust-1.56.0.html) on CI.
+
+__Docs__
+
+- [f89c5c9](https://github.com/joseluisq/static-web-server/commit/f89c5c9) Describe Basic HTTP Authentication feature.
+- [a6d0e53](https://github.com/joseluisq/static-web-server/commit/a6d0e53) Minor general description improvements.
+
 ## v2.0.3 - 2021-09-29
 
 __Fixes__

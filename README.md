@@ -132,7 +132,7 @@ Server can be configured either via environment variables or their equivalent co
 CLI arguments listed with `static-web-server -h`.
 
 ```
-static-web-server 2.0.3
+static-web-server 2.1.0
 Jose Quintana <https://git.io/joseluisq>
 A blazing fast and asynchronous web server for static files-serving.
 
