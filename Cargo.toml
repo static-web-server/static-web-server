@@ -10,11 +10,14 @@ keywords = [
     "static-web-server",
     "file-server",
     "http-server",
+    "docker-image",
+    "musl-libc",
+    "x86",
+    "x86-64",
+    "arm64",
     "linux",
     "darwin",
-    "musl-libc",
-    "x86-64",
-    "docker-image"
+    "windows",
 ]
 categories = ["network-programming", "web-programming::http-server"]
 edition = "2021"
@@ -25,28 +28,28 @@ name = "static-web-server"
 path = "src/bin/server.rs"
 
 [dependencies]
-hyper = { version = "0.14", features = ["stream", "http1", "http2", "tcp", "server"] }
-tokio = { version = "1", features = ["rt-multi-thread", "macros", "fs", "io-util"], default-features = false }
-tokio-util = { version = "0.6", features = ["io"] }
+anyhow = "1.0"
 async-compression = { version = "0.3", features = ["brotli", "deflate", "gzip", "tokio"] }
+bcrypt = "0.10"
+bytes = "1.0"
+ctrlc = { version = "3.1", features = ["termination"] }
+futures-util = { version = "0.3", default-features = false, features = ["sink"] }
 headers = { git = "https://github.com/joseluisq/hyper-headers.git", branch = "headers_encoding" }
 http = "0.2"
-futures-util = { version = "0.3", default-features = false, features = ["sink"] }
-anyhow = "1.0"
+humansize = "1.1"
+hyper = { version = "0.14", features = ["stream", "http1", "http2", "tcp", "server"] }
+listenfd = "0.3"
+mime_guess = "2.0"
+num_cpus = { version = "1.13" }
+percent-encoding = "2.1"
+pin-project = "1.0"
+structopt = { version = "0.3", default-features = false }
+time = "0.1"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "fs", "io-util"], default-features = false }
+tokio-rustls = { version = "0.22" }
+tokio-util = { version = "0.6", features = ["io"] }
 tracing = "0.1"
 tracing-subscriber = "0.2"
-mime_guess = "2.0"
-bytes = "1.0"
-percent-encoding = "2.1"
-structopt = { version = "0.3", default-features = false }
-num_cpus = { version = "1.13" }
-pin-project = "1.0"
-tokio-rustls = { version = "0.22" }
-humansize = "1.1"
-time = "0.1"
-listenfd = "0.3"
-ctrlc = { version = "3.1", features = ["termination"] }
-bcrypt = "0.10"
 
 [target.'cfg(all(target_env = "musl", target_pointer_width = "64"))'.dependencies.jemallocator]
 version = "0.3"
@@ -55,10 +58,10 @@ version = "0.3"
 bytes = "1.0"
 
 [profile.release]
-opt-level = 3
-lto = "fat"
 codegen-units = 1
-panic = "abort"
 debug = false
-rpath = false
 debug-assertions = false
+lto = "fat"
+opt-level = 3
+panic = "abort"
+rpath = false
