@@ -19,18 +19,18 @@ theme:
   palette:
     - scheme: default
       primary: black
-      accent: indigo
+      accent: blue
       toggle:
         icon: material/toggle-switch-off-outline
         name: Switch to dark mode
     - scheme: slate
       primary: black
-      accent: grey
+      accent: blue
       toggle:
         icon: material/toggle-switch
         name: Switch to light mode
   font:
-    text: 'Fira Sans'
+    text: 'Open Sans'
     code: 'Droid Sans Mono'
   favicon: https://camo.githubusercontent.com/a08032a2db94aea229991af8f73c45cc95174c8066dc7a6b1f88a79c94cf1093/68747470733a2f2f75706c6f61642e77696b696d656469612e6f72672f77696b6970656469612f636f6d6d6f6e732f7468756d622f642f64352f527573745f70726f6772616d6d696e675f6c616e67756167655f626c61636b5f6c6f676f2e7376672f3130323470782d527573745f70726f6772616d6d696e675f6c616e67756167655f626c61636b5f6c6f676f2e7376672e706e67
 
@@ -42,29 +42,55 @@ extra:
       link: 'https://twitter.com/joseluis_q'
 
 markdown_extensions:
-    - codehilite
-    - admonition
-    - meta
-    - toc:
-        permalink: true
-    - markdown.extensions.tables
-    - pymdownx.arithmatex
-    - pymdownx.betterem
-    - pymdownx.caret
-    - pymdownx.critic
-    - pymdownx.details
-    - pymdownx.emoji:
-        emoji_generator: !!python/name:pymdownx.emoji.to_svg
-    - pymdownx.magiclink:
-        repo_url_shortener: true
-        repo_url_shorthand: true
-        provider: "github"
-        user: "facelessuser"
-        repo: "pymdown-extensions"
-    - pymdownx.tilde
-    - pymdownx.emoji
-    - pymdownx.superfences
-    - pymdownx.inlinehilite
-    - pymdownx.mark
-    - pymdownx.smartsymbols
-    - pymdownx.tasklist
+  - codehilite
+  - admonition
+  - meta
+  - attr_list
+  - footnotes
+  - tables
+  - toc:
+      permalink: true
+  - markdown.extensions.tables
+  - pymdownx.arithmatex
+  - pymdownx.betterem
+  - pymdownx.critic
+  - pymdownx.caret
+  - pymdownx.keys
+  - pymdownx.mark
+  - pymdownx.tilde
+  - pymdownx.details
+  - pymdownx.emoji:
+      emoji_generator: !!python/name:pymdownx.emoji.to_svg
+  - pymdownx.magiclink:
+      repo_url_shortener: true
+      repo_url_shorthand: true
+      provider: "github"
+      user: "facelessuser"
+      repo: "pymdown-extensions"
+  - pymdownx.emoji
+  - pymdownx.superfences
+  - pymdownx.inlinehilite
+  - pymdownx.smartsymbols
+  - pymdownx.tasklist
+
+nav:
+  - 'Overview': 'index.md'
+  - 'Download and Install': 'download-and-install.md'
+  - 'Getting Started': 'getting-started.md'
+  - 'Configuration':
+    - 'Command Line Arguments': 'configuration/command-line-arguments.md'
+    - 'Environment Variables': 'configuration/environment-variables.md'
+  - 'Examples':
+    - 'HTTP/1': 'examples/http1.md'
+    - 'HTTP/2 and TLS': 'examples/http2-tls.md'
+    - 'Logging': 'examples/logging.md'
+    - 'Compression': 'examples/compression.md'
+    - 'Basic Authentication': 'examples/basic-authentication.md'
+    - 'Directory Listing': 'examples/directory-listing.md'
+    - 'Docker': 'examples/docker.md'
+    - 'File Descriptor Socket Passing': './examples/file-descriptor-socket-passing.md'
+  - 'Platforms & Architectures': 'platforms-architectures.md'
+  - 'Changelog v2': 'changelog-v2.md'
+  - 'Changelog v1': 'changelog-v1.md'
+  - 'Contributions': 'contributions.md'
+  - 'License': 'license.md'
