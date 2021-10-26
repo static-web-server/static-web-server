@@ -4,7 +4,7 @@ Server can be configured via the following environment variables arguments.
 
 !!! tip "Remember"
     - Environment variables are equivalent to their command-line arguments.
-    - [Command line arguments](./environment-variables.md) take precedence over their environment variables.
+    - [Command line arguments](./command-line-arguments.md) take precedence over their environment variables.
 
 ### SERVER_HOST
 The address of the host (E.g 127.0.0.1). Default `[::]`.
@@ -52,7 +52,7 @@ Enable directory listing for all requests ending with the slash character (â€˜/â
 Enable security headers by default when HTTP/2 feature is activated. Headers included: `Strict-Transport-Security: max-age=63072000; includeSubDomains; preload` (2 years max-age), `X-Frame-Options: DENY`, `X-XSS-Protection: 1; mode=block` and `Content-Security-Policy: frame-ancestors 'self'`. Default `false` (disabled).
 
 ### SERVER_CACHE_CONTROL_HEADERS
-Enable cache control headers for incoming requests based on a set of file types. The file type list can be found on [`src/control_headers.rs`](./src/control_headers.rs) file. Default `true` (enabled).
+Enable cache control headers for incoming requests based on a set of file types. The file type list can be found on [`src/control_headers.rs`](https://github.com/joseluisq/static-web-server/blob/master//src/control_headers.rs) file. Default `true` (enabled).
 
 ### SERVER_BASIC_AUTH
 It provides [The "Basic" HTTP Authentication Scheme](https://datatracker.ietf.org/doc/html/rfc7617) using credentials as `user-id:password` pairs, encoded using `Base64`. Password must be encoded using the [BCrypt](https://en.wikipedia.org/wiki/Bcrypt) password-hashing function. Default empty (disabled).

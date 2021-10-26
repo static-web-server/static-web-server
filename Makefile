@@ -250,7 +250,7 @@ prod.release.version:
 .ONESHELL: prod.release.version
 
 docs-dev:
-	@docker run --rm -it -p 8088:8000 -v $(PWD):/docs squidfunk/mkdocs-material
+	@docker-compose -f docs/docker-compose.yml up --build
 .PHONY: docs-dev
 
 promote:

@@ -100,7 +100,7 @@ This list only shows new features not present in previous v1.
 - Ability to accept a socket listener as a file descriptor for use in sandboxing and on-demand applications (E.g [systemd](http://0pointer.de/blog/projects/socket-activation.html)). Via `--fd` option. Thanks to [@tim-seoss](https://github.com/tim-seoss).
 - Binaries for various i686/x86_64 targets (Linux/Windows/FreeBSD) and ARM/ARM64 (Linux/Macos M1)
 
-For the full list, options details and usage please check it out the [README](./README.md) file.
+For the full list, options details and usage please check it out the [README](https://github.com/joseluisq/static-web-server/blob/master/README.md) file.
 
 ### Breaking changes
 
@@ -108,13 +108,13 @@ This major version has few breaking changes.
 However a migration should not represent a problem. Please have in mind the following changes:
 
 - The server supports now only a root directory path (via `--root` or its equivalent env) so an assets path option is no longer required.
-- Cache control headers is applied to assets in an arbitrary manner. See [src/control_headers.rs](src/control_headers.rs) for more details.
-- OpenSSL TLS for HTTP/1 is not longer supported instead for the HTTP/2 + TLS (via `--http2` option) the server uses [h2](https://github.com/hyperium/h2) which is on top of [Rustls](https://github.com/ctz/rustls). It means that instead of using a .p12 or .pfx file you can now use only a certificate file along with its private key. More details on [README](./README.md) file.
+- Cache control headers is applied to assets in an arbitrary manner. See [src/control_headers.rs](https://github.com/joseluisq/static-web-server/blob/master/src/control_headers.rs) for more details.
+- OpenSSL TLS for HTTP/1 is not longer supported instead for the HTTP/2 + TLS (via `--http2` option) the server uses [h2](https://github.com/hyperium/h2) which is on top of [Rustls](https://github.com/ctz/rustls). It means that instead of using a .p12 or .pfx file you can now use only a certificate file along with its private key. More details on [README](https://github.com/joseluisq/static-web-server/blob/master/README.md) file.
 
 The rest of known options are equivalent to v1 except the new ones of course.
 However it's worth to always recommend to test this server update first with your applications on a development environment or similar.
 
-Please see the full list of options with their details on the [README](./README.md) file.
+Please see the full list of options with their details on the [README](https://github.com/joseluisq/static-web-server/blob/master/README.md) file.
 
 ---
 
