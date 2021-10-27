@@ -249,6 +249,10 @@ prod.release.version:
 	git push
 .ONESHELL: prod.release.version
 
+docs-dev:
+	@docker-compose -f docs/docker-compose.yml up --build
+.PHONY: docs-dev
+
 promote:
 	@drone build promote joseluisq/static-web-server $(BUILD) $(ENV)
 .PHONY: promote
