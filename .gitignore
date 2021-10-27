@@ -20,6 +20,7 @@
 release
 .vscode
 TODO
+docs/site
 
 !sample.env
 !/docs

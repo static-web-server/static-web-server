@@ -253,6 +253,26 @@ docs-dev:
 	@docker-compose -f docs/docker-compose.yml up --build
 .PHONY: docs-dev
 
+docs-deploy:
+	@docker run -it --rm -v $(PWD)/docs:/docs squidfunk/mkdocs-material build
+	@rm -rf /tmp/docs
+	@mkdir -p /tmp/docs
+	@cp -rf docs/site/* /tmp/docs/
+	@git stash
+	@git checkout gh-pages
+	@git clean -fdx
+	@rm -rf docs/
+	@mkdir -p docs/
+	@cp -rf /tmp/docs/. docs/
+	@git add docs/
+	@git commit docs/ -m "docs: automatic documentation updates [skip ci]"
+	@git push origin gh-pages
+	@git push github gh-pages
+	@echo
+	@echo "Documentation built and published"
+	@git checkout master
+.PHONY: docs-deploy
+
 promote:
 	@drone build promote joseluisq/static-web-server $(BUILD) $(ENV)
 .PHONY: promote
