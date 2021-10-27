@@ -1,10 +1,10 @@
 # Command-Line Arguments
 
-Server can be configured via the following command-line arguments.
+The server can be configured via the following command-line arguments.
 
 !!! tip "Remember"
-    - Command-line arguments are equivalent to their environment variables.
-    - Command-line arguments take precedence over their [environment variables](./environment-variables.md).
+    - Command-line arguments are equivalent to their [environment variables](./environment-variables.md).
+    - Command-line arguments take precedence over their equivalent environment variables.
 
 
 ```

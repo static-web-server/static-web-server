@@ -1,6 +1,6 @@
 # Platforms & Architectures
 
-Currently only the following platforms and architectures are supported.
+Currently only the following platforms/architectures are supported.
 
 ## Linux
 

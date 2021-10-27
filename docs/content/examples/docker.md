@@ -24,7 +24,7 @@ FROM joseluisq/static-web-server:2-alpine
 
 ## Docker Compose
 
-Below a [Docker Compose](https://docs.docker.com/compose/) example using the [Traefik Proxy](https://traefik.io/).
+Below a [Docker Compose](https://docs.docker.com/compose/) example using the [Traefik Proxy](https://traefik.io/traefik/).
 
 ```yaml
 version: "3.3"

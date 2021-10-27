@@ -2,13 +2,13 @@
 site_name: Static Web Server
 site_description: 'A blazing fast and asynchronous web server for static files-serving ⚡'
 site_author: 'Jose Quintana'
-site_url: https://joseluisq.github.io/static-web-server/
-dev_addr: 127.0.0.1:8000
+site_url: https://sws.joseluisq.net
+dev_addr: 0.0.0.0:8000
 
 # Repository
 repo_name: joseluisq/static-web-server
 repo_url: https://github.com/joseluisq/static-web-server/
-edit_uri: edit/feature/website/docs/
+edit_uri: edit/master/docs/
 
 docs_dir: 'content'
 
@@ -120,12 +120,19 @@ nav:
     - 'HTTP/2 and TLS': 'examples/http2-tls.md'
     - 'Logging': 'examples/logging.md'
     - 'Compression': 'examples/compression.md'
+    - 'Cache Control Headers': 'examples/cache-control-headers.md'
+    - 'CORS': 'examples/cors.md'
+    - 'Security Headers': 'examples/security-headers.md'
     - 'Basic Authentication': 'examples/basic-authentication.md'
     - 'Directory Listing': 'examples/directory-listing.md'
     - 'Docker': 'examples/docker.md'
     - 'File Descriptor Socket Passing': './examples/file-descriptor-socket-passing.md'
+    - 'Worker Threads Customization': 'examples/worker-threads.md'
+    - 'Error Pages': 'examples/error-pages.md'
   - 'Platforms & Architectures': 'platforms-architectures.md'
   - 'Changelog v2': 'changelog-v2.md'
+  - 'Migration': 'migration.md'
   - 'Changelog v1': 'changelog-v1.md'
+  - 'Semantic Versioning': 'semantic-versioning.md'
   - 'Contributions': 'contributions.md'
   - 'License': 'license.md'

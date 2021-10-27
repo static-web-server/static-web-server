@@ -22,15 +22,15 @@
 
 ## Overview
 
-**Static Web Server** (or `SWS` abbreviated) is a very small and fast production-ready web server suitable to serve static web files or assets.
+**Static Web Server** (or **`SWS`** abbreviated) is a very small and fast production-ready web server suitable to serve static web files or assets.
 
 It is focused on **lightness and easy to use** principles but keeping [high performance and safety](https://blog.rust-lang.org/2015/04/10/Fearless-Concurrency.html) powered by [The Rust Programming Language](https://rust-lang.org).
 
 Written on top of [Hyper](https://github.com/hyperium/hyper) and [Tokio](https://github.com/tokio-rs/tokio) runtime. It provides [concurrent and asynchronous networking abilities](https://rust-lang.github.io/async-book/01_getting_started/02_why_async.html) as well as the latest HTTP/1 - HTTP/2 implementations.
 
-It's cross-platform and available for `Linux`, `macOS`, `Windows` and `FreeBSD` (`x86`/`x86_64` and `ARM`/`ARM64`) as well as `Docker`.
+It's cross-platform and available for `Linux`, `macOS`, `Windows` and `FreeBSD` (`x86`/`x86_64`,  `ARM`/`ARM64`) as well as `Docker`.
 
-!!! tip "Tip"
+!!! tip "Tips"
     - If you're looking for `v1` please go to [1.x](https://github.com/joseluisq/static-web-server/tree/1.x) branch.
     - If you want to migrate from `v1` to `v2` please take a look at [v2.0.0](https://github.com/joseluisq/static-web-server/releases/tag/v2.0.0) release.
 

@@ -1,10 +1,10 @@
 # Environment Variables
 
-Server can be configured via the following environment variables arguments.
+The server can be configured via the following environment variables.
 
 !!! tip "Remember"
     - Environment variables are equivalent to their command-line arguments.
-    - [Command line arguments](./command-line-arguments.md) take precedence over their environment variables.
+    - [Command line arguments](./command-line-arguments.md) take precedence over their equivalent environment variables.
 
 ### SERVER_HOST
 The address of the host (E.g 127.0.0.1). Default `[::]`.
@@ -13,7 +13,7 @@ The address of the host (E.g 127.0.0.1). Default `[::]`.
 The port of the host. Default `80`.
 
 ### SERVER_LISTEN_FD
-Optional file descriptor number (e.g. `0`) to inherit an already-opened TCP listener on (instead of using `SERVER_HOST` and/or `SERVER_PORT`).
+Optional file descriptor number (e.g. `0`) to inherit an already-opened TCP listener on (instead of using `SERVER_HOST` and/or `SERVER_PORT`). Default empty (disabled).
 
 ### SERVER_ROOT
 Relative or absolute root directory path of static files. Default `./public`.
@@ -34,16 +34,16 @@ Number of worker threads multiplier that'll be multiplied by the number of syste
 Enable HTTP/2 with TLS support. Make sure also to adjust current server port. Default `false` (disabled).
 
 ### SERVER_HTTP2_TLS_CERT
-Specify the file path to read the certificate. Default empty.
+Specify the file path to read the certificate. Default empty (disabled).
 
 ### SERVER_HTTP2_TLS_KEY
-Specify the file path to read the private key. Default empty.
+Specify the file path to read the private key. Default empty (disabled).
 
 ### SERVER_CORS_ALLOW_ORIGINS
 Specify a optional CORS list of allowed origin hosts separated by comas. Host ports or protocols aren't being checked. Use an asterisk (*) to allow any host. Default empty (disabled).
 
 ### SERVER_COMPRESSION
-Gzip, Deflate or Brotli compression on demand determined by the *Accept-Encoding* header and applied to text-based web file types only. See [ad-hoc mime-type list](https://github.com/joseluisq/static-web-server/blob/master/src/compression.rs#L20). Default `true` (enabled).
+`Gzip`, `Deflate` or `Brotli` compression on demand determined by the `Accept-Encoding` header and applied to text-based web file types only. See [ad-hoc mime-type list](https://github.com/joseluisq/static-web-server/blob/master/src/compression.rs#L20). Default `true` (enabled).
 
 ### SERVER_DIRECTORY_LISTING
 Enable directory listing for all requests ending with the slash character (‘/’). Default `false` (disabled).
