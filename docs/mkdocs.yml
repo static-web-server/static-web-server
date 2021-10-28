@@ -11,6 +11,7 @@ repo_url: https://github.com/joseluisq/static-web-server/
 edit_uri: edit/master/docs/
 
 docs_dir: 'content'
+site_dir: '/tmp/docs'
 
 # Copyright
 copyright: Copyright &copy; 2019-2021 Jose Quintana
