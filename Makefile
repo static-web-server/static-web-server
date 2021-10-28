@@ -254,11 +254,10 @@ docs-dev:
 .PHONY: docs-dev
 
 docs-deploy:
-	@docker run -it --rm -v $(PWD)/docs:/docs squidfunk/mkdocs-material build
+	@git stash
 	@rm -rf /tmp/docs
 	@mkdir -p /tmp/docs
-	@cp -rf docs/site/* /tmp/docs/
-	@git stash
+	@docker run -it --rm -v $(PWD)/docs:/docs -v /tmp/docs:/tmp/docs squidfunk/mkdocs-material build
 	@git checkout gh-pages
 	@git clean -fdx
 	@rm -rf docs/
