@@ -1,9 +1,9 @@
 <div>
   <div align="center">
-    <img
+    <a href="https://sws.joseluisq.net/"><img
       src="https://camo.githubusercontent.com/a08032a2db94aea229991af8f73c45cc95174c8066dc7a6b1f88a79c94cf1093/68747470733a2f2f75706c6f61642e77696b696d656469612e6f72672f77696b6970656469612f636f6d6d6f6e732f7468756d622f642f64352f527573745f70726f6772616d6d696e675f6c616e67756167655f626c61636b5f6c6f676f2e7376672f3130323470782d527573745f70726f6772616d6d696e675f6c616e67756167655f626c61636b5f6c6f676f2e7376672e706e67"
       height="100" width="100"
-    />
+    /></a>
   </div>
 
   <h1 align="center">Static Web Server</h1>
@@ -27,6 +27,8 @@
 
 - For `v1` please refer to [1.x](https://github.com/joseluisq/static-web-server/tree/1.x) branch.
 - To migrate from `v1` please take a look at [v2.0.0](https://github.com/joseluisq/static-web-server/releases/tag/v2.0.0) release.
+
+⚡ View [full documentation and examples](https://sws.joseluisq.net/)
 
 ## Features
 
