@@ -260,6 +260,7 @@ docs-deploy:
 	@docker run -it --rm -v $(PWD)/docs:/docs -v /tmp/docs:/tmp/docs squidfunk/mkdocs-material build
 	@git checkout gh-pages
 	@git clean -fdx
+	@cp -rf docs/CNAME /tmp/docs/
 	@rm -rf docs/
 	@mkdir -p docs/
 	@cp -rf /tmp/docs/. docs/
