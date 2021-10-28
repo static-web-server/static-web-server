@@ -32,7 +32,6 @@ anyhow = "1.0"
 async-compression = { version = "0.3", features = ["brotli", "deflate", "gzip", "tokio"] }
 bcrypt = "0.10"
 bytes = "1.0"
-ctrlc = { version = "3.1", features = ["termination"] }
 futures-util = { version = "0.3", default-features = false, features = ["sink"] }
 headers = { git = "https://github.com/joseluisq/hyper-headers.git", branch = "headers_encoding" }
 http = "0.2"
@@ -45,7 +44,7 @@ percent-encoding = "2.1"
 pin-project = "1.0"
 structopt = { version = "0.3", default-features = false }
 time = "0.1"
-tokio = { version = "1", features = ["rt-multi-thread", "macros", "fs", "io-util"], default-features = false }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "fs", "io-util", "signal"], default-features = false }
 tokio-rustls = { version = "0.22" }
 tokio-util = { version = "0.6", features = ["io"] }
 tracing = "0.1"
