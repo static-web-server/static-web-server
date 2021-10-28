@@ -109,8 +109,13 @@ impl Server {
         // CORS option
         let cors = cors::new(opts.cors_allow_origins.trim().to_owned());
 
-        // `Basic` HTTP Authorization Schema option
-        let basic_auth = Arc::from(opts.basic_auth.trim());
+        // `Basic` HTTP Authentication Schema option
+        let basic_auth = opts.basic_auth.trim();
+        tracing::info!(
+            "basic authentication: enabled={}",
+            !self.opts.basic_auth.is_empty()
+        );
+        let basic_auth = Arc::from(basic_auth);
 
         // Create a service router for Hyper
         let router_service = RouterService::new(RequestHandler {
