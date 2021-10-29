@@ -117,18 +117,22 @@ fmt:
 	@cargo fmt --all
 .PHONY: fmt
 
+## Development Docker images
+
 docker.image:
 	@echo "Creating Docker Scratch image..."
+	@cp -frp ./target/x86_64-unknown-linux-musl/release/static-web-server ./docker/devel/
 	@docker build \
-		--rm=true -f ./docker/scratch/Dockerfile \
-		--build-arg SERVER_VERSION="${PKG_TAG}" -t joseluisq/${PKG_NAME}:devel . --pull=true
+		--rm=true -f ./docker/devel/Dockerfile.scratch \
+		-t joseluisq/${PKG_NAME}:devel . --pull=true
 .PHONY: docker.image
 
 docker.image.alpine:
 	@echo "Creating Docker Alpine image..."
+	@cp -frp ./target/x86_64-unknown-linux-musl/release/static-web-server ./docker/devel/
 	@docker build \
-		--rm=true -f ./docker/alpine/Dockerfile \
-		--build-arg SERVER_VERSION="${PKG_TAG}" -t joseluisq/${PKG_NAME}:devel-alpine . --pull=true
+		--rm=true -f ./docker/devel/Dockerfile.alpine \
+		-t joseluisq/${PKG_NAME}:devel-alpine . --pull=true
 .PHONY: docker.image.alpine
 
 

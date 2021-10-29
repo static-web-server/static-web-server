@@ -1,0 +1,25 @@
+FROM scratch
+
+ENV SERVER_VERSION=devel
+
+LABEL version="${SERVER_VERSION}" \
+    description="A blazing fast and asynchronous web server for static files-serving." \
+    maintainer="Jose Quintana <joseluisq.net>"
+
+COPY ./docker/devel/static-web-server /
+COPY ./docker/public /public
+
+EXPOSE 80
+
+STOPSIGNAL SIGQUIT
+
+ENTRYPOINT ["/static-web-server"]
+
+
+# Metadata
+LABEL org.opencontainers.image.vendor="Jose Quintana" \
+    org.opencontainers.image.url="https://github.com/joseluisq/static-web-server" \
+    org.opencontainers.image.title="Static Web Server" \
+    org.opencontainers.image.description="A blazing fast and asynchronous web server for static files-serving." \
+    org.opencontainers.image.version="${SERVER_VERSION}" \
+    org.opencontainers.image.documentation="https://github.com/joseluisq/static-web-server"
