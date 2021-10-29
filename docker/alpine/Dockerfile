@@ -19,7 +19,11 @@ COPY ./docker/alpine/entrypoint.sh /
 COPY ./docker/public /public
 
 EXPOSE 80
+
+STOPSIGNAL SIGQUIT
+
 ENTRYPOINT ["/entrypoint.sh"]
+
 CMD ["static-web-server"]
 
 # Metadata

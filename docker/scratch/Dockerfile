@@ -15,6 +15,9 @@ COPY --from=latest /usr/local/bin/static-web-server /
 COPY ./docker/public /public
 
 EXPOSE 80
+
+STOPSIGNAL SIGQUIT
+
 ENTRYPOINT ["/static-web-server"]
 
 # Metadata
