@@ -1,14 +1,24 @@
-use futures_util::stream::StreamExt;
-use signal_hook::consts::signal::*;
-use signal_hook_tokio::Signals;
+#[cfg(not(windows))]
+use {futures_util::stream::StreamExt, signal_hook::consts::signal::*, signal_hook_tokio::Signals};
+
+#[cfg(windows)]
+type Signals = futures_util::stream::Empty<()>;
 
 use crate::Result;
 
+#[cfg(not(windows))]
 /// It creates a common list of signals stream for `SIGTERM`, `SIGINT` and `SIGQUIT` to be observed.
 pub fn create_signals() -> Result<Signals> {
     Ok(Signals::new(&[SIGHUP, SIGTERM, SIGINT, SIGQUIT])?)
 }
 
+#[cfg(windows)]
+// No signal handling available on Windows for now
+pub fn create_signals() -> Result<Signals> {
+    Ok(futures_util::stream::empty())
+}
+
+#[cfg(not(windows))]
 /// It waits for a specific type of incoming signals.
 pub async fn wait_for_signals(signals: Signals) {
     let mut signals = signals.fuse();
@@ -26,3 +36,7 @@ pub async fn wait_for_signals(signals: Signals) {
         }
     }
 }
+
+#[cfg(windows)]
+// No signal handling available on Windows for now
+pub async fn wait_for_signals(signals: Signals) {}
