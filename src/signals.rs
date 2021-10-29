@@ -1,21 +1,38 @@
-use ctrlc;
-use std::sync::mpsc::channel;
+#[cfg(not(windows))]
+use {
+    crate::Result, futures_util::stream::StreamExt, signal_hook::consts::signal::*,
+    signal_hook_tokio::Signals,
+};
 
-use crate::{Context, Result};
+#[cfg(not(windows))]
+/// It creates a common list of signals stream for `SIGTERM`, `SIGINT` and `SIGQUIT` to be observed.
+pub fn create_signals() -> Result<Signals> {
+    Ok(Signals::new(&[SIGHUP, SIGTERM, SIGINT, SIGQUIT])?)
+}
 
-/// It waits for a `Ctrl-C` incoming signal.
-pub fn wait_for_ctrl_c() -> Result {
-    let (tx, rx) = channel();
+#[cfg(not(windows))]
+/// It waits for a specific type of incoming signals included `ctrl+c`.
+pub async fn wait_for_signals(signals: Signals) {
+    let mut signals = signals.fuse();
+    while let Some(signal) = signals.next().await {
+        match signal {
+            SIGHUP => {
+                // Note: for now we don't do something for SIGHUPs
+                tracing::debug!("SIGHUP caught, nothing to do about")
+            }
+            SIGTERM | SIGINT | SIGQUIT => {
+                tracing::debug!("an incoming SIGTERM received, SIGINT or SIGQUIT signal, delegating graceful shutdown to server");
+                break;
+            }
+            _ => unreachable!(),
+        }
+    }
+}
 
-    ctrlc::set_handler(move || tx.send(()).expect("could not send signal on channel"))
-        .with_context(|| "error setting Ctrl-C handler".to_owned())?;
-
-    tracing::info!("press Ctrl+C to shutdown server");
-
-    rx.recv()
-        .with_context(|| "could not receive signal from channel".to_owned())?;
-
-    tracing::warn!("Ctrl+C signal caught, shutting down server execution");
-
-    Ok(())
+#[cfg(windows)]
+/// It waits for an incoming `ctrl+c` signal on Windows.
+pub async fn wait_for_ctrl_c() {
+    tokio::signal::ctrl_c()
+        .await
+        .expect("failed to install ctrl+c signal handler");
 }

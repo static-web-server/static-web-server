@@ -132,7 +132,7 @@ impl Server {
             },
         });
 
-        // Spawn a new Tokio asynchronous task with its given options
+        // Run the corresponding HTTP Server asynchronously with its given options
 
         if opts.http2 {
             // HTTP/2 + TLS
@@ -140,54 +140,82 @@ impl Server {
             let cert_path = opts.http2_tls_cert.clone();
             let key_path = opts.http2_tls_key.clone();
 
-            tokio::task::spawn(async move {
-                tcp_listener
-                    .set_nonblocking(true)
-                    .expect("cannot set non-blocking");
-                let listener = tokio::net::TcpListener::from_std(tcp_listener)
-                    .expect("failed to create tokio::net::TcpListener");
-                let mut incoming = AddrIncoming::from_listener(listener)?;
-                incoming.set_nodelay(true);
+            tcp_listener
+                .set_nonblocking(true)
+                .expect("cannot set non-blocking");
+            let listener = tokio::net::TcpListener::from_std(tcp_listener)
+                .expect("failed to create tokio::net::TcpListener");
+            let mut incoming = AddrIncoming::from_listener(listener)?;
+            incoming.set_nodelay(true);
 
-                let tls = TlsConfigBuilder::new()
-                    .cert_path(cert_path)
-                    .key_path(key_path)
-                    .build()
-                    .expect(
-                        "error during TLS server initialization, probably cert or key file missing",
-                    );
-
-                let server =
-                    HyperServer::builder(TlsAcceptor::new(tls, incoming)).serve(router_service);
-
-                tracing::info!(
-                    parent: tracing::info_span!("Server::start_server", ?addr_str, ?threads),
-                    "listening on https://{}",
-                    addr_str
+            let tls = TlsConfigBuilder::new()
+                .cert_path(cert_path)
+                .key_path(key_path)
+                .build()
+                .expect(
+                    "error during TLS server initialization, probably cert or key file missing",
                 );
 
-                server.await
-            });
+            #[cfg(not(windows))]
+            let signals = signals::create_signals()?;
+            #[cfg(not(windows))]
+            let handle = signals.handle();
+
+            let server =
+                HyperServer::builder(TlsAcceptor::new(tls, incoming)).serve(router_service);
+
+            #[cfg(not(windows))]
+            let server = server.with_graceful_shutdown(signals::wait_for_signals(signals));
+            #[cfg(windows)]
+            let server = server.with_graceful_shutdown(signals::wait_for_ctrl_c());
+
+            tracing::info!(
+                parent: tracing::info_span!("Server::start_server", ?addr_str, ?threads),
+                "listening on https://{}",
+                addr_str
+            );
+
+            tracing::info!("press ctrl+c to shut down the server");
+
+            server.await?;
+
+            #[cfg(not(windows))]
+            handle.close();
         } else {
             // HTTP/1
 
-            tokio::task::spawn(async move {
-                let server = HyperServer::from_tcp(tcp_listener)
-                    .unwrap()
-                    .tcp_nodelay(true)
-                    .serve(router_service);
+            #[cfg(not(windows))]
+            let signals = signals::create_signals()?;
+            #[cfg(not(windows))]
+            let handle = signals.handle();
 
-                tracing::info!(
-                    parent: tracing::info_span!("Server::start_server", ?addr_str, ?threads),
-                    "listening on http://{}",
-                    addr_str
-                );
+            let server = HyperServer::from_tcp(tcp_listener)
+                .unwrap()
+                .tcp_nodelay(true)
+                .serve(router_service);
 
-                server.await
-            });
+            #[cfg(not(windows))]
+            let server = server.with_graceful_shutdown(signals::wait_for_signals(signals));
+            #[cfg(windows)]
+            let server = server.with_graceful_shutdown(signals::wait_for_ctrl_c());
+
+            tracing::info!(
+                parent: tracing::info_span!("Server::start_server", ?addr_str, ?threads),
+                "listening on http://{}",
+                addr_str
+            );
+
+            tracing::info!("press ctrl+c to shut down the server");
+
+            server.await?;
+
+            #[cfg(not(windows))]
+            handle.close();
         }
 
-        signals::wait_for_ctrl_c()
+        tracing::warn!("termination signal caught, shutting down the server execution");
+
+        Ok(())
     }
 }
 

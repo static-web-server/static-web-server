@@ -203,16 +203,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ctrlc"
-version = "3.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a19c6cedffdc8c03a3346d723eb20bd85a13362bb96dc2ac000842c6381ec7bf"
-dependencies = [
- "nix",
- "winapi",
-]
-
-[[package]]
 name = "digest"
 version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -547,15 +537,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "308cc39be01b73d0d18f82a0e7b2a3df85245f84af96fdddc5d202d27e47b86a"
 
 [[package]]
-name = "memoffset"
-version = "0.6.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "59accc507f1338036a0477ef61afdae33cde60840f4dfe481319ce3ad116ddf9"
-dependencies = [
- "autocfg",
-]
-
-[[package]]
 name = "mime"
 version = "0.3.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -601,19 +582,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b9f1c5b025cda876f66ef43a113f91ebc9f4ccef34843000e0adf6ebbab84e21"
 dependencies = [
  "winapi",
-]
-
-[[package]]
-name = "nix"
-version = "0.23.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f305c2c2e4c39a82f7bf0bf65fb557f9070ce06781d4f2454295cc34b1c43188"
-dependencies = [
- "bitflags",
- "cc",
- "cfg-if",
- "libc",
- "memoffset",
 ]
 
 [[package]]
@@ -854,6 +822,38 @@ dependencies = [
 ]
 
 [[package]]
+name = "signal-hook"
+version = "0.3.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9c98891d737e271a2954825ef19e46bd16bdb98e2746f2eec4f7a4ef7946efd1"
+dependencies = [
+ "cc",
+ "libc",
+ "signal-hook-registry",
+]
+
+[[package]]
+name = "signal-hook-registry"
+version = "1.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e51e73328dc4ac0c7ccbda3a494dfa03df1de2f46018127f60c693f2648455b0"
+dependencies = [
+ "libc",
+]
+
+[[package]]
+name = "signal-hook-tokio"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f6c5d32165ff8b94e68e7b3bdecb1b082e958c22434b363482cfb89dcd6f3ff8"
+dependencies = [
+ "futures-core",
+ "libc",
+ "signal-hook",
+ "tokio",
+]
+
+[[package]]
 name = "slab"
 version = "0.4.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -889,7 +889,6 @@ dependencies = [
  "async-compression",
  "bcrypt",
  "bytes",
- "ctrlc",
  "futures-util",
  "headers",
  "http",
@@ -901,6 +900,8 @@ dependencies = [
  "num_cpus",
  "percent-encoding",
  "pin-project",
+ "signal-hook",
+ "signal-hook-tokio",
  "structopt",
  "time",
  "tokio",
@@ -985,7 +986,9 @@ dependencies = [
  "memchr",
  "mio",
  "num_cpus",
+ "once_cell",
  "pin-project-lite",
+ "signal-hook-registry",
  "tokio-macros",
  "winapi",
 ]
