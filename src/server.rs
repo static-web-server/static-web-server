@@ -156,12 +156,18 @@ impl Server {
                     "error during TLS server initialization, probably cert or key file missing",
                 );
 
+            #[cfg(not(windows))]
             let signals = signals::create_signals()?;
+            #[cfg(not(windows))]
             let handle = signals.handle();
 
-            let server = HyperServer::builder(TlsAcceptor::new(tls, incoming))
-                .serve(router_service)
-                .with_graceful_shutdown(signals::wait_for_signals(signals));
+            let server =
+                HyperServer::builder(TlsAcceptor::new(tls, incoming)).serve(router_service);
+
+            #[cfg(not(windows))]
+            let server = server.with_graceful_shutdown(signals::wait_for_signals(signals));
+            #[cfg(windows)]
+            let server = server.with_graceful_shutdown(signals::wait_for_ctrl_c());
 
             tracing::info!(
                 parent: tracing::info_span!("Server::start_server", ?addr_str, ?threads),
@@ -172,17 +178,26 @@ impl Server {
             tracing::info!("press ctrl+c to shut down the server");
 
             server.await?;
+
+            #[cfg(not(windows))]
             handle.close();
         } else {
             // HTTP/1
+
+            #[cfg(not(windows))]
             let signals = signals::create_signals()?;
+            #[cfg(not(windows))]
             let handle = signals.handle();
 
             let server = HyperServer::from_tcp(tcp_listener)
                 .unwrap()
                 .tcp_nodelay(true)
-                .serve(router_service)
-                .with_graceful_shutdown(signals::wait_for_signals(signals));
+                .serve(router_service);
+
+            #[cfg(not(windows))]
+            let server = server.with_graceful_shutdown(signals::wait_for_signals(signals));
+            #[cfg(windows)]
+            let server = server.with_graceful_shutdown(signals::wait_for_ctrl_c());
 
             tracing::info!(
                 parent: tracing::info_span!("Server::start_server", ?addr_str, ?threads),
@@ -193,6 +208,8 @@ impl Server {
             tracing::info!("press ctrl+c to shut down the server");
 
             server.await?;
+
+            #[cfg(not(windows))]
             handle.close();
         }
 
