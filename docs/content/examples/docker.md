@@ -2,6 +2,8 @@
 
 `SWS` has first-class [Docker](https://docs.docker.com/get-started/overview/) support. It provides a [Scratch](https://hub.docker.com/_/scratch) as well as the latest [Alpine Linux](https://hub.docker.com/_/alpine) Docker images.
 
+🐋 View on [Docker Hub](https://hub.docker.com/r/joseluisq/static-web-server/).
+
 ## Run a container
 
 ```sh

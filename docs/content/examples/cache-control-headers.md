@@ -1,6 +1,6 @@
 # Cache Control Headers
 
-**`SWS`** provides support for [`Cache-Control`](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Cache-Control) HTTP header specifying a `public` and `max-age` response directives.
+**`SWS`** provides support for *arbitrary* [`Cache-Control`](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Cache-Control) HTTP header specifying a `public` and `max-age` response directives.
 
 This feature is enabled by default and can be controlled by the boolean `-e, --cache-control-headers` option or the equivalent [SERVER_CACHE_CONTROL_HEADERS](./../configuration/environment-variables.md#server_cache_control_headers) env.
 
