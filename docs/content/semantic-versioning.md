@@ -1,6 +1,6 @@
 # Semantic Versioning
 
-**`SWS`** project adheres to [Semantic Versioning](https://semver.org/) for every release like [`v1`](./changelog-v1.md) and latest [`v2`](./changelog-v2.md).
+**`SWS`** project adheres to [Semantic Versioning](https://semver.org/) for every release like [`v1`](https://github.com/joseluisq/static-web-server/blob/1.x/CHANGELOG.md) and latest [`v2`](https://github.com/joseluisq/static-web-server/blob/master/CHANGELOG.md).
 
 ## Breaking changes
 
