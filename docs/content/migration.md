@@ -1,4 +1,4 @@
-# Migration from v1 to v2
+# Migrating from v1 to v2
 
 The `v2` introduces notable changes including new features, performance improvements and new targets support like ARM64 and OSes like FreeBSD.
 

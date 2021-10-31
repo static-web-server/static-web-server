@@ -21,6 +21,8 @@
 </div>
 </div>
 
+## Overview
+
 **Static Web Server** (or **`SWS`** abbreviated) is a very small and fast production-ready web server suitable to serve static web files or assets.
 
 It is focused on **lightness and easy to use** principles but keeping [high performance and safety](https://blog.rust-lang.org/2015/04/10/Fearless-Concurrency.html) powered by [The Rust Programming Language](https://rust-lang.org).
@@ -54,20 +56,20 @@ It's cross-platform and available for `Linux`, `macOS`, `Windows` and `FreeBSD` 
 - Ability to accept a socket listener as a file descriptor for use in sandboxing and on-demand applications (E.g [systemd](http://0pointer.de/blog/projects/socket-activation.html)).
 - Cross-platform. Binaries available for Linux, macOS, Windows & FreeBSD x86_64 / ARM.
 
-## Releases
-
-- [Docker Hub Images](https://hub.docker.com/r/joseluisq/static-web-server/)
-- [Release Binaries](https://github.com/joseluisq/static-web-server/releases)
-- [Platforms/Architectures supported](https://sws.joseluisq.net/platforms-architectures/)
-
-### Notes
-
-- If you're looking for `v1` please go to [1.x](https://github.com/joseluisq/static-web-server/tree/1.x) branch.
-- If you want to migrate from `v1` to `v2` please take a look at [v2.0.0](https://github.com/joseluisq/static-web-server/releases/tag/v2.0.0) release.
-
 ## Documentation
 
-For API, usage and examples see the [full documentation website](https://sws.joseluisq.net/).
+For more details about the API, usage and examples please have a look at [The Documentation Website](https://sws.joseluisq.net/).
+
+## Releases
+
+- [Docker Images](https://hub.docker.com/r/joseluisq/static-web-server/)
+- [Release Binaries](https://github.com/joseluisq/static-web-server/releases)
+- [Platforms/Architectures Supported](https://sws.joseluisq.net/platforms-architectures/)
+
+## Notes
+
+- If you're looking for `v1` please go to [1.x](https://github.com/joseluisq/static-web-server/tree/1.x) branch.
+- If you want to migrate from `v1` to `v2` please take a look at [Migrating from `v1` to `v2`](https://sws.joseluisq.net/migration/) release.
 
 ## Contributions
 
