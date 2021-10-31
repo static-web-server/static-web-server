@@ -21,7 +21,7 @@ pub async fn wait_for_signals(signals: Signals) {
                 tracing::debug!("SIGHUP caught, nothing to do about")
             }
             SIGTERM | SIGINT | SIGQUIT => {
-                tracing::debug!("an incoming SIGTERM received, SIGINT or SIGQUIT signal, delegating graceful shutdown to server");
+                tracing::debug!("SIGTERM, SIGINT or SIGQUIT signal received, delegating graceful shutdown to the server");
                 break;
             }
             _ => unreachable!(),
