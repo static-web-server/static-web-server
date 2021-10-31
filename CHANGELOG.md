@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _**Note:** See changelog for v2 under the [master](https://github.com/joseluisq/static-web-server/blob/master/CHANGELOG.md) branch._
 
+## v1.18.1 - 2021-10-31
+
+__Updates__
+
+- [1bccef4](https://github.com/joseluisq/static-web-server/commit/1bccef4) Update dependencies including OpenSSL, libc, ctrlc security/bug fixes and related crates (also [7178d5d](https://github.com/joseluisq/static-web-server/commit/7178d5d), [250a47f](https://github.com/joseluisq/static-web-server/commit/250a47f)).
+
+__Refactorings__
+
+- [247869f](https://github.com/joseluisq/static-web-server/commit/247869f) Fix Rust 2018 Edition idioms
+- [1686daf](https://github.com/joseluisq/static-web-server/commit/1686daf) Use Rust `1.56.0` (2021 Edition) on CI
+
 ## v1.18.0 - 2021-08-20
 
 __Updates__

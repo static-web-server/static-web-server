@@ -1,17 +1,17 @@
 # Static Web Server [![CI](https://github.com/joseluisq/static-web-server/workflows/CI/badge.svg?branch=1.x)](https://github.com/joseluisq/static-web-server/actions?query=workflow%3ACI) [![Docker Image Version (tag latest semver)](https://img.shields.io/docker/v/joseluisq/static-web-server/1)](https://hub.docker.com/r/joseluisq/static-web-server/) [![Docker Image Size (tag)](https://img.shields.io/docker/image-size/joseluisq/static-web-server/1)](https://hub.docker.com/r/joseluisq/static-web-server/tags) [![Docker Image](https://img.shields.io/docker/pulls/joseluisq/static-web-server.svg)](https://hub.docker.com/r/joseluisq/static-web-server/)
 
-*This is the stable `v1`. For the `v2` refer to [master](https://github.com/joseluisq/static-web-server) branch.*
-
-_To migrate to `v2` please take a look at [v2.0.0](https://github.com/joseluisq/static-web-server/releases/tag/v2.0.0) release._
+_**Note:** To migrate to latest `v2` please take a look at [Migrating from `v1` to `v2`](https://sws.joseluisq.net/migration/)._
 
 > A blazing fast static files-serving web server powered by [Rust Iron](https://github.com/iron/iron). ⚡
+
+*This is the stable `v1`. For the latest `v2` refer to [master](https://github.com/joseluisq/static-web-server) branch.*
 
 **Static Web Server** is a very small and fast production-ready web server to serving static web files or assets.
 
 ## Features
 
 - Built with [Rust](https://rust-lang.org) which is focused on [safety, speed, and concurrency](https://kornel.ski/rust-c-speed).
-- Memory safety and very reduced CPU and RAM overhead.
+- Memory safe and very reduced CPU and RAM overhead.
 - Blazing fast static files-serving thanks to [Rust Iron](https://github.com/iron/iron) and [Hyper](https://github.com/hyperium/hyper).
 - No dependencies. Just a single __4MB__ and fully static binary ([Musl libc](https://doc.rust-lang.org/edition-guide/rust-2018/platform-and-target-support/musl-support-for-fully-static-binaries.html)) which makes it suitable for running on [any Linux distro](https://en.wikipedia.org/wiki/Linux_distribution) or [Docker container](https://hub.docker.com/r/joseluisq/static-web-server/tags).
 - Gzip compression on demand via [accept-encoding](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Accept-Encoding) header.
@@ -86,8 +86,9 @@ Server can be configured either via environment variables or their equivalent co
 CLI arguments listed with `static-web-server -h`.
 
 ```
-static-web-server 1.18.0
-A blazing fast static files-serving web server powered by Rust Iron
+static-web-server 1.18.1
+Jose Quintana <https://git.io/joseluisq>
+A blazing fast static files-serving web server powered by Rust Iron.
 
 USAGE:
     static-web-server [OPTIONS]
