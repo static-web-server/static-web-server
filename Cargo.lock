@@ -34,9 +34,9 @@ dependencies = [
 
 [[package]]
 name = "anyhow"
-version = "1.0.44"
+version = "1.0.45"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "61604a8f862e1d5c3229fdd78f8b02c68dcf73a4c4b05fd636d12240aaa242c1"
+checksum = "ee10e43ae4a853c0a3591d4e2ada1719e553be18199d9da9d4a83f5927c2f5c7"
 
 [[package]]
 name = "async-compression"
@@ -318,24 +318,24 @@ checksum = "ab5ef0d4909ef3724cc8cce6ccc8572c5c817592e9285f5464f8e86f8bd3726e"
 
 [[package]]
 name = "headers"
-version = "0.3.4"
-source = "git+https://github.com/joseluisq/hyper-headers.git?branch=headers_encoding#ca704fcb605adf33f327d0f5a41d5072606058a1"
+version = "0.3.5"
+source = "git+https://github.com/joseluisq/hyper-headers.git?branch=headers_encoding#0961ee1f9f3f770c8c7e88fc1313677fcf97152f"
 dependencies = [
  "base64",
  "bitflags",
  "bytes",
  "headers-core",
  "http",
+ "httpdate",
  "itertools",
  "mime",
  "sha-1",
- "time",
 ]
 
 [[package]]
 name = "headers-core"
 version = "0.2.0"
-source = "git+https://github.com/joseluisq/hyper-headers.git?branch=headers_encoding#ca704fcb605adf33f327d0f5a41d5072606058a1"
+source = "git+https://github.com/joseluisq/hyper-headers.git?branch=headers_encoding#0961ee1f9f3f770c8c7e88fc1313677fcf97152f"
 dependencies = [
  "http",
 ]

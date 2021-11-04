@@ -29,9 +29,9 @@ path = "src/bin/server.rs"
 
 [dependencies]
 anyhow = "1.0"
-async-compression = { version = "0.3", features = ["brotli", "deflate", "gzip", "tokio"] }
+async-compression = { version = "0.3", default-features = false, features = ["brotli", "deflate", "gzip", "tokio"] }
 bcrypt = "0.10"
-bytes = "1.0"
+bytes = "1.1"
 futures-util = { version = "0.3", default-features = false, features = ["sink"] }
 headers = { git = "https://github.com/joseluisq/hyper-headers.git", branch = "headers_encoding" }
 http = "0.2"
@@ -43,10 +43,10 @@ num_cpus = { version = "1.13" }
 percent-encoding = "2.1"
 pin-project = "1.0"
 structopt = { version = "0.3", default-features = false }
-time = "0.1"
+time = { version = "0.1", default-features = false }
 tokio = { version = "1", default-features = false, features = ["rt-multi-thread", "macros", "fs", "io-util", "signal"] }
 tokio-rustls = { version = "0.22" }
-tokio-util = { version = "0.6", features = ["io"] }
+tokio-util = { version = "0.6", default-features = false, features = ["io"] }
 tracing = { version = "0.1", default-features = false, features = ["std"] }
 tracing-subscriber = { version = "0.3", features = ["smallvec", "fmt", "ansi", "tracing-log", "std"] }
 
@@ -58,7 +58,7 @@ signal-hook = { version = "0.3", features = ["extended-siginfo"] }
 signal-hook-tokio = { version = "0.3", features = ["futures-v0_3"], default-features = false }
 
 [dev-dependencies]
-bytes = "1.0"
+bytes = "1.1"
 
 [profile.release]
 codegen-units = 1
