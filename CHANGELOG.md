@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _**Note:** See changelog for v1 under the [1.x](https://github.com/joseluisq/static-web-server/blob/1.x/CHANGELOG.md) branch._
 
+## v2.2.0 - 2021-11-04
+
+__Fixes__
+
+- [c264f2f](https://github.com/joseluisq/static-web-server/commit/c264f2f) Update dependencies (also [e127a1f](https://github.com/joseluisq/static-web-server/commit/e127a1f)).
+
+__Features__
+
+- [0a02da3](https://github.com/joseluisq/static-web-server/commit/0a02da3) [Graceful Shutdown](https://cloud.google.com/blog/products/containers-kubernetes/kubernetes-best-practices-terminating-with-grace) support for HTTP/1 - HTTP/2 servers by default. PR [#62](https://github.com/joseluisq/static-web-server/pull/62) resolves [#61](https://github.com/joseluisq/static-web-server/issues/53) suggested by [@pdfrod](https://github.com/pdfrod).
+
+__Refactorings__
+
+- [6f10ef1](https://github.com/joseluisq/static-web-server/commit/6f10ef1) Disable ANSI for tracing logs on Windows in order to display characters correctly.
+- [17ceec0](https://github.com/joseluisq/static-web-server/commit/17ceec0) Log Basic Authentication info.
+
+__Docs__
+
+- [b501c40](https://github.com/joseluisq/static-web-server/commit/b501c40) Project Website - [sws.joseluisq.net](https://sws.joseluisq.net). PR [#56](https://github.com/joseluisq/static-web-server/pull/56).
+
 ## v2.1.0 - 2021-10-23
 
 __Fixes__
