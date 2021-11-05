@@ -1,15 +1,20 @@
 # Getting Started
 
-First [download](./download-and-install.md) the binary for your platform.
-
-Then just type the following command.
+[Download](./download-and-install.md) the binary for your platform and then just type
 
 ```sh
-static-web-server \
-    --port 8787 \
-    --root ./my-public-dir
+static-web-server --port 8787 --root ./my-public-dir
 ```
 
-For details about the available options type `static-web-server -h` or go to the [Command-line arguments](./configuration/command-line-arguments.md) section.
+Or if you use [Docker](https://www.docker.com/) just try
 
-Or if you are looking fo more advanced examples then take a look at [the examples](./examples/http1.md) section.
+```sh
+docker run --rm -it -p 8787:80 joseluisq/static-web-server:2
+```
+
+!!! info "Docker Tip"
+    You can specify the Docker volume like `-v $HOME/my-public-dir:/public` in order to overwrite the default root directory. See [Docker examples](examples/docker.md) for more details.
+
+For more details about the available options type `static-web-server -h` or go to the [Command-line arguments](./configuration/command-line-arguments.md) section.
+
+Or if you are looking fo more advanced examples then have a look at [the examples](./examples/http1.md) section.

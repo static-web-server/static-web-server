@@ -10,7 +10,7 @@ The server can be configured via the following command-line arguments.
 ```
 $ static-web-server -h
 
-static-web-server 2.1.0
+static-web-server 2.2.0
 Jose Quintana <https://git.io/joseluisq>
 A blazing fast and asynchronous web server for static files-serving.
 

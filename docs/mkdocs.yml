@@ -12,6 +12,8 @@ edit_uri: edit/master/docs/content/
 
 docs_dir: 'content'
 site_dir: '/tmp/docs'
+extra_css:
+  - 'assets/style.css'
 
 # Copyright
 copyright: Copyright &copy; 2019-2021 Jose Quintana
