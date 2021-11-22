@@ -34,9 +34,9 @@ dependencies = [
 
 [[package]]
 name = "anyhow"
-version = "1.0.45"
+version = "1.0.48"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ee10e43ae4a853c0a3591d4e2ada1719e553be18199d9da9d4a83f5927c2f5c7"
+checksum = "62e1f47f7dc0422027a4e370dd4548d4d66b26782e513e98dca1e689e058a80e"
 
 [[package]]
 name = "async-compression"
@@ -142,9 +142,9 @@ checksum = "c4872d67bab6358e59559027aa3b9157c53d9358c51423c17554809a8858e0f8"
 
 [[package]]
 name = "cc"
-version = "1.0.71"
+version = "1.0.72"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "79c2681d6594606957bbb8631c4b90a7fcaaa72cdb714743a437b156d6a7eedd"
+checksum = "22a9137b95ea06864e018375b72adfb7db6e6f68cfc8df5a04d00288050485ee"
 
 [[package]]
 name = "cfg-if"
@@ -388,9 +388,9 @@ checksum = "acd94fdbe1d4ff688b67b04eee2e17bd50995534a61539e45adfefb45e5e5503"
 
 [[package]]
 name = "httpdate"
-version = "1.0.1"
+version = "1.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6456b8a6c8f33fee7d958fcd1b60d55b11940a79e63ae87013e6d22e26034440"
+checksum = "c4a1e36c821dbe04574f602848a19f742f4fb3c98d40449f11bcad18d6b17421"
 
 [[package]]
 name = "humansize"
@@ -400,9 +400,9 @@ checksum = "02296996cb8796d7c6e3bc2d9211b7802812d36999a51bb754123ead7d37d026"
 
 [[package]]
 name = "hyper"
-version = "0.14.14"
+version = "0.14.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2b91bb1f221b6ea1f1e4371216b70f40748774c2fb5971b450c07773fb92d26b"
+checksum = "436ec0091e4f20e655156a30a0df3770fe2900aa301e548e08446ec794b6953c"
 dependencies = [
  "bytes",
  "futures-channel",
@@ -485,9 +485,9 @@ checksum = "e2abad23fbc42b3700f2f279844dc832adb2b2eb069b2df918f455c4e18cc646"
 
 [[package]]
 name = "libc"
-version = "0.2.106"
+version = "0.2.108"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a60553f9a9e039a333b4e9b20573b9e9b9c0bb3a11e201ccc48ef4283456d673"
+checksum = "8521a1b57e76b1ec69af7599e75e38e7b7fad6610f037db8c79b127201b5d119"
 
 [[package]]
 name = "listenfd"
@@ -889,9 +889,9 @@ dependencies = [
 
 [[package]]
 name = "tokio"
-version = "1.13.0"
+version = "1.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "588b2d10a336da58d877567cd8fb8a14b463e2104910f8132cd054b4b96e29ee"
+checksum = "70e992e41e0d2fb9f755b37446f20900f64446ef54874f40a60c78f021ac6144"
 dependencies = [
  "autocfg",
  "bytes",
@@ -908,9 +908,9 @@ dependencies = [
 
 [[package]]
 name = "tokio-macros"
-version = "1.5.1"
+version = "1.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "114383b041aa6212c579467afa0075fbbdd0718de036100bc0ba7961d8cb9095"
+checksum = "c9efc1aba077437943f7515666aa2b882dfabfbfdf89c819ea75a8d6e9eaba5e"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -981,9 +981,9 @@ dependencies = [
 
 [[package]]
 name = "tracing-subscriber"
-version = "0.3.1"
+version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "80a4ddde70311d8da398062ecf6fc2c309337de6b0f77d6c27aff8d53f6fca52"
+checksum = "7507ec620f809cdf07cccb5bc57b13069a88031b795efd4079b1c71b66c1613d"
 dependencies = [
  "ansi_term",
  "sharded-slab",
