@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _**Note:** See changelog for v2 under the [master](https://github.com/joseluisq/static-web-server/blob/master/CHANGELOG.md) branch._
 
+## v1.18.2 - 2021-12-02
+
+__Updates__
+
+- [c310671](https://github.com/joseluisq/static-web-server/commit/c310671) Security/bug-fixes updates for OpenSSL, libc and other dependencies.
+
 ## v1.18.1 - 2021-10-31
 
 __Updates__
