@@ -13,11 +13,11 @@
   </h4>
 
 <div align="center">
-<a href="https://github.com/joseluisq/static-web-server/actions?query=workflow%3ACI" title="CI"><img src="https://github.com/joseluisq/static-web-server/workflows/CI/badge.svg"></a> 
+<a href="https://github.com/joseluisq/static-web-server/actions/workflows/devel.yml" title="devel ci"><img src="https://github.com/joseluisq/static-web-server/actions/workflows/devel.yml/badge.svg?branch=master"></a> 
 <a href="https://hub.docker.com/r/joseluisq/static-web-server/" title="Docker Image Version (tag latest semver)"><img src="https://img.shields.io/docker/v/joseluisq/static-web-server/2"></a> 
 <a href="https://hub.docker.com/r/joseluisq/static-web-server/tags" title="Docker Image Size (tag)"><img src="https://img.shields.io/docker/image-size/joseluisq/static-web-server/2"></a> 
-<a href="https://hub.docker.com/r/joseluisq/static-web-server/" title="Docker Image"><img src="https://img.shields.io/docker/pulls/joseluisq/static-web-server.svg"></a>
-<a href="https://sws.joseluisq.net" title="Documentation"><img src="https://img.shields.io/badge/Docs-latest-green"></a> 
+<a href="https://hub.docker.com/r/joseluisq/static-web-server/" title="Docker Image"><img src="https://img.shields.io/docker/pulls/joseluisq/static-web-server.svg"></a> 
+<a href="https://sws.joseluisq.net" title="Documentation"><img src="https://img.shields.io/badge/docs-latest-green"></a>
 </div>
 </div>
 
