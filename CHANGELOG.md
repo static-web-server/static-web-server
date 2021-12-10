@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _**Note:** See changelog for v1 under the [1.x](https://github.com/joseluisq/static-web-server/blob/1.x/CHANGELOG.md) branch._
 
+## v2.3.0 - 2021-12-11
+
+__Fixes__
+
+- [366e6a9](https://github.com/joseluisq/static-web-server/commit/366e6a9) Security/bug fixes dependency updates including Hyper, Tokio, h2, libc, futures and other crates. (Also [dfe87c7](https://github.com/joseluisq/static-web-server/commit/dfe87c7), [1231b50](https://github.com/joseluisq/static-web-server/commit/1231b50)).
+
+__Features__
+
+- [688d1b2](https://github.com/joseluisq/static-web-server/commit/688d1b2) Opt-in sorting by `Name`, `Last Modified` and `File Size` in ascending/descending order via the new `--directory-listing-order` option. More details on [directory listing documentation](https://sws.joseluisq.net/examples/directory-listing/#sorting). PR [#71](https://github.com/joseluisq/static-web-server/pull/71) resolves [#68](https://github.com/joseluisq/static-web-server/issues/68) suggested by [@igoro00](https://github.com/igoro00).
+
 ## v2.2.0 - 2021-11-04
 
 __Fixes__
