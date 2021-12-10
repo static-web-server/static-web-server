@@ -10,7 +10,7 @@ The server can be configured via the following command-line arguments.
 ```
 $ static-web-server -h
 
-static-web-server 2.2.0
+static-web-server 2.3.0
 Jose Quintana <https://git.io/joseluisq>
 A blazing fast and asynchronous web server for static files-serving.
 
@@ -37,6 +37,11 @@ OPTIONS:
     -z, --directory-listing <directory-listing>
             Enable directory listing for all requests ending with the slash character (‘/’) [env:
             SERVER_DIRECTORY_LISTING=]  [default: false]
+        --directory-listing-order <directory-listing-order>
+            Specify a default code number to order directory listing entries per `Name`, `Last modified` or `Size`
+            attributes (columns). Code numbers supported: 0 (Name asc), 1 (Name desc), 2 (Last modified asc), 3 (Last
+            modified desc), 4 (Size asc), 5 (Size desc). Default 6 (unordered) [env: SERVER_DIRECTORY_LISTING_ORDER=]
+            [default: 6]
     -f, --fd <fd>
             Instead of binding to a TCP port, accept incoming connections to an already-bound TCP socket listener on the
             specified file descriptor number (usually zero). Requires that the parent process (e.g. inetd, launchd, or
@@ -65,7 +70,7 @@ OPTIONS:
         --page50x <page50x>
             HTML file path for 50x errors. If path is not specified or simply don't exists then server will use a
             generic HTML error message [env: SERVER_ERROR_PAGE_50X=]  [default: ./public/50x.html]
-    -p, --port <port>                                      Host port [env: SERVER_PORT=]  [default: 80]
+    -p, --port <port>                                          Host port [env: SERVER_PORT=]  [default: 80]
     -d, --root <root>
             Root directory path of static files [env: SERVER_ROOT=]  [default: ./public]
 
