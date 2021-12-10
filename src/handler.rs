@@ -11,6 +11,7 @@ pub struct RequestHandlerOpts {
     pub root_dir: Arc<PathBuf>,
     pub compression: bool,
     pub dir_listing: bool,
+    pub dir_listing_order: u8,
     pub cors: Option<Arc<cors::Configured>>,
     pub security_headers: bool,
     pub cache_control_headers: bool,
@@ -32,10 +33,13 @@ impl RequestHandler {
     ) -> impl Future<Output = Result<Response<Body>, Error>> + Send + 'a {
         let method = req.method();
         let headers = req.headers();
+        let uri = req.uri();
 
         let root_dir = self.opts.root_dir.as_ref();
-        let uri_path = req.uri().path();
+        let uri_path = uri.path();
+        let uri_query = uri.query();
         let dir_listing = self.opts.dir_listing;
+        let dir_listing_order = self.opts.dir_listing_order;
 
         async move {
             // CORS
@@ -88,7 +92,17 @@ impl RequestHandler {
             }
 
             // Static files
-            match static_files::handle(method, headers, root_dir, uri_path, dir_listing).await {
+            match static_files::handle(
+                method,
+                headers,
+                root_dir,
+                uri_path,
+                uri_query,
+                dir_listing,
+                dir_listing_order,
+            )
+            .await
+            {
                 Ok(mut resp) => {
                     // Auto compression based on the `Accept-Encoding` header
                     if self.opts.compression {

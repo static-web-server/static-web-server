@@ -121,6 +121,15 @@ pub struct Config {
 
     #[structopt(
         long,
+        required_if("directory_listing", "true"),
+        default_value = "6",
+        env = "SERVER_DIRECTORY_LISTING_ORDER"
+    )]
+    /// Specify a default code number to order directory listing entries per `Name`, `Last modified` or `Size` attributes (columns). Code numbers supported: 0 (Name asc), 1 (Name desc), 2 (Last modified asc), 3 (Last modified desc), 4 (Size asc), 5 (Size desc). Default 6 (unordered)
+    pub directory_listing_order: u8,
+
+    #[structopt(
+        long,
         parse(try_from_str),
         required_if("http2", "true"),
         default_value_if("http2", Some("true"), "true"),

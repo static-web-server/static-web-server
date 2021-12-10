@@ -48,6 +48,9 @@ Specify a optional CORS list of allowed origin hosts separated by comas. Host po
 ### SERVER_DIRECTORY_LISTING
 Enable directory listing for all requests ending with the slash character (‘/’). Default `false` (disabled).
 
+### SERVER_DIRECTORY_LISTING_ORDER
+Specify a default code number to order directory listing entries per `Name`, `Last modified` or `Size` attributes (columns). Code numbers supported: `0` (Name asc), `1` (Name desc), `2` (Last modified asc), `3` (Last modified desc), `4` (Size asc), `5` (Size desc). Default `6` (unordered).
+
 ### SERVER_SECURITY_HEADERS
 Enable security headers by default when HTTP/2 feature is activated. Headers included: `Strict-Transport-Security: max-age=63072000; includeSubDomains; preload` (2 years max-age), `X-Frame-Options: DENY`, `X-XSS-Protection: 1; mode=block` and `Content-Security-Policy: frame-ancestors 'self'`. Default `false` (disabled).
 

@@ -27,8 +27,16 @@ mod tests {
             Method::TRACE,
         ];
         for method in methods {
-            match static_files::handle(&method, &HeaderMap::new(), root_dir(), "/assets", true)
-                .await
+            match static_files::handle(
+                &method,
+                &HeaderMap::new(),
+                root_dir(),
+                "/assets",
+                None,
+                true,
+                6,
+            )
+            .await
             {
                 Ok(res) => {
                     assert_eq!(res.status(), 308);

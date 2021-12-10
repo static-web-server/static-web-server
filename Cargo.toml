@@ -49,6 +49,7 @@ tokio-rustls = { version = "0.22" }
 tokio-util = { version = "0.6", default-features = false, features = ["io"] }
 tracing = { version = "0.1", default-features = false, features = ["std"] }
 tracing-subscriber = { version = "0.3", features = ["smallvec", "fmt", "ansi", "tracing-log", "std"] }
+form_urlencoded = "1.0"
 
 [target.'cfg(all(target_env = "musl", target_pointer_width = "64"))'.dependencies.jemallocator]
 version = "0.3"

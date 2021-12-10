@@ -102,6 +102,10 @@ impl Server {
         let dir_listing = opts.directory_listing;
         tracing::info!("directory listing: enabled={}", dir_listing);
 
+        // Directory listing order number
+        let dir_listing_order = opts.directory_listing_order;
+        tracing::info!("directory listing order code: {}", dir_listing_order);
+
         // Cache control headers option
         let cache_control_headers = opts.cache_control_headers;
         tracing::info!("cache control headers: enabled={}", cache_control_headers);
@@ -123,6 +127,7 @@ impl Server {
                 root_dir,
                 compression,
                 dir_listing,
+                dir_listing_order,
                 cors,
                 security_headers,
                 cache_control_headers,

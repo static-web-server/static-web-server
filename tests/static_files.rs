@@ -22,7 +22,9 @@ mod tests {
             &HeaderMap::new(),
             root_dir(),
             "index.html",
+            None,
             false,
+            6,
         )
         .await
         .expect("unexpected error response on `handle` function");
@@ -58,7 +60,9 @@ mod tests {
             &HeaderMap::new(),
             root_dir(),
             "index.html",
+            None,
             false,
+            6,
         )
         .await
         .expect("unexpected error response on `handle` function");
@@ -90,8 +94,16 @@ mod tests {
     #[tokio::test]
     async fn handle_file_not_found() {
         for method in [Method::HEAD, Method::GET] {
-            match static_files::handle(&method, &HeaderMap::new(), root_dir(), "xyz.html", false)
-                .await
+            match static_files::handle(
+                &method,
+                &HeaderMap::new(),
+                root_dir(),
+                "xyz.html",
+                None,
+                false,
+                6,
+            )
+            .await
             {
                 Ok(_) => {
                     panic!("expected a status error 404 but not status 200")
@@ -111,7 +123,16 @@ mod tests {
 
         for method in [Method::HEAD, Method::GET] {
             for uri in ["", "/"] {
-                match static_files::handle(&method, &HeaderMap::new(), root_dir(), uri, false).await
+                match static_files::handle(
+                    &method,
+                    &HeaderMap::new(),
+                    root_dir(),
+                    uri,
+                    None,
+                    false,
+                    6,
+                )
+                .await
                 {
                     Ok(res) => {
                         assert_eq!(res.status(), 200);
@@ -137,7 +158,9 @@ mod tests {
                 &HeaderMap::new(),
                 root_dir(),
                 "/index%2ehtml",
+                None,
                 false,
+                6,
             )
             .await
             {
@@ -160,7 +183,9 @@ mod tests {
                 &HeaderMap::new(),
                 root_dir(),
                 "/%2E%2e.html",
+                None,
                 false,
+                6,
             )
             .await
             {
@@ -186,7 +211,9 @@ mod tests {
                 &HeaderMap::new(),
                 root_dir(),
                 "index.html",
+                None,
                 false,
+                6,
             )
             .await
             {
@@ -207,7 +234,9 @@ mod tests {
                 res1.headers()["last-modified"].to_owned(),
             );
 
-            match static_files::handle(&method, &headers, root_dir(), "index.html", false).await {
+            match static_files::handle(&method, &headers, root_dir(), "index.html", None, false, 6)
+                .await
+            {
                 Ok(mut res) => {
                     assert_eq!(res.status(), 304);
                     assert_eq!(res.headers().get("content-length"), None);
@@ -228,7 +257,9 @@ mod tests {
                 "Mon, 18 Nov 1974 00:00:00 GMT".parse().unwrap(),
             );
 
-            match static_files::handle(&method, &headers, root_dir(), "index.html", false).await {
+            match static_files::handle(&method, &headers, root_dir(), "index.html", None, false, 6)
+                .await
+            {
                 Ok(mut res) => {
                     assert_eq!(res.status(), 200);
                     let body = hyper::body::to_bytes(res.body_mut())
@@ -252,7 +283,9 @@ mod tests {
                 &HeaderMap::new(),
                 root_dir(),
                 "index.html",
+                None,
                 false,
+                6,
             )
             .await
             {
@@ -272,7 +305,9 @@ mod tests {
                 res1.headers()["last-modified"].to_owned(),
             );
 
-            match static_files::handle(&method, &headers, root_dir(), "index.html", false).await {
+            match static_files::handle(&method, &headers, root_dir(), "index.html", None, false, 6)
+                .await
+            {
                 Ok(res) => {
                     assert_eq!(res.status(), 200);
                 }
@@ -288,7 +323,9 @@ mod tests {
                 "Mon, 18 Nov 1974 00:00:00 GMT".parse().unwrap(),
             );
 
-            match static_files::handle(&method, &headers, root_dir(), "index.html", false).await {
+            match static_files::handle(&method, &headers, root_dir(), "index.html", None, false, 6)
+                .await
+            {
                 Ok(mut res) => {
                     assert_eq!(res.status(), 412);
 
@@ -319,8 +356,16 @@ mod tests {
             Method::TRACE,
         ];
         for method in methods {
-            match static_files::handle(&method, &HeaderMap::new(), root_dir(), "index.html", false)
-                .await
+            match static_files::handle(
+                &method,
+                &HeaderMap::new(),
+                root_dir(),
+                "index.html",
+                None,
+                false,
+                6,
+            )
+            .await
             {
                 Ok(mut res) => match method {
                     // The handle only accepts HEAD or GET request methods
@@ -368,7 +413,9 @@ mod tests {
             let mut headers = HeaderMap::new();
             headers.insert(http::header::ACCEPT_ENCODING, enc.parse().unwrap());
 
-            match static_files::handle(method, &headers, root_dir(), "index.html", false).await {
+            match static_files::handle(method, &headers, root_dir(), "index.html", None, false, 6)
+                .await
+            {
                 Ok(res) => {
                     let res = compression::auto(method, &headers, res)
                         .expect("unexpected bytes error during body compression");
@@ -418,7 +465,9 @@ mod tests {
         let buf = Bytes::from(buf);
 
         for method in [Method::HEAD, Method::GET] {
-            match static_files::handle(&method, &headers, root_dir(), "index.html", false).await {
+            match static_files::handle(&method, &headers, root_dir(), "index.html", None, false, 6)
+                .await
+            {
                 Ok(mut res) => {
                     assert_eq!(res.status(), 206);
                     assert_eq!(
@@ -448,7 +497,9 @@ mod tests {
         let buf = Bytes::from(buf);
 
         for method in [Method::HEAD, Method::GET] {
-            match static_files::handle(&method, &headers, root_dir(), "index.html", false).await {
+            match static_files::handle(&method, &headers, root_dir(), "index.html", None, false, 6)
+                .await
+            {
                 Ok(mut res) => {
                     assert_eq!(res.status(), 416);
                     assert_eq!(
@@ -479,7 +530,9 @@ mod tests {
         let buf = Bytes::from(buf);
 
         for method in [Method::HEAD, Method::GET] {
-            match static_files::handle(&method, &headers, root_dir(), "index.html", false).await {
+            match static_files::handle(&method, &headers, root_dir(), "index.html", None, false, 6)
+                .await
+            {
                 Ok(res) => {
                     assert_eq!(res.status(), 200);
                     assert_eq!(res.headers()["content-length"], buf.len().to_string());
@@ -502,7 +555,9 @@ mod tests {
         let buf = Bytes::from(buf);
 
         for method in [Method::HEAD, Method::GET] {
-            match static_files::handle(&method, &headers, root_dir(), "index.html", false).await {
+            match static_files::handle(&method, &headers, root_dir(), "index.html", None, false, 6)
+                .await
+            {
                 Ok(mut res) => {
                     assert_eq!(res.status(), 206);
                     assert_eq!(
@@ -535,7 +590,9 @@ mod tests {
         let buf = Bytes::from(buf);
 
         for method in [Method::HEAD, Method::GET] {
-            match static_files::handle(&method, &headers, root_dir(), "index.html", false).await {
+            match static_files::handle(&method, &headers, root_dir(), "index.html", None, false, 6)
+                .await
+            {
                 Ok(mut res) => {
                     assert_eq!(res.status(), 206);
                     assert_eq!(
@@ -565,7 +622,9 @@ mod tests {
         let buf = Bytes::from(buf);
 
         for method in [Method::HEAD, Method::GET] {
-            match static_files::handle(&method, &headers, root_dir(), "index.html", false).await {
+            match static_files::handle(&method, &headers, root_dir(), "index.html", None, false, 6)
+                .await
+            {
                 Ok(mut res) => {
                     assert_eq!(res.status(), 416);
                     assert_eq!(
@@ -598,7 +657,9 @@ mod tests {
         );
 
         for method in [Method::HEAD, Method::GET] {
-            match static_files::handle(&method, &headers, root_dir(), "index.html", false).await {
+            match static_files::handle(&method, &headers, root_dir(), "index.html", None, false, 6)
+                .await
+            {
                 Ok(mut res) => {
                     assert_eq!(res.status(), 416);
                     assert_eq!(
@@ -629,7 +690,9 @@ mod tests {
         headers.insert("range", "bytes=".parse().unwrap());
 
         for method in [Method::HEAD, Method::GET] {
-            match static_files::handle(&method, &headers, root_dir(), "index.html", false).await {
+            match static_files::handle(&method, &headers, root_dir(), "index.html", None, false, 6)
+                .await
+            {
                 Ok(mut res) => {
                     assert_eq!(res.status(), 200);
                     let body = hyper::body::to_bytes(res.body_mut())
@@ -655,7 +718,9 @@ mod tests {
         headers.insert("range", format!("bytes=100-{}", buf.len()).parse().unwrap());
 
         for method in [Method::HEAD, Method::GET] {
-            match static_files::handle(&method, &headers, root_dir(), "index.html", false).await {
+            match static_files::handle(&method, &headers, root_dir(), "index.html", None, false, 6)
+                .await
+            {
                 Ok(mut res) => {
                     assert_eq!(res.status(), 206);
                     assert_eq!(
@@ -692,7 +757,9 @@ mod tests {
         );
 
         for method in [Method::HEAD, Method::GET] {
-            match static_files::handle(&method, &headers, root_dir(), "index.html", false).await {
+            match static_files::handle(&method, &headers, root_dir(), "index.html", None, false, 6)
+                .await
+            {
                 Ok(mut res) => {
                     assert_eq!(res.status(), 206);
                     assert_eq!(
