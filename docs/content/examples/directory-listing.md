@@ -40,7 +40,7 @@ The possible number code values are grouped by attribute as follows:
 
 - 6: Unordered
 
-!!! info "Tip"
+!!! info "Tips"
     - The `--directory-listing-order` option depends on `--directory-listing` to be enabled.
     - Use the query `?sort=NUMBER` to customize the sorting. E.g `https://localhost/?sort=5` (sort by Size in descending order)
 
@@ -51,6 +51,6 @@ static-web-server \
     --port 8787 \
     --root ./my-public-dir \
     --directory-listing true \
-    # Sorting file/dir names in descending order
+    # E.g Sorting file/dir names in descending order
     --directory-listing-order 1
 ```
