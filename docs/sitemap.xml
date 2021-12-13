@@ -2,117 +2,117 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
          <loc>https://sws.joseluisq.net/</loc>
-         <lastmod>2021-12-11</lastmod>
+         <lastmod>2021-12-13</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://sws.joseluisq.net/contributions/</loc>
-         <lastmod>2021-12-11</lastmod>
+         <lastmod>2021-12-13</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://sws.joseluisq.net/download-and-install/</loc>
-         <lastmod>2021-12-11</lastmod>
+         <lastmod>2021-12-13</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://sws.joseluisq.net/getting-started/</loc>
-         <lastmod>2021-12-11</lastmod>
+         <lastmod>2021-12-13</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://sws.joseluisq.net/license/</loc>
-         <lastmod>2021-12-11</lastmod>
+         <lastmod>2021-12-13</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://sws.joseluisq.net/migration/</loc>
-         <lastmod>2021-12-11</lastmod>
+         <lastmod>2021-12-13</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://sws.joseluisq.net/platforms-architectures/</loc>
-         <lastmod>2021-12-11</lastmod>
+         <lastmod>2021-12-13</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://sws.joseluisq.net/semantic-versioning/</loc>
-         <lastmod>2021-12-11</lastmod>
+         <lastmod>2021-12-13</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://sws.joseluisq.net/configuration/command-line-arguments/</loc>
-         <lastmod>2021-12-11</lastmod>
+         <lastmod>2021-12-13</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://sws.joseluisq.net/configuration/environment-variables/</loc>
-         <lastmod>2021-12-11</lastmod>
+         <lastmod>2021-12-13</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://sws.joseluisq.net/examples/basic-authentication/</loc>
-         <lastmod>2021-12-11</lastmod>
+         <lastmod>2021-12-13</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://sws.joseluisq.net/examples/cache-control-headers/</loc>
-         <lastmod>2021-12-11</lastmod>
+         <lastmod>2021-12-13</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://sws.joseluisq.net/examples/compression/</loc>
-         <lastmod>2021-12-11</lastmod>
+         <lastmod>2021-12-13</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://sws.joseluisq.net/examples/cors/</loc>
-         <lastmod>2021-12-11</lastmod>
+         <lastmod>2021-12-13</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://sws.joseluisq.net/examples/directory-listing/</loc>
-         <lastmod>2021-12-11</lastmod>
+         <lastmod>2021-12-13</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://sws.joseluisq.net/examples/docker/</loc>
-         <lastmod>2021-12-11</lastmod>
+         <lastmod>2021-12-13</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://sws.joseluisq.net/examples/error-pages/</loc>
-         <lastmod>2021-12-11</lastmod>
+         <lastmod>2021-12-13</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://sws.joseluisq.net/examples/file-descriptor-socket-passing/</loc>
-         <lastmod>2021-12-11</lastmod>
+         <lastmod>2021-12-13</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://sws.joseluisq.net/examples/http1/</loc>
-         <lastmod>2021-12-11</lastmod>
+         <lastmod>2021-12-13</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://sws.joseluisq.net/examples/http2-tls/</loc>
-         <lastmod>2021-12-11</lastmod>
+         <lastmod>2021-12-13</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://sws.joseluisq.net/examples/logging/</loc>
-         <lastmod>2021-12-11</lastmod>
+         <lastmod>2021-12-13</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://sws.joseluisq.net/examples/security-headers/</loc>
-         <lastmod>2021-12-11</lastmod>
+         <lastmod>2021-12-13</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://sws.joseluisq.net/examples/worker-threads/</loc>
-         <lastmod>2021-12-11</lastmod>
+         <lastmod>2021-12-13</lastmod>
          <changefreq>daily</changefreq>
     </url>
 </urlset>
