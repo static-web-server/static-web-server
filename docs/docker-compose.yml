@@ -5,6 +5,6 @@ services:
       context: .
       dockerfile: Dockerfile
     ports:
-      - 8088:8000
+      - 8000:8000
     volumes:
       - ./:/docs

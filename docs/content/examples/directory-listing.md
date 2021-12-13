@@ -17,28 +17,38 @@ And here an example of how the directory listing looks like.
 
 ## Sorting
 
-Ascending and descending ordering of files/dirs by their attributes are provided by the numeric `--directory-listing-order` option or the equivalent [SERVER_DIRECTORY_LISTING_ORDER](./../configuration/environment-variables.md#server_directory_listing_order) env.
+Sorting by `Name`, `Last modified` and `Size` is enabled as clickable columns when directory listing is activated via the `--directory-listing=true` option.
 
-The possible number code values are grouped by attribute as follows:
+You can also use the `sort` query parameter to sort manually by certain attribute from URI. E.g `https://localhost/?sort=5`.
+
+## Sorting by default
+
+Some times one wants to sort by certain attribute but by **default**. In that case default ascending or descending ordering of files/dirs by their attributes is provided by the numeric `--directory-listing-order` option or the equivalent [SERVER_DIRECTORY_LISTING_ORDER](./../configuration/environment-variables.md#server_directory_listing_order) env.
+
+To do so you have to pass a [code sorting number](#code-numbers-for-sorting). E.g `--directory-listing-order=2`.
+
+## Code numbers for sorting
+
+Below the possible number code values for sorting/ordering which are grouped by attribute.
 
 ### Name
 
-- 0: Ascending
-- 1: Descending
+- `0`: Ascending
+- `1`: Descending
 
 ### Last modified
 
-- 2: Ascending
-- 3: Descending
+- `2`: Ascending
+- `3`: Descending
 
 ### Size
 
-- 4: Ascending
-- 5: Descending
+- `4`: Ascending
+- `5`: Descending
 
 ### Default
 
-- 6: Unordered
+- `6`: Unordered
 
 !!! info "Tips"
     - The `--directory-listing-order` option depends on `--directory-listing` to be enabled.
