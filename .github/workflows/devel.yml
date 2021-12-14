@@ -84,11 +84,11 @@ jobs:
             rust: nightly
             target: arm-unknown-linux-gnueabihf
           - build: macos
-            os: macos-latest
+            os: macos-11
             rust: nightly
             target: x86_64-apple-darwin
           - build: macos-arm64
-            os: macos-latest
+            os: macos-11
             rust: nightly
             target: aarch64-apple-darwin
           - build: windows-msvc
@@ -140,13 +140,6 @@ jobs:
       run: |
         # Can't run tests: cross-compiling
         echo "SKIP_TESTS=yes" >> $GITHUB_ENV
-
-        # Use the beta compiler
-        sudo xcode-select -s /Applications/Xcode_12.2.app/Contents/Developer/
-
-        # Set SDK environment variables
-        echo "SDKROOT=$(xcrun -sdk macosx11.0 --show-sdk-path)" >> $GITHUB_ENV
-        echo "MACOSX_DEPLOYMENT_TARGET=$(xcrun -sdk macosx11.0 --show-sdk-platform-version)" >> $GITHUB_ENV
 
     - name: Run tests
       if: env.SKIP_TESTS == ''

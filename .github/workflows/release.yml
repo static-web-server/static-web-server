@@ -92,11 +92,11 @@ jobs:
           rust: nightly
           target: arm-unknown-linux-gnueabihf
         - build: macos
-          os: macos-latest
+          os: macos-11
           rust: nightly
           target: x86_64-apple-darwin
         - build: macos-arm64
-          os: macos-latest
+          os: macos-11
           rust: nightly
           target: aarch64-apple-darwin
         - build: windows-msvc
@@ -143,16 +143,6 @@ jobs:
         echo "cargo command is: ${{ env.CARGO }}"
         echo "target flag is: ${{ env.TARGET_FLAGS }}"
         echo "target dir is: ${{ env.TARGET_DIR }}"
-
-    - name: aarch64 specific items
-      if: matrix.build == 'macos-arm64'
-      run: |
-        # Use the beta compiler
-        sudo xcode-select -s /Applications/Xcode_12.2.app/Contents/Developer/
-
-        # Set SDK environment variables
-        echo "SDKROOT=$(xcrun -sdk macosx11.0 --show-sdk-path)" >> $GITHUB_ENV
-        echo "MACOSX_DEPLOYMENT_TARGET=$(xcrun -sdk macosx11.0 --show-sdk-platform-version)" >> $GITHUB_ENV
 
     - name: Build release binary
       run: ${{ env.CARGO }} build --verbose --release ${{ env.TARGET_FLAGS }}
