@@ -58,30 +58,32 @@ pub async fn handle(
     let base = Arc::new(base_path.into());
     let (filepath, meta, auto_index) = path_from_tail(base, uri_path).await?;
 
+    // NOTE: `auto_index` appends an `index.html` to an `uri_path` of kind directory only.
+
+    // Check for a trailing slash on the current directory path
+    // and redirect if that path doesn't end with the slash char
+    if auto_index && !uri_path.ends_with('/') {
+        let uri = [uri_path, "/"].concat();
+        let loc = match HeaderValue::from_str(uri.as_str()) {
+            Ok(val) => val,
+            Err(err) => {
+                tracing::error!("invalid header value from current uri: {:?}", err);
+                return Err(StatusCode::INTERNAL_SERVER_ERROR);
+            }
+        };
+
+        let mut resp = Response::new(Body::empty());
+        resp.headers_mut().insert(hyper::header::LOCATION, loc);
+        *resp.status_mut() = StatusCode::PERMANENT_REDIRECT;
+        tracing::trace!("uri doesn't end with a slash so redirecting permanently");
+        return Ok(resp);
+    }
+
     // Directory listing
-    // 1. Check if "directory listing" feature is enabled,
+    // 1. Check if "directory listing" feature is enabled
     // if current path is a valid directory and
-    // if it does not contain an `index.html` file
+    // if it does not contain an `index.html` file (if a proper auto index is generated)
     if dir_listing && auto_index && !filepath.as_ref().exists() {
-        // Redirect if current path does not end with a slash char
-        if !uri_path.ends_with('/') {
-            let uri = [uri_path, "/"].concat();
-            let loc = match HeaderValue::from_str(uri.as_str()) {
-                Ok(val) => val,
-                Err(err) => {
-                    tracing::error!("invalid header value from current uri: {:?}", err);
-                    return Err(StatusCode::INTERNAL_SERVER_ERROR);
-                }
-            };
-
-            let mut resp = Response::new(Body::empty());
-            resp.headers_mut().insert(hyper::header::LOCATION, loc);
-            *resp.status_mut() = StatusCode::PERMANENT_REDIRECT;
-            tracing::trace!("uri doesn't end with a slash so redirect permanently");
-
-            return Ok(resp);
-        }
-
         return directory_listing(
             method,
             uri_path,
