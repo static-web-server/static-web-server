@@ -116,6 +116,30 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn handle_trailing_slash_redirection() {
+        let mut res = static_files::handle(
+            &Method::GET,
+            &HeaderMap::new(),
+            root_dir(),
+            "assets",
+            None,
+            false,
+            0,
+        )
+        .await
+        .expect("unexpected error response on `handle` function");
+
+        assert_eq!(res.status(), 308);
+        assert_eq!(res.headers()["location"], "assets/");
+
+        let body = hyper::body::to_bytes(res.body_mut())
+            .await
+            .expect("unexpected bytes error during `body` conversion");
+
+        assert_eq!(body, Bytes::new());
+    }
+
+    #[tokio::test]
     async fn handle_append_index_on_dir() {
         let buf = fs::read(root_dir().join("index.html"))
             .expect("unexpected error during index.html reading");
@@ -134,9 +158,22 @@ mod tests {
                 )
                 .await
                 {
-                    Ok(res) => {
-                        assert_eq!(res.status(), 200);
-                        assert_eq!(res.headers()["content-length"], buf.len().to_string());
+                    Ok(mut res) => {
+                        if uri.is_empty() {
+                            // it should redirect permanently
+                            assert_eq!(res.status(), 308);
+                            assert_eq!(res.headers()["location"], "/");
+
+                            let body = hyper::body::to_bytes(res.body_mut())
+                                .await
+                                .expect("unexpected bytes error during `body` conversion");
+
+                            assert_eq!(body, Bytes::new());
+                        } else {
+                            // otherwise it should response with ok
+                            assert_eq!(res.status(), 200);
+                            assert_eq!(res.headers()["content-length"], buf.len().to_string());
+                        }
                     }
                     Err(_) => {
                         panic!("expected a status 200 but not a status error")
