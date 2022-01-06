@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _**Note:** See changelog for v1 under the [1.x](https://github.com/joseluisq/static-web-server/blob/1.x/CHANGELOG.md) branch._
 
+## v2.4.0 - 2022-01-06
+
+__Fixes__
+
+- [fd227b3](https://github.com/joseluisq/static-web-server/commit/fd227b3) Bugfix dependency updates including Tokio, futures, http, syn, libc and other crates. (also [fd227b3](https://github.com/joseluisq/static-web-server/commit/fd227b3), [7becd4e](https://github.com/joseluisq/static-web-server/commit/7becd4e)).
+
+__Refactorings__
+
+- [5926c9b](https://github.com/joseluisq/static-web-server/commit/5926c9b) Trailing slash checking and redirection for directory requests. PR [#74](https://github.com/joseluisq/static-web-server/pull/74) resolves [#73](https://github.com/joseluisq/static-web-server/issues/73) suggested by [@knyzorg](https://github.com/knyzorg).
+
+__Features__
+
+- [ac8f87c](https://github.com/joseluisq/static-web-server/commit/ac8f87c) Alpine 3.14 Docker images.
+
 ## v2.3.0 - 2021-12-11
 
 __Fixes__
