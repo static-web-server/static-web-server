@@ -65,11 +65,11 @@ jobs:
         include:
         - build: linux-musl
           os: ubuntu-20.04
-          rust: nightly
+          rust: stable
           target: x86_64-unknown-linux-musl
         - build: linux-musl-i686
           os: ubuntu-20.04
-          rust: nightly
+          rust: stable
           target: i686-unknown-linux-musl
         - build: linux-musl-arm64
           os: ubuntu-20.04
@@ -77,15 +77,15 @@ jobs:
           target: aarch64-unknown-linux-musl
         - build: linux-gnu
           os: ubuntu-20.04
-          rust: nightly
+          rust: stable
           target: x86_64-unknown-linux-gnu
         - build: linux-gnu-i686
           os: ubuntu-20.04
-          rust: nightly
+          rust: stable
           target: i686-unknown-linux-gnu
         - build: linux-gnu-arm64
           os: ubuntu-20.04
-          rust: nightly
+          rust: stable
           target: aarch64-unknown-linux-gnu
         - build: linux-arm-gnueabihf
           os: ubuntu-20.04
@@ -93,19 +93,19 @@ jobs:
           target: arm-unknown-linux-gnueabihf
         - build: macos
           os: macos-11
-          rust: nightly
+          rust: stable
           target: x86_64-apple-darwin
         - build: macos-arm64
           os: macos-11
-          rust: nightly
+          rust: stable
           target: aarch64-apple-darwin
         - build: windows-msvc
           os: windows-2019
-          rust: nightly
+          rust: stable
           target: x86_64-pc-windows-msvc
         - build: windows-msvc-i686
           os: windows-2019
-          rust: nightly
+          rust: stable
           target: i686-pc-windows-msvc
         - build: windows-pc-gnu
           os: windows-2019
