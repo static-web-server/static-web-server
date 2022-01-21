@@ -71,7 +71,7 @@ impl AfterMiddleware for ErrorPage {
                     if content.is_empty() {
                         content = format!(
                             "<html><head><title>{}</title></head><body><center><h1>{}</h1></center></body></html>",
-                            stat.to_string(), stat.to_string());
+                            stat, stat);
                     }
                     Response::with((content_type, stat, content))
                 }
@@ -88,7 +88,7 @@ impl AfterMiddleware for ErrorPage {
                     let content = if self.page50x.is_empty() {
                         format!(
                             "<html><head><title>{}</title></head><body><center><h1>{}</h1></center></body></html>",
-                            stat.to_string(), stat.to_string()
+                            stat, stat
                         )
                     } else {
                         self.page50x.clone()
