@@ -61,7 +61,7 @@ jobs:
         include:
         - build: linux-musl
           os: ubuntu-20.04
-          rust: nightly
+          rust: stable
           target: x86_64-unknown-linux-musl
         - build: linux-musl-arm64
           os: ubuntu-20.04
@@ -69,31 +69,31 @@ jobs:
           target: aarch64-unknown-linux-musl
         - build: linux-gnu
           os: ubuntu-20.04
-          rust: nightly
+          rust: stable
           target: x86_64-unknown-linux-gnu
         - build: linux-gnu-arm64
           os: ubuntu-20.04
-          rust: nightly
+          rust: stable
           target: aarch64-unknown-linux-gnu
         - build: linux-arm-gnueabihf
           os: ubuntu-20.04
           rust: nightly
           target: arm-unknown-linux-gnueabihf
         - build: macos
-          os: macos-latest
-          rust: nightly
+          os: macos-11
+          rust: stable
           target: x86_64-apple-darwin
         - build: macos-arm64
-          os: macos-latest
-          rust: nightly
+          os: macos-11
+          rust: stable
           target: aarch64-apple-darwin
         - build: windows-msvc
           os: windows-2019
-          rust: nightly
+          rust: stable
           target: x86_64-pc-windows-msvc
         - build: windows-msvc-arm64
           os: windows-2019
-          rust: nightly
+          rust: stable
           target: aarch64-pc-windows-msvc
 
     steps:
@@ -123,16 +123,6 @@ jobs:
         echo "cargo command is: ${{ env.CARGO }}"
         echo "target flag is: ${{ env.TARGET_FLAGS }}"
         echo "target dir is: ${{ env.TARGET_DIR }}"
-
-    - name: aarch64 specific items
-      if: matrix.build == 'macos-arm64'
-      run: |
-        # Use the beta compiler
-        sudo xcode-select -s /Applications/Xcode_12.2.app/Contents/Developer/
-
-        # Set SDK environment variables
-        echo "SDKROOT=$(xcrun -sdk macosx11.0 --show-sdk-path)" >> $GITHUB_ENV
-        echo "MACOSX_DEPLOYMENT_TARGET=$(xcrun -sdk macosx11.0 --show-sdk-platform-version)" >> $GITHUB_ENV
 
     - name: Build release binary
       run: ${{ env.CARGO }} build --verbose --release ${{ env.TARGET_FLAGS }}
