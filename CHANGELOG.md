@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _**Note:** See changelog for v2 under the [master](https://github.com/joseluisq/static-web-server/blob/master/CHANGELOG.md) branch._
 
+## v1.19.0 - 2022-01-24
+
+__Updates__
+
+- [9ceab19](https://github.com/joseluisq/static-web-server/commit/9ceab19) Security/bug-fixes updates for OpenSSL, structopt, libc and other dependencies (also [ae2c70d](https://github.com/joseluisq/static-web-server/commit/ae2c70d)).
+- [561175e](https://github.com/joseluisq/static-web-server/commit/561175e) Alpine 3.14 Docker image.
+
+__Fixes__
+
+- [70a16f8](https://github.com/joseluisq/static-web-server/commit/70a16f8) `to_string` applied to a type that implements `Display`.
+
 ## v1.18.2 - 2021-12-02
 
 __Updates__
