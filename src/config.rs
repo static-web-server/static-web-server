@@ -154,4 +154,8 @@ pub struct Config {
     /// It provides The "Basic" HTTP Authentication scheme using credentials as "user-id:password" pairs. Password must be encoded using the "BCrypt" password-hashing function.
     #[structopt(long, default_value = "", env = "SERVER_BASIC_AUTH")]
     pub basic_auth: String,
+
+    #[structopt(long, short = "q", default_value = "0", env = "SERVER_GRACE_PERIOD")]
+    /// Defines a grace period in seconds after a `SIGTERM` signal is caught which will delay the server before to shut it down gracefully. The maximum value is 255 seconds.
+    pub grace_period: u8,
 }
