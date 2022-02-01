@@ -121,6 +121,10 @@ impl Server {
         );
         let basic_auth = Arc::from(basic_auth);
 
+        // Grace period option
+        let grace_period = opts.grace_period;
+        tracing::info!("grace period before graceful shutdown: {}s", grace_period);
+
         // Create a service router for Hyper
         let router_service = RouterService::new(RequestHandler {
             opts: RequestHandlerOpts {
@@ -170,9 +174,10 @@ impl Server {
                 HyperServer::builder(TlsAcceptor::new(tls, incoming)).serve(router_service);
 
             #[cfg(not(windows))]
-            let server = server.with_graceful_shutdown(signals::wait_for_signals(signals));
+            let server =
+                server.with_graceful_shutdown(signals::wait_for_signals(signals, grace_period));
             #[cfg(windows)]
-            let server = server.with_graceful_shutdown(signals::wait_for_ctrl_c());
+            let server = server.with_graceful_shutdown(signals::wait_for_ctrl_c(grace_period));
 
             tracing::info!(
                 parent: tracing::info_span!("Server::start_server", ?addr_str, ?threads),
@@ -200,9 +205,10 @@ impl Server {
                 .serve(router_service);
 
             #[cfg(not(windows))]
-            let server = server.with_graceful_shutdown(signals::wait_for_signals(signals));
+            let server =
+                server.with_graceful_shutdown(signals::wait_for_signals(signals, grace_period));
             #[cfg(windows)]
-            let server = server.with_graceful_shutdown(signals::wait_for_ctrl_c());
+            let server = server.with_graceful_shutdown(signals::wait_for_ctrl_c(grace_period));
 
             tracing::info!(
                 parent: tracing::info_span!("Server::start_server", ?addr_str, ?threads),
