@@ -1,5 +1,7 @@
+#![forbid(unsafe_code)]
 #![deny(warnings)]
 #![deny(rust_2018_idioms)]
+#![deny(dead_code)]
 
 #[cfg(test)]
 mod tests {

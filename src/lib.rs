@@ -1,5 +1,7 @@
+#![forbid(unsafe_code)]
 #![deny(warnings)]
 #![deny(rust_2018_idioms)]
+#![deny(dead_code)]
 
 #[macro_use]
 extern crate anyhow;
