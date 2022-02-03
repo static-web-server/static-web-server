@@ -53,4 +53,5 @@ pub async fn wait_for_ctrl_c(grace_period_secs: u8) {
         .await
         .expect("failed to install ctrl+c signal handler");
     delay_graceful_shutdown(grace_period_secs).await;
+    tracing::info!("delegating server's graceful shutdown");
 }
