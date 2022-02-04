@@ -15,7 +15,7 @@ __Fixes__
 
 __Features__
 
-- [ac8f87c](https://github.com/joseluisq/static-web-server/commit/ac8f87c) Configurable grace period support after a `SIGTERM`. PR [#80](https://github.com/joseluisq/static-web-server/pull/80) resolves [#79](https://github.com/joseluisq/static-web-server/issues/79) suggested by [@jtackaberry](https://github.com/jtackaberry). See [docs](https://sws.joseluisq.net/features/graceful-shutdown/#graceful-shutdown) for more details.
+- [3224261](https://github.com/joseluisq/static-web-server/commit/3224261) Configurable grace period support after a `SIGTERM`. PR [#80](https://github.com/joseluisq/static-web-server/pull/80) resolves [#79](https://github.com/joseluisq/static-web-server/issues/79) suggested by [@jtackaberry](https://github.com/jtackaberry). See [docs](https://sws.joseluisq.net/features/graceful-shutdown/#graceful-shutdown) for more details.
 
 __Refactorings__
 

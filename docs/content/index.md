@@ -31,6 +31,8 @@ Written on top of [Hyper](https://github.com/hyperium/hyper) and [Tokio](https:/
 
 It's cross-platform and available for `Linux`, `macOS`, `Windows` and `FreeBSD` (`x86`/`x86_64`,  `ARM`/`ARM64`) as well as `Docker`.
 
+![static-web-server](https://user-images.githubusercontent.com/1700322/152613820-658f025c-d0a4-46b3-aa6d-bdc7f638ce77.png)
+
 !!! tip "Tips"
     - If you're looking for `v1` please go to [1.x](https://github.com/joseluisq/static-web-server/tree/1.x) branch.
     - If you want to migrate from `v1` to `v2` please take a look at [v2.0.0](https://github.com/joseluisq/static-web-server/releases/tag/v2.0.0) release.
