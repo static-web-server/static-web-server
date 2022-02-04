@@ -10,7 +10,7 @@ The server can be configured via the following command-line arguments.
 ```
 $ static-web-server -h
 
-static-web-server 2.4.0
+static-web-server 2.5.0
 Jose Quintana <https://git.io/joseluisq>
 A blazing fast and asynchronous web server for static files-serving.
 
@@ -49,6 +49,9 @@ OPTIONS:
             descriptor to be inherited by static-web-server. Cannot be used in conjunction with the port and host
             arguments. The included systemd unit file utilises this feature to increase security by allowing the static-
             web-server to be sandboxed more completely [env: SERVER_LISTEN_FD=]
+    -q, --grace-period <grace-period>
+            Defines a grace period in seconds after a `SIGTERM` signal is caught which will delay the server before to
+            shut it down gracefully. The maximum value is 255 seconds [env: SERVER_GRACE_PERIOD=]  [default: 0]
     -a, --host <host>
             Host address (E.g 127.0.0.1 or ::1) [env: SERVER_HOST=]  [default: ::]
 
