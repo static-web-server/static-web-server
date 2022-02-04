@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _**Note:** See changelog for v1 under the [1.x](https://github.com/joseluisq/static-web-server/blob/1.x/CHANGELOG.md) branch._
 
+## v2.5.0 - 2022-02-04
+
+__Fixes__
+
+- [3df07aa](https://github.com/joseluisq/static-web-server/commit/3df07aa) Bugfix dependency updates including Tokio, libc , h2, tracing, brotli other crates. (also [5f9f9f9](https://github.com/joseluisq/static-web-server/commit/5f9f9f9), [3df07aa](https://github.com/joseluisq/static-web-server/commit/3df07aa), [0c1a6c1](https://github.com/joseluisq/static-web-server/commit/0c1a6c1)).
+
+__Features__
+
+- [ac8f87c](https://github.com/joseluisq/static-web-server/commit/ac8f87c) Configurable grace period support after a `SIGTERM`. PR [#80](https://github.com/joseluisq/static-web-server/pull/80) resolves [#79](https://github.com/joseluisq/static-web-server/issues/79) suggested by [@jtackaberry](https://github.com/jtackaberry). See [docs](https://sws.joseluisq.net/features/graceful-shutdown/#graceful-shutdown) for more details.
+
+__Refactorings__
+
+- [4caf0aa](https://github.com/joseluisq/static-web-server/commit/4caf0aa) Log `info` entry after `ctrl+c` on Windows.
+
 ## v2.4.0 - 2022-01-06
 
 __Fixes__
