@@ -36,6 +36,8 @@ jobs:
           - linux-gnu-arm64
           - linux-gnu-i686
           - linux-arm-gnueabihf
+          - linux-musl-armv6
+          - linux-musl-armv7
           - macos
           - macos-arm64
           - windows-msvc
@@ -83,6 +85,14 @@ jobs:
             os: ubuntu-20.04
             rust: nightly
             target: arm-unknown-linux-gnueabihf
+          - build: linux-musl-armv6
+            os: ubuntu-20.04
+            rust: nightly
+            target: arm-unknown-linux-musleabihf
+          - build: linux-musl-armv7
+            os: ubuntu-20.04
+            rust: nightly
+            target: armv7-unknown-linux-musleabihf
           - build: macos
             os: macos-11
             rust: stable
