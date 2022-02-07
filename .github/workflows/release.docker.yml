@@ -12,6 +12,9 @@ jobs:
         name: Checkout repository
         uses: actions/checkout@v2
       -
+        name: Set up QEMU
+        uses: docker/setup-qemu-action@v1
+      -
         name: Docker meta alpine
         id: meta_alpine
         uses: docker/metadata-action@v3
@@ -45,6 +48,7 @@ jobs:
         with:
           push: true
           context: .
+          platforms: linux/amd64,linux/arm64,linux/386,linux/arm/v7,linux/arm/v6
           file: ${{ env.SERVER_DOCKERFILE }}
           tags: ${{ steps.meta_alpine.outputs.tags }}
           build-args: |
@@ -57,6 +61,9 @@ jobs:
       -
         name: Checkout repository
         uses: actions/checkout@v2
+      -
+        name: Set up QEMU
+        uses: docker/setup-qemu-action@v1
       -
         name: Docker meta scratch
         id: meta_scratch
@@ -88,6 +95,7 @@ jobs:
         with:
           push: true
           context: .
+          platforms: linux/amd64,linux/arm64,linux/386,linux/arm/v7,linux/arm/v6
           file: ${{ env.SERVER_DOCKERFILE }}
           tags: ${{ steps.meta_scratch.outputs.tags }}
           build-args: |

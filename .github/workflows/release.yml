@@ -56,6 +56,8 @@ jobs:
           - linux-gnu-arm64
           - linux-gnu-i686
           - linux-arm-gnueabihf
+          - linux-musl-armv6
+          - linux-musl-armv7
           - macos
           - macos-arm64
           - windows-msvc
@@ -91,6 +93,14 @@ jobs:
           os: ubuntu-20.04
           rust: nightly
           target: arm-unknown-linux-gnueabihf
+        - build: linux-musl-armv6
+          os: ubuntu-20.04
+          rust: nightly
+          target: arm-unknown-linux-musleabihf
+        - build: linux-musl-armv7
+          os: ubuntu-20.04
+          rust: nightly
+          target: armv7-unknown-linux-musleabihf
         - build: macos
           os: macos-11
           rust: stable
@@ -148,7 +158,7 @@ jobs:
       run: ${{ env.CARGO }} build --verbose --release ${{ env.TARGET_FLAGS }}
 
     - name: Strip release binary (linux and macos)
-      if: matrix.os != 'windows-2019' && matrix.build != 'linux-arm-gnueabihf' && matrix.build != 'linux-gnu-arm64' && matrix.build != 'linux-musl-arm64' && matrix.build != 'linux-musl-i686'
+      if: matrix.os != 'windows-2019' && matrix.build != 'linux-arm-gnueabihf' && matrix.build != 'linux-musl-armv7' && matrix.build != 'linux-musl-armv6' && matrix.build != 'linux-gnu-arm64' && matrix.build != 'linux-musl-arm64' && matrix.build != 'linux-musl-i686'
       run: strip "target/${{ matrix.target }}/release/static-web-server"
 
     - name: Strip release binary (linux-arm-gnueabihf)
@@ -157,6 +167,20 @@ jobs:
         docker run --rm -v "$PWD/target:/target:Z" \
           rustembedded/cross:arm-unknown-linux-gnueabihf \
           arm-linux-gnueabihf-strip /target/arm-unknown-linux-gnueabihf/release/static-web-server
+
+    - name: Strip release binary (linux-musl-armv7)
+      if: matrix.build == 'linux-musl-armv7'
+      run: |
+        docker run --rm -v "$PWD/target:/target:Z" \
+          rustembedded/cross:armv7-unknown-linux-musleabihf \
+          arm-linux-gnueabihf-strip /target/armv7-unknown-linux-musleabihf/release/static-web-server
+
+    - name: Strip release binary (linux-musl-armv6)
+      if: matrix.build == 'linux-musl-armv6'
+      run: |
+        docker run --rm -v "$PWD/target:/target:Z" \
+          rustembedded/cross:arm-unknown-linux-musleabihf \
+          arm-linux-gnueabihf-strip /target/arm-unknown-linux-musleabihf/release/static-web-server
 
     - name: Strip release binary (linux-gnu-arm64)
       if: matrix.build == 'linux-gnu-arm64'

@@ -1,6 +1,6 @@
 ARG SERVER_VERSION=0.0.0
 
-FROM joseluisq/static-web-server:${SERVER_VERSION}-alpine AS latest
+FROM joseluisq/static-web-server:${SERVER_VERSION}-alpine AS build
 
 FROM scratch
 
@@ -11,7 +11,7 @@ LABEL version="${SERVER_VERSION}" \
     description="A blazing fast and asynchronous web server for static files-serving." \
     maintainer="Jose Quintana <joseluisq.net>"
 
-COPY --from=latest /usr/local/bin/static-web-server /
+COPY --from=build /usr/local/bin/static-web-server /
 COPY ./docker/public /public
 
 EXPOSE 80
