@@ -173,14 +173,14 @@ jobs:
       run: |
         docker run --rm -v "$PWD/target:/target:Z" \
           rustembedded/cross:armv7-unknown-linux-musleabihf \
-          arm-linux-gnueabihf-strip /target/armv7-unknown-linux-musleabihf/release/static-web-server
+          arm-linux-musleabihf-strip /target/armv7-unknown-linux-musleabihf/release/static-web-server
 
     - name: Strip release binary (linux-musl-armv6)
       if: matrix.build == 'linux-musl-armv6'
       run: |
         docker run --rm -v "$PWD/target:/target:Z" \
           rustembedded/cross:arm-unknown-linux-musleabihf \
-          arm-linux-gnueabihf-strip /target/arm-unknown-linux-musleabihf/release/static-web-server
+          arm-linux-musleabihf-strip /target/arm-unknown-linux-musleabihf/release/static-web-server
 
     - name: Strip release binary (linux-gnu-arm64)
       if: matrix.build == 'linux-gnu-arm64'

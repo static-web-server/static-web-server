@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _**Note:** See changelog for v1 under the [1.x](https://github.com/joseluisq/static-web-server/blob/1.x/CHANGELOG.md) branch._
 
+## v2.6.0-beta.1 - 2022-02-08
+
+__Fixes__
+
+- [fb84c0b](https://github.com/joseluisq/static-web-server/commit/fb84c0b) Bugfix dependency updates including httparse, futures and other crates.
+
+__Features__
+
+- [c2ae6a5](https://github.com/joseluisq/static-web-server/commit/c2ae6a5) Multi-arch Docker images. PR [#82](https://github.com/joseluisq/static-web-server/pull/82) resolves [#54](https://github.com/joseluisq/static-web-server/issues/54).
+  - New `armv7-unknown-linux-musleabihf` (armv7) and `arm-unknown-linux-musleabihf` (armv6) binary targets.
+  - New Docker images for `linux/arm64`, `linux/386`, `linux/arm/v7` and `linux/arm/v6` platforms.
+
 ## v2.5.0 - 2022-02-04
 
 __Fixes__
