@@ -4,10 +4,6 @@ ARG TARGETPLATFORM
 ARG SERVER_VERSION=0.0.0
 ENV SERVER_VERSION=${SERVER_VERSION}
 
-LABEL version="${SERVER_VERSION}" \
-    description="A blazing fast and asynchronous web server for static files-serving." \
-    maintainer="Jose Quintana <joseluisq.net>"
-
 RUN apk --no-cache add ca-certificates tzdata
 RUN set -ex; \
 	case "$TARGETPLATFORM" in \
@@ -26,7 +22,16 @@ RUN set -ex; \
 
 FROM alpine:3.14
 
-COPY --from=build /usr/local/bin/static-web-server /
+ARG SERVER_VERSION=0.0.0
+ENV SERVER_VERSION=${SERVER_VERSION}
+
+LABEL version="${SERVER_VERSION}" \
+    description="A blazing fast and asynchronous web server for static files-serving." \
+    maintainer="Jose Quintana <joseluisq.net>"
+
+RUN apk --no-cache add ca-certificates tzdata
+
+COPY --from=build /usr/local/bin/static-web-server /usr/local/bin/
 COPY ./docker/alpine/entrypoint.sh /
 COPY ./docker/public /public
 
