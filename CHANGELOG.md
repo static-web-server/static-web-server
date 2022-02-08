@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _**Note:** See changelog for v1 under the [1.x](https://github.com/joseluisq/static-web-server/blob/1.x/CHANGELOG.md) branch._
 
+## v2.6.0-beta.2 - 2022-02-08
+
+__Fixes__
+
+- [65007f9](https://github.com/joseluisq/static-web-server/commit/65007f9) Wrong binary path for alpine docker image.
+
 ## v2.6.0-beta.1 - 2022-02-08
 
 __Fixes__
