@@ -2,6 +2,9 @@
 
 Currently only the following platforms/architectures are supported.
 
+!!! info "Docker"
+    For Docker images supported list see [Docker OS/Arch](/features/docker/#osarch).
+
 ## Linux
 
 #### x86
@@ -13,7 +16,9 @@ Currently only the following platforms/architectures are supported.
   - `x86_64-unknown-linux-musl`
 
 #### ARM
-  - `arm-unknown-linux-gnueabihf`
+  - `arm-unknown-linux-gnueabihf` (armv6)
+  - `arm-unknown-linux-musleabihf` (armv6)
+  - `armv7-unknown-linux-musleabihf` (armv7)
 
 #### ARM64
   - `aarch64-unknown-linux-musl`
