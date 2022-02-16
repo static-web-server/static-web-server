@@ -165,15 +165,15 @@ impl Server {
                     "error during TLS server initialization, probably cert or key file missing",
                 );
 
-            #[cfg(not(windows))]
+            #[cfg(unix)]
             let signals = signals::create_signals()?;
-            #[cfg(not(windows))]
+            #[cfg(unix)]
             let handle = signals.handle();
 
             let server =
                 HyperServer::builder(TlsAcceptor::new(tls, incoming)).serve(router_service);
 
-            #[cfg(not(windows))]
+            #[cfg(unix)]
             let server =
                 server.with_graceful_shutdown(signals::wait_for_signals(signals, grace_period));
             #[cfg(windows)]
@@ -189,14 +189,14 @@ impl Server {
 
             server.await?;
 
-            #[cfg(not(windows))]
+            #[cfg(unix)]
             handle.close();
         } else {
             // HTTP/1
 
-            #[cfg(not(windows))]
+            #[cfg(unix)]
             let signals = signals::create_signals()?;
-            #[cfg(not(windows))]
+            #[cfg(unix)]
             let handle = signals.handle();
 
             let server = HyperServer::from_tcp(tcp_listener)
@@ -204,7 +204,7 @@ impl Server {
                 .tcp_nodelay(true)
                 .serve(router_service);
 
-            #[cfg(not(windows))]
+            #[cfg(unix)]
             let server =
                 server.with_graceful_shutdown(signals::wait_for_signals(signals, grace_period));
             #[cfg(windows)]
@@ -220,7 +220,7 @@ impl Server {
 
             server.await?;
 
-            #[cfg(not(windows))]
+            #[cfg(unix)]
             handle.close();
         }
 

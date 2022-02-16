@@ -1,4 +1,4 @@
-#[cfg(not(windows))]
+#[cfg(unix)]
 use {
     crate::Result, futures_util::stream::StreamExt, signal_hook::consts::signal::*,
     signal_hook_tokio::Signals,
@@ -6,13 +6,13 @@ use {
 
 use tokio::time::{sleep, Duration};
 
-#[cfg(not(windows))]
+#[cfg(unix)]
 /// It creates a common list of signals stream for `SIGTERM`, `SIGINT` and `SIGQUIT` to be observed.
 pub fn create_signals() -> Result<Signals> {
     Ok(Signals::new(&[SIGHUP, SIGTERM, SIGINT, SIGQUIT])?)
 }
 
-#[cfg(not(windows))]
+#[cfg(unix)]
 /// It waits for a specific type of incoming signals included `ctrl+c`.
 pub async fn wait_for_signals(signals: Signals, grace_period_secs: u8) {
     let mut signals = signals.fuse();

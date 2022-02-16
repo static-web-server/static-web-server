@@ -8,7 +8,7 @@ use crate::Result;
 pub fn init(level: &str) -> Result {
     let level = level.parse::<Level>()?;
 
-    #[cfg(not(windows))]
+    #[cfg(unix)]
     let enable_ansi = true;
     #[cfg(windows)]
     let enable_ansi = false;

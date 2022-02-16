@@ -54,7 +54,7 @@ form_urlencoded = "1.0"
 [target.'cfg(all(target_env = "musl", target_pointer_width = "64"))'.dependencies.jemallocator]
 version = "0.3"
 
-[target.'cfg(not(windows))'.dependencies]
+[target.'cfg(unix)'.dependencies]
 signal-hook = { version = "0.3", features = ["extended-siginfo"] }
 signal-hook-tokio = { version = "0.3", features = ["futures-v0_3"], default-features = false }
 
