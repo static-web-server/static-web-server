@@ -18,7 +18,7 @@ use tokio_util::io::{ReaderStream, StreamReader};
 use crate::Result;
 
 /// Contains a fixed list of common text-based MIME types in order to apply compression.
-pub const TEXT_MIME_TYPES: [&str; 23] = [
+pub const TEXT_MIME_TYPES: [&str; 24] = [
     "text/html",
     "text/css",
     "text/javascript",
@@ -42,6 +42,7 @@ pub const TEXT_MIME_TYPES: [&str; 23] = [
     "font/opentype",
     "application/vnd.ms-fontobject",
     "image/svg+xml",
+    "application/wasm",
 ];
 
 /// Create a wrapping handler that compresses the Body of a [`Response`](hyper::Response)

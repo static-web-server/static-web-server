@@ -32,6 +32,7 @@ application/vnd.ms-fontobject
 font/truetype
 font/opentype
 image/svg+xml
+application/wasm
 ```
 
 This feature is enabled by default and can be controlled by the boolean `-x, --compression` option or the equivalent [SERVER_COMPRESSION](./../configuration/environment-variables.md#server_compression) env.
