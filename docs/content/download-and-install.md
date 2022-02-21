@@ -10,7 +10,31 @@ Latest **v2.5.0** release `2022-02-04` ([changelog](https://github.com/joseluisq
 
 </div>
 
-## x86_64
+## Installation methods
+
+### Arch Linux
+
+Via [Yay](https://github.com/Jguer/yay) or your favorite AUR Helper.
+
+```sh
+yay -S static-web-server-bin
+```
+
+### MacOS
+
+```sh
+# TODO
+```
+
+### Windows
+
+```sh
+# TODO
+```
+
+## Binaries
+
+### x86_64
 
 - [static-web-server-v2.5.0-x86_64-apple-darwin.tar.gz](https://github.com/joseluisq/static-web-server/releases/download/v2.5.0/static-web-server-v2.5.0-x86_64-apple-darwin.tar.gz)<br>
 <small>**SHA256SUM:** `02eafd4b659ea992cc33c2552fd62abdedc7c637f36fc91e1bd1fa84510a1781`</small>
@@ -25,7 +49,7 @@ Latest **v2.5.0** release `2022-02-04` ([changelog](https://github.com/joseluisq
 - [static-web-server-v2.5.0-x86_64-unknown-linux-musl.tar.gz](https://github.com/joseluisq/static-web-server/releases/download/v2.5.0/static-web-server-v2.5.0-x86_64-unknown-linux-musl.tar.gz)<br>
 <small>**SHA256SUM:** `65466cff6f58c736b28aa6dfd6df66e721cfbff9134496355115477870d8d009`</small>
 
-## ARM64
+### ARM64
 
 - [static-web-server-v2.5.0-aarch64-unknown-linux-gnu.tar.gz](https://github.com/joseluisq/static-web-server/releases/download/v2.5.0/static-web-server-v2.5.0-aarch64-unknown-linux-gnu.tar.gz)<br>
 <small>**SHA256SUM:** `cce0e0700c9584ee21938bfa018bac248fa577180d3bc3a35a52c637e01c80d9`</small>
@@ -34,7 +58,7 @@ Latest **v2.5.0** release `2022-02-04` ([changelog](https://github.com/joseluisq
 - [static-web-server-v2.5.0-aarch64-apple-darwin.tar.gz](https://github.com/joseluisq/static-web-server/releases/download/v2.5.0/static-web-server-v2.5.0-aarch64-apple-darwin.tar.gz)<br>
 <small>**SHA256SUM:** `3ffda3bb869fa87874d4184b18dfceb0478d262efebdbf2e91d8a9ff6f645f27`</small>
 
-## x86
+### x86
 
 - [static-web-server-v2.5.0-i686-pc-windows-msvc.zip](https://github.com/joseluisq/static-web-server/releases/download/v2.5.0/static-web-server-v2.5.0-i686-pc-windows-msvc.zip)<br>
 <small>**SHA256SUM:** `0cec6fff2794dc6ed104be064031f3c74953436903ec4282fcbac4a91ee524e1`</small>
@@ -45,7 +69,7 @@ Latest **v2.5.0** release `2022-02-04` ([changelog](https://github.com/joseluisq
 - [static-web-server-v2.5.0-i686-unknown-linux-musl.tar.gz](https://github.com/joseluisq/static-web-server/releases/download/v2.5.0/static-web-server-v2.5.0-i686-unknown-linux-musl.tar.gz)<br>
 <small>**SHA256SUM:** `502aae84ec49cefa189af9986beccd7994bd8bd06cddd35dfa4c81d6c98a500a`</small>
 
-## ARM
+### ARM
 
 - [static-web-server-v2.5.0-arm-unknown-linux-gnueabihf.tar.gz](https://github.com/joseluisq/static-web-server/releases/download/v2.5.0/static-web-server-v2.5.0-arm-unknown-linux-gnueabihf.tar.gz)<br>
 <small>**SHA256SUM:** `1b9e5d1f2d1e5ccfef74374521d2e2659c1e8f04becfccdb3bafb25941ef02a1`</small>
