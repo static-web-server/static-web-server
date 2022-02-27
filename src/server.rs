@@ -7,7 +7,7 @@ use structopt::StructOpt;
 
 use crate::handler::{RequestHandler, RequestHandlerOpts};
 use crate::tls::{TlsAcceptor, TlsConfigBuilder};
-use crate::{config::Config, service::RouterService, Result};
+use crate::{config::Config, service::RouterService, Context, Result};
 use crate::{cors, helpers, logger, signals};
 
 /// Define a multi-thread HTTP or HTTP/2 web server.
@@ -42,7 +42,8 @@ impl Server {
             .block_on(async {
                 let r = self.start_server().await;
                 if r.is_err() {
-                    panic!("server error during start up: {:?}", r.unwrap_err())
+                    println!("server failed to start up: {:?}", r.unwrap_err());
+                    std::process::exit(1)
                 }
             });
 
@@ -55,7 +56,8 @@ impl Server {
         let opts = &self.opts;
 
         // Initialize logging system
-        logger::init(&opts.log_level)?;
+        logger::init(&opts.log_level)
+            .with_context(|| "failed to initialize logging".to_string())?;
 
         // Determine TCP listener either file descriptor or TCP socket
         let (tcp_listener, addr_str);
@@ -64,23 +66,31 @@ impl Server {
                 addr_str = format!("@FD({})", fd);
                 tcp_listener = ListenFd::from_env()
                     .take_tcp_listener(fd)?
-                    .expect("failed to convert inherited FD into a TCP listener");
+                    .with_context(|| {
+                        "failed to convert inherited FD into a TCP listener".to_string()
+                    })?;
                 tracing::info!(
                     "converted inherited file descriptor {} to a TCP listener",
                     fd
                 );
             }
             None => {
-                let ip = opts.host.parse::<IpAddr>()?;
+                let ip = opts
+                    .host
+                    .parse::<IpAddr>()
+                    .with_context(|| format!("failed to parse {} address", opts.host))?;
                 let addr = SocketAddr::from((ip, opts.port));
-                tcp_listener = TcpListener::bind(addr)?;
+                tcp_listener = TcpListener::bind(addr)
+                    .with_context(|| format!("failed to bind to {} address", addr))?;
                 addr_str = addr.to_string();
-                tracing::info!("bound to TCP socket {}", addr_str);
+                tracing::info!("server bound to TCP socket {}", addr_str);
             }
         }
 
         // Check for a valid root directory
-        let root_dir = Arc::new(helpers::get_valid_dirpath(&opts.root)?);
+        let root_dir = helpers::get_valid_dirpath(&opts.root)
+            .with_context(|| "root directory was not found or inaccessible".to_string())?;
+        let root_dir = Arc::new(root_dir);
 
         // Custom error pages content
         let page404 = Arc::from(helpers::read_file_content(opts.page404.as_ref()).as_str());
@@ -153,20 +163,24 @@ impl Server {
                 .set_nonblocking(true)
                 .expect("cannot set non-blocking");
             let listener = tokio::net::TcpListener::from_std(tcp_listener)
-                .expect("failed to create tokio::net::TcpListener");
-            let mut incoming = AddrIncoming::from_listener(listener)?;
+                .with_context(|| "failed to create tokio::net::TcpListener".to_string())?;
+            let mut incoming = AddrIncoming::from_listener(listener).with_context(|| {
+                "failed to create an AddrIncoming from the current tokio::net::TcpListener"
+                    .to_string()
+            })?;
             incoming.set_nodelay(true);
 
             let tls = TlsConfigBuilder::new()
                 .cert_path(cert_path)
                 .key_path(key_path)
                 .build()
-                .expect(
-                    "error during TLS server initialization, probably cert or key file missing",
-                );
+                .with_context(|| {
+                    "failed to initialize TLS, probably wrong cert/key or file missing".to_string()
+                })?;
 
             #[cfg(unix)]
-            let signals = signals::create_signals()?;
+            let signals = signals::create_signals()
+                .with_context(|| "failed to register termination signals".to_string())?;
             #[cfg(unix)]
             let handle = signals.handle();
 
@@ -195,7 +209,8 @@ impl Server {
             // HTTP/1
 
             #[cfg(unix)]
-            let signals = signals::create_signals()?;
+            let signals = signals::create_signals()
+                .with_context(|| "failed to register termination signals".to_string())?;
             #[cfg(unix)]
             let handle = signals.handle();
 

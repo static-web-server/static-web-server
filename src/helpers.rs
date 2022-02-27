@@ -9,8 +9,8 @@ where
     PathBuf: From<P>,
 {
     match PathBuf::from(path) {
-        v if !v.exists() => bail!("path \"{:?}\" was not found or inaccessible", &v),
-        v if !v.is_dir() => bail!("path \"{:?}\" is not a valid directory", &v),
+        v if !v.exists() => bail!("path {} was not found or inaccessible", v.display()),
+        v if !v.is_dir() => bail!("path {} is not a valid directory", v.display()),
         v => Ok(v),
     }
 }
@@ -23,7 +23,10 @@ where
     let path = get_valid_dirpath(path)?;
     match path.iter().last() {
         Some(v) => Ok(v.to_str().unwrap().to_owned()),
-        _ => bail!("directory name for path \"{:?}\" was not determined", path),
+        _ => bail!(
+            "directory name for path {} was not determined",
+            path.display()
+        ),
     }
 }
 
