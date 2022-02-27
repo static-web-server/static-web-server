@@ -17,6 +17,6 @@ Please have in mind the following changes in `v2`:
 
 - The server now supports only a root directory path (via `--root` or its equivalent env) so an assets path option is no longer required.
 - Cache control headers are applied to assets in an arbitrary manner. See [control headers examples](./features/cache-control-headers.md) for more details.
-- OpenSSL TLS for HTTP/1 is not longer supported instead for the HTTP/2 & TLS (via `--http2` option) the server uses [h2](https://github.com/hyperium/h2) which is on top of [Rustls](https://github.com/ctz/rustls). It means that instead of using a `.p12` or `.pfx` file you can now use only a certificate file along with its private key. See [HTTP/2 & TLS examples](./features/http2-tls.md) for more details.
+- OpenSSL TLS for HTTP/1 is no longer supported, instead for the HTTP/2 & TLS (via `--http2` option) the server uses [h2](https://github.com/hyperium/h2) which is on top of [Rustls](https://github.com/ctz/rustls). It means that instead of using a `.p12` or `.pfx` file you can now use only a certificate file along with its private key. See [HTTP/2 & TLS examples](./features/http2-tls.md) for more details.
 
 The rest of known options are equivalent to `v1` (except the new ones of course).
