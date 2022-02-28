@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _**Note:** See changelog for v1 under the [1.x](https://github.com/joseluisq/static-web-server/blob/1.x/CHANGELOG.md) branch._
 
+## v2.6.0 - 2022-02-28
+
+__Fixes__
+
+- [fb84c0b](https://github.com/joseluisq/static-web-server/commit/fb84c0b) Bugfix/security dependency updates including hyper, tokio, httparse, futures, tracing, headers and other crates (also [7f70a13](https://github.com/joseluisq/static-web-server/commit/7f70a13), [d3fb137](https://github.com/joseluisq/static-web-server/commit/d3fb137)).
+
+__Features__
+
+- [7d32a67](https://github.com/joseluisq/static-web-server/commit/7d32a67) Multi-arch Docker images (Scratch/Alpine). PR [#82](https://github.com/joseluisq/static-web-server/pull/82) resolves [#54](https://github.com/joseluisq/static-web-server/issues/54).
+  - New `armv7-unknown-linux-musleabihf` (armv7) and `arm-unknown-linux-musleabihf` (armv6) binary targets.
+  - New Docker images for `linux/arm64`, `linux/386`, `linux/arm/v7` and `linux/arm/v6` platforms.
+- [50974fe](https://github.com/joseluisq/static-web-server/commit/50974fe) Compress WebAssembly (`application/wasm`) files. PR [#84](https://github.com/joseluisq/static-web-server/pull/84) by [@acelot](https://github.com/acelot). See [docs](https://sws.joseluisq.net/features/compression/).
+- [70ec60c](https://github.com/joseluisq/static-web-server/commit/70ec60c) Arch Linux [AUR package](https://aur.archlinux.org/packages/static-web-server-bin) support. See [docs](https://sws.joseluisq.net/download-and-install/).
+
+__Refactorings__
+
+- [e109b77](https://github.com/joseluisq/static-web-server/commit/e109b77) Improve startup server error messages providing context.
+- [c085147](https://github.com/joseluisq/static-web-server/commit/c085147) Prefer `cfg(unix)` instead of `cfg(not(windows))`.
+
+__Docs__
+
+- [eb482a4](https://github.com/joseluisq/static-web-server/commit/eb482a4) Documentation for Multi-arch Docker images. See [docs](https://sws.joseluisq.net/features/docker/).
+- [70ec60c](https://github.com/joseluisq/static-web-server/commit/70ec60c) Documentation for Arch Linux support. See [docs](https://sws.joseluisq.net/download-and-install/).
+
 ## v2.6.0-beta.2 - 2022-02-08
 
 __Fixes__
