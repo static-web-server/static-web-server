@@ -50,8 +50,8 @@ pub async fn handle(
     dir_listing: bool,
     dir_listing_order: u8,
 ) -> Result<Response<Body>, StatusCode> {
-    // Reject requests for non HEAD or GET methods
-    if !(method == Method::HEAD || method == Method::GET) {
+    // Check for disallowed HTTP methods and reject request accordently
+    if !(method == Method::GET || method == Method::HEAD || method == Method::OPTIONS) {
         return Err(StatusCode::METHOD_NOT_ALLOWED);
     }
 
@@ -76,6 +76,20 @@ pub async fn handle(
         resp.headers_mut().insert(hyper::header::LOCATION, loc);
         *resp.status_mut() = StatusCode::PERMANENT_REDIRECT;
         tracing::trace!("uri doesn't end with a slash so redirecting permanently");
+        return Ok(resp);
+    }
+
+    // Respond the permitted communication options
+    if method == Method::OPTIONS {
+        let mut resp = Response::new(Body::empty());
+        *resp.status_mut() = StatusCode::NO_CONTENT;
+        resp.headers_mut()
+            .typed_insert(headers::Allow::from_iter(vec![
+                Method::OPTIONS,
+                Method::HEAD,
+                Method::GET,
+            ]));
+        resp.headers_mut().typed_insert(AcceptRanges::bytes());
         return Ok(resp);
     }
 

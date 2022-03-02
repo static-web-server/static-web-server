@@ -73,6 +73,15 @@ pub struct Config {
 
     #[structopt(
         long,
+        short = "j",
+        default_value = "origin, content-type",
+        env = "SERVER_CORS_ALLOW_HEADERS"
+    )]
+    /// Specify an optional CORS list of allowed headers separated by comas. Default "origin, content-type". It requires `--cors-allow-origins` to be used along with.
+    pub cors_allow_headers: String,
+
+    #[structopt(
+        long,
         short = "t",
         parse(try_from_str),
         default_value = "false",

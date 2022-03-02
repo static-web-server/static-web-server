@@ -22,7 +22,6 @@ mod tests {
             Method::DELETE,
             Method::GET,
             Method::HEAD,
-            Method::OPTIONS,
             Method::PATCH,
             Method::POST,
             Method::PUT,
