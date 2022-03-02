@@ -1,7 +1,10 @@
 // CORS handler for incoming requests.
 // -> Part of the file is borrowed from https://github.com/seanmonstar/warp/blob/master/src/filters/cors.rs
 
-use headers::{HeaderName, HeaderValue, Origin};
+use headers::{
+    AccessControlAllowHeaders, AccessControlAllowMethods, HeaderMapExt, HeaderName, HeaderValue,
+    Origin,
+};
 use http::header;
 use std::{collections::HashSet, convert::TryFrom, sync::Arc};
 
@@ -15,26 +18,47 @@ pub struct Cors {
 }
 
 /// It builds a new CORS instance.
-pub fn new(origins_str: String) -> Option<Arc<Configured>> {
+pub fn new(origins_str: String, headers_str: String) -> Option<Arc<Configured>> {
     let cors = Cors::new();
     let cors = if origins_str.is_empty() {
         None
-    } else if origins_str == "*" {
-        Some(cors.allow_any_origin().allow_methods(vec!["GET", "HEAD"]))
     } else {
-        let hosts = origins_str.split(',').map(|s| s.trim()).collect::<Vec<_>>();
-        if hosts.is_empty() {
-            None
+        let headers_vec = if headers_str.is_empty() {
+            vec!["origin", "content-type"]
         } else {
-            Some(cors.allow_origins(hosts).allow_methods(vec!["GET", "HEAD"]))
+            headers_str.split(',').map(|s| s.trim()).collect::<Vec<_>>()
+        };
+        let headers_str = headers_vec.join(",");
+
+        let cors_res = if origins_str == "*" {
+            Some(
+                cors.allow_any_origin()
+                    .allow_headers(headers_vec)
+                    .allow_methods(vec!["GET", "HEAD", "OPTIONS"]),
+            )
+        } else {
+            let hosts = origins_str.split(',').map(|s| s.trim()).collect::<Vec<_>>();
+            if hosts.is_empty() {
+                None
+            } else {
+                Some(
+                    cors.allow_origins(hosts)
+                        .allow_headers(headers_vec)
+                        .allow_methods(vec!["GET", "HEAD", "OPTIONS"]),
+                )
+            }
+        };
+
+        if cors_res.is_some() {
+            tracing::info!(
+                    "enabled=true, allow_headers=[{}], allow_methods=[GET,HEAD,OPTIONS], allow_origins={}",
+                    headers_str,
+                    origins_str
+                );
         }
+        cors_res
     };
-    if cors.is_some() {
-        tracing::info!(
-            "enabled=true, allow_methods=[GET, HEAD], allow_origins={}",
-            origins_str
-        );
-    }
+
     Cors::build(cors)
 }
 
@@ -109,11 +133,39 @@ impl Cors {
         self
     }
 
+    /// Adds multiple headers to the list of allowed request headers.
+    ///
+    /// **Note**: These should match the values the browser sends via `Access-Control-Request-Headers`, e.g.`content-type`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if any of the headers are not a valid `http::header::HeaderName`.
+    pub fn allow_headers<I>(mut self, headers: I) -> Self
+    where
+        I: IntoIterator,
+        HeaderName: TryFrom<I::Item>,
+    {
+        let iter = headers.into_iter().map(|h| match TryFrom::try_from(h) {
+            Ok(h) => h,
+            Err(_) => panic!("cors: illegal Header"),
+        });
+        self.allowed_headers.extend(iter);
+        self
+    }
+
     /// Builds the `Cors` wrapper from the configured settings.
     pub fn build(cors: Option<Cors>) -> Option<Arc<Configured>> {
         cors.as_ref()?;
         let cors = cors?;
-        Some(Arc::new(Configured { cors }))
+
+        let allowed_headers = cors.allowed_headers.iter().cloned().collect();
+        let methods_header = cors.allowed_methods.iter().cloned().collect();
+
+        Some(Arc::new(Configured {
+            cors,
+            allowed_headers,
+            methods_header,
+        }))
     }
 }
 
@@ -126,6 +178,8 @@ impl Default for Cors {
 #[derive(Clone, Debug)]
 pub struct Configured {
     cors: Cors,
+    allowed_headers: AccessControlAllowHeaders,
+    methods_header: AccessControlAllowMethods,
 }
 
 #[derive(Debug)]
@@ -153,7 +207,7 @@ impl Configured {
         &self,
         method: &http::Method,
         headers: &http::HeaderMap,
-    ) -> Result<Validated, Forbidden> {
+    ) -> Result<(http::HeaderMap, Validated), Forbidden> {
         match (headers.get(header::ORIGIN), method) {
             (Some(origin), &http::Method::OPTIONS) => {
                 // OPTIONS requests are preflight CORS requests...
@@ -182,21 +236,29 @@ impl Configured {
                     }
                 }
 
-                Ok(Validated::Preflight(origin.clone()))
+                let mut headers = http::HeaderMap::new();
+                self.append_preflight_headers(&mut headers);
+                headers.insert(header::ACCESS_CONTROL_ALLOW_ORIGIN, origin.into());
+
+                Ok((headers, Validated::Preflight(origin.clone())))
             }
             (Some(origin), _) => {
                 // Any other method, simply check for a valid origin...
                 tracing::trace!("cors origin header: {:?}", origin);
 
                 if self.is_origin_allowed(origin) {
-                    Ok(Validated::Simple(origin.clone()))
+                    let mut headers = http::HeaderMap::new();
+                    self.append_preflight_headers(&mut headers);
+                    headers.insert(header::ACCESS_CONTROL_ALLOW_ORIGIN, origin.into());
+
+                    Ok((headers, Validated::Simple(origin.clone())))
                 } else {
                     Err(Forbidden::Origin)
                 }
             }
             (None, _) => {
                 // No `ORIGIN` header means this isn't CORS!
-                Ok(Validated::NotCors)
+                Ok((http::HeaderMap::new(), Validated::NotCors))
             }
         }
     }
@@ -218,6 +280,15 @@ impl Configured {
             allowed.contains(origin)
         } else {
             true
+        }
+    }
+
+    fn append_preflight_headers(&self, headers: &mut http::HeaderMap) {
+        headers.typed_insert(self.allowed_headers.clone());
+        headers.typed_insert(self.methods_header.clone());
+
+        if let Some(max_age) = self.cors.max_age {
+            headers.insert(header::ACCESS_CONTROL_MAX_AGE, max_age.into());
         }
     }
 }

@@ -54,8 +54,8 @@ pub fn auto(
     headers: &HeaderMap<HeaderValue>,
     resp: Response<Body>,
 ) -> Result<Response<Body>> {
-    // Skip compression for HEAD request methods
-    if method == Method::HEAD {
+    // Skip compression for HEAD and OPTIONS request methods
+    if method == Method::HEAD || method == Method::OPTIONS {
         return Ok(resp);
     }
 

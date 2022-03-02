@@ -121,7 +121,10 @@ impl Server {
         tracing::info!("cache control headers: enabled={}", cache_control_headers);
 
         // CORS option
-        let cors = cors::new(opts.cors_allow_origins.trim().to_owned());
+        let cors = cors::new(
+            opts.cors_allow_origins.trim().to_owned(),
+            opts.cors_allow_headers.trim().to_owned(),
+        );
 
         // `Basic` HTTP Authentication Schema option
         let basic_auth = opts.basic_auth.trim();

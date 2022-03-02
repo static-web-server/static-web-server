@@ -1,4 +1,6 @@
-use hyper::{header::WWW_AUTHENTICATE, Body, Request, Response, StatusCode};
+use headers::{AcceptRanges, HeaderMapExt, HeaderValue};
+use http::header::ALLOW;
+use hyper::{header::WWW_AUTHENTICATE, Body, Method, Request, Response, StatusCode};
 use std::{future::Future, path::PathBuf, sync::Arc};
 
 use crate::{
@@ -41,13 +43,26 @@ impl RequestHandler {
         let dir_listing = self.opts.dir_listing;
         let dir_listing_order = self.opts.dir_listing_order;
 
+        let mut cors_headers: Option<http::HeaderMap> = None;
+
         async move {
+            // Check for disallowed HTTP methods and reject request accordently
+            if !(method == Method::GET || method == Method::HEAD || method == Method::OPTIONS) {
+                return error_page::error_response(
+                    method,
+                    &StatusCode::METHOD_NOT_ALLOWED,
+                    self.opts.page404.as_ref(),
+                    self.opts.page50x.as_ref(),
+                );
+            }
+
             // CORS
             if self.opts.cors.is_some() {
                 let cors = self.opts.cors.as_ref().unwrap();
                 match cors.check_request(method, headers) {
-                    Ok(res) => {
-                        tracing::debug!("cors ok: {:?}", res);
+                    Ok((headers, state)) => {
+                        tracing::debug!("cors state: {:?}", state);
+                        cors_headers = Some(headers);
                     }
                     Err(err) => {
                         tracing::error!("cors error kind: {:?}", err);
@@ -104,6 +119,13 @@ impl RequestHandler {
             .await
             {
                 Ok(mut resp) => {
+                    // Append CORS headers if they are present
+                    if let Some(cors_headers) = cors_headers {
+                        for (k, v) in cors_headers.iter() {
+                            resp.headers_mut().insert(k, v.to_owned());
+                        }
+                    }
+
                     // Auto compression based on the `Accept-Encoding` header
                     if self.opts.compression {
                         resp = match compression::auto(method, headers, resp) {
@@ -128,6 +150,16 @@ impl RequestHandler {
                     // Append security headers
                     if self.opts.security_headers {
                         security_headers::append_headers(&mut resp);
+                    }
+
+                    // Respond with the permitted communication options
+                    if method == Method::OPTIONS {
+                        *resp.status_mut() = StatusCode::NO_CONTENT;
+                        *resp.body_mut() = Body::empty();
+                        resp.headers_mut()
+                            .insert(ALLOW, HeaderValue::from_static("OPTIONS, GET, HEAD"));
+                        resp.headers_mut().typed_insert(AcceptRanges::bytes());
+                        return Ok(resp);
                     }
 
                     Ok(resp)
