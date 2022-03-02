@@ -8,7 +8,7 @@ LABEL version="${SERVER_VERSION}" \
 
 RUN apk --no-cache add ca-certificates tzdata
 
-COPY ./docker/devel/static-web-server /
+COPY ./docker/devel/static-web-server /usr/local/bin/
 COPY ./docker/alpine/entrypoint.sh /
 COPY ./docker/public /public
 
