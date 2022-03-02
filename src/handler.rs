@@ -1,5 +1,3 @@
-use headers::{AcceptRanges, HeaderMapExt, HeaderValue};
-use http::header::ALLOW;
 use hyper::{header::WWW_AUTHENTICATE, Body, Method, Request, Response, StatusCode};
 use std::{future::Future, path::PathBuf, sync::Arc};
 
@@ -150,16 +148,6 @@ impl RequestHandler {
                     // Append security headers
                     if self.opts.security_headers {
                         security_headers::append_headers(&mut resp);
-                    }
-
-                    // Respond with the permitted communication options
-                    if method == Method::OPTIONS {
-                        *resp.status_mut() = StatusCode::NO_CONTENT;
-                        *resp.body_mut() = Body::empty();
-                        resp.headers_mut()
-                            .insert(ALLOW, HeaderValue::from_static("OPTIONS, GET, HEAD"));
-                        resp.headers_mut().typed_insert(AcceptRanges::bytes());
-                        return Ok(resp);
                     }
 
                     Ok(resp)
