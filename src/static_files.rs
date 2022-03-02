@@ -8,7 +8,7 @@ use headers::{
     AcceptRanges, ContentLength, ContentRange, ContentType, HeaderMap, HeaderMapExt, HeaderValue,
     IfModifiedSince, IfRange, IfUnmodifiedSince, LastModified, Range,
 };
-use http::header::{ALLOW, CONTENT_TYPE};
+use http::header::CONTENT_TYPE;
 use humansize::{file_size_opts, FileSize};
 use hyper::{Body, Method, Response, StatusCode};
 use percent_encoding::percent_decode_str;
@@ -55,16 +55,6 @@ pub async fn handle(
         return Err(StatusCode::METHOD_NOT_ALLOWED);
     }
 
-    // Respond the permitted communication options
-    if method == Method::OPTIONS {
-        let mut resp = Response::new(Body::empty());
-        *resp.status_mut() = StatusCode::NO_CONTENT;
-        resp.headers_mut()
-            .insert(ALLOW, HeaderValue::from_static("OPTIONS, GET, HEAD"));
-        resp.headers_mut().typed_insert(AcceptRanges::bytes());
-        return Ok(resp);
-    }
-
     let base = Arc::new(base_path.into());
     let (filepath, meta, auto_index) = path_from_tail(base, uri_path).await?;
 
@@ -86,6 +76,20 @@ pub async fn handle(
         resp.headers_mut().insert(hyper::header::LOCATION, loc);
         *resp.status_mut() = StatusCode::PERMANENT_REDIRECT;
         tracing::trace!("uri doesn't end with a slash so redirecting permanently");
+        return Ok(resp);
+    }
+
+    // Respond the permitted communication options
+    if method == Method::OPTIONS {
+        let mut resp = Response::new(Body::empty());
+        *resp.status_mut() = StatusCode::NO_CONTENT;
+        resp.headers_mut()
+            .typed_insert(headers::Allow::from_iter(vec![
+                Method::OPTIONS,
+                Method::HEAD,
+                Method::GET,
+            ]));
+        resp.headers_mut().typed_insert(AcceptRanges::bytes());
         return Ok(resp);
     }
 

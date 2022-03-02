@@ -51,9 +51,9 @@ pub fn new(origins_str: String, headers_str: String) -> Option<Arc<Configured>> 
 
         if cors_res.is_some() {
             tracing::info!(
-                    "enabled=true, allow_headers=[{}], allow_methods=[GET,HEAD,OPTIONS], allow_origins={}",
-                    headers_str,
-                    origins_str
+                    "enabled=true, allow_methods=[GET,HEAD,OPTIONS], allow_origins={}, allow_headers=[{}]",
+                    origins_str,
+                    headers_str
                 );
         }
         cors_res

@@ -119,8 +119,11 @@ impl RequestHandler {
                 Ok(mut resp) => {
                     // Append CORS headers if they are present
                     if let Some(cors_headers) = cors_headers {
-                        for (k, v) in cors_headers.iter() {
-                            resp.headers_mut().insert(k, v.to_owned());
+                        if !cors_headers.is_empty() {
+                            for (k, v) in cors_headers.iter() {
+                                resp.headers_mut().insert(k, v.to_owned());
+                            }
+                            resp.headers_mut().remove(http::header::ALLOW);
                         }
                     }
 
