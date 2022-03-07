@@ -8,21 +8,21 @@ use crate::{Error, Result};
 
 /// It defines options for a request handler.
 pub struct RequestHandlerOpts {
-    pub root_dir: Arc<PathBuf>,
+    pub root_dir: PathBuf,
     pub compression: bool,
     pub dir_listing: bool,
     pub dir_listing_order: u8,
-    pub cors: Option<Arc<cors::Configured>>,
+    pub cors: Option<cors::Configured>,
     pub security_headers: bool,
     pub cache_control_headers: bool,
-    pub page404: Arc<str>,
-    pub page50x: Arc<str>,
-    pub basic_auth: Arc<str>,
+    pub page404: String,
+    pub page50x: String,
+    pub basic_auth: String,
 }
 
 /// It defines the main request handler used by the Hyper service request.
 pub struct RequestHandler {
-    pub opts: RequestHandlerOpts,
+    pub opts: Arc<RequestHandlerOpts>,
 }
 
 impl RequestHandler {
@@ -35,7 +35,7 @@ impl RequestHandler {
         let headers = req.headers();
         let uri = req.uri();
 
-        let root_dir = self.opts.root_dir.as_ref();
+        let root_dir = &self.opts.root_dir;
         let uri_path = uri.path();
         let uri_query = uri.query();
         let dir_listing = self.opts.dir_listing;
@@ -49,14 +49,13 @@ impl RequestHandler {
                 return error_page::error_response(
                     method,
                     &StatusCode::METHOD_NOT_ALLOWED,
-                    self.opts.page404.as_ref(),
-                    self.opts.page50x.as_ref(),
+                    &self.opts.page404,
+                    &self.opts.page50x,
                 );
             }
 
             // CORS
-            if self.opts.cors.is_some() {
-                let cors = self.opts.cors.as_ref().unwrap();
+            if let Some(cors) = &self.opts.cors {
                 match cors.check_request(method, headers) {
                     Ok((headers, state)) => {
                         tracing::debug!("cors state: {:?}", state);
@@ -67,8 +66,8 @@ impl RequestHandler {
                         return error_page::error_response(
                             method,
                             &StatusCode::FORBIDDEN,
-                            self.opts.page404.as_ref(),
-                            self.opts.page50x.as_ref(),
+                            &self.opts.page404,
+                            &self.opts.page50x,
                         );
                     }
                 };
@@ -82,8 +81,8 @@ impl RequestHandler {
                         let mut resp = error_page::error_response(
                             method,
                             &StatusCode::UNAUTHORIZED,
-                            self.opts.page404.as_ref(),
-                            self.opts.page50x.as_ref(),
+                            &self.opts.page404,
+                            &self.opts.page50x,
                         )?;
                         resp.headers_mut().insert(
                             WWW_AUTHENTICATE,
@@ -98,8 +97,8 @@ impl RequestHandler {
                     return error_page::error_response(
                         method,
                         &StatusCode::INTERNAL_SERVER_ERROR,
-                        self.opts.page404.as_ref(),
-                        self.opts.page50x.as_ref(),
+                        &self.opts.page404,
+                        &self.opts.page50x,
                     );
                 }
             }
@@ -136,8 +135,8 @@ impl RequestHandler {
                                 return error_page::error_response(
                                     method,
                                     &StatusCode::INTERNAL_SERVER_ERROR,
-                                    self.opts.page404.as_ref(),
-                                    self.opts.page50x.as_ref(),
+                                    &self.opts.page404,
+                                    &self.opts.page50x,
                                 );
                             }
                         };
@@ -158,8 +157,8 @@ impl RequestHandler {
                 Err(status) => error_page::error_response(
                     method,
                     &status,
-                    self.opts.page404.as_ref(),
-                    self.opts.page50x.as_ref(),
+                    &self.opts.page404,
+                    &self.opts.page50x,
                 ),
             }
         }

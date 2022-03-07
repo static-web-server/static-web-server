@@ -90,11 +90,10 @@ impl Server {
         // Check for a valid root directory
         let root_dir = helpers::get_valid_dirpath(&opts.root)
             .with_context(|| "root directory was not found or inaccessible".to_string())?;
-        let root_dir = Arc::new(root_dir);
 
         // Custom error pages content
-        let page404 = Arc::from(helpers::read_file_content(opts.page404.as_ref()).as_str());
-        let page50x = Arc::from(helpers::read_file_content(opts.page50x.as_ref()).as_str());
+        let page404 = helpers::read_file_content(&opts.page404);
+        let page50x = helpers::read_file_content(&opts.page50x);
 
         // Number of worker threads option
         let threads = self.threads;
@@ -122,17 +121,16 @@ impl Server {
 
         // CORS option
         let cors = cors::new(
-            opts.cors_allow_origins.trim().to_owned(),
-            opts.cors_allow_headers.trim().to_owned(),
+            opts.cors_allow_origins.trim(),
+            opts.cors_allow_headers.trim(),
         );
 
         // `Basic` HTTP Authentication Schema option
-        let basic_auth = opts.basic_auth.trim();
+        let basic_auth = opts.basic_auth.trim().to_owned();
         tracing::info!(
             "basic authentication: enabled={}",
             !self.opts.basic_auth.is_empty()
         );
-        let basic_auth = Arc::from(basic_auth);
 
         // Grace period option
         let grace_period = opts.grace_period;
@@ -140,7 +138,7 @@ impl Server {
 
         // Create a service router for Hyper
         let router_service = RouterService::new(RequestHandler {
-            opts: RequestHandlerOpts {
+            opts: Arc::from(RequestHandlerOpts {
                 root_dir,
                 compression,
                 dir_listing,
@@ -151,16 +149,13 @@ impl Server {
                 page404,
                 page50x,
                 basic_auth,
-            },
+            }),
         });
 
         // Run the corresponding HTTP Server asynchronously with its given options
 
         if opts.http2 {
             // HTTP/2 + TLS
-
-            let cert_path = opts.http2_tls_cert.clone();
-            let key_path = opts.http2_tls_key.clone();
 
             tcp_listener
                 .set_nonblocking(true)
@@ -174,8 +169,8 @@ impl Server {
             incoming.set_nodelay(true);
 
             let tls = TlsConfigBuilder::new()
-                .cert_path(cert_path)
-                .key_path(key_path)
+                .cert_path(&opts.http2_tls_cert)
+                .key_path(&opts.http2_tls_key)
                 .build()
                 .with_context(|| {
                     "failed to initialize TLS, probably wrong cert/key or file missing".to_string()

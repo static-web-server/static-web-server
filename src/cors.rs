@@ -6,7 +6,7 @@ use headers::{
     Origin,
 };
 use http::header;
-use std::{collections::HashSet, convert::TryFrom, sync::Arc};
+use std::{collections::HashSet, convert::TryFrom};
 
 /// It defines CORS instance.
 #[derive(Clone, Debug)]
@@ -18,7 +18,7 @@ pub struct Cors {
 }
 
 /// It builds a new CORS instance.
-pub fn new(origins_str: String, headers_str: String) -> Option<Arc<Configured>> {
+pub fn new(origins_str: &str, headers_str: &str) -> Option<Configured> {
     let cors = Cors::new();
     let cors = if origins_str.is_empty() {
         None
@@ -154,18 +154,18 @@ impl Cors {
     }
 
     /// Builds the `Cors` wrapper from the configured settings.
-    pub fn build(cors: Option<Cors>) -> Option<Arc<Configured>> {
+    pub fn build(cors: Option<Cors>) -> Option<Configured> {
         cors.as_ref()?;
         let cors = cors?;
 
         let allowed_headers = cors.allowed_headers.iter().cloned().collect();
         let methods_header = cors.allowed_methods.iter().cloned().collect();
 
-        Some(Arc::new(Configured {
+        Some(Configured {
             cors,
             allowed_headers,
             methods_header,
-        }))
+        })
     }
 }
 
