@@ -10,7 +10,6 @@ use hyper::{
     Body, Method, Response,
 };
 use pin_project::pin_project;
-use std::convert::TryFrom;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 use tokio_util::io::{ReaderStream, StreamReader};
@@ -139,12 +138,13 @@ pub fn brotli(
 fn create_encoding_header(existing: Option<HeaderValue>, coding: ContentCoding) -> HeaderValue {
     if let Some(val) = existing {
         if let Ok(str_val) = val.to_str() {
-            return HeaderValue::try_from(&format!("{}, {}", str_val, coding.to_string()))
+            return HeaderValue::from_str(&[str_val, ", ", coding.to_static()].concat())
                 .unwrap_or_else(|_| coding.into());
         }
     }
     coding.into()
 }
+
 /// A wrapper around any type that implements [`Stream`](futures::Stream) to be
 /// compatible with async_compression's Stream based encoders.
 #[pin_project]
@@ -155,7 +155,7 @@ where
     E: std::error::Error,
 {
     #[pin]
-    pub body: S,
+    body: S,
 }
 
 impl<S, E> Stream for CompressableBody<S, E>
