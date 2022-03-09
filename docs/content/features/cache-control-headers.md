@@ -28,7 +28,7 @@ atom, json, rss, xml
 A `max-age` of *one year* is applied only to the following file types.
 
 ```txt
-bmp, bz2, css, doc, gif, gz, htc, ico, jpeg, jpg, js, map, mjs, mp3, mp4, ogg, ogv, pdf, png, rar, rtf, tar, tgz, wav, weba, webm, webp, woff, woff2, zip
+avif, bmp, bz2, css, doc, gif, gz, htc, ico, jpeg, jpg, js, jxl, map, mjs, mp3, mp4, ogg, ogv, pdf, png, rar, rtf, tar, tgz, wav, weba, webm, webp, woff, woff2, zip
 ```
 
 Below an example of how to enable the feature.

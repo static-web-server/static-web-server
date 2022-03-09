@@ -6,10 +6,10 @@ use headers::{CacheControl, HeaderMapExt};
 use hyper::{Body, Response};
 
 const CACHE_EXT_ONE_HOUR: [&str; 4] = ["atom", "json", "rss", "xml"];
-const CACHE_EXT_ONE_YEAR: [&str; 30] = [
-    "bmp", "bz2", "css", "doc", "gif", "gz", "htc", "ico", "jpeg", "jpg", "js", "map", "mjs",
-    "mp3", "mp4", "ogg", "ogv", "pdf", "png", "rar", "rtf", "tar", "tgz", "wav", "weba", "webm",
-    "webp", "woff", "woff2", "zip",
+const CACHE_EXT_ONE_YEAR: [&str; 32] = [
+    "avif", "bmp", "bz2", "css", "doc", "gif", "gz", "htc", "ico", "jpeg", "jpg", "js", "jxl",
+    "map", "mjs", "mp3", "mp4", "ogg", "ogv", "pdf", "png", "rar", "rtf", "tar", "tgz", "wav",
+    "weba", "webm", "webp", "woff", "woff2", "zip",
 ];
 
 /// It appends a `Cache-Control` header to a response if that one is part of a set of file types.
