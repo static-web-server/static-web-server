@@ -45,6 +45,9 @@ Specify the file path to read the private key. Default empty (disabled).
 ### SERVER_CORS_ALLOW_ORIGINS
 Specify a optional CORS list of allowed origin hosts separated by comas. Host ports or protocols aren't being checked. Use an asterisk (*) to allow any host. Default empty (disabled).
 
+### SERVER_CORS_ALLOW_HEADERS
+Specify an optional CORS list of allowed HTTP headers separated by comas. It requires `SERVER_CORS_ALLOW_ORIGINS` to be used along with. Default `origin, content-type`.
+
 ### SERVER_COMPRESSION
 `Gzip`, `Deflate` or `Brotli` compression on demand determined by the `Accept-Encoding` header and applied to text-based web file types only. See [ad-hoc mime-type list](https://github.com/joseluisq/static-web-server/blob/master/src/compression.rs#L20). Default `true` (enabled).
 
