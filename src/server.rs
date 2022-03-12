@@ -95,6 +95,15 @@ impl Server {
         let page404 = helpers::read_file_content(&opts.page404);
         let page50x = helpers::read_file_content(&opts.page50x);
 
+        // Fallback page content
+        let page_fallback = helpers::read_file_content(&opts.page_fallback);
+        let page_fallback = if page_fallback.is_empty() {
+            None
+        } else {
+            Some(page_fallback)
+        };
+        tracing::info!("fallback page: enabled={}", page_fallback.is_some());
+
         // Number of worker threads option
         let threads = self.threads;
         tracing::info!("runtime worker threads: {}", self.threads);
@@ -148,6 +157,7 @@ impl Server {
                 cache_control_headers,
                 page404,
                 page50x,
+                page_fallback,
                 basic_auth,
             }),
         });

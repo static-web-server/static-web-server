@@ -2,7 +2,8 @@ use hyper::{header::WWW_AUTHENTICATE, Body, Method, Request, Response, StatusCod
 use std::{future::Future, path::PathBuf, sync::Arc};
 
 use crate::{
-    basic_auth, compression, control_headers, cors, error_page, security_headers, static_files,
+    basic_auth, compression, control_headers, cors, error_page, fallback_page, security_headers,
+    static_files,
 };
 use crate::{Error, Result};
 
@@ -17,6 +18,7 @@ pub struct RequestHandlerOpts {
     pub cache_control_headers: bool,
     pub page404: String,
     pub page50x: String,
+    pub page_fallback: Option<String>,
     pub basic_auth: String,
 }
 
@@ -154,12 +156,19 @@ impl RequestHandler {
 
                     Ok(resp)
                 }
-                Err(status) => error_page::error_response(
-                    method,
-                    &status,
-                    &self.opts.page404,
-                    &self.opts.page50x,
-                ),
+                Err(status) => {
+                    if let Some(response) =
+                        fallback_page::fallback_response(method, &status, &self.opts.page_fallback)
+                    {
+                        return Ok(response);
+                    }
+                    error_page::error_response(
+                        method,
+                        &status,
+                        &self.opts.page404,
+                        &self.opts.page50x,
+                    )
+                }
             }
         }
     }
