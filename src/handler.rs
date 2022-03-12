@@ -18,7 +18,7 @@ pub struct RequestHandlerOpts {
     pub cache_control_headers: bool,
     pub page404: String,
     pub page50x: String,
-    pub page_fallback: Option<String>,
+    pub page_fallback: String,
     pub basic_auth: String,
 }
 
@@ -157,17 +157,19 @@ impl RequestHandler {
                     Ok(resp)
                 }
                 Err(status) => {
-                    if let Some(response) =
-                        fallback_page::fallback_response(method, &status, &self.opts.page_fallback)
+                    if !self.opts.page_fallback.is_empty()
+                        && (status == StatusCode::NOT_FOUND)
+                        && (method == Method::GET)
                     {
-                        return Ok(response);
+                        Ok(fallback_page::fallback_response(&self.opts.page_fallback))
+                    } else {
+                        error_page::error_response(
+                            method,
+                            &status,
+                            &self.opts.page404,
+                            &self.opts.page50x,
+                        )
                     }
-                    error_page::error_response(
-                        method,
-                        &status,
-                        &self.opts.page404,
-                        &self.opts.page50x,
-                    )
                 }
             }
         }

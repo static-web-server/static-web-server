@@ -97,12 +97,6 @@ impl Server {
 
         // Fallback page content
         let page_fallback = helpers::read_file_content(&opts.page_fallback);
-        let page_fallback = if page_fallback.is_empty() {
-            None
-        } else {
-            Some(page_fallback)
-        };
-        tracing::info!("fallback page: enabled={}", page_fallback.is_some());
 
         // Number of worker threads option
         let threads = self.threads;
