@@ -8,9 +8,9 @@ use headers::{
     AcceptRanges, ContentLength, ContentRange, ContentType, HeaderMap, HeaderMapExt, HeaderValue,
     IfModifiedSince, IfRange, IfUnmodifiedSince, LastModified, Range,
 };
-use http::header::CONTENT_TYPE;
 use humansize::{file_size_opts, FileSize};
 use hyper::{Body, Method, Response, StatusCode};
+use mime_guess::mime;
 use percent_encoding::percent_decode_str;
 use std::cmp::Ordering;
 use std::fs::Metadata;
@@ -361,10 +361,8 @@ async fn read_directory_entries(
     );
 
     let mut resp = Response::new(Body::empty());
-    resp.headers_mut().insert(
-        CONTENT_TYPE,
-        HeaderValue::from_static("text/html; charset=utf-8"),
-    );
+    resp.headers_mut()
+        .typed_insert(ContentType::from(mime::TEXT_HTML_UTF_8));
     resp.headers_mut()
         .typed_insert(ContentLength(page_str.len() as u64));
 

@@ -1,6 +1,6 @@
-use headers::{AcceptRanges, ContentLength, ContentType, HeaderMapExt, HeaderValue};
-use http::header::CONTENT_TYPE;
+use headers::{AcceptRanges, ContentLength, ContentType, HeaderMapExt};
 use hyper::{Body, Method, Response, StatusCode};
+use mime_guess::mime;
 
 use crate::Result;
 
@@ -83,12 +83,9 @@ pub fn error_response(
 
     let mut resp = Response::new(body);
     *resp.status_mut() = *status_code;
-    resp.headers_mut().insert(
-        CONTENT_TYPE,
-        HeaderValue::from_static("text/html; charset=utf-8"),
-    );
+    resp.headers_mut()
+        .typed_insert(ContentType::from(mime::TEXT_HTML_UTF_8));
     resp.headers_mut().typed_insert(ContentLength(len));
-    resp.headers_mut().typed_insert(ContentType::html());
     resp.headers_mut().typed_insert(AcceptRanges::bytes());
 
     Ok(resp)
