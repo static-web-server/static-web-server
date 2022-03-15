@@ -12,6 +12,7 @@ pub mod config;
 pub mod control_headers;
 pub mod cors;
 pub mod error_page;
+pub mod fallback_page;
 pub mod handler;
 pub mod helpers;
 pub mod logger;
