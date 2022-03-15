@@ -157,19 +157,21 @@ impl RequestHandler {
                     Ok(resp)
                 }
                 Err(status) => {
+                    // Check for a fallback response
                     if !self.opts.page_fallback.is_empty()
-                        && (status == StatusCode::NOT_FOUND)
-                        && (method == Method::GET)
+                        && status == StatusCode::NOT_FOUND
+                        && method == Method::GET
                     {
-                        Ok(fallback_page::fallback_response(&self.opts.page_fallback))
-                    } else {
-                        error_page::error_response(
-                            method,
-                            &status,
-                            &self.opts.page404,
-                            &self.opts.page50x,
-                        )
+                        return Ok(fallback_page::fallback_response(&self.opts.page_fallback));
                     }
+
+                    // Response error
+                    error_page::error_response(
+                        method,
+                        &status,
+                        &self.opts.page404,
+                        &self.opts.page50x,
+                    )
                 }
             }
         }
