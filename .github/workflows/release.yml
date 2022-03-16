@@ -91,15 +91,15 @@ jobs:
           target: aarch64-unknown-linux-gnu
         - build: linux-arm-gnueabihf
           os: ubuntu-20.04
-          rust: nightly
+          rust: stable
           target: arm-unknown-linux-gnueabihf
         - build: linux-musl-armv6
           os: ubuntu-20.04
-          rust: nightly
+          rust: stable
           target: arm-unknown-linux-musleabihf
         - build: linux-musl-armv7
           os: ubuntu-20.04
-          rust: nightly
+          rust: stable
           target: armv7-unknown-linux-musleabihf
         - build: macos
           os: macos-11
@@ -119,11 +119,11 @@ jobs:
           target: i686-pc-windows-msvc
         - build: windows-pc-gnu
           os: windows-2019
-          rust: nightly-x86_64-gnu
+          rust: stable-x86_64-gnu
           target: x86_64-pc-windows-gnu
         # - build: windows-msvc-arm64
         #   os: windows-2019
-        #   rust: nightly
+        #   rust: stable
         #   target: aarch64-pc-windows-msvc
 
     steps:
