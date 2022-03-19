@@ -37,7 +37,7 @@ headers = { git = "https://github.com/joseluisq/hyper-headers.git", branch = "he
 http = "0.2"
 humansize = "1.1"
 hyper = { version = "0.14", features = ["stream", "http1", "http2", "tcp", "server"] }
-listenfd = "0.3"
+listenfd = "0.5"
 mime_guess = "2.0"
 num_cpus = { version = "1.13" }
 percent-encoding = "2.1"
