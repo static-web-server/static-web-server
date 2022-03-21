@@ -7,6 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _**Note:** See changelog for v1 under the [1.x](https://github.com/joseluisq/static-web-server/blob/1.x/CHANGELOG.md) branch._
 
+## v2.7.0 - 2022-03-21
+
+__Fixes__
+
+- [dc8bc4d](https://github.com/joseluisq/static-web-server/commit/dc8bc4d) Bugfix/security dependency updates including h2, tracing, listenfd, mio, libc, syn and other crates (also [3b2a287](https://github.com/joseluisq/static-web-server/commit/3b2a287), [d57ee2f](https://github.com/joseluisq/static-web-server/commit/d57ee2f), [15cf1ac](https://github.com/joseluisq/static-web-server/commit/15cf1ac)).
+- [da85b16](https://github.com/joseluisq/static-web-server/commit/da85b16) `--cors-allow-origins` doesn't assign headers properly. PR [#87](https://github.com/joseluisq/static-web-server/pull/87) resolves [#86](https://github.com/joseluisq/static-web-server/issues/86) reported by [@mr-moon](https://github.com/mr-moon).
+- [dcc8a32](https://github.com/joseluisq/static-web-server/commit/dcc8a32) Security Alpine `3.15` Docker image upgrade. PR [#92](https://github.com/joseluisq/static-web-server/pull/92).
+
+__Features__
+
+- [da85b16](https://github.com/joseluisq/static-web-server/commit/da85b16) CORS allowed headers support via the new `-j, --cors-allow-headers` flags. PR [#87](https://github.com/joseluisq/static-web-server/pull/87). See [docs](https://sws.joseluisq.net/features/cors/#allowed-headers).
+- [da85b16](https://github.com/joseluisq/static-web-server/commit/da85b16) Support for HTTP `OPTIONS` method requests. PR [#87](https://github.com/joseluisq/static-web-server/pull/87). See [docs](https://sws.joseluisq.net/features/http-methods/).
+- [6204205](https://github.com/joseluisq/static-web-server/commit/6204205) `Cache-Control` for AVIF and JPEG XL mime types. PR [#88](https://github.com/joseluisq/static-web-server/pull/88) by [@csmith](https://github.com/csmith). See [docs](https://sws.joseluisq.net/features/cache-control-headers/#one-year).
+- [cba4a83](https://github.com/joseluisq/static-web-server/commit/cba4a83) Fallback page option via the new `--page-fallback` flag. PR [#91](https://github.com/joseluisq/static-web-server/pull/91) by [@firstdorsal](https://github.com/firstdorsal). See [docs](https://sws.joseluisq.net/features/error-pages/#fallback-page-for-use-with-client-routers).
+
+__Refactorings__
+
+- [d33d093](https://github.com/joseluisq/static-web-server/commit/d33d093) Reduce few allocations on HTTP request handler.
+- [06cc379](https://github.com/joseluisq/static-web-server/commit/06cc379) Reduce small allocation when encoding headers during compression.
+- [a5e87e5](https://github.com/joseluisq/static-web-server/commit/a5e87e5) Typed `Content-Type` header for error pages and dir listing responses.
+
+__Docs__
+
+- [781ba91](https://github.com/joseluisq/static-web-server/commit/781ba91) CORS allowed headers. See [docs](https://sws.joseluisq.net/features/cors/#allowed-headers).
+- [0957a11](https://github.com/joseluisq/static-web-server/commit/0957a11) HTTP methods section. See [docs](https://sws.joseluisq.net/features/http-methods/).
+
+__Testing__
+
+- [7b6fc0b](https://github.com/joseluisq/static-web-server/commit/7b6fc0b) `Cache-Control` test cases.
+- [f22b952](https://github.com/joseluisq/static-web-server/commit/f22b952) Stable Rust for ARM CI pipelines.
+
 ## v2.6.0 - 2022-02-28
 
 __Fixes__
