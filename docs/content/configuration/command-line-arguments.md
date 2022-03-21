@@ -15,7 +15,7 @@ Jose Quintana <https://git.io/joseluisq>
 A blazing fast and asynchronous web server for static files-serving.
 
 USAGE:
-    sws [OPTIONS]
+    static-web-server [OPTIONS]
 
 FLAGS:
     -h, --help       Prints help information

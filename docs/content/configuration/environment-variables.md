@@ -27,11 +27,11 @@ Specify a logging level in lower case. Possible values are `error`, `warn`, `inf
 ### SERVER_ERROR_PAGE_404
 HTML file path for 404 errors. If path is not specified or simply don't exists then server will use a generic HTML error message. Default `./public/404.html`.
 
-### SERVER_FALLBACK_PAGE
-HTML file path that is used for `GET` requests when the requested path doesn't exist. The fallback page is served with a `200` status code, useful when using client routers (E.g `React Router`). If the path is not specified or simply doesn't exist then this feature will not be active.
-
 ### SERVER_ERROR_PAGE_50X
 HTML file path for 50x errors. If path is not specified or simply don't exists then server will use a generic HTML error message. Default `./public/50x.html`
+
+### SERVER_FALLBACK_PAGE
+HTML file path that is used for `GET` requests when the requested path doesn't exist. The fallback page is served with a `200` status code, useful when using client routers (E.g `React Router`). If the path is not specified or simply doesn't exist then this feature will not be active.
 
 ### SERVER_THREADS_MULTIPLIER
 Number of worker threads multiplier that'll be multiplied by the number of system CPUs using the formula: `worker threads = number of CPUs * n` where `n` is the value that changes here. When multiplier value is 0 or 1 then the `number of CPUs` is used. Number of worker threads result should be a number between 1 and 32,768 though it is advised to keep this value on the smaller side. Default one thread per core.
