@@ -10,12 +10,12 @@ The server can be configured via the following command-line arguments.
 ```
 $ static-web-server -h
 
-static-web-server 2.5.0
+static-web-server 2.7.0
 Jose Quintana <https://git.io/joseluisq>
 A blazing fast and asynchronous web server for static files-serving.
 
 USAGE:
-    static-web-server [OPTIONS]
+    sws [OPTIONS]
 
 FLAGS:
     -h, --help       Prints help information
@@ -31,6 +31,10 @@ OPTIONS:
     -x, --compression <compression>
             Gzip, Deflate or Brotli compression on demand determined by the Accept-Encoding header and applied to text-
             based web file types only [env: SERVER_COMPRESSION=]  [default: true]
+    -j, --cors-allow-headers <cors-allow-headers>
+            Specify an optional CORS list of allowed headers separated by comas. Default "origin, content-type". It
+            requires `--cors-allow-origins` to be used along with [env: SERVER_CORS_ALLOW_HEADERS=]  [default: origin,
+            content-type]
     -c, --cors-allow-origins <cors-allow-origins>
             Specify an optional CORS list of allowed origin hosts separated by comas. Host ports or protocols aren't
             being checked. Use an asterisk (*) to allow any host [env: SERVER_CORS_ALLOW_ORIGINS=]  [default: ]
@@ -67,12 +71,16 @@ OPTIONS:
     -g, --log-level <log-level>
             Specify a logging level in lower case. Values: error, warn, info, debug or trace [env: SERVER_LOG_LEVEL=]
             [default: error]
+        --page-fallback <page-fallback>
+            HTML file path that is used for GET requests when the requested path doesn't exist. The fallback page is
+            served with a 200 status code, useful when using client routers. If the path is not specified or simply
+            doesn't exist then this feature will not be active [env: SERVER_FALLBACK_PAGE=]  [default: ]
         --page404 <page404>
-            HTML file path for 404 errors. If path is not specified or simply don't exists then server will use a
-            generic HTML error message [env: SERVER_ERROR_PAGE_404=]  [default: ./public/404.html]
+            HTML file path for 404 errors. If the path is not specified or simply doesn't exist then the server will use
+            a generic HTML error message [env: SERVER_ERROR_PAGE_404=]  [default: ./public/404.html]
         --page50x <page50x>
-            HTML file path for 50x errors. If path is not specified or simply don't exists then server will use a
-            generic HTML error message [env: SERVER_ERROR_PAGE_50X=]  [default: ./public/50x.html]
+            HTML file path for 50x errors. If the path is not specified or simply doesn't exist then the server will use
+            a generic HTML error message [env: SERVER_ERROR_PAGE_50X=]  [default: ./public/50x.html]
     -p, --port <port>                                          Host port [env: SERVER_PORT=]  [default: 80]
     -d, --root <root>
             Root directory path of static files [env: SERVER_ROOT=]  [default: ./public]

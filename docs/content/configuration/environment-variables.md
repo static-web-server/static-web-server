@@ -27,6 +27,9 @@ Specify a logging level in lower case. Possible values are `error`, `warn`, `inf
 ### SERVER_ERROR_PAGE_404
 HTML file path for 404 errors. If path is not specified or simply don't exists then server will use a generic HTML error message. Default `./public/404.html`.
 
+### SERVER_FALLBACK_PAGE
+HTML file path that is used for `GET` requests when the requested path doesn't exist. The fallback page is served with a `200` status code, useful when using client routers (E.g `React Router`). If the path is not specified or simply doesn't exist then this feature will not be active.
+
 ### SERVER_ERROR_PAGE_50X
 HTML file path for 50x errors. If path is not specified or simply don't exists then server will use a generic HTML error message. Default `./public/50x.html`
 
