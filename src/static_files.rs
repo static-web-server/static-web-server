@@ -17,7 +17,7 @@ use std::fs::Metadata;
 use std::future::Future;
 use std::io;
 use std::ops::Bound;
-use std::path::PathBuf;
+use std::path::{Component, PathBuf};
 use std::pin::Pin;
 use std::sync::Arc;
 use std::task::Poll;
@@ -130,7 +130,7 @@ fn path_from_tail(
                 Ok((ArcPath(Arc::new(buf)), meta, auto_index))
             }
             Err(err) => {
-                tracing::debug!("file not found: {:?}", err);
+                tracing::debug!("file not found: {} {:?}", buf.display(), err);
                 Err(StatusCode::NOT_FOUND)
             }
         }
@@ -439,27 +439,41 @@ fn get_conditional_headers(header_list: &HeaderMap<HeaderValue>) -> Conditionals
 }
 
 fn sanitize_path(base: impl AsRef<Path>, tail: &str) -> Result<PathBuf, StatusCode> {
-    let mut buf = PathBuf::from(base.as_ref());
-    let p = match percent_decode_str(tail).decode_utf8() {
+    let path_decoded = match percent_decode_str(tail.trim_start_matches('/')).decode_utf8() {
         Ok(p) => p,
         Err(err) => {
             tracing::debug!("dir: failed to decode route={:?}: {:?}", tail, err);
             return Err(StatusCode::UNSUPPORTED_MEDIA_TYPE);
         }
     };
-    tracing::trace!("dir? base={:?}, route={:?}", buf, p);
-    for seg in p.split('/') {
-        if seg.starts_with("..") {
-            tracing::warn!("dir: rejecting segment starting with '..'");
-            return Err(StatusCode::NOT_FOUND);
-        } else if seg.contains('\\') {
-            tracing::warn!("dir: rejecting segment containing with backslash (\\)");
-            return Err(StatusCode::NOT_FOUND);
-        } else {
-            buf.push(seg);
+
+    let path_decoded = Path::new(&*path_decoded);
+    let mut full_path = base.as_ref().to_path_buf();
+    tracing::trace!("dir? base={:?}, route={:?}", full_path, path_decoded);
+
+    for component in path_decoded.components() {
+        match component {
+            Component::Normal(comp) => {
+                // Protect against paths like `/foo/c:/bar/baz`
+                // https://github.com/seanmonstar/warp/issues/937
+                if Path::new(&comp)
+                    .components()
+                    .all(|c| matches!(c, Component::Normal(_)))
+                {
+                    full_path.push(comp)
+                } else {
+                    tracing::debug!("dir: skipping segment with invalid prefix");
+                }
+            }
+            Component::CurDir => {}
+            Component::Prefix(_) | Component::RootDir | Component::ParentDir => {
+                tracing::debug!(
+                    "dir: skipping segment containing invalid prefix, dots or backslashes"
+                );
+            }
         }
     }
-    Ok(buf)
+    Ok(full_path)
 }
 
 #[derive(Debug)]
@@ -726,24 +740,35 @@ fn get_block_size(_metadata: &Metadata) -> usize {
 mod tests {
     use super::sanitize_path;
     use bytes::BytesMut;
+    use std::path::PathBuf;
+
+    fn root_dir() -> PathBuf {
+        PathBuf::from("docker/public/")
+    }
 
     #[test]
     fn test_sanitize_path() {
-        let base = "/var/www";
-
-        fn p(s: &str) -> &::std::path::Path {
-            s.as_ref()
-        }
+        const BASE_DIR: &str = "docker/public";
 
         assert_eq!(
-            sanitize_path(base, "/foo.html").unwrap(),
-            p("/var/www/foo.html")
+            sanitize_path(BASE_DIR, "/index.html").unwrap(),
+            root_dir().join("index.html")
         );
 
         // bad paths
-        sanitize_path(base, "/../foo.html").expect_err("dot dot");
+        assert_eq!(
+            sanitize_path(BASE_DIR, "/../foo.html").unwrap(),
+            root_dir().join("foo.html"),
+        );
 
-        sanitize_path(base, "/C:\\/foo.html").expect_err("C:\\");
+        #[cfg(unix)]
+        let expected_path = root_dir().join("C:\\/foo.html");
+        #[cfg(windows)]
+        let expected_path = PathBuf::from("docker/public/\\foo.html");
+        assert_eq!(
+            sanitize_path(BASE_DIR, "/C:\\/foo.html").unwrap(),
+            expected_path
+        );
     }
 
     #[test]
