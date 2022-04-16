@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _**Note:** See changelog for v1 under the [1.x](https://github.com/joseluisq/static-web-server/blob/1.x/CHANGELOG.md) branch._
 
+## v2.7.1 - 2022-04-17
+
+__Fixes__
+
+- [9c58496](https://github.com/joseluisq/static-web-server/commit/9c58496) Bugfix/security dependency updates including httparse, flate2, h2, tracing, brotli, windows-rs and other crates (also [bc62634](https://github.com/joseluisq/static-web-server/commit/bc62634), [8a1d1cb](https://github.com/joseluisq/static-web-server/commit/8a1d1cb), [eabc559](https://github.com/joseluisq/static-web-server/commit/eabc559)).
+- [041f0f8](https://github.com/joseluisq/static-web-server/commit/041f0f8) Prevent arbitrary files access on Windows.<br>
+  It mitigates accessing files outside of server root directory on Windows when a driver label is used as part of a request URL.<br>
+  E.g `http://localhost:1234/whatever/c:/windows/win.ini`.
+
+__Refactorings__
+
+- [fa05773](https://github.com/joseluisq/static-web-server/commit/fa05773) Small performance improvement for tracing.
+
+__Docs__
+
+- [9c58496](https://github.com/joseluisq/static-web-server/commit/9c58496) Build documentation from source.
+
 ## v2.7.0 - 2022-03-21
 
 __Fixes__
