@@ -1,12 +1,12 @@
 # Download and Install
 
-Latest **v2.7.0** release `2022-03-21` ([changelog](https://github.com/joseluisq/static-web-server/releases/tag/v2.7.0))
+Latest **v2.7.1** release `2022-04-17` ([changelog](https://github.com/joseluisq/static-web-server/releases/tag/v2.7.1))
 
 <div class="featured-downloads">
 
-<a class="md-button md-button-sm" href="https://github.com/joseluisq/static-web-server/releases/download/v2.7.0/static-web-server-v2.7.0-x86_64-unknown-linux-gnu.tar.gz">Linux 64-bit</a> <a class="md-button md-button-sm" href="https://github.com/joseluisq/static-web-server/releases/download/v2.7.0/static-web-server-v2.7.0-x86_64-apple-darwin.tar.gz">macOS 64-bit</a>
-<a class="md-button md-button-sm" href="https://github.com/joseluisq/static-web-server/releases/download/v2.7.0/static-web-server-v2.7.0-x86_64-pc-windows-msvc.zip">Windows 64-bit</a>
-<a class="md-button md-button-sm" href="https://github.com/joseluisq/static-web-server/releases/download/v2.7.0/static-web-server-v2.7.0-x86_64-unknown-freebsd.tar.gz">FreeBSD 64-bit</a>
+<a class="md-button md-button-sm" href="https://github.com/joseluisq/static-web-server/releases/download/v2.7.1/static-web-server-v2.7.1-x86_64-unknown-linux-gnu.tar.gz">Linux 64-bit</a> <a class="md-button md-button-sm" href="https://github.com/joseluisq/static-web-server/releases/download/v2.7.1/static-web-server-v2.7.1-x86_64-apple-darwin.tar.gz">macOS 64-bit</a>
+<a class="md-button md-button-sm" href="https://github.com/joseluisq/static-web-server/releases/download/v2.7.1/static-web-server-v2.7.1-x86_64-pc-windows-msvc.zip">Windows 64-bit</a>
+<a class="md-button md-button-sm" href="https://github.com/joseluisq/static-web-server/releases/download/v2.7.1/static-web-server-v2.7.1-x86_64-unknown-freebsd.tar.gz">FreeBSD 64-bit</a>
 
 </div>
 
@@ -36,47 +36,47 @@ yay -S static-web-server-bin
 
 ### x86_64
 
-- [static-web-server-v2.7.0-x86_64-apple-darwin.tar.gz](https://github.com/joseluisq/static-web-server/releases/download/v2.7.0/static-web-server-v2.7.0-x86_64-apple-darwin.tar.gz)<br>
-<small>**SHA256SUM:** `33f3364347c5ba36cb0aa636cd1ab8b2bbd42026de8ed8eaa49d88e9c02abba6`</small>
-- [static-web-server-v2.7.0-x86_64-pc-windows-gnu.zip](https://github.com/joseluisq/static-web-server/releases/download/v2.7.0/static-web-server-v2.7.0-x86_64-pc-windows-gnu.zip)<br>
-<small>**SHA256SUM:** `21ede4d5827bbb116ace146abb64885c4e60f678fc7d758452b8487009198603`</small>
-- [static-web-server-v2.7.0-x86_64-pc-windows-msvc.zip](https://github.com/joseluisq/static-web-server/releases/download/v2.7.0/static-web-server-v2.7.0-x86_64-pc-windows-msvc.zip)<br>
-<small>**SHA256SUM:** `a1336542aa15ce73f2ff056357a617c2a05bd23706cd13d68ca1836cfd17fb97`</small>
-- [static-web-server-v2.7.0-x86_64-unknown-freebsd.tar.gz](https://github.com/joseluisq/static-web-server/releases/download/v2.7.0/static-web-server-v2.7.0-x86_64-unknown-freebsd.tar.gz)<br>
-<small>**SHA256SUM:** `2e259fce5029e841556e41cfb35fde618e31d989a6685f3d8753ce6face836e5`</small>
-- [static-web-server-v2.7.0-x86_64-unknown-linux-gnu.tar.gz](https://github.com/joseluisq/static-web-server/releases/download/v2.7.0/static-web-server-v2.7.0-x86_64-unknown-linux-gnu.tar.gz)<br>
-<small>**SHA256SUM:** `fda97a753069fefeebee82e13cfe170c13f08398d2f4f8c43bf94995c3a77d47`</small>
-- [static-web-server-v2.7.0-x86_64-unknown-linux-musl.tar.gz](https://github.com/joseluisq/static-web-server/releases/download/v2.7.0/static-web-server-v2.7.0-x86_64-unknown-linux-musl.tar.gz)<br>
-<small>**SHA256SUM:** `f37d6f476a8907d6dbc23b2c500f827e6d8aed906b30ad04f732da336475f0ed`</small>
+- [static-web-server-v2.7.1-x86_64-apple-darwin.tar.gz](https://github.com/joseluisq/static-web-server/releases/download/v2.7.1/static-web-server-v2.7.1-x86_64-apple-darwin.tar.gz)<br>
+<small>**SHA256SUM:** `f1b862c0ee71c95e270e161058a8613d04683e062ddf22b64abba27fbe7b0b30`</small>
+- [static-web-server-v2.7.1-x86_64-pc-windows-gnu.zip](https://github.com/joseluisq/static-web-server/releases/download/v2.7.1/static-web-server-v2.7.1-x86_64-pc-windows-gnu.zip)<br>
+<small>**SHA256SUM:** `77ce265ab330d1257a1800baece2525e6ddfe79c50274041a89b3ad6ddeebed5`</small>
+- [static-web-server-v2.7.1-x86_64-pc-windows-msvc.zip](https://github.com/joseluisq/static-web-server/releases/download/v2.7.1/static-web-server-v2.7.1-x86_64-pc-windows-msvc.zip)<br>
+<small>**SHA256SUM:** `1ceeb5bfa489b711a57b7f4694fc54a3ecdaf3fa7e306c248e533ac216a1b8a7`</small>
+- [static-web-server-v2.7.1-x86_64-unknown-freebsd.tar.gz](https://github.com/joseluisq/static-web-server/releases/download/v2.7.1/static-web-server-v2.7.1-x86_64-unknown-freebsd.tar.gz)<br>
+<small>**SHA256SUM:** `3e0daed50331d61fb5a56c3b233a169f83d799e4a7ec770a98859c51b2fe663e`</small>
+- [static-web-server-v2.7.1-x86_64-unknown-linux-gnu.tar.gz](https://github.com/joseluisq/static-web-server/releases/download/v2.7.1/static-web-server-v2.7.1-x86_64-unknown-linux-gnu.tar.gz)<br>
+<small>**SHA256SUM:** `4e0555bd4b637cf6e62a5253f6102cd6f3f59ef3c79751c8a0d98c55861255bb`</small>
+- [static-web-server-v2.7.1-x86_64-unknown-linux-musl.tar.gz](https://github.com/joseluisq/static-web-server/releases/download/v2.7.1/static-web-server-v2.7.1-x86_64-unknown-linux-musl.tar.gz)<br>
+<small>**SHA256SUM:** `4ae35e74f9e88d0e20fc0e8fb9ec90624fa57fa21ea6c75d8bcffb4c71c18cf2`</small>
 
 ### ARM64
 
-- [static-web-server-v2.7.0-aarch64-unknown-linux-gnu.tar.gz](https://github.com/joseluisq/static-web-server/releases/download/v2.7.0/static-web-server-v2.7.0-aarch64-unknown-linux-gnu.tar.gz)<br>
-<small>**SHA256SUM:** `86d573738f007efbbede5d82536a21443b00314bc95270111bc6adb6a02ff4e0`</small>
-- [static-web-server-v2.7.0-aarch64-unknown-linux-musl.tar.gz](https://github.com/joseluisq/static-web-server/releases/download/v2.7.0/static-web-server-v2.7.0-aarch64-unknown-linux-musl.tar.gz)<br>
-<small>**SHA256SUM:** `7fc1b37d4ea77a850e6dafee9fe582a5f04d3f3f9b4c608efbb6b9bb65f4c20b`</small>
-- [static-web-server-v2.7.0-aarch64-apple-darwin.tar.gz](https://github.com/joseluisq/static-web-server/releases/download/v2.7.0/static-web-server-v2.7.0-aarch64-apple-darwin.tar.gz)<br>
-<small>**SHA256SUM:** `255fd92178577745c045e5e016d433a7c02611fe39f75e5b87b8f366b16fdb45`</small>
+- [static-web-server-v2.7.1-aarch64-unknown-linux-gnu.tar.gz](https://github.com/joseluisq/static-web-server/releases/download/v2.7.1/static-web-server-v2.7.1-aarch64-unknown-linux-gnu.tar.gz)<br>
+<small>**SHA256SUM:** `d00028988b42fb0557113b935482066df63574fcb5f49e7df6a1fc0acf32de50`</small>
+- [static-web-server-v2.7.1-aarch64-unknown-linux-musl.tar.gz](https://github.com/joseluisq/static-web-server/releases/download/v2.7.1/static-web-server-v2.7.1-aarch64-unknown-linux-musl.tar.gz)<br>
+<small>**SHA256SUM:** `82681a468a025bbc8c1df9ade2fc44312b3a4378568602e5c5303a8ef4ad3b86`</small>
+- [static-web-server-v2.7.1-aarch64-apple-darwin.tar.gz](https://github.com/joseluisq/static-web-server/releases/download/v2.7.1/static-web-server-v2.7.1-aarch64-apple-darwin.tar.gz)<br>
+<small>**SHA256SUM:** `39a686016ee1928a703bb7f74663e28246f21f636b82555db72bb35c2a6a8873`</small>
 
 ### x86
 
-- [static-web-server-v2.7.0-i686-pc-windows-msvc.zip](https://github.com/joseluisq/static-web-server/releases/download/v2.7.0/static-web-server-v2.7.0-i686-pc-windows-msvc.zip)<br>
-<small>**SHA256SUM:** `169f119f48a0b23936e595547c0dffe94b89e0474a515febd3357003b272f2ea`</small>
-- [static-web-server-v2.7.0-i686-unknown-freebsd.tar.gz](https://github.com/joseluisq/static-web-server/releases/download/v2.7.0/static-web-server-v2.7.0-i686-unknown-freebsd.tar.gz)<br>
-<small>**SHA256SUM:** `7848c1783cd79147923348b4f1a480ba6f258f5cfb180178501943098386178b`</small>
-- [static-web-server-v2.7.0-i686-unknown-linux-gnu.tar.gz](https://github.com/joseluisq/static-web-server/releases/download/v2.7.0/static-web-server-v2.7.0-i686-unknown-linux-gnu.tar.gz)<br>
-<small>**SHA256SUM:** `c7901a302b05d6688a89edccc09309ae331654fe23c5a6b8e00bd14ca748fe7a`</small>
-- [static-web-server-v2.7.0-i686-unknown-linux-musl.tar.gz](https://github.com/joseluisq/static-web-server/releases/download/v2.7.0/static-web-server-v2.7.0-i686-unknown-linux-musl.tar.gz)<br>
-<small>**SHA256SUM:** `128acbabbf9bb30c9ab800405b2d43595a62cc1e8059a3c190f950d8ef13a426`</small>
+- [static-web-server-v2.7.1-i686-pc-windows-msvc.zip](https://github.com/joseluisq/static-web-server/releases/download/v2.7.1/static-web-server-v2.7.1-i686-pc-windows-msvc.zip)<br>
+<small>**SHA256SUM:** `e201fa63a864ae78b88b13f4e553474e7f9c6d2cde888b0bd863e9aa50a872fe`</small>
+- [static-web-server-v2.7.1-i686-unknown-freebsd.tar.gz](https://github.com/joseluisq/static-web-server/releases/download/v2.7.1/static-web-server-v2.7.1-i686-unknown-freebsd.tar.gz)<br>
+<small>**SHA256SUM:** `0f054d36ff1820e24b2ee69674b0035142f5d5106909990dbe3aa47c8befbcd3`</small>
+- [static-web-server-v2.7.1-i686-unknown-linux-gnu.tar.gz](https://github.com/joseluisq/static-web-server/releases/download/v2.7.1/static-web-server-v2.7.1-i686-unknown-linux-gnu.tar.gz)<br>
+<small>**SHA256SUM:** `4130ac2370b674e7f661e3828f00e32aa82e9da8f624aae7572b96ae58dda29b`</small>
+- [static-web-server-v2.7.1-i686-unknown-linux-musl.tar.gz](https://github.com/joseluisq/static-web-server/releases/download/v2.7.1/static-web-server-v2.7.1-i686-unknown-linux-musl.tar.gz)<br>
+<small>**SHA256SUM:** `90a88e693f9b1e4256cc527e04c7b753185d7fb1c6569bc7f7a88da28d140561`</small>
 
 ### ARM
 
-- [static-web-server-v2.7.0-arm-unknown-linux-gnueabihf.tar.gz](https://github.com/joseluisq/static-web-server/releases/download/v2.7.0/static-web-server-v2.7.0-arm-unknown-linux-gnueabihf.tar.gz)<br>
-<small>**SHA256SUM:** `c60cc15c7c57bc3b07f137536c9054b8b951c2cfcb598fb9468e5829f650552b`</small>
-- [static-web-server-v2.7.0-arm-unknown-linux-musleabihf.tar.gz](https://github.com/joseluisq/static-web-server/releases/download/v2.7.0/static-web-server-v2.7.0-arm-unknown-linux-musleabihf.tar.gz)<br>
-<small>**SHA256SUM:** `a0154f7d2d2a93a77016759023e3eba705684dc72c6810beb40a9d0a14b55dcb`</small>
-- [static-web-server-v2.7.0-armv7-unknown-linux-musleabihf.tar.gz](https://github.com/joseluisq/static-web-server/releases/download/v2.7.0/static-web-server-v2.7.0-armv7-unknown-linux-musleabihf.tar.gz)<br>
-<small>**SHA256SUM:** `d4d3d4296843a1a93613c08368166272ee65d26fbac056830ac07cffbf3ecc21`</small>
+- [static-web-server-v2.7.1-arm-unknown-linux-gnueabihf.tar.gz](https://github.com/joseluisq/static-web-server/releases/download/v2.7.1/static-web-server-v2.7.1-arm-unknown-linux-gnueabihf.tar.gz)<br>
+<small>**SHA256SUM:** `1a85199015f368807ad45c4a50250976cd5b4ab172c44b44a1e53955757a8ff6`</small>
+- [static-web-server-v2.7.1-arm-unknown-linux-musleabihf.tar.gz](https://github.com/joseluisq/static-web-server/releases/download/v2.7.1/static-web-server-v2.7.1-arm-unknown-linux-musleabihf.tar.gz)<br>
+<small>**SHA256SUM:** `6d6a9d7204973a3699b5dbcbf5847985b298de5a980ba5546135907ee93e81cf`</small>
+- [static-web-server-v2.7.1-armv7-unknown-linux-musleabihf.tar.gz](https://github.com/joseluisq/static-web-server/releases/download/v2.7.1/static-web-server-v2.7.1-armv7-unknown-linux-musleabihf.tar.gz)<br>
+<small>**SHA256SUM:** `f72c092fda8f6292bc56d185a43bf75efb920af8e9b1b1b2c701e040a6ccd588`</small>
 
 ## All Releases
 
