@@ -6,6 +6,9 @@
 #[macro_use]
 extern crate anyhow;
 
+#[macro_use]
+extern crate serde;
+
 pub mod basic_auth;
 pub mod compression;
 pub mod config;
@@ -16,6 +19,7 @@ pub mod fallback_page;
 pub mod handler;
 pub mod helpers;
 pub mod logger;
+pub mod manifest;
 pub mod security_headers;
 pub mod server;
 pub mod service;

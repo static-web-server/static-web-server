@@ -1,3 +1,7 @@
+//! Server CLI Options
+
+use std::path::PathBuf;
+
 use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
@@ -171,4 +175,13 @@ pub struct Config {
     #[structopt(long, short = "q", default_value = "0", env = "SERVER_GRACE_PERIOD")]
     /// Defines a grace period in seconds after a `SIGTERM` signal is caught which will delay the server before to shut it down gracefully. The maximum value is 255 seconds.
     pub grace_period: u8,
+
+    #[structopt(
+        long,
+        short = "w",
+        default_value = "config.toml",
+        env = "SEVER_CONFIG_FILE"
+    )]
+    /// Server TOML configuration file path.
+    pub config_file: PathBuf,
 }

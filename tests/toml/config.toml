@@ -1,0 +1,66 @@
+# Address & Root dir
+host = "::"
+port = 80
+root = "./public"
+
+# Logging
+log-level = "error"
+
+# Cache Control headers
+cache-control-headers = true
+
+# Auto Compression
+compression = true
+
+# Error pages
+page404 = "404.html"
+page50x = "50x.html"
+
+# HTTP/2 + TLS
+http2 = true
+http2-tls-cert = ""
+http2-tls-key = ""
+
+# CORS & Security headers
+security-headers = true
+cors-allow-origins = ""
+
+# Directoy listing
+directory-listing = false
+
+# Basich Authentication
+basic-auth = ""
+
+# File descriptor binding
+fd = ""
+
+# Worker threads
+threads-multiplier = 1
+
+grace-period = 0
+
+page-fallback = ""
+
+[[headers]]
+source = "**/*.@(eot|otf|ttf|ttc|woff|font.css)"
+  [[headers.headers]]
+  key = "Access-Control-Allow-Origin"
+  value = "*"
+  [[headers.headers]]
+  key = "Access-Control-Allow-Origin"
+  value = "*"
+  [[headers.headers]]
+  key = "Access-Control-Allow-Origin"
+  value = "*"
+
+[[headers]]
+source = "**/*.@(jpg|jpeg|gif|png)"
+  [[headers.headers]]
+  key = "Cache-Control"
+  value = "max-age=7200"
+
+[[headers]]
+source = "404.html"
+  [[headers.headers]]
+  key = "Cache-Control"
+  value = "max-age=300"
