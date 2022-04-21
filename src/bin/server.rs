@@ -5,7 +5,7 @@
 
 #[cfg(all(target_env = "musl", target_pointer_width = "64"))]
 #[global_allocator]
-static ALLOC: jemallocator::Jemalloc = jemallocator::Jemalloc;
+static GLOBAL: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
 
 use static_web_server::{Result, Server};
 
