@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _**Note:** See changelog for v2 under the [master](https://github.com/joseluisq/static-web-server/blob/master/CHANGELOG.md) branch._
 
+## v1.19.2 - 2022-04-23
+
+__Updates__
+
+- [fb015db](https://github.com/joseluisq/static-web-server/commit/fb015db) Security/bug-fixes updates for httparse, log, libc, native-tls, flate2, nix, ctrlc and other dependencies (also [0ac2a94](https://github.com/joseluisq/static-web-server/commit/0ac2a94)).
+
+__Refactorings__
+
+- [ce920bd](https://github.com/joseluisq/static-web-server/commit/ce920bd) Move to maintained jemallocator (`tikv-jemallocator`) on Linux (musl libc).
+
 ## v1.19.1 - 2022-03-19
 
 __Updates__
