@@ -8,7 +8,7 @@ use structopt::StructOpt;
 use crate::handler::{RequestHandler, RequestHandlerOpts};
 use crate::tls::{TlsAcceptor, TlsConfigBuilder};
 use crate::{config::Config, service::RouterService, Context, Result};
-use crate::{cors, helpers, logger, signals};
+use crate::{cors, helpers, logger, manifest, signals};
 
 /// Define a multi-thread HTTP or HTTP/2 web server.
 pub struct Server {
@@ -58,6 +58,25 @@ impl Server {
         // Initialize logging system
         logger::init(&opts.log_level)
             .with_context(|| "failed to initialize logging".to_string())?;
+
+        // TODO:
+        // Check for a config file
+        if let Some(config_file) = &opts.config_file {
+            if config_file.is_file() {
+                let path_resolved = config_file
+                    .canonicalize()
+                    .with_context(|| "error resolving config file path.")?;
+
+                let manifest = manifest::read_manifest(&path_resolved).with_context(|| {
+                    format!(
+                        "can not get \"{}\" config file because has invalid format or inaccessible",
+                        path_resolved.display()
+                    )
+                })?;
+
+                println!("{:?}", manifest.unwrap().headers);
+            }
+        }
 
         // Determine TCP listener either file descriptor or TCP socket
         let (tcp_listener, addr_str);

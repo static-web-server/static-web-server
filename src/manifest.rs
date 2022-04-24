@@ -1,5 +1,6 @@
 //! The server configuration file (Manifest)
 
+use headers::HeaderMap;
 use serde::Deserialize;
 use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
@@ -16,18 +17,12 @@ pub enum LogLevel {
     Trace,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, Default)]
-#[serde(rename_all = "kebab-case")]
-pub struct Header {
-    pub key: String,
-    pub value: String,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "kebab-case")]
 pub struct Headers {
     pub source: String,
-    pub headers: Option<Vec<Header>>,
+    #[serde(with = "http_serde::header_map")]
+    pub headers: HeaderMap,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -61,11 +56,11 @@ pub struct Manifest {
 
     // CORS
     pub cors_allow_origins: String,
-    pub cors_allow_headers: String,
+    pub cors_allow_headers: Option<String>,
 
     // Directoy listing
     pub directory_listing: bool,
-    pub directory_listing_order: u8,
+    pub directory_listing_order: Option<u8>,
 
     // Basich Authentication
     pub basic_auth: Option<String>,

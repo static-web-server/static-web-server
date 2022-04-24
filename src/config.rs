@@ -176,12 +176,7 @@ pub struct Config {
     /// Defines a grace period in seconds after a `SIGTERM` signal is caught which will delay the server before to shut it down gracefully. The maximum value is 255 seconds.
     pub grace_period: u8,
 
-    #[structopt(
-        long,
-        short = "w",
-        default_value = "config.toml",
-        env = "SEVER_CONFIG_FILE"
-    )]
+    #[structopt(long, short = "w", env = "SERVER_CONFIG_FILE")]
     /// Server TOML configuration file path.
-    pub config_file: PathBuf,
+    pub config_file: Option<PathBuf>,
 }

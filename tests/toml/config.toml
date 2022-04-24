@@ -32,35 +32,33 @@ directory-listing = false
 basic-auth = ""
 
 # File descriptor binding
-fd = ""
+# fd = ""
 
 # Worker threads
 threads-multiplier = 1
 
+# Grace period after a graceful shutdown
 grace-period = 0
 
+# Page fallback for 404s
 page-fallback = ""
 
+# HTTP Headers customization
+
+# a. Online version
 [[headers]]
 source = "**/*.@(eot|otf|ttf|ttc|woff|font.css)"
-  [[headers.headers]]
-  key = "Access-Control-Allow-Origin"
-  value = "*"
-  [[headers.headers]]
-  key = "Access-Control-Allow-Origin"
-  value = "*"
-  [[headers.headers]]
-  key = "Access-Control-Allow-Origin"
-  value = "*"
+headers = { Access-Control-Allow-Origin = "*", X-XSS-PROTECTION = "1; mode=block" }
 
+# b. Multiline version
 [[headers]]
-source = "**/*.@(jpg|jpeg|gif|png)"
-  [[headers.headers]]
-  key = "Cache-Control"
-  value = "max-age=7200"
+  source = "**/*.@(jpg|jpeg|gif|png)"
+[headers.headers]
+  Cache-Control = "max-age=7200"
+  Content-Security-Policy = "frame-ancestors 'self'"
 
+# c. Multiline version with explicit key (dotted)
 [[headers]]
 source = "404.html"
-  [[headers.headers]]
-  key = "Cache-Control"
-  value = "max-age=300"
+headers.Cache-Control = "max-age=300"
+headers.Strict-Transport-Security = "max-age=63072000; includeSubDomains; preload"
