@@ -1,63 +1,67 @@
-# Address & Root dir
-host = "::"
-port = 80
-root = "./public"
+[general]
 
-# Logging
-log-level = "error"
+#### Address & Root dir
+# host = "::"
+# port = 80
+# root = "./public"
+
+#### Logging
+log-level = "debug"
 
 # Cache Control headers
-cache-control-headers = true
+# cache-control-headers = true
 
-# Auto Compression
-compression = true
+#### Auto Compression
+# compression = true
 
-# Error pages
-page404 = "404.html"
-page50x = "50x.html"
+#### Error pages
+# page404 = "404.html"
+# page50x = "50x.html"
 
-# HTTP/2 + TLS
-http2 = true
-http2-tls-cert = ""
-http2-tls-key = ""
+#### HTTP/2 + TLS
+# http2 = true
+# http2-tls-cert = ""
+# http2-tls-key = ""
 
-# CORS & Security headers
-security-headers = true
-cors-allow-origins = ""
+#### CORS & Security headers
+# security-headers = true
+# cors-allow-origins = ""
 
-# Directoy listing
-directory-listing = false
+#### Directoy listing
+# directory-listing = false
 
-# Basich Authentication
-basic-auth = ""
+#### Basich Authentication
+# basic-auth = ""
 
-# File descriptor binding
+#### File descriptor binding
 # fd = ""
 
-# Worker threads
-threads-multiplier = 1
+#### Worker threads
+# threads-multiplier = 1
 
-# Grace period after a graceful shutdown
-grace-period = 0
+#### Grace period after a graceful shutdown
+# grace-period = 0
 
-# Page fallback for 404s
-page-fallback = ""
+#### Page fallback for 404s
+# page-fallback = ""
 
-# HTTP Headers customization
+[advanced]
 
-# a. Online version
+#### HTTP Headers customization
+
+#### a. Oneline version
 [[headers]]
 source = "**/*.@(eot|otf|ttf|ttc|woff|font.css)"
 headers = { Access-Control-Allow-Origin = "*", X-XSS-PROTECTION = "1; mode=block" }
 
-# b. Multiline version
+#### b. Multiline version
 [[headers]]
   source = "**/*.@(jpg|jpeg|gif|png)"
 [headers.headers]
   Cache-Control = "max-age=7200"
   Content-Security-Policy = "frame-ancestors 'self'"
 
-# c. Multiline version with explicit key (dotted)
+#### c. Multiline version with explicit key (dotted)
 [[headers]]
 source = "404.html"
 headers.Cache-Control = "max-age=300"

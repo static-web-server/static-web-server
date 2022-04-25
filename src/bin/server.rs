@@ -10,7 +10,7 @@ static GLOBAL: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
 use static_web_server::{Result, Server};
 
 fn main() -> Result {
-    Server::new().run()?;
+    Server::new()?.run()?;
 
     Ok(())
 }

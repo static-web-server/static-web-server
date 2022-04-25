@@ -1,12 +1,12 @@
-//! Server CLI Options
+//! The server CLI options
 
 use std::path::PathBuf;
-
 use structopt::StructOpt;
 
+/// General server configuration available in CLI and config file options.
 #[derive(Debug, StructOpt)]
 #[structopt(about, author)]
-pub struct Config {
+pub struct General {
     #[structopt(long, short = "a", default_value = "::", env = "SERVER_HOST")]
     /// Host address (E.g 127.0.0.1 or ::1)
     pub host: String,
