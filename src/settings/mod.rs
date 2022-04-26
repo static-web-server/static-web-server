@@ -56,76 +56,78 @@ impl Settings {
                     .canonicalize()
                     .with_context(|| "error resolving toml config file path")?;
 
-                let file::Settings{ general, advanced } = file::Settings::read(&path_resolved)
+                let settings = file::Settings::read(&path_resolved)
                     .with_context(|| {"can not read toml config file because has invalid or unsupported format/options" })?;
 
                 config_file = Some(path_resolved);
 
-                if let Some(ref v) = general.host {
-                    host = v.to_owned()
-                }
-                if let Some(v) = general.port {
-                    port = v
-                }
-                if let Some(ref v) = general.root {
-                    root = v.to_owned()
-                }
-                if let Some(ref v) = general.log_level {
-                    log_level = v.name().to_lowercase();
-                }
-                if let Some(v) = general.cache_control_headers {
-                    cache_control_headers = v
-                }
-                if let Some(v) = general.compression {
-                    compression = v
-                }
-                if let Some(ref v) = general.page404 {
-                    page404 = v.to_owned()
-                }
-                if let Some(ref v) = general.page50x {
-                    page50x = v.to_owned()
-                }
-                if let Some(v) = general.http2 {
-                    http2 = v
-                }
-                if let Some(ref v) = general.http2_tls_cert {
-                    http2_tls_cert = v.to_owned()
-                }
-                if let Some(ref v) = general.http2_tls_key {
-                    http2_tls_key = v.to_owned()
-                }
-                if let Some(v) = general.security_headers {
-                    security_headers = v
-                }
-                if let Some(ref v) = general.cors_allow_origins {
-                    cors_allow_origins = v.to_owned()
-                }
-                if let Some(ref v) = general.cors_allow_headers {
-                    cors_allow_headers = v.to_owned()
-                }
-                if let Some(v) = general.directory_listing {
-                    directory_listing = v
-                }
-                if let Some(v) = general.directory_listing_order {
-                    directory_listing_order = v
-                }
-                if let Some(ref v) = general.basic_auth {
-                    basic_auth = v.to_owned()
-                }
-                if let Some(v) = general.fd {
-                    fd = Some(v)
-                }
-                if let Some(v) = general.threads_multiplier {
-                    threads_multiplier = v
-                }
-                if let Some(v) = general.grace_period {
-                    grace_period = v
-                }
-                if let Some(ref v) = general.page_fallback {
-                    page_fallback = v.to_owned()
+                if let Some(general) = settings.general {
+                    if let Some(ref v) = general.host {
+                        host = v.to_owned()
+                    }
+                    if let Some(v) = general.port {
+                        port = v
+                    }
+                    if let Some(ref v) = general.root {
+                        root = v.to_owned()
+                    }
+                    if let Some(ref v) = general.log_level {
+                        log_level = v.name().to_lowercase();
+                    }
+                    if let Some(v) = general.cache_control_headers {
+                        cache_control_headers = v
+                    }
+                    if let Some(v) = general.compression {
+                        compression = v
+                    }
+                    if let Some(ref v) = general.page404 {
+                        page404 = v.to_owned()
+                    }
+                    if let Some(ref v) = general.page50x {
+                        page50x = v.to_owned()
+                    }
+                    if let Some(v) = general.http2 {
+                        http2 = v
+                    }
+                    if let Some(ref v) = general.http2_tls_cert {
+                        http2_tls_cert = v.to_owned()
+                    }
+                    if let Some(ref v) = general.http2_tls_key {
+                        http2_tls_key = v.to_owned()
+                    }
+                    if let Some(v) = general.security_headers {
+                        security_headers = v
+                    }
+                    if let Some(ref v) = general.cors_allow_origins {
+                        cors_allow_origins = v.to_owned()
+                    }
+                    if let Some(ref v) = general.cors_allow_headers {
+                        cors_allow_headers = v.to_owned()
+                    }
+                    if let Some(v) = general.directory_listing {
+                        directory_listing = v
+                    }
+                    if let Some(v) = general.directory_listing_order {
+                        directory_listing_order = v
+                    }
+                    if let Some(ref v) = general.basic_auth {
+                        basic_auth = v.to_owned()
+                    }
+                    if let Some(v) = general.fd {
+                        fd = Some(v)
+                    }
+                    if let Some(v) = general.threads_multiplier {
+                        threads_multiplier = v
+                    }
+                    if let Some(v) = general.grace_period {
+                        grace_period = v
+                    }
+                    if let Some(ref v) = general.page_fallback {
+                        page_fallback = v.to_owned()
+                    }
                 }
 
-                settings_advanced = Some(advanced)
+                settings_advanced = settings.advanced
             }
         }
 

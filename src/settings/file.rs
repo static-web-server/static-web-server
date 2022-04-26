@@ -102,8 +102,8 @@ pub struct General {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "kebab-case")]
 pub struct Settings {
-    pub general: General,
-    pub advanced: Advanced,
+    pub general: Option<General>,
+    pub advanced: Option<Advanced>,
 }
 
 impl Settings {
