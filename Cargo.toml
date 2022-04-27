@@ -55,6 +55,7 @@ serde = { version = "1.0", default-features = false, features = ["derive"] }
 serde_ignored = "0.1"
 toml = "0.5"
 http-serde = "1.1"
+globset = { version = "0.4", features = ["serde1"] }
 
 [target.'cfg(all(target_env = "musl", target_pointer_width = "64"))'.dependencies.tikv-jemallocator]
 version = "0.4"

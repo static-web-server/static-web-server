@@ -33,7 +33,7 @@ impl LogLevel {
 #[serde(rename_all = "kebab-case")]
 pub struct Headers {
     pub source: String,
-    #[serde(with = "http_serde::header_map")]
+    #[serde(rename(deserialize = "headers"), with = "http_serde::header_map")]
     pub headers: HeaderMap,
 }
 
@@ -42,11 +42,11 @@ pub struct Headers {
 #[serde(rename_all = "kebab-case")]
 pub struct Advanced {
     // Headers
-    #[serde(rename(deserialize = "headers"))]
     pub headers: Option<Vec<Headers>>,
 }
 
-/// General server options available configuration file mode.
+/// General server options available in configuration file mode.
+/// Note that the `--config-file` option is excluded from itself.
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "kebab-case")]
 pub struct General {

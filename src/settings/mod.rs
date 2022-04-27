@@ -1,19 +1,29 @@
+use globset::{Glob, GlobMatcher};
+use headers::HeaderMap;
 use structopt::StructOpt;
 
 use crate::{Context, Result};
 
 mod cli;
-mod file;
+pub mod file;
 
 use cli::General;
-use file::Advanced;
+
+pub struct AdvancedOpts {
+    pub headers: Option<Vec<HeadersOpt>>,
+}
+
+pub struct HeadersOpt {
+    pub source: GlobMatcher,
+    pub headers: HeaderMap,
+}
 
 /// The Server CLI and File settings.
 pub struct Settings {
     /// General server options
     pub general: General,
     /// Advanced server options
-    pub advanced: Option<Advanced>,
+    pub advanced: Option<AdvancedOpts>,
 }
 
 impl Settings {
@@ -46,7 +56,7 @@ impl Settings {
         let mut page_fallback = opts.page_fallback.to_owned();
 
         // Define the advanced file options
-        let mut settings_advanced: Option<Advanced> = None;
+        let mut settings_advanced: Option<AdvancedOpts> = None;
 
         // Handle config file options and set them when available
         // NOTE: All config file based options shouldn't be mandatory, therefore `Some()` wrapped
@@ -127,7 +137,23 @@ impl Settings {
                     }
                 }
 
-                settings_advanced = settings.advanced
+                if let Some(advanced) = settings.advanced {
+                    if let Some(multiple_headers) = advanced.headers {
+                        let mut headers_vec: Vec<HeadersOpt> = Vec::new();
+
+                        // Compile glob patterns for header sources
+                        for headers_entry in multiple_headers.iter() {
+                            let source = Glob::new(&headers_entry.source)?.compile_matcher();
+                            headers_vec.push(HeadersOpt {
+                                source,
+                                headers: headers_entry.headers.to_owned(),
+                            });
+                        }
+                        settings_advanced = Some(AdvancedOpts {
+                            headers: Some(headers_vec),
+                        });
+                    }
+                }
             }
         }
 

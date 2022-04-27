@@ -54,8 +54,8 @@ impl Server {
     async fn start_server(self) -> Result {
         let general = self.opts.general;
 
-        // TODO: handle advaced options
-        // let advanced = self.opts.advanced;
+        // TODO: handle advanced options
+        let advanced_opts = self.opts.advanced;
 
         // Logging system initialization
         let log_level = &general.log_level.to_lowercase();
@@ -159,6 +159,7 @@ impl Server {
                 page50x,
                 page_fallback,
                 basic_auth,
+                advanced_opts,
             }),
         });
 

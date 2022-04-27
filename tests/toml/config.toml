@@ -6,7 +6,7 @@ port = 8087
 root = "docker/public"
 
 #### Logging
-log-level = "debug"
+log-level = "trace"
 
 #### Cache Control headers
 cache-control-headers = true
@@ -50,19 +50,19 @@ page-fallback = ""
 #### HTTP Headers customization
 
 #### a. Oneline version
-[[headers]]
-source = "**/*.@(eot|otf|ttf|ttc|woff|font.css)"
+[[advanced.headers]]
+source = "**/*.{js,css}"
 headers = { Access-Control-Allow-Origin = "*", X-XSS-PROTECTION = "1; mode=block" }
 
-#### b. Multiline version
-[[headers]]
-  source = "**/*.@(jpg|jpeg|gif|png)"
-[headers.headers]
-  Cache-Control = "max-age=7200"
+# #### b. Multiline version
+[[advanced.headers]]
+  source = "*.html"
+  [advanced.headers.headers]
+  Cache-Control = "public, max-age=36000"
   Content-Security-Policy = "frame-ancestors 'self'"
+  Strict-Transport-Security = "max-age=63072000; includeSubDomains; preload"
 
 #### c. Multiline version with explicit key (dotted)
-[[headers]]
-source = "404.html"
-headers.Cache-Control = "max-age=300"
+[[advanced.headers]]
+source = "**/*.{jpg,jpeg,png,ico,gif}"
 headers.Strict-Transport-Security = "max-age=63072000; includeSubDomains; preload"

@@ -2,13 +2,13 @@ use hyper::{header::WWW_AUTHENTICATE, Body, Method, Request, Response, StatusCod
 use std::{future::Future, path::PathBuf, sync::Arc};
 
 use crate::{
-    basic_auth, compression, control_headers, cors, error_page, fallback_page, security_headers,
-    static_files,
+    basic_auth, compression, control_headers, cors, custom_headers, error_page, fallback_page,
+    security_headers, settings::AdvancedOpts, static_files, Error, Result,
 };
-use crate::{Error, Result};
 
 /// It defines options for a request handler.
 pub struct RequestHandlerOpts {
+    // General options
     pub root_dir: PathBuf,
     pub compression: bool,
     pub dir_listing: bool,
@@ -20,6 +20,9 @@ pub struct RequestHandlerOpts {
     pub page50x: String,
     pub page_fallback: String,
     pub basic_auth: String,
+
+    // Advanced options
+    pub advanced_opts: Option<AdvancedOpts>,
 }
 
 /// It defines the main request handler used by the Hyper service request.
@@ -152,6 +155,11 @@ impl RequestHandler {
                     // Append security headers
                     if self.opts.security_headers {
                         security_headers::append_headers(&mut resp);
+                    }
+
+                    // Add/update custom headers
+                    if let Some(advanced) = &self.opts.advanced_opts {
+                        custom_headers::append_headers(uri_path, &advanced.headers, &mut resp)
                     }
 
                     Ok(resp)

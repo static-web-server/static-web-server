@@ -13,6 +13,7 @@ pub mod basic_auth;
 pub mod compression;
 pub mod control_headers;
 pub mod cors;
+pub mod custom_headers;
 pub mod error_page;
 pub mod fallback_page;
 pub mod handler;
