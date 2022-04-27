@@ -355,7 +355,7 @@ async fn read_directory_entries(
         dirs_count, dirs_str, files_count, "file(s)"
     );
     let style_str = r#"<style>html{background-color:#fff;-moz-osx-font-smoothing:grayscale;-webkit-font-smoothing:antialiased;min-width:20rem;text-rendering:optimizeLegibility;-webkit-text-size-adjust:100%;-moz-text-size-adjust:100%;text-size-adjust:100%}body{padding:1rem;font-family:Consolas,'Liberation Mono',Menlo,monospace;font-size:.875rem;max-width:70rem;margin:0 auto;color:#4a4a4a;font-weight:400;line-height:1.5}h1{margin:0;padding:0;font-size:1.375rem;line-height:1.25;margin-bottom:0.5rem;}table{width:100%;border-spacing: 0;}table th,table td{padding:.2rem .5rem;white-space:nowrap;vertical-align:top}table th a,table td a{display:inline-block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:95%;vertical-align:top}table tr:hover td{background-color:#f5f5f5}footer{padding-top:0.5rem}table tr th{text-align:left;}</style>"#;
-    let footer_str = r#"<footer>Powered by <a target="_blank" href="https://git.io/static-web-server">static-web-server</a> | MIT &amp; Apache 2.0</footer>"#;
+    let footer_str = r#"<footer>Powered by <a target="_blank" href="https://github.com/joseluisq/static-web-server">static-web-server</a> | MIT &amp; Apache 2.0</footer>"#;
     let page_str = format!(
         "<!DOCTYPE html><html><head><meta charset=\"utf-8\"><title>Index of {}</title>{}</head><body><h1>Index of {}</h1>{}<hr><table>{}{}</table><hr>{}</body></html>", current_path, style_str, current_path, summary_str, table_header, entries_str, footer_str
     );
