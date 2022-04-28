@@ -9,13 +9,17 @@ pub mod file;
 
 use cli::General;
 
-pub struct AdvancedOpts {
-    pub headers: Option<Vec<HeadersOpt>>,
+/// Headers file options.
+pub struct Header {
+    /// Source pattern glob matcher
+    pub source: GlobMatcher,
+    /// Custom HTTP headers
+    pub headers: HeaderMap,
 }
 
-pub struct HeadersOpt {
-    pub source: GlobMatcher,
-    pub headers: HeaderMap,
+/// The advanced file options.
+pub struct Advanced {
+    pub headers: Option<Vec<Header>>,
 }
 
 /// The Server CLI and File settings.
@@ -23,7 +27,7 @@ pub struct Settings {
     /// General server options
     pub general: General,
     /// Advanced server options
-    pub advanced: Option<AdvancedOpts>,
+    pub advanced: Option<Advanced>,
 }
 
 impl Settings {
@@ -56,7 +60,7 @@ impl Settings {
         let mut page_fallback = opts.page_fallback.to_owned();
 
         // Define the advanced file options
-        let mut settings_advanced: Option<AdvancedOpts> = None;
+        let mut settings_advanced: Option<Advanced> = None;
 
         // Handle config file options and set them when available
         // NOTE: All config file based options shouldn't be mandatory, therefore `Some()` wrapped
@@ -67,7 +71,9 @@ impl Settings {
                     .with_context(|| "error resolving toml config file path")?;
 
                 let settings = file::Settings::read(&path_resolved)
-                    .with_context(|| {"can not read toml config file because has invalid or unsupported format/options" })?;
+                    .with_context(|| {
+                        "can not read toml config file because has invalid or unsupported format/options"
+                    })?;
 
                 config_file = Some(path_resolved);
 
@@ -139,17 +145,19 @@ impl Settings {
 
                 if let Some(advanced) = settings.advanced {
                     if let Some(multiple_headers) = advanced.headers {
-                        let mut headers_vec: Vec<HeadersOpt> = Vec::new();
+                        let mut headers_vec: Vec<Header> = Vec::new();
 
                         // Compile glob patterns for header sources
                         for headers_entry in multiple_headers.iter() {
-                            let source = Glob::new(&headers_entry.source)?.compile_matcher();
-                            headers_vec.push(HeadersOpt {
+                            let source = Glob::new(&headers_entry.source)
+                                .with_context(|| "can not compile glob pattern for header source")?
+                                .compile_matcher();
+                            headers_vec.push(Header {
                                 source,
                                 headers: headers_entry.headers.to_owned(),
                             });
                         }
-                        settings_advanced = Some(AdvancedOpts {
+                        settings_advanced = Some(Advanced {
                             headers: Some(headers_vec),
                         });
                     }

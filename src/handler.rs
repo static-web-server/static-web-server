@@ -3,7 +3,7 @@ use std::{future::Future, path::PathBuf, sync::Arc};
 
 use crate::{
     basic_auth, compression, control_headers, cors, custom_headers, error_page, fallback_page,
-    security_headers, settings::AdvancedOpts, static_files, Error, Result,
+    security_headers, settings::Advanced, static_files, Error, Result,
 };
 
 /// It defines options for a request handler.
@@ -22,7 +22,7 @@ pub struct RequestHandlerOpts {
     pub basic_auth: String,
 
     // Advanced options
-    pub advanced_opts: Option<AdvancedOpts>,
+    pub advanced_opts: Option<Advanced>,
 }
 
 /// It defines the main request handler used by the Hyper service request.

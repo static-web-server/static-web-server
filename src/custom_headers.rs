@@ -1,14 +1,14 @@
 use hyper::{Body, Response};
 
-use crate::settings::HeadersOpt;
+use crate::settings::Header;
 
 /** Append custom HTTP headers to current response. */
 pub fn append_headers(
     uri: &str,
-    multiple_headers: &Option<Vec<HeadersOpt>>,
+    headers_opts_vec: &Option<Vec<Header>>,
     resp: &mut Response<Body>,
 ) {
-    if let Some(multiple_headers) = multiple_headers {
+    if let Some(multiple_headers) = headers_opts_vec {
         for headers_entry in multiple_headers.iter() {
             // Match header glob pattern against request uri
             if headers_entry.source.is_match(uri) {
