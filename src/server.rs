@@ -52,9 +52,10 @@ impl Server {
     /// Run the inner Hyper `HyperServer` (HTTP1/HTTP2) forever on the current thread
     // using the given configuration.
     async fn start_server(self) -> Result {
+        // Config "general" options
         let general = self.opts.general;
 
-        // TODO: handle advanced options
+        // Config-file "advanced" options
         let advanced_opts = self.opts.advanced;
 
         // Logging system initialization

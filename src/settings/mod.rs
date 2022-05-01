@@ -9,20 +9,20 @@ pub mod file;
 
 use cli::General;
 
-/// Headers file options.
-pub struct Header {
+/// The `headers` file options.
+pub struct Headers {
     /// Source pattern glob matcher
     pub source: GlobMatcher,
-    /// Custom HTTP headers
+    /// Map of custom HTTP headers
     pub headers: HeaderMap,
 }
 
-/// The advanced file options.
+/// The `advanced` file options.
 pub struct Advanced {
-    pub headers: Option<Vec<Header>>,
+    pub headers: Option<Vec<Headers>>,
 }
 
-/// The Server CLI and File settings.
+/// The full server CLI and File options.
 pub struct Settings {
     /// General server options
     pub general: General,
@@ -62,7 +62,7 @@ impl Settings {
         // Define the advanced file options
         let mut settings_advanced: Option<Advanced> = None;
 
-        // Handle config file options and set them when available
+        // Handle "config file options" and set them when available
         // NOTE: All config file based options shouldn't be mandatory, therefore `Some()` wrapped
         if let Some(ref p) = opts.config_file {
             if p.is_file() {
@@ -77,6 +77,7 @@ impl Settings {
 
                 config_file = Some(path_resolved);
 
+                // Assign the corresponding file option values
                 if let Some(general) = settings.general {
                     if let Some(ref v) = general.host {
                         host = v.to_owned()
@@ -143,24 +144,37 @@ impl Settings {
                     }
                 }
 
+                // Prepare the "advanced" options
                 if let Some(advanced) = settings.advanced {
-                    if let Some(multiple_headers) = advanced.headers {
-                        let mut headers_vec: Vec<Header> = Vec::new();
+                    // 1. Custom HTTP headers assignment
+                    let headers_entries = match advanced.headers {
+                        Some(headers_entries) => {
+                            let mut headers_vec: Vec<Headers> = Vec::new();
 
-                        // Compile glob patterns for header sources
-                        for headers_entry in multiple_headers.iter() {
-                            let source = Glob::new(&headers_entry.source)
-                                .with_context(|| "can not compile glob pattern for header source")?
-                                .compile_matcher();
-                            headers_vec.push(Header {
-                                source,
-                                headers: headers_entry.headers.to_owned(),
-                            });
+                            // Compile a glob pattern for each header sources entry
+                            for headers_entry in headers_entries.iter() {
+                                let source = Glob::new(&headers_entry.source)
+                                    .with_context(|| {
+                                        format!(
+                                            "can not compile glob pattern for header source: {}",
+                                            &headers_entry.source
+                                        )
+                                    })?
+                                    .compile_matcher();
+
+                                headers_vec.push(Headers {
+                                    source,
+                                    headers: headers_entry.headers.to_owned(),
+                                });
+                            }
+                            Some(headers_vec)
                         }
-                        settings_advanced = Some(Advanced {
-                            headers: Some(headers_vec),
-                        });
-                    }
+                        _ => None,
+                    };
+
+                    settings_advanced = Some(Advanced {
+                        headers: headers_entries,
+                    });
                 }
             }
         }
