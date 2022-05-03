@@ -28,7 +28,7 @@ theme:
     - content.code.annotate
     - content.tabs.link
     - header.autohide
-    - navigation.expand
+    # - navigation.expand
     - navigation.indexes
     # - navigation.instant
     # - navigation.sections
@@ -103,6 +103,8 @@ markdown_extensions:
   - pymdownx.highlight:
       linenums: true
       linenums_style: pymdownx-inline
+  - pymdownx.tabbed:
+      alternate_style: true
 
 # Plugins
 plugins:
@@ -118,6 +120,7 @@ nav:
   - 'Configuration':
     - 'Command Line Arguments': 'configuration/command-line-arguments.md'
     - 'Environment Variables': 'configuration/environment-variables.md'
+    - 'TOML Configuration File': 'configuration/config-file.md'
   - 'Building from Source': 'building-from-source.md'
   - 'Features':
     - 'HTTP/1': 'features/http1.md'
@@ -135,6 +138,7 @@ nav:
     - 'File Descriptor Socket Passing': './features/file-descriptor-socket-passing.md'
     - 'Worker Threads Customization': 'features/worker-threads.md'
     - 'Error Pages': 'features/error-pages.md'
+    - 'Custom HTTP Headers': 'features/custom-http-headers.md'
   - 'Platforms & Architectures': 'platforms-architectures.md'
   - 'Migration from v1 to v2': 'migration.md'
   - 'Changelog v2 (latest stable)': 'https://github.com/joseluisq/static-web-server/blob/master/CHANGELOG.md'

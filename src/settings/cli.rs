@@ -1,8 +1,12 @@
+//! The server CLI options
+
+use std::path::PathBuf;
 use structopt::StructOpt;
 
+/// General server configuration available in CLI and config file options.
 #[derive(Debug, StructOpt)]
 #[structopt(about, author)]
-pub struct Config {
+pub struct General {
     #[structopt(long, short = "a", default_value = "::", env = "SERVER_HOST")]
     /// Host address (E.g 127.0.0.1 or ::1)
     pub host: String,
@@ -171,4 +175,8 @@ pub struct Config {
     #[structopt(long, short = "q", default_value = "0", env = "SERVER_GRACE_PERIOD")]
     /// Defines a grace period in seconds after a `SIGTERM` signal is caught which will delay the server before to shut it down gracefully. The maximum value is 255 seconds.
     pub grace_period: u8,
+
+    #[structopt(long, short = "w", env = "SERVER_CONFIG_FILE")]
+    /// Server TOML configuration file path.
+    pub config_file: Option<PathBuf>,
 }

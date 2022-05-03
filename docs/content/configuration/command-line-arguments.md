@@ -10,8 +10,8 @@ The server can be configured via the following command-line arguments.
 ```
 $ static-web-server -h
 
-static-web-server 2.7.0
-Jose Quintana <https://git.io/joseluisq>
+static-web-server 2.8.0
+Jose Quintana <https://joseluisq.net>
 A blazing fast and asynchronous web server for static files-serving.
 
 USAGE:
@@ -31,6 +31,9 @@ OPTIONS:
     -x, --compression <compression>
             Gzip, Deflate or Brotli compression on demand determined by the Accept-Encoding header and applied to text-
             based web file types only [env: SERVER_COMPRESSION=]  [default: true]
+    -w, --config-file <config-file>
+            Server TOML configuration file path [env: SERVER_CONFIG_FILE=]
+
     -j, --cors-allow-headers <cors-allow-headers>
             Specify an optional CORS list of allowed headers separated by comas. Default "origin, content-type". It
             requires `--cors-allow-origins` to be used along with [env: SERVER_CORS_ALLOW_HEADERS=]  [default: origin,

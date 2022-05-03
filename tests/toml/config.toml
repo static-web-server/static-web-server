@@ -1,0 +1,68 @@
+[general]
+
+#### Address & Root dir
+host = "::"
+port = 8087
+root = "docker/public"
+
+#### Logging
+log-level = "trace"
+
+#### Cache Control headers
+cache-control-headers = true
+
+#### Auto Compression
+compression = true
+
+#### Error pages
+page404 = "docker/public/404.html"
+page50x = "docker/public/50x.html"
+
+#### HTTP/2 + TLS
+http2 = false
+http2-tls-cert = ""
+http2-tls-key = ""
+
+#### CORS & Security headers
+security-headers = true
+cors-allow-origins = ""
+
+#### Directoy listing
+directory-listing = false
+
+#### Basich Authentication
+basic-auth = ""
+
+#### File descriptor binding
+# fd = ""
+
+#### Worker threads
+threads-multiplier = 1
+
+#### Grace period after a graceful shutdown
+grace-period = 0
+
+#### Page fallback for 404s
+page-fallback = ""
+
+[advanced]
+
+#### HTTP Headers customization
+
+#### a. Oneline version
+[[advanced.headers]]
+source = "**/*.{js,css}"
+headers = { Access-Control-Allow-Origin = "*", X-XSS-PROTECTION = "1; mode=block" }
+
+# #### b. Multiline version
+[[advanced.headers]]
+source = "index.html"
+[advanced.headers.headers]
+Cache-Control = "public, max-age=36000"
+Content-Security-Policy = "frame-ancestors 'self'"
+Strict-Transport-Security = "max-age=63072000; includeSubDomains; preload"
+
+#### c. Multiline version with explicit key (dotted)
+[[advanced.headers]]
+source = "**/*.{jpg,jpeg,png,ico,gif}"
+headers.Strict-Transport-Security = "max-age=63072000; includeSubDomains; preload"
