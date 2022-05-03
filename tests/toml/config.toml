@@ -56,7 +56,7 @@ headers = { Access-Control-Allow-Origin = "*", X-XSS-PROTECTION = "1; mode=block
 
 # #### b. Multiline version
 [[advanced.headers]]
-source = "*.html"
+source = "index.html"
 [advanced.headers.headers]
 Cache-Control = "public, max-age=36000"
 Content-Security-Policy = "frame-ancestors 'self'"

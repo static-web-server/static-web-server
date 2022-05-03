@@ -15,6 +15,6 @@ docker run --rm -it -p 8787:80 joseluisq/static-web-server:2
 !!! info "Docker Tip"
     You can specify a Docker volume like `-v $HOME/my-public-dir:/public` in order to overwrite the default root directory. See [Docker examples](features/docker.md).
 
-To see the available options type `static-web-server -h` or go to the [Command-line arguments](./configuration/command-line-arguments.md) section.
-
-Or if you are looking for more advanced examples then have a look at [the features](./features/http1.md) section.
+- Type `static-web-server --help` or go to the [Command-line arguments](./configuration/command-line-arguments.md) section.
+- See how to configure the server using a [configuration file](configuration/config-file.md).
+- Have also a look at [the features](./features/http1.md) section for more advanced examples.

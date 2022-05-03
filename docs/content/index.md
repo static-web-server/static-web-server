@@ -56,8 +56,10 @@ It's cross-platform and available for `Linux`, `macOS`, `Windows` and `FreeBSD` 
 - Optional directory listing.
 - [CORS](https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS) support.
 - Basic HTTP Authentication.
+- Customizable HTTP Response Headers for specific file requests via glob patterns.
+- Fallback pages for 404 errors useful for Single-page applications.
+- Configurable using CLI arguments, environment variables or a file.
 - Default and custom error pages.
-- Configurable using CLI arguments or environment variables.
 - First-class [Docker](https://docs.docker.com/get-started/overview/) support. [Scratch](https://hub.docker.com/_/scratch) and latest [Alpine Linux](https://hub.docker.com/_/alpine) Docker images available.
 - Ability to accept a socket listener as a file descriptor for use in sandboxing and on-demand applications (E.g [systemd](http://0pointer.de/blog/projects/socket-activation.html)).
 - Cross-platform. Binaries available for Linux, macOS, Windows & FreeBSD x86_64 / ARM.

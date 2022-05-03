@@ -18,6 +18,9 @@ Optional file descriptor number (e.g. `0`) to inherit an already-opened TCP list
 ### SERVER_ROOT
 Relative or absolute root directory path of static files. Default `./public`.
 
+### SERVER_CONFIG_FILE
+The Server configuration file path in TOML format. See [The TOML Configuration File](../configuration/config-file.md).
+
 ### SERVER_GRACE_PERIOD
 Defines a grace period in seconds after a `SIGTERM` signal is caught which will delay the server before to shut it down gracefully. The maximum value is `255` seconds. Default value is `0` (no delay).
 
