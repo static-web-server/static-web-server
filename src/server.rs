@@ -99,11 +99,11 @@ impl Server {
             .with_context(|| "root directory was not found or inaccessible")?;
 
         // Custom error pages content
-        let page404 = helpers::read_file_content(&general.page404);
-        let page50x = helpers::read_file_content(&general.page50x);
+        let page404 = helpers::read_bytes_default(&general.page404);
+        let page50x = helpers::read_bytes_default(&general.page50x);
 
         // Fallback page content
-        let page_fallback = helpers::read_file_content(&general.page_fallback);
+        let page_fallback = helpers::read_bytes_default(&general.page_fallback.unwrap_or_default());
 
         // Number of worker threads option
         let threads = self.threads;
@@ -171,7 +171,7 @@ impl Server {
 
             tcp_listener
                 .set_nonblocking(true)
-                .expect("cannot set non-blocking");
+                .with_context(|| "failed to set TCP non-blocking mode")?;
             let listener = tokio::net::TcpListener::from_std(tcp_listener)
                 .with_context(|| "failed to create tokio::net::TcpListener")?;
             let mut incoming = AddrIncoming::from_listener(listener).with_context(|| {
@@ -179,12 +179,21 @@ impl Server {
             })?;
             incoming.set_nodelay(true);
 
+            let http2_tls_cert = match general.http2_tls_cert {
+                Some(v) => v,
+                _ => bail!("failed to initialize TLS because cert file missing"),
+            };
+            let http2_tls_key = match general.http2_tls_key {
+                Some(v) => v,
+                _ => bail!("failed to initialize TLS because key file missing"),
+            };
+
             let tls = TlsConfigBuilder::new()
-                .cert_path(&general.http2_tls_cert)
-                .key_path(&general.http2_tls_key)
+                .cert_path(&http2_tls_cert)
+                .key_path(&http2_tls_key)
                 .build()
                 .with_context(|| {
-                    "failed to initialize TLS, probably wrong cert/key or file missing"
+                    "failed to initialize TLS probably because invalid cert or key file"
                 })?;
 
             #[cfg(unix)]

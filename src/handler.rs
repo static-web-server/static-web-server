@@ -16,9 +16,9 @@ pub struct RequestHandlerOpts {
     pub cors: Option<cors::Configured>,
     pub security_headers: bool,
     pub cache_control_headers: bool,
-    pub page404: String,
-    pub page50x: String,
-    pub page_fallback: String,
+    pub page404: Vec<u8>,
+    pub page50x: Vec<u8>,
+    pub page_fallback: Vec<u8>,
     pub basic_auth: String,
 
     // Advanced options
@@ -166,14 +166,14 @@ impl RequestHandler {
                 }
                 Err(status) => {
                     // Check for a fallback response
-                    if !self.opts.page_fallback.is_empty()
+                    if method == Method::GET
                         && status == StatusCode::NOT_FOUND
-                        && method == Method::GET
+                        && !self.opts.page_fallback.is_empty()
                     {
                         return Ok(fallback_page::fallback_response(&self.opts.page_fallback));
                     }
 
-                    // Response error
+                    // Otherwise return a response error
                     error_page::error_response(
                         method,
                         &status,

@@ -13,11 +13,11 @@ Below just an example showing all features with its default values.
 
 #### Address & Root dir
 host = "::"
-port = 8087
-root = "docker/public"
+port = 80
+root = "./public"
 
 #### Logging
-log-level = "trace"
+log-level = "error"
 
 #### Cache Control headers
 cache-control-headers = true
@@ -26,13 +26,13 @@ cache-control-headers = true
 compression = true
 
 #### Error pages
-page404 = "docker/public/404.html"
-page50x = "docker/public/50x.html"
+page404 = "./public/404.html"
+page50x = "./public/50x.html"
 
 #### HTTP/2 + TLS
 http2 = false
-http2-tls-cert = ""
-http2-tls-key = ""
+# http2-tls-cert = "some.cert"
+# http2-tls-key = "some.key"
 
 #### Security headers
 security-headers = true
@@ -58,7 +58,7 @@ threads-multiplier = 1
 grace-period = 0
 
 #### Page fallback for 404s
-page-fallback = ""
+# page-fallback = "some_page.html"
 
 
 [advanced]

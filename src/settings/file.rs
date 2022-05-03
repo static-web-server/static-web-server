@@ -2,8 +2,8 @@
 
 use headers::HeaderMap;
 use serde::Deserialize;
-use std::collections::BTreeSet;
 use std::path::Path;
+use std::{collections::BTreeSet, path::PathBuf};
 
 use crate::{helpers, Context, Result};
 
@@ -53,7 +53,7 @@ pub struct General {
     // Address & Root dir
     pub host: Option<String>,
     pub port: Option<u16>,
-    pub root: Option<String>,
+    pub root: Option<PathBuf>,
 
     // Logging
     pub log_level: Option<LogLevel>,
@@ -65,13 +65,13 @@ pub struct General {
     pub compression: Option<bool>,
 
     // Error pages
-    pub page404: Option<String>,
-    pub page50x: Option<String>,
+    pub page404: Option<PathBuf>,
+    pub page50x: Option<PathBuf>,
 
     // HTTP/2 + TLS
     pub http2: Option<bool>,
-    pub http2_tls_cert: Option<String>,
-    pub http2_tls_key: Option<String>,
+    pub http2_tls_cert: Option<PathBuf>,
+    pub http2_tls_key: Option<PathBuf>,
 
     // Security headers
     pub security_headers: Option<bool>,
@@ -95,7 +95,7 @@ pub struct General {
 
     pub grace_period: Option<u8>,
 
-    pub page_fallback: Option<String>,
+    pub page_fallback: Option<PathBuf>,
 }
 
 /// Full server configuration

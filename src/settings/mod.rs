@@ -36,28 +36,28 @@ impl Settings {
         let opts = General::from_args();
 
         // Define the general CLI/file options
-        let mut host = opts.host.to_owned();
+        let mut host = opts.host;
         let mut port = opts.port;
-        let mut root = opts.root.to_owned();
-        let mut log_level = opts.log_level.to_owned();
+        let mut root = opts.root;
+        let mut log_level = opts.log_level;
         let mut config_file = opts.config_file.clone();
         let mut cache_control_headers = opts.cache_control_headers;
         let mut compression = opts.compression;
-        let mut page404 = opts.page404.to_owned();
-        let mut page50x = opts.page50x.to_owned();
+        let mut page404 = opts.page404;
+        let mut page50x = opts.page50x;
         let mut http2 = opts.http2;
-        let mut http2_tls_cert = opts.http2_tls_cert.to_owned();
-        let mut http2_tls_key = opts.http2_tls_key.to_owned();
+        let mut http2_tls_cert = opts.http2_tls_cert;
+        let mut http2_tls_key = opts.http2_tls_key;
         let mut security_headers = opts.security_headers;
-        let mut cors_allow_origins = opts.cors_allow_origins.to_owned();
-        let mut cors_allow_headers = opts.cors_allow_headers.to_owned();
+        let mut cors_allow_origins = opts.cors_allow_origins;
+        let mut cors_allow_headers = opts.cors_allow_headers;
         let mut directory_listing = opts.directory_listing;
         let mut directory_listing_order = opts.directory_listing_order;
-        let mut basic_auth = opts.basic_auth.to_owned();
+        let mut basic_auth = opts.basic_auth;
         let mut fd = opts.fd;
         let mut threads_multiplier = opts.threads_multiplier;
         let mut grace_period = opts.grace_period;
-        let mut page_fallback = opts.page_fallback.to_owned();
+        let mut page_fallback = opts.page_fallback;
 
         // Define the advanced file options
         let mut settings_advanced: Option<Advanced> = None;
@@ -79,14 +79,14 @@ impl Settings {
 
                 // Assign the corresponding file option values
                 if let Some(general) = settings.general {
-                    if let Some(ref v) = general.host {
-                        host = v.to_owned()
+                    if let Some(v) = general.host {
+                        host = v
                     }
                     if let Some(v) = general.port {
                         port = v
                     }
-                    if let Some(ref v) = general.root {
-                        root = v.to_owned()
+                    if let Some(v) = general.root {
+                        root = v
                     }
                     if let Some(ref v) = general.log_level {
                         log_level = v.name().to_lowercase();
@@ -97,20 +97,20 @@ impl Settings {
                     if let Some(v) = general.compression {
                         compression = v
                     }
-                    if let Some(ref v) = general.page404 {
-                        page404 = v.to_owned()
+                    if let Some(v) = general.page404 {
+                        page404 = v
                     }
-                    if let Some(ref v) = general.page50x {
-                        page50x = v.to_owned()
+                    if let Some(v) = general.page50x {
+                        page50x = v
                     }
                     if let Some(v) = general.http2 {
                         http2 = v
                     }
-                    if let Some(ref v) = general.http2_tls_cert {
-                        http2_tls_cert = v.to_owned()
+                    if let Some(v) = general.http2_tls_cert {
+                        http2_tls_cert = Some(v)
                     }
-                    if let Some(ref v) = general.http2_tls_key {
-                        http2_tls_key = v.to_owned()
+                    if let Some(v) = general.http2_tls_key {
+                        http2_tls_key = Some(v)
                     }
                     if let Some(v) = general.security_headers {
                         security_headers = v
@@ -139,8 +139,8 @@ impl Settings {
                     if let Some(v) = general.grace_period {
                         grace_period = v
                     }
-                    if let Some(ref v) = general.page_fallback {
-                        page_fallback = v.to_owned()
+                    if let Some(v) = general.page_fallback {
+                        page_fallback = Some(v)
                     }
                 }
 

@@ -8,8 +8,8 @@ use crate::Result;
 pub fn error_response(
     method: &Method,
     status_code: &StatusCode,
-    page404: &str,
-    page50x: &str,
+    page404: &[u8],
+    page50x: &[u8],
 ) -> Result<Response<Body>> {
     tracing::warn!(method = ?method, status = status_code.as_u16(), error = ?status_code.to_owned());
 
@@ -36,8 +36,8 @@ pub fn error_response(
         | &StatusCode::RANGE_NOT_SATISFIABLE
         | &StatusCode::EXPECTATION_FAILED => {
             // Extra check for 404 status code and its HTML content
-            if status_code == &StatusCode::NOT_FOUND {
-                error_page_content = page404.to_owned();
+            if status_code == &StatusCode::NOT_FOUND && !page404.is_empty() {
+                error_page_content = String::from_utf8_lossy(page404).to_string();
             }
             status_code
         }
@@ -52,7 +52,9 @@ pub fn error_response(
         | &StatusCode::INSUFFICIENT_STORAGE
         | &StatusCode::LOOP_DETECTED => {
             // HTML content check for status codes 50x
-            error_page_content = page50x.to_owned();
+            if !page50x.is_empty() {
+                error_page_content = String::from_utf8_lossy(page50x).to_string();
+            }
             status_code
         }
         // other status codes

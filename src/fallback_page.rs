@@ -2,9 +2,10 @@ use headers::{AcceptRanges, ContentLength, ContentType, HeaderMapExt};
 use hyper::{Body, Response, StatusCode};
 use mime_guess::mime;
 
-/// Checks if a fallback response can be generated, i.e. if it is a GET request that would result in a 404 error and a fallback page is configured.
-/// If a response can be generated, it is returned, else `None` is returned.
-pub fn fallback_response(page_fallback: &str) -> Response<Body> {
+/// Checks if a fallback response can be generated, i.e. if it is a `GET` request
+/// that would result in a `404` error and a fallback page is configured.
+/// If a response can be generated then is returned otherwise `None`.
+pub fn fallback_response(page_fallback: &[u8]) -> Response<Body> {
     let body = Body::from(page_fallback.to_owned());
     let len = page_fallback.len() as u64;
 

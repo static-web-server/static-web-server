@@ -30,17 +30,14 @@ where
     }
 }
 
-/// Read the entire contents of a file into a string if valid or returns empty otherwise.
-pub fn read_file_content(p: &str) -> String {
-    if !p.is_empty() && Path::new(p).exists() {
-        return fs::read_to_string(p).unwrap_or_default();
-    }
-    String::new()
-}
-
 /// Read the entire contents of a file into a bytes vector.
 pub fn read_bytes(path: &Path) -> Result<Vec<u8>> {
-    fs::read(path).with_context(|| format!("failed to read `{}`", path.display()))
+    fs::read(path).with_context(|| format!("failed to read file `{}`", path.display()))
+}
+
+/// Read the entire contents of a file into a bytes vector or default to empty.
+pub fn read_bytes_default(path: &Path) -> Vec<u8> {
+    fs::read(path).unwrap_or_default()
 }
 
 /// Read an UTF-8 file from a specific path.

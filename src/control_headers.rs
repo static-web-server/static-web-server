@@ -7,7 +7,7 @@ use hyper::{Body, Response};
 
 // Cache-Control `max-age` variants
 const MAX_AGE_ONE_HOUR: u64 = 60 * 60;
-const MAX_AGE_ONE_DAY: u64 = 60 * 60 * 24_u64;
+const MAX_AGE_ONE_DAY: u64 = 60 * 60 * 24;
 const MAX_AGE_ONE_YEAR: u64 = 60 * 60 * 24 * 365;
 
 // `Cache-Control` list of extensions
