@@ -68,7 +68,7 @@ grace-period = 0
 
 ### General options
 
-The TOML `[general]` section allows to adjust the current options actually available via the CLI/ENVs ones.
+The TOML `[general]` section allows to adjust the current options actually available via the CLI/ENV ones.
 
 So they are equivalent each other **except** the `-w, --config-file` option which is omitted and can not be used for obvious reasons.
 
@@ -78,6 +78,8 @@ So they are equivalent each other **except** the `-w, --config-file` option whic
 ### Advanced options
 
 The TOML `[advanced]` section is intended for more complex features.
+
+For example [Custom HTTP Headers](../features/custom-http-headers.md).
 
 ### Precendence
 
