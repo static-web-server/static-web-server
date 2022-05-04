@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _**Note:** See changelog for v1 under the [1.x](https://github.com/joseluisq/static-web-server/blob/1.x/CHANGELOG.md) branch._
 
+## v2.8.0 - 2022-05-04
+
+__Fixes__
+
+- [446576a](https://github.com/joseluisq/static-web-server/commit/446576a) Bugfix/security dependency updates including http, tokio, httparse, windows-rs, serde, log and other crates.
+
+__Features__
+
+- [1fd3e48](https://github.com/joseluisq/static-web-server/commit/1fd3e48) Configuration file support. PR [#101](https://github.com/joseluisq/static-web-server/pull/101). See [docs](https://sws.joseluisq.net/configuration/config-file/).
+- [62ebe52](https://github.com/joseluisq/static-web-server/commit/62ebe52) Custom HTTP headers via config file. See [docs](https://sws.joseluisq.net/features/custom-http-headers/).
+
+__Refactorings__
+
+- [9f4bbd7](https://github.com/joseluisq/static-web-server/commit/9f4bbd7) Update `tokio-rustls` to `v0.23`.
+- [024531c](https://github.com/joseluisq/static-web-server/commit/024531c) Move to maintained jemallocator (`tikv-jemallocator`) on Linux (Musl libc).
+- [3e40153](https://github.com/joseluisq/static-web-server/commit/3e40153) Remove deprecated `git.io` link. PR [#103](https://github.com/joseluisq/static-web-server/pull/103) by [@renbaoshuo](https://github.com/renbaoshuo).
+- [959c325](https://github.com/joseluisq/static-web-server/commit/959c325) `PathBuf` data type for cli/file config path options.
+
+__Docs__
+
+- [7dda2ea](https://github.com/joseluisq/static-web-server/commit/7dda2ea) Config file and custom http headers.
+
 ## v2.7.1 - 2022-04-17
 
 __Fixes__
