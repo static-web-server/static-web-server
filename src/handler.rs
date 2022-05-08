@@ -52,6 +52,7 @@ impl RequestHandler {
             // Check for disallowed HTTP methods and reject request accordently
             if !(method == Method::GET || method == Method::HEAD || method == Method::OPTIONS) {
                 return error_page::error_response(
+                    uri,
                     method,
                     &StatusCode::METHOD_NOT_ALLOWED,
                     &self.opts.page404,
@@ -69,6 +70,7 @@ impl RequestHandler {
                     Err(err) => {
                         tracing::error!("cors error kind: {:?}", err);
                         return error_page::error_response(
+                            uri,
                             method,
                             &StatusCode::FORBIDDEN,
                             &self.opts.page404,
@@ -84,6 +86,7 @@ impl RequestHandler {
                     if let Err(err) = basic_auth::check_request(headers, user_id, password) {
                         tracing::warn!("basic authentication failed {:?}", err);
                         let mut resp = error_page::error_response(
+                            uri,
                             method,
                             &StatusCode::UNAUTHORIZED,
                             &self.opts.page404,
@@ -100,6 +103,7 @@ impl RequestHandler {
                 } else {
                     tracing::error!("invalid basic authentication `user_id:password` pairs");
                     return error_page::error_response(
+                        uri,
                         method,
                         &StatusCode::INTERNAL_SERVER_ERROR,
                         &self.opts.page404,
@@ -138,6 +142,7 @@ impl RequestHandler {
                             Err(err) => {
                                 tracing::error!("error during body compression: {:?}", err);
                                 return error_page::error_response(
+                                    uri,
                                     method,
                                     &StatusCode::INTERNAL_SERVER_ERROR,
                                     &self.opts.page404,
@@ -175,6 +180,7 @@ impl RequestHandler {
 
                     // Otherwise return a response error
                     error_page::error_response(
+                        uri,
                         method,
                         &status,
                         &self.opts.page404,

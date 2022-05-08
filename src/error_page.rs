@@ -1,17 +1,21 @@
 use headers::{AcceptRanges, ContentLength, ContentType, HeaderMapExt};
-use hyper::{Body, Method, Response, StatusCode};
+use hyper::{Body, Method, Response, StatusCode, Uri};
 use mime_guess::mime;
 
 use crate::Result;
 
 /// It returns a HTTP error response which also handles available `404` or `50x` HTML content.
 pub fn error_response(
+    uri: &Uri,
     method: &Method,
     status_code: &StatusCode,
     page404: &[u8],
     page50x: &[u8],
 ) -> Result<Response<Body>> {
-    tracing::warn!(method = ?method, status = status_code.as_u16(), error = ?status_code.to_owned());
+    tracing::warn!(
+        method = ?method, uri = ?uri, status = status_code.as_u16(),
+        error = status_code.canonical_reason().unwrap_or_default()
+    );
 
     // Check for 4xx/50x status codes and handle their corresponding HTML content
     let mut error_page_content = String::new();
