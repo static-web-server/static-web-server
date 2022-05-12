@@ -1,27 +1,37 @@
 # Basic HTTP Authentication
 
-**`SWS`** provides "Basic" HTTP Authentication Scheme using a `user-id/password` pairs encoded with `Base64`.
+**`SWS`** provides ['Basic' HTTP Authentication Scheme](https://datatracker.ietf.org/doc/html/rfc7617) using a `user:password` pair.
 
 This feature is disabled by default and can be controlled by the string `--basic-auth` option or the equivalent [SERVER_BASIC_AUTH](./../configuration/environment-variables.md#server_basic_auth) env.
 
-First, create a `user-id/password` pair using your favourite tool.
+The format to use is the following:
 
-!!! info "Note"
+> `username:encrypted-password`
+
+Both separated by a `:` (punctuation mark) character.
+
+!!! info "Password Encryption"
     Only the password must be encoded using the [`BCrypt`](https://en.wikipedia.org/wiki/Bcrypt) password-hashing function.
 
-In this example we are using the Apache [`htpasswd`](https://httpd.apache.org/docs/2.4/programs/htpasswd.html) tool.
+As an example, we will use the [Apache `htpasswd`](https://httpd.apache.org/docs/2.4/programs/htpasswd.html) tool to generate the `username:encrypted-password` pair.
 
 ```sh
-htpasswd -nbBC5 "username" "password"
-# username:$2y$05$KYOM0uaMQnEknnu/ckcCuuFyNQbc8BJEUk5X.ixtoCQpjXsc4geHK
+htpasswd -nBC10 "username"
+# New password: 
+# Re-type new password: 
+# username:$2y$10$8phm28BB4YpKPDjOpdTT8eUcfVDw0xc85VZPxg2zae1GR8EQqus3i
 ```
 
-!!! tip "Tip"
+!!! tip "Password Security Advice"
     The password verification happens at runtime but its verification speed depends on the computing time cost of `bcrypt` algorithm used.
 
     For example the `htpasswd` tool supports a `-C` argument in order to adjust the `bcrypt`'s computing time.
     
     Using a higher value is more secure but slower. The default values is `5` and the possible values are ranging from `4` to `17`.
+
+!!! tip "Docker Compose Advice"
+    If you are using `SERVER_BASIC_AUTH` env via a `docker-compose.yml` file don't forget to replace single `$` (dollar sign) with a `$$` (double-dollar sign) when you want individual `$` dollar signs in your configuration to be treated by Docker as literals.<br>
+    More details at [Docker Compose file: variable substitution](https://docs.docker.com/compose/compose-file/compose-file-v2/#variable-substitution)
 
 Finally assign the credentails and run the server.
 
@@ -29,5 +39,5 @@ Finally assign the credentails and run the server.
 static-web-server \
     --port 8787 \
     --root ./my-public-dir \
-    --basic-auth 'username:$2y$05$KYOM0uaMQnEknnu/ckcCuuFyNQbc8BJEUk5X.ixtoCQpjXsc4geHK'
+    --basic-auth 'username:$2y$10$8phm28BB4YpKPDjOpdTT8eUcfVDw0xc85VZPxg2zae1GR8EQqus3i'
 ```
