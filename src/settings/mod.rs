@@ -7,6 +7,8 @@ use crate::{Context, Result};
 mod cli;
 pub mod file;
 
+pub use cli::Commands;
+
 use cli::General;
 
 /// The `headers` file options.
@@ -203,6 +205,10 @@ impl Settings {
                 threads_multiplier,
                 grace_period,
                 page_fallback,
+
+                // WINDOWS-ONLY: sub commands
+                as_windows_service: opts.as_windows_service,
+                commands: opts.commands,
             },
             advanced: settings_advanced,
         })

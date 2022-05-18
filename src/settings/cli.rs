@@ -169,4 +169,29 @@ pub struct General {
     #[structopt(long, short = "w", env = "SERVER_CONFIG_FILE")]
     /// Server TOML configuration file path.
     pub config_file: Option<PathBuf>,
+
+    #[structopt(
+        long,
+        short = "s",
+        parse(try_from_str),
+        default_value = "false",
+        env = "SERVER_AS_WINDOWS_SERVICE"
+    )]
+    /// Run the web server as a Windows Service.
+    pub as_windows_service: bool,
+
+    // WINDOWS-ONLY:
+    #[structopt(subcommand)]
+    pub commands: Option<Commands>,
+}
+
+#[derive(Debug, StructOpt)]
+pub enum Commands {
+    /// Install a Windows Service for the server.
+    #[structopt(name = "install")]
+    Install {},
+
+    /// Uninstall the current Windows Service.
+    #[structopt(name = "uninstall")]
+    Uninstall {},
 }

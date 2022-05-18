@@ -2,6 +2,7 @@ use hyper::server::conn::AddrIncoming;
 use hyper::server::Server as HyperServer;
 use listenfd::ListenFd;
 use std::net::{IpAddr, SocketAddr, TcpListener};
+use std::sync::mpsc::Receiver;
 use std::sync::Arc;
 
 use crate::handler::{RequestHandler, RequestHandlerOpts};
@@ -13,11 +14,12 @@ use crate::{service::RouterService, Context, Result};
 pub struct Server {
     opts: Settings,
     threads: usize,
+    cancel: Option<Receiver<()>>,
 }
 
 impl Server {
     /// Create new multi-thread server instance.
-    pub fn new() -> Result<Server> {
+    pub fn new(cancel: Option<Receiver<()>>) -> Result<Server> {
         // Get server config
         let opts = Settings::get()?;
 
@@ -28,11 +30,22 @@ impl Server {
             n => cpus * n,
         };
 
-        Ok(Server { opts, threads })
+        Ok(Server {
+            opts,
+            threads,
+            cancel,
+        })
     }
 
     /// Build and run the multi-thread `Server`.
     pub fn run(self) -> Result {
+        // Logging system initialization
+        if self.cancel.is_none() {
+            logger::init(&self.opts.general.log_level)?;
+        }
+
+        tracing::debug!("initializing tokio runtime with multi thread scheduler");
+
         tokio::runtime::Builder::new_multi_thread()
             .worker_threads(self.threads)
             .thread_name("static-web-server")
@@ -41,6 +54,7 @@ impl Server {
             .block_on(async {
                 let r = self.start_server().await;
                 if r.is_err() {
+                    tracing::error!("server failed to start up: {:?}", r);
                     println!("server failed to start up: {:?}", r.unwrap_err());
                     std::process::exit(1)
                 }
@@ -57,11 +71,6 @@ impl Server {
 
         // Config-file "advanced" options
         let advanced_opts = self.opts.advanced;
-
-        // Logging system initialization
-        let log_level = &general.log_level.to_lowercase();
-        logger::init(log_level).with_context(|| "failed to initialize logging")?;
-        tracing::info!("logging level: {}", log_level.to_lowercase());
 
         // Config file
         if general.config_file.is_some() && general.config_file.is_some() {
@@ -209,7 +218,8 @@ impl Server {
             let server =
                 server.with_graceful_shutdown(signals::wait_for_signals(signals, grace_period));
             #[cfg(windows)]
-            let server = server.with_graceful_shutdown(signals::wait_for_ctrl_c(grace_period));
+            let server =
+                server.with_graceful_shutdown(signals::wait_for_ctrl_c(self.cancel, grace_period));
 
             tracing::info!(
                 parent: tracing::info_span!("Server::start_server", ?addr_str, ?threads),
@@ -241,7 +251,8 @@ impl Server {
             let server =
                 server.with_graceful_shutdown(signals::wait_for_signals(signals, grace_period));
             #[cfg(windows)]
-            let server = server.with_graceful_shutdown(signals::wait_for_ctrl_c(grace_period));
+            let server =
+                server.with_graceful_shutdown(signals::wait_for_ctrl_c(self.cancel, grace_period));
 
             tracing::info!(
                 parent: tracing::info_span!("Server::start_server", ?addr_str, ?threads),

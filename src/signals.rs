@@ -1,10 +1,13 @@
+use tokio::time::{sleep, Duration};
+
 #[cfg(unix)]
 use {
     crate::Result, futures_util::stream::StreamExt, signal_hook::consts::signal::*,
     signal_hook_tokio::Signals,
 };
 
-use tokio::time::{sleep, Duration};
+#[cfg(windows)]
+use std::sync::mpsc::{Receiver, RecvTimeoutError};
 
 #[cfg(unix)]
 /// It creates a common list of signals stream for `SIGTERM`, `SIGINT` and `SIGQUIT` to be observed.
@@ -48,10 +51,26 @@ async fn delay_graceful_shutdown(grace_period_secs: u8) {
 
 #[cfg(windows)]
 /// It waits for an incoming `ctrl+c` signal on Windows.
-pub async fn wait_for_ctrl_c(grace_period_secs: u8) {
-    tokio::signal::ctrl_c()
-        .await
-        .expect("failed to install ctrl+c signal handler");
+pub async fn wait_for_ctrl_c(cancel: Option<Receiver<()>>, grace_period_secs: u8) {
+    if let Some(recv) = cancel {
+        async {
+            loop {
+                match recv.recv_timeout(Duration::from_secs(60)) {
+                    // Break the loop either upon stop or channel disconnect
+                    Ok(_) | Err(RecvTimeoutError::Disconnected) => break,
+
+                    // Continue work if no events were received within the timeout
+                    Err(RecvTimeoutError::Timeout) => (),
+                }
+            }
+        }
+        .await;
+    } else {
+        tokio::signal::ctrl_c()
+            .await
+            .expect("failed to install ctrl+c signal handler");
+    }
+
     delay_graceful_shutdown(grace_period_secs).await;
     tracing::info!("delegating server's graceful shutdown");
 }
