@@ -9,19 +9,8 @@ static GLOBAL: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
 
 use static_web_server::Result;
 
-#[cfg(unix)]
-fn main() -> Result {
-    use static_web_server::Server;
-
-    Server::new(None)?.run()?;
-
-    Ok(())
-}
-
-#[cfg(windows)]
 fn main() -> Result {
     use static_web_server::settings::Commands;
-    use static_web_server::winservice;
     use static_web_server::Settings;
 
     // Get server config
@@ -29,14 +18,31 @@ fn main() -> Result {
 
     if let Some(commands) = opts.general.commands {
         match commands {
-            Commands::Install {} => winservice::install_service()?,
-            Commands::Uninstall {} => winservice::uninstall_service()?,
+            Commands::Install {} => {
+                #[cfg(windows)]
+                return static_web_server::winservice::install_service();
+
+                #[cfg(unix)]
+                println!("ignored: `install` command is only available for Windows");
+            }
+            Commands::Uninstall {} => {
+                #[cfg(windows)]
+                return static_web_server::winservice::uninstall_service();
+
+                #[cfg(unix)]
+                println!("ignored: `uninstall` command is only available for Windows");
+            }
         }
     } else if opts.general.as_windows_service {
-        winservice::run_server_as_service()?
-    } else {
-        static_web_server::Server::new(None)?.run()?;
+        #[cfg(windows)]
+        return static_web_server::winservice::run_server_as_service();
+
+        #[cfg(unix)]
+        println!("ignored: `--as-windows-service` option is only available for Windows");
     }
+
+    // Run the server by default
+    static_web_server::Server::new(None)?.run()?;
 
     Ok(())
 }

@@ -96,7 +96,7 @@ fn run_service() -> Result<()> {
     set_service_state(&status_handle, ServiceState::StartPending)?;
     println!("sws service start pending");
 
-    match Server::new(Some(shutdown_rx), false) {
+    match Server::new(Some(shutdown_rx)) {
         Ok(server) => {
             // Service is running
             set_service_state(&status_handle, ServiceState::Running).unwrap();

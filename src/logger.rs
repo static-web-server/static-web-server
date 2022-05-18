@@ -7,7 +7,7 @@ use crate::{Context, Result};
 pub fn init(log_level: &str) -> Result {
     let log_level = log_level.to_lowercase();
 
-    configure("trace").with_context(|| "failed to initialize logging")?;
+    configure(&log_level).with_context(|| "failed to initialize logging")?;
 
     tracing::info!("logging level: {}", log_level);
 
