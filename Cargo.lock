@@ -1401,7 +1401,7 @@ checksum = "712e227841d057c1ee1cd2fb22fa7e5a5461ae8e48fa2ca79ec42cfc1931183f"
 [[package]]
 name = "windows-service"
 version = "0.4.0"
-source = "git+https://github.com/yescallop/windows-service-rs#5c9abd3d86a8a35d158807661f215c04661369dd"
+source = "git+https://github.com/joseluisq/windows-service-rs#5c9abd3d86a8a35d158807661f215c04661369dd"
 dependencies = [
  "bitflags",
  "err-derive",

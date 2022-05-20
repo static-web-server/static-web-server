@@ -20,17 +20,17 @@ fn main() -> Result {
         match commands {
             Commands::Install {} => {
                 #[cfg(windows)]
-                return static_web_server::winservice::install_service();
+                return static_web_server::winservice::install_service(opts.general.config_file);
 
                 #[cfg(unix)]
-                println!("ignored: `install` command is only available for Windows");
+                println!("ignored: the `install` command is only available for Windows");
             }
             Commands::Uninstall {} => {
                 #[cfg(windows)]
                 return static_web_server::winservice::uninstall_service();
 
                 #[cfg(unix)]
-                println!("ignored: `uninstall` command is only available for Windows");
+                println!("ignored: the `uninstall` command is only available for Windows");
             }
         }
     } else if opts.general.as_windows_service {
@@ -38,11 +38,11 @@ fn main() -> Result {
         return static_web_server::winservice::run_server_as_service();
 
         #[cfg(unix)]
-        println!("ignored: `--as-windows-service` option is only available for Windows");
+        println!("ignored: the `--as-windows-service` option is only available for Windows");
     }
 
     // Run the server by default
-    static_web_server::Server::new(None)?.run()?;
+    static_web_server::Server::new()?.run_standalone()?;
 
     Ok(())
 }
