@@ -170,6 +170,10 @@ pub struct General {
     /// Server TOML configuration file path.
     pub config_file: Option<PathBuf>,
 
+    //
+    // Windows specific arguments and commands
+    //
+    #[cfg(windows)]
     #[structopt(
         long,
         short = "s",
@@ -180,14 +184,16 @@ pub struct General {
     /// Run the web server as a Windows Service.
     pub as_windows_service: bool,
 
-    // WINDOWS-ONLY:
+    // Windows commands
+    #[cfg(windows)]
     #[structopt(subcommand)]
     pub commands: Option<Commands>,
 }
 
+#[cfg(windows)]
 #[derive(Debug, StructOpt)]
 pub enum Commands {
-    /// Install a Windows Service for the server.
+    /// Install a Windows Service for the web server.
     #[structopt(name = "install")]
     Install {},
 

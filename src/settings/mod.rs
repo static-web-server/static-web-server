@@ -7,6 +7,7 @@ use crate::{Context, Result};
 mod cli;
 pub mod file;
 
+#[cfg(windows)]
 pub use cli::Commands;
 
 use cli::General;
@@ -206,8 +207,11 @@ impl Settings {
                 grace_period,
                 page_fallback,
 
-                // WINDOWS-ONLY: sub commands
+                // NOTE
+                // Windows-only options and commands
+                #[cfg(windows)]
                 as_windows_service: opts.as_windows_service,
+                #[cfg(windows)]
                 commands: opts.commands,
             },
             advanced: settings_advanced,

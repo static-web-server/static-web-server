@@ -30,7 +30,7 @@ define_windows_service!(ffi_service_main, custom_service_main);
 
 fn custom_service_main(_args: Vec<OsString>) {
     if let Err(err) = run_service() {
-        tracing::info!("error starting the service: {:?}", err);
+        tracing::error!("error starting the service: {:?}", err);
     }
 }
 
@@ -58,7 +58,7 @@ fn set_service_state(
         process_id: None,
     };
 
-    //  system about the service status
+    // Inform the system about the service status
     Ok(status_handle.set_service_status(next_status)?)
 }
 
@@ -67,7 +67,7 @@ fn run_service() -> Result {
 
     logger::init(&opts.general.log_level)?;
 
-    tracing::info!("windows service: starting setup");
+    tracing::info!("windows service: starting service setup");
 
     // Create a channel to be able to poll a stop event from the service worker loop.
     let (shutdown_tx, shutdown_rx) = tokio::sync::oneshot::channel();
@@ -183,9 +183,11 @@ pub fn install_service(config_file: Option<PathBuf>) -> Result {
 
     // Set the executable path to point the current binary
     let service_binary_path = std::env::current_exe().unwrap().with_file_name(SERVICE_EXE);
+
+    // Set service binary default arguments
     let mut service_binary_arguments = vec![OsString::from("--as-windows-service=true")];
 
-    // Append `--config-file` path to binary arguments if present
+    // Append a `--config-file` path to the binary arguments if present
     if let Some(f) = config_file {
         let f = adjust_canonicalization(f);
         if !f.is_empty() {
