@@ -26,7 +26,7 @@ fn main() -> Result {
                     return winservice::uninstall_service();
                 }
             }
-        } else if opts.general.as_windows_service {
+        } else if opts.general.windows_service {
             return winservice::run_server_as_service();
         }
     }

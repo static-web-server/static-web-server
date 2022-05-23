@@ -185,7 +185,7 @@ pub fn install_service(config_file: Option<PathBuf>) -> Result {
     let service_binary_path = std::env::current_exe().unwrap().with_file_name(SERVICE_EXE);
 
     // Set service binary default arguments
-    let mut service_binary_arguments = vec![OsString::from("--as-windows-service=true")];
+    let mut service_binary_arguments = vec![OsString::from("--windows-service=true")];
 
     // Append a `--config-file` path to the binary arguments if present
     if let Some(f) = config_file {
@@ -216,6 +216,10 @@ pub fn install_service(config_file: Option<PathBuf>) -> Result {
         "Windows Service ({}) is installed successfully!",
         SERVICE_NAME
     );
+    println!(
+        "Start the service typing: sc.exe start \"{}\" (it requires administrator privileges) or using the 'services.msc' application.",
+        SERVICE_NAME
+    );
 
     Ok(())
 }
@@ -237,10 +241,7 @@ pub fn uninstall_service() -> Result {
 
     service.delete()?;
 
-    println!(
-        "Windows Service ({}) uninstalled successfully!",
-        SERVICE_NAME
-    );
+    println!("Windows Service ({}) is uninstalled!", SERVICE_NAME);
 
     Ok(())
 }

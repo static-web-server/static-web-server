@@ -179,10 +179,10 @@ pub struct General {
         short = "s",
         parse(try_from_str),
         default_value = "false",
-        env = "SERVER_AS_WINDOWS_SERVICE"
+        env = "SERVER_WINDOWS_SERVICE"
     )]
     /// Run the web server as a Windows Service.
-    pub as_windows_service: bool,
+    pub windows_service: bool,
 
     // Windows commands
     #[cfg(windows)]

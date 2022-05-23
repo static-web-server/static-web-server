@@ -207,10 +207,10 @@ impl Settings {
                 grace_period,
                 page_fallback,
 
-                // NOTE
+                // NOTE:
                 // Windows-only options and commands
                 #[cfg(windows)]
-                as_windows_service: opts.as_windows_service,
+                windows_service: opts.windows_service,
                 #[cfg(windows)]
                 commands: opts.commands,
             },
