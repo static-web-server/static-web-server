@@ -1,12 +1,12 @@
 use hyper::{service::Service, Body, Request, Response};
 use std::convert::Infallible;
 use std::future::{ready, Future, Ready};
+use std::net::SocketAddr;
 use std::pin::Pin;
 use std::sync::Arc;
 use std::task::{Context, Poll};
 
-use crate::handler::RequestHandler;
-use crate::Error;
+use crate::{handler::RequestHandler, transport::Transport, Error};
 
 /// It defines the router service which is the main entry point for Hyper Server.
 pub struct RouterService {
@@ -21,7 +21,7 @@ impl RouterService {
     }
 }
 
-impl<T> Service<T> for RouterService {
+impl<T: Transport + Send + 'static> Service<&T> for RouterService {
     type Response = RequestService;
     type Error = Infallible;
     type Future = Ready<Result<Self::Response, Self::Error>>;
@@ -30,14 +30,15 @@ impl<T> Service<T> for RouterService {
         Poll::Ready(Ok(()))
     }
 
-    fn call(&mut self, _: T) -> Self::Future {
-        ready(Ok(self.builder.build()))
+    fn call(&mut self, conn: &T) -> Self::Future {
+        ready(Ok(self.builder.build(conn.remote_addr())))
     }
 }
 
 /// It defines a Hyper service request which delegates a request handler.
 pub struct RequestService {
     handler: Arc<RequestHandler>,
+    remote_addr: Option<SocketAddr>,
 }
 
 impl Service<Request<Body>> for RequestService {
@@ -51,7 +52,8 @@ impl Service<Request<Body>> for RequestService {
 
     fn call(&mut self, mut req: Request<Body>) -> Self::Future {
         let handler = self.handler.clone();
-        Box::pin(async move { handler.handle(&mut req).await })
+        let remote_addr = self.remote_addr;
+        Box::pin(async move { handler.handle(&mut req, remote_addr).await })
     }
 }
 
@@ -67,9 +69,10 @@ impl RequestServiceBuilder {
         }
     }
 
-    pub fn build(&self) -> RequestService {
+    pub fn build(&self, remote_addr: Option<SocketAddr>) -> RequestService {
         RequestService {
             handler: self.handler.clone(),
+            remote_addr,
         }
     }
 }

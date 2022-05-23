@@ -1,5 +1,5 @@
 use hyper::{header::WWW_AUTHENTICATE, Body, Method, Request, Response, StatusCode};
-use std::{future::Future, path::PathBuf, sync::Arc};
+use std::{future::Future, net::SocketAddr, path::PathBuf, sync::Arc};
 
 use crate::{
     basic_auth, compression, control_headers, cors, custom_headers, error_page, fallback_page,
@@ -35,6 +35,7 @@ impl RequestHandler {
     pub fn handle<'a>(
         &'a self,
         req: &'a mut Request<Body>,
+        remote_addr: Option<SocketAddr>,
     ) -> impl Future<Output = Result<Response<Body>, Error>> + Send + 'a {
         let method = req.method();
         let headers = req.headers();
@@ -47,6 +48,15 @@ impl RequestHandler {
         let dir_listing_order = self.opts.dir_listing_order;
 
         let mut cors_headers: Option<http::HeaderMap> = None;
+
+        // Log request information with its remote address
+        let remote_addr = remote_addr.map_or("".to_owned(), |v| v.to_string());
+        tracing::info!(
+            "incoming request: method={} uri={} remote_addr={}",
+            method,
+            uri,
+            remote_addr,
+        );
 
         async move {
             // Check for disallowed HTTP methods and reject request accordently
