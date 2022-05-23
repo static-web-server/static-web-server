@@ -71,3 +71,10 @@ Enable cache control headers for incoming requests based on a set of file types.
 
 ### SERVER_BASIC_AUTH
 It provides [The "Basic" HTTP Authentication Scheme](https://datatracker.ietf.org/doc/html/rfc7617) using credentials as `user-id:password` pairs, encoded using `Base64`. Password must be encoded using the [BCrypt](https://en.wikipedia.org/wiki/Bcrypt) password-hashing function. Default empty (disabled).
+
+## Windows
+
+Following options and commands are Windows platform specific.
+
+### SERVER_WINDOWS_SERVICE
+Run the web server as a Windows Service. See [more details](../features/windows-service.md).

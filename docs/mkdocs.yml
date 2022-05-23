@@ -139,6 +139,7 @@ nav:
     - 'Worker Threads Customization': 'features/worker-threads.md'
     - 'Error Pages': 'features/error-pages.md'
     - 'Custom HTTP Headers': 'features/custom-http-headers.md'
+    - 'Windows Service': 'features/windows-service.md'
   - 'Platforms & Architectures': 'platforms-architectures.md'
   - 'Migration from v1 to v2': 'migration.md'
   - 'Changelog v2 (latest stable)': 'https://github.com/joseluisq/static-web-server/blob/master/CHANGELOG.md'

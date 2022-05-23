@@ -3,6 +3,7 @@ use hyper::server::Server as HyperServer;
 use listenfd::ListenFd;
 use std::net::{IpAddr, SocketAddr, TcpListener};
 use std::sync::Arc;
+use tokio::sync::oneshot::Receiver;
 
 use crate::handler::{RequestHandler, RequestHandlerOpts};
 use crate::tls::{TlsAcceptor, TlsConfigBuilder};
@@ -31,17 +32,38 @@ impl Server {
         Ok(Server { opts, threads })
     }
 
-    /// Build and run the multi-thread `Server`.
-    pub fn run(self) -> Result {
+    /// Build and run the multi-thread `Server` as standalone.
+    pub fn run_standalone(self) -> Result {
+        // Logging system initialization
+        logger::init(&self.opts.general.log_level)?;
+
+        self.run_server_on_rt(None, || {})
+    }
+
+    /// Build and run the multi-thread `Server` which will be used by a Windows service.
+    #[cfg(windows)]
+    pub fn run_as_service<F>(self, cancel: Option<Receiver<()>>, cancel_fn: F) -> Result
+    where
+        F: FnOnce(),
+    {
+        self.run_server_on_rt(cancel, cancel_fn)
+    }
+
+    /// Build and run the multi-thread `Server` on Tokio runtime.
+    fn run_server_on_rt<F>(self, cancel_recv: Option<Receiver<()>>, cancel_fn: F) -> Result
+    where
+        F: FnOnce(),
+    {
+        tracing::debug!("initializing tokio runtime with multi thread scheduler");
+
         tokio::runtime::Builder::new_multi_thread()
             .worker_threads(self.threads)
             .thread_name("static-web-server")
             .enable_all()
             .build()?
             .block_on(async {
-                let r = self.start_server().await;
-                if r.is_err() {
-                    println!("server failed to start up: {:?}", r.unwrap_err());
+                if let Err(err) = self.start_server(cancel_recv, cancel_fn).await {
+                    tracing::error!("server failed to start up: {:?}", err);
                     std::process::exit(1)
                 }
             });
@@ -51,17 +73,15 @@ impl Server {
 
     /// Run the inner Hyper `HyperServer` (HTTP1/HTTP2) forever on the current thread
     // using the given configuration.
-    async fn start_server(self) -> Result {
+    async fn start_server<F>(self, _cancel_recv: Option<Receiver<()>>, _cancel_fn: F) -> Result
+    where
+        F: FnOnce(),
+    {
         // Config "general" options
         let general = self.opts.general;
 
         // Config-file "advanced" options
         let advanced_opts = self.opts.advanced;
-
-        // Logging system initialization
-        let log_level = &general.log_level.to_lowercase();
-        logger::init(log_level).with_context(|| "failed to initialize logging")?;
-        tracing::info!("logging level: {}", log_level.to_lowercase());
 
         // Config file
         if general.config_file.is_some() && general.config_file.is_some() {
@@ -107,7 +127,7 @@ impl Server {
 
         // Number of worker threads option
         let threads = self.threads;
-        tracing::info!("runtime worker threads: {}", self.threads);
+        tracing::info!("runtime worker threads: {}", threads);
 
         // Security Headers option
         let security_headers = general.security_headers;
@@ -209,7 +229,11 @@ impl Server {
             let server =
                 server.with_graceful_shutdown(signals::wait_for_signals(signals, grace_period));
             #[cfg(windows)]
-            let server = server.with_graceful_shutdown(signals::wait_for_ctrl_c(grace_period));
+            let server = server.with_graceful_shutdown(signals::wait_for_ctrl_c(
+                _cancel_recv,
+                _cancel_fn,
+                grace_period,
+            ));
 
             tracing::info!(
                 parent: tracing::info_span!("Server::start_server", ?addr_str, ?threads),
@@ -232,6 +256,10 @@ impl Server {
             #[cfg(unix)]
             let handle = signals.handle();
 
+            tcp_listener
+                .set_nonblocking(true)
+                .with_context(|| "failed to set TCP non-blocking mode")?;
+
             let server = HyperServer::from_tcp(tcp_listener)
                 .unwrap()
                 .tcp_nodelay(true)
@@ -241,7 +269,11 @@ impl Server {
             let server =
                 server.with_graceful_shutdown(signals::wait_for_signals(signals, grace_period));
             #[cfg(windows)]
-            let server = server.with_graceful_shutdown(signals::wait_for_ctrl_c(grace_period));
+            let server = server.with_graceful_shutdown(signals::wait_for_ctrl_c(
+                _cancel_recv,
+                _cancel_fn,
+                grace_period,
+            ));
 
             tracing::info!(
                 parent: tracing::info_span!("Server::start_server", ?addr_str, ?threads),

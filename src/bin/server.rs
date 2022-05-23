@@ -7,10 +7,32 @@
 #[global_allocator]
 static GLOBAL: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
 
-use static_web_server::{Result, Server};
+use static_web_server::Result;
 
 fn main() -> Result {
-    Server::new()?.run()?;
+    #[cfg(windows)]
+    {
+        use static_web_server::settings::{Commands, Settings};
+        use static_web_server::winservice;
+
+        let opts = Settings::get()?;
+
+        if let Some(commands) = opts.general.commands {
+            match commands {
+                Commands::Install {} => {
+                    return winservice::install_service(opts.general.config_file);
+                }
+                Commands::Uninstall {} => {
+                    return winservice::uninstall_service();
+                }
+            }
+        } else if opts.general.windows_service {
+            return winservice::run_server_as_service();
+        }
+    }
+
+    // Run the server by default
+    static_web_server::Server::new()?.run_standalone()?;
 
     Ok(())
 }

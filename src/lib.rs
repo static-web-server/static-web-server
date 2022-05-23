@@ -28,6 +28,9 @@ pub mod static_files;
 pub mod tls;
 pub mod transport;
 
+#[cfg(windows)]
+pub mod winservice;
+
 #[macro_use]
 pub mod error;
 

@@ -100,3 +100,17 @@ OPTIONS:
             32,768 though it is advised to keep this value on the smaller side [env: SERVER_THREADS_MULTIPLIER=]
             [default: 1]
 ```
+
+## Windows
+
+Following options and commands are Windows platform specific.
+
+```
+ -s, --windows-service <windows-service>
+            Run the web server as a Windows Service [env: SERVER_WINDOWS_SERVICE=]  [default: false]
+
+SUBCOMMANDS:
+    help         Prints this message or the help of the given subcommand(s)
+    install      Install a Windows Service for the web server
+    uninstall    Uninstall the current Windows Service
+```

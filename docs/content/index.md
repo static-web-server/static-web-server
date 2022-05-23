@@ -58,6 +58,7 @@ It's cross-platform and available for `Linux`, `macOS`, `Windows` and `FreeBSD` 
 - Basic HTTP Authentication.
 - Customizable HTTP Response Headers for specific file requests via glob patterns.
 - Fallback pages for 404 errors useful for Single-page applications.
+- Run the server as [Windows Service](https://docs.microsoft.com/en-us/previous-versions/windows/it-pro/windows-server-2003/cc783643(v=ws.10)).
 - Configurable using CLI arguments, environment variables or a file.
 - Default and custom error pages.
 - First-class [Docker](https://docs.docker.com/get-started/overview/) support. [Scratch](https://hub.docker.com/_/scratch) and latest [Alpine Linux](https://hub.docker.com/_/alpine) Docker images available.

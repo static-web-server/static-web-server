@@ -64,6 +64,10 @@ version = "0.4"
 signal-hook = { version = "0.3", features = ["extended-siginfo"] }
 signal-hook-tokio = { version = "0.3", features = ["futures-v0_3"], default-features = false }
 
+[target.'cfg(windows)'.dependencies]
+windows-service = { git = "https://github.com/joseluisq/windows-service-rs" }
+windows-sys = { version = "0.36.1", features = [ "Win32_Foundation", "Win32_NetworkManagement_IpHelper", "Win32_Networking_WinSock", "Win32_System_Memory" ] }
+
 [dev-dependencies]
 bytes = "1.1"
 
