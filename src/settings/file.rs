@@ -96,6 +96,8 @@ pub struct General {
     pub grace_period: Option<u8>,
 
     pub page_fallback: Option<PathBuf>,
+
+    pub log_remote_address: Option<bool>,
 }
 
 /// Full server configuration

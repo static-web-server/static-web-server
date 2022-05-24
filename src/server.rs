@@ -162,6 +162,10 @@ impl Server {
             !general.basic_auth.is_empty()
         );
 
+        // Log remote address option
+        let log_remote_address = general.log_remote_address;
+        tracing::info!("log remote address: enabled={}", log_remote_address);
+
         // Grace period option
         let grace_period = general.grace_period;
         tracing::info!("grace period before graceful shutdown: {}s", grace_period);
@@ -180,6 +184,7 @@ impl Server {
                 page50x,
                 page_fallback,
                 basic_auth,
+                log_remote_address,
                 advanced_opts,
             }),
         });

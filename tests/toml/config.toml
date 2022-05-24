@@ -45,6 +45,19 @@ grace-period = 0
 #### Page fallback for 404s
 page-fallback = ""
 
+#### Page fallback for 404s
+page-fallback = ""
+
+#### Log request Remote Address if available
+log-remote-address = false
+
+
+### Windows Only
+
+#### Run the web server as a Windows Service
+# windows-service = false
+
+
 [advanced]
 
 #### HTTP Headers customization
@@ -56,7 +69,7 @@ headers = { Access-Control-Allow-Origin = "*", X-XSS-PROTECTION = "1; mode=block
 
 # #### b. Multiline version
 [[advanced.headers]]
-source = "index.html"
+source = "/index.html"
 [advanced.headers.headers]
 Cache-Control = "public, max-age=36000"
 Content-Security-Policy = "frame-ancestors 'self'"

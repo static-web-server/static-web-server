@@ -20,6 +20,7 @@ pub struct RequestHandlerOpts {
     pub page50x: Vec<u8>,
     pub page_fallback: Vec<u8>,
     pub basic_auth: String,
+    pub log_remote_address: bool,
 
     // Advanced options
     pub advanced_opts: Option<Advanced>,
@@ -46,16 +47,21 @@ impl RequestHandler {
         let uri_query = uri.query();
         let dir_listing = self.opts.dir_listing;
         let dir_listing_order = self.opts.dir_listing_order;
+        let log_remote_addr = self.opts.log_remote_address;
 
         let mut cors_headers: Option<http::HeaderMap> = None;
 
-        // Log request information with its remote address
-        let remote_addr = remote_addr.map_or("".to_owned(), |v| v.to_string());
+        // Log request information with its remote address if available
+        let mut remote_addr_str = String::new();
+        if log_remote_addr {
+            remote_addr_str.push_str(" remote_addr=");
+            remote_addr_str.push_str(&remote_addr.map_or("".to_owned(), |v| v.to_string()));
+        }
         tracing::info!(
-            "incoming request: method={} uri={} remote_addr={}",
+            "incoming request: method={} uri={}{}",
             method,
             uri,
-            remote_addr,
+            remote_addr_str,
         );
 
         async move {
