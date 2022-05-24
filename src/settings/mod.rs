@@ -61,6 +61,7 @@ impl Settings {
         let mut threads_multiplier = opts.threads_multiplier;
         let mut grace_period = opts.grace_period;
         let mut page_fallback = opts.page_fallback;
+        let mut log_remote_address = opts.log_remote_address;
 
         // Define the advanced file options
         let mut settings_advanced: Option<Advanced> = None;
@@ -145,6 +146,9 @@ impl Settings {
                     if let Some(v) = general.page_fallback {
                         page_fallback = Some(v)
                     }
+                    if let Some(v) = general.log_remote_address {
+                        log_remote_address = v
+                    }
                 }
 
                 // Prepare the "advanced" options
@@ -206,6 +210,7 @@ impl Settings {
                 threads_multiplier,
                 grace_period,
                 page_fallback,
+                log_remote_address,
 
                 // NOTE:
                 // Windows-only options and commands

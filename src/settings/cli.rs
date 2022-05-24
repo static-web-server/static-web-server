@@ -170,6 +170,15 @@ pub struct General {
     /// Server TOML configuration file path.
     pub config_file: Option<PathBuf>,
 
+    #[structopt(
+        long,
+        parse(try_from_str),
+        default_value = "false",
+        env = "SERVER_LOG_REMOTE_ADDRESS"
+    )]
+    /// Log incoming requests information along with its remote address if available using the `info` log level.
+    pub log_remote_address: bool,
+
     //
     // Windows specific arguments and commands
     //

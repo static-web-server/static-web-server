@@ -60,6 +60,16 @@ grace-period = 0
 #### Page fallback for 404s
 # page-fallback = "some_page.html"
 
+#### Log request Remote Address if available
+log-remote-address = false
+
+
+### Windows Only
+
+#### Run the web server as a Windows Service
+# windows-service = false
+
+
 
 [advanced]
 

@@ -1,5 +1,5 @@
 use hyper::{header::WWW_AUTHENTICATE, Body, Method, Request, Response, StatusCode};
-use std::{future::Future, path::PathBuf, sync::Arc};
+use std::{future::Future, net::SocketAddr, path::PathBuf, sync::Arc};
 
 use crate::{
     basic_auth, compression, control_headers, cors, custom_headers, error_page, fallback_page,
@@ -20,6 +20,7 @@ pub struct RequestHandlerOpts {
     pub page50x: Vec<u8>,
     pub page_fallback: Vec<u8>,
     pub basic_auth: String,
+    pub log_remote_address: bool,
 
     // Advanced options
     pub advanced_opts: Option<Advanced>,
@@ -35,6 +36,7 @@ impl RequestHandler {
     pub fn handle<'a>(
         &'a self,
         req: &'a mut Request<Body>,
+        remote_addr: Option<SocketAddr>,
     ) -> impl Future<Output = Result<Response<Body>, Error>> + Send + 'a {
         let method = req.method();
         let headers = req.headers();
@@ -45,8 +47,22 @@ impl RequestHandler {
         let uri_query = uri.query();
         let dir_listing = self.opts.dir_listing;
         let dir_listing_order = self.opts.dir_listing_order;
+        let log_remote_addr = self.opts.log_remote_address;
 
         let mut cors_headers: Option<http::HeaderMap> = None;
+
+        // Log request information with its remote address if available
+        let mut remote_addr_str = String::new();
+        if log_remote_addr {
+            remote_addr_str.push_str(" remote_addr=");
+            remote_addr_str.push_str(&remote_addr.map_or("".to_owned(), |v| v.to_string()));
+        }
+        tracing::info!(
+            "incoming request: method={} uri={}{}",
+            method,
+            uri,
+            remote_addr_str,
+        );
 
         async move {
             // Check for disallowed HTTP methods and reject request accordently
