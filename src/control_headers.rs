@@ -1,6 +1,4 @@
 // An arbitrary `Cache-Control` headers functionality for incoming requests based on a set of file types.
-// Note: Since it's an ad-hoc feature it could be subject to change in the future.
-// See https://github.com/joseluisq/static-web-server/issues/30
 
 use headers::{CacheControl, HeaderMapExt};
 use hyper::{Body, Response};

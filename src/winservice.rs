@@ -1,3 +1,5 @@
+// Module that lets SWS to run as a "Windows Service"
+
 use std::ffi::OsString;
 use std::thread;
 use std::time::Duration;

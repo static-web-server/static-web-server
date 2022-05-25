@@ -2,7 +2,7 @@ use hyper::{Body, Response};
 
 use crate::settings::Headers;
 
-/** Append custom HTTP headers to current response. */
+/// Append custom HTTP headers to current response.
 pub fn append_headers(
     uri: &str,
     headers_opts_vec: &Option<Vec<Headers>>,
