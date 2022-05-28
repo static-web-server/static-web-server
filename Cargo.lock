@@ -943,7 +943,7 @@ checksum = "6e63cff320ae2c57904679ba7cb63280a3dc4613885beafb148ee7bf9aa9042d"
 
 [[package]]
 name = "static-web-server"
-version = "2.8.0"
+version = "2.9.0"
 dependencies = [
  "anyhow",
  "async-compression",

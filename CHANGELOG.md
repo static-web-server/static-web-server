@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _**Note:** See changelog for v1 under the [1.x](https://github.com/joseluisq/static-web-server/blob/1.x/CHANGELOG.md) branch._
 
+## v2.9.0 - 2022-05-28
+
+__Fixes__
+
+- [446576a](https://github.com/joseluisq/static-web-server/commit/446576a) Bugfix/security dependency updates including tokio, hyper, rustls, compression, windows-rs, serde, log and other crates (also [fa531a0](https://github.com/joseluisq/static-web-server/commit/fa531a0), [0879c84](https://github.com/joseluisq/static-web-server/commit/0879c84)).
+
+__Features__
+
+- [3d1776d](https://github.com/joseluisq/static-web-server/commit/3d1776d) Windows Service support via new `--windows-service` option. PR [#110](https://github.com/joseluisq/static-web-server/pull/110) resolves [#65](https://github.com/joseluisq/static-web-server/issues/65) suggested by [@bubnenkoff](https://github.com/bubnenkoff). See [docs](https://sws.joseluisq.net/features/windows-service/).
+- [bd78034](https://github.com/joseluisq/static-web-server/commit/bd78034) Include request URI on tracing log for 404/50x errors. [#108](https://github.com/joseluisq/static-web-server/issues/108) suggested by [@stappersg](https://github.com/stappersg).
+- [b49395a](https://github.com/joseluisq/static-web-server/commit/b49395a) Log request file with its remote address (IP) via new `--log-remote-address` option. PR [#112](https://github.com/joseluisq/static-web-server/pull/112) resolves [#111](https://github.com/joseluisq/static-web-server/issues/111) suggested by [@nicheath](https://github.com/nicheath). See [docs](https://sws.joseluisq.net/features/logging/#log-remote-addresses).
+
+__Docs__
+
+- [a793b58](https://github.com/joseluisq/static-web-server/commit/a793b58) Improve basic auth feature page. See [docs](https://sws.joseluisq.net/features/basic-authentication/).
+- [ae0dcfd](https://github.com/joseluisq/static-web-server/commit/ae0dcfd) Windows Service feature page. See [docs](https://sws.joseluisq.net/features/windows-service/).
+- [2d71de6](https://github.com/joseluisq/static-web-server/commit/2d71de6) Log remote address feature. See [docs](https://sws.joseluisq.net/features/logging/#log-remote-addresses).
+
 ## v2.8.0 - 2022-05-04
 
 __Fixes__
