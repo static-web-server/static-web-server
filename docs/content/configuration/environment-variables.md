@@ -27,6 +27,9 @@ Defines a grace period in seconds after a `SIGTERM` signal is caught which will 
 ### SERVER_LOG_LEVEL
 Specify a logging level in lower case. Possible values are `error`, `warn`, `info`, `debug` or `trace`. Default `error`.
 
+### SERVER_LOG_REMOTE_ADDRESS
+Log incoming requests information along with its Remote Address (IP) if available using the `info` log level.
+
 ### SERVER_ERROR_PAGE_404
 HTML file path for 404 errors. If path is not specified or simply don't exists then server will use a generic HTML error message. Default `./public/404.html`.
 

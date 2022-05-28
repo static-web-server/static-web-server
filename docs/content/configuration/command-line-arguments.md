@@ -66,18 +66,21 @@ OPTIONS:
             Enable HTTP/2 with TLS support [env: SERVER_HTTP2_TLS=]  [default: false]
 
         --http2-tls-cert <http2-tls-cert>
-            Specify the file path to read the certificate [env: SERVER_HTTP2_TLS_CERT=]  [default: ]
+            Specify the file path to read the certificate [env: SERVER_HTTP2_TLS_CERT=]
 
         --http2-tls-key <http2-tls-key>
-            Specify the file path to read the private key [env: SERVER_HTTP2_TLS_KEY=]  [default: ]
+            Specify the file path to read the private key [env: SERVER_HTTP2_TLS_KEY=]
 
     -g, --log-level <log-level>
             Specify a logging level in lower case. Values: error, warn, info, debug or trace [env: SERVER_LOG_LEVEL=]
             [default: error]
+        --log-remote-address <log-remote-address>
+            Log incoming requests information along with its remote address if available using the `info` log level
+            [env: SERVER_LOG_REMOTE_ADDRESS=]  [default: false]
         --page-fallback <page-fallback>
             HTML file path that is used for GET requests when the requested path doesn't exist. The fallback page is
             served with a 200 status code, useful when using client routers. If the path is not specified or simply
-            doesn't exist then this feature will not be active [env: SERVER_FALLBACK_PAGE=]  [default: ]
+            doesn't exist then this feature will not be active [env: SERVER_FALLBACK_PAGE=]
         --page404 <page404>
             HTML file path for 404 errors. If the path is not specified or simply doesn't exist then the server will use
             a generic HTML error message [env: SERVER_ERROR_PAGE_404=]  [default: ./public/404.html]
