@@ -83,9 +83,10 @@ impl Server {
         // Config-file "advanced" options
         let advanced_opts = self.opts.advanced;
 
-        // Config file
-        if general.config_file.is_some() && general.config_file.is_some() {
-            tracing::info!("config file: {}", general.config_file.unwrap().display());
+        // Config file option
+        if let Some(config_file) = general.config_file {
+            let config_file = helpers::adjust_canonicalization(config_file);
+            tracing::info!("config file: {}", config_file);
         }
 
         // Determine TCP listener either file descriptor or TCP socket
