@@ -18,7 +18,7 @@ pub fn init(log_level: &str) -> Result {
 fn configure(level: &str) -> Result {
     let level = level.parse::<Level>()?;
 
-    #[cfg(unix)]
+    #[cfg(not(windows))]
     let enable_ansi = true;
     #[cfg(windows)]
     let enable_ansi = false;

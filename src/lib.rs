@@ -28,6 +28,7 @@ pub mod security_headers;
 pub mod server;
 pub mod service;
 pub mod settings;
+#[cfg(any(unix, windows))]
 pub mod signals;
 pub mod static_files;
 pub mod tls;
