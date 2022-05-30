@@ -7,7 +7,9 @@ use tokio::sync::oneshot::Receiver;
 
 use crate::handler::{RequestHandler, RequestHandlerOpts};
 use crate::tls::{TlsAcceptor, TlsConfigBuilder};
-use crate::{cors, helpers, logger, signals, Settings};
+use crate::{cors, helpers, logger, Settings};
+#[cfg(not(target_os = "wasi"))]
+use crate::signals;
 use crate::{service::RouterService, Context, Result};
 
 /// Define a multi-thread HTTP or HTTP/2 web server.

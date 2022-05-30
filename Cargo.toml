@@ -44,7 +44,7 @@ percent-encoding = "2.1"
 pin-project = "1.0"
 structopt = { version = "0.3", default-features = false }
 time = { version = "0.1", default-features = false }
-tokio = { version = "1", default-features = false, features = ["rt-multi-thread", "macros", "fs", "io-util", "signal"] }
+tokio = { git = "https://github.com/john-sharratt/tokio.git", default-features = false, features = ["rt-multi-thread", "macros", "fs", "io-util", "signal"] }
 tokio-rustls = { version = "0.23" }
 rustls-pemfile = "0.2"
 tokio-util = { version = "0.7", default-features = false, features = ["io"] }
@@ -56,6 +56,12 @@ serde_ignored = "0.1"
 toml = "0.5"
 http-serde = "1.1"
 globset = { version = "0.4", features = ["serde1"] }
+
+[patch.crates-io]
+socket2 = { git = "https://github.com/john-sharratt/socket2.git" }
+libc = { git = "https://github.com/john-sharratt/libc.git" }
+tokio = { git = "https://github.com/john-sharratt/tokio.git" }
+ring = { git = "https://github.com/john-sharratt/ring.git", branch = "v0.16.20" }
 
 [target.'cfg(all(target_env = "musl", target_pointer_width = "64"))'.dependencies.tikv-jemallocator]
 version = "0.4"
