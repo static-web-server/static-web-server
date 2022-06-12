@@ -28,8 +28,16 @@ yay -S static-web-server-bin
 
 ### Windows
 
-```sh
-# TODO
+Via [Scoop](https://scoop.sh/)
+
+```powershell
+scoop install static-web-server
+```
+
+Via [Chocolatey](https://chocolatey.org/)
+
+```powershell
+choco install static-web-server --version=2.9.0
 ```
 
 ## Binaries
