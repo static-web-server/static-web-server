@@ -22,10 +22,15 @@ yay -S static-web-server-bin
 
 ### MacOS
 
-Via [Homebrew](https://brew.sh/)
+Via [Homebrew](https://brew.sh/) (also Linux)
 
 ```sh
 brew tap static-web-server/static-web-server
+
+# Just the binary
+brew install static-web-server-bin
+
+# Or build from source
 brew install static-web-server
 ```
 
