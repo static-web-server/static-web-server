@@ -21,7 +21,8 @@ release
 .vscode
 TODO
 docs/site
-static-web-server
+docs/*/**.html
+*/**/*.1
 
 !sample.env
 !/docs

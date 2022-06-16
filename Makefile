@@ -287,3 +287,7 @@ loadtest:
 	@cat results.bin | vegeta report -type='hist[0,2ms,4ms,6ms]'
 	@cat results.bin | vegeta plot > plot.html
 .PHONY: loadtest
+
+man:
+	@asciidoctor --doctype=manpage --backend=manpage docs/man/static-web-server.1.rst
+.PHONY: man
