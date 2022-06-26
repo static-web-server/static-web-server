@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _**Note:** See changelog for v2 under the [master](https://github.com/joseluisq/static-web-server/blob/master/CHANGELOG.md) branch._
 
+## v1.19.3 - 2022-06-26
+
+__Updates__
+
+- [32541ec](https://github.com/joseluisq/static-web-server/commit/32541ec) Security/bug-fixes updates for openssl, jemallocator, flate2, log, httparse, libc and other dependencies.
+- [d3ebbf3](https://github.com/joseluisq/static-web-server/commit/d3ebbf3) Update Alpine Docker image to `3.15`.
+
 ## v1.19.2 - 2022-04-23
 
 __Updates__
