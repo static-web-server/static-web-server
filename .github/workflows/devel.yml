@@ -14,10 +14,10 @@ jobs:
     name: test
     runs-on: ${{ matrix.os }}
     env:
-      CARGO: cargo
-      # When CARGO is set to CROSS, this is set to `--target matrix.target`
+      CARGO_BIN: cargo
+      # When CARGO_BIN is set to CROSS, this is set to `--target matrix.target`
       TARGET_FLAGS: ""
-      # When CARGO is set to CROSS, TARGET_DIR includes matrix.target
+      # When CARGO_BIN is set to CROSS, TARGET_DIR includes matrix.target
       TARGET_DIR: ./target
       # Emit backtraces on panics
       RUST_BACKTRACE: 1
@@ -48,7 +48,7 @@ jobs:
           # Specific Rust channels 
           - build: pinned
             os: ubuntu-20.04
-            rust: 1.60.0
+            rust: 1.56.1
           - build: stable
             os: ubuntu-20.04
             rust: stable
@@ -119,20 +119,19 @@ jobs:
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
 
     - name: Install Rust
-      uses: actions-rs/toolchain@v1
+      uses: dtolnay/rust-toolchain@stable
       with:
         toolchain: ${{ matrix.rust }}
-        profile: minimal
-        override: true
+        target: ${{ matrix.target }}
 
     - name: Use Cross
       if: matrix.target != ''
       run: |
         cargo install cross
-        echo "CARGO=cross" >> $GITHUB_ENV
+        echo "CARGO_BIN=cross" >> $GITHUB_ENV
         echo "TARGET_FLAGS=--target ${{ matrix.target }}" >> $GITHUB_ENV
         echo "TARGET_DIR=./target/${{ matrix.target }}" >> $GITHUB_ENV
 
@@ -141,7 +140,7 @@ jobs:
 
     - name: Show command used for Cargo
       run: |
-        echo "cargo command is: ${{ env.CARGO }}"
+        echo "cargo command is: ${{ env.CARGO_BIN }}"
         echo "target flag is: ${{ env.TARGET_FLAGS }}"
         echo "target dir is: ${{ env.TARGET_DIR }}"
 
@@ -153,10 +152,10 @@ jobs:
 
     - name: Run tests
       if: env.SKIP_TESTS == ''
-      run: ${{ env.CARGO }} test --verbose ${{ env.TARGET_FLAGS }}
+      run: ${{ env.CARGO_BIN }} test --verbose ${{ env.TARGET_FLAGS }}
 
     - name: Run build
-      run: ${{ env.CARGO }} build --verbose ${{ env.TARGET_FLAGS }}
+      run: ${{ env.CARGO_BIN }} build --verbose ${{ env.TARGET_FLAGS }}
 
   checks:
     name: checks
@@ -164,14 +163,12 @@ jobs:
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
 
     - name: Install stable toolchain
-      uses: actions-rs/toolchain@v1
+      uses: dtolnay/rust-toolchain@stable
       with:
-        profile: minimal
         toolchain: stable
-        override: true
         components: rustfmt, clippy
 
     - name: Check formatting
