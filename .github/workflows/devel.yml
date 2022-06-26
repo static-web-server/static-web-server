@@ -83,14 +83,12 @@ jobs:
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
 
     - name: Install Rust
-      uses: actions-rs/toolchain@v1
+      uses: dtolnay/rust-toolchain@stable
       with:
         toolchain: ${{ matrix.rust }}
-        profile: minimal
-        override: true
 
     - name: Use Cross
       if: matrix.target != ''
@@ -115,11 +113,9 @@ jobs:
       uses: actions/checkout@v2
 
     - name: Install stable toolchain
-      uses: actions-rs/toolchain@v1
+      uses: dtolnay/rust-toolchain@stable
       with:
-        profile: minimal
         toolchain: stable
-        override: true
         components: rustfmt, clippy
 
     - name: Check formatting
