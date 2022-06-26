@@ -87,7 +87,7 @@ CLI arguments listed with `static-web-server -h`.
 
 ```
 static-web-server 1.18.1
-Jose Quintana <https://git.io/joseluisq>
+Jose Quintana <https://joseluisq.net>
 A blazing fast static files-serving web server powered by Rust Iron.
 
 USAGE:
@@ -202,4 +202,4 @@ Feel free to send some [Pull request](https://github.com/joseluisq/static-web-se
 
 This work is primarily distributed under the terms of both the [MIT license](LICENSE-MIT) and the [Apache License (Version 2.0)](LICENSE-APACHE).
 
-© 2019-present [Jose Quintana](https://git.io/joseluisq)
+© 2019-present [Jose Quintana](https://joseluisq.net)
