@@ -1,4 +1,4 @@
-FROM --platform=$BUILDPLATFORM alpine:3.15 as build
+FROM --platform=$BUILDPLATFORM alpine:3.16 as build
 
 ARG TARGETPLATFORM
 ARG SERVER_VERSION=0.0.0
@@ -6,21 +6,21 @@ ENV SERVER_VERSION=${SERVER_VERSION}
 
 RUN apk --no-cache add ca-certificates tzdata
 RUN set -ex; \
-	case "$TARGETPLATFORM" in \
-		"linux/amd64") target='x86_64-unknown-linux-musl' ;; \
-		"linux/arm64") target='aarch64-unknown-linux-musl' ;; \
-		"linux/386") target='i686-unknown-linux-musl' ;; \
-		"linux/arm/v7") target='armv7-unknown-linux-musleabihf' ;; \
-		"linux/arm/v6") target='arm-unknown-linux-musleabihf' ;; \
-		*) echo >&2 "error: unsupported $TARGETPLATFORM architecture"; exit 1 ;; \
-	esac; \
-	wget --quiet -O /tmp/static-web-server.tar.gz "https://github.com/joseluisq/static-web-server/releases/download/v${SERVER_VERSION}/static-web-server-v${SERVER_VERSION}-${target}.tar.gz"; \
+    case "$TARGETPLATFORM" in \
+        "linux/amd64") target='x86_64-unknown-linux-musl' ;; \
+        "linux/arm64") target='aarch64-unknown-linux-musl' ;; \
+        "linux/386") target='i686-unknown-linux-musl' ;; \
+        "linux/arm/v7") target='armv7-unknown-linux-musleabihf' ;; \
+        "linux/arm/v6") target='arm-unknown-linux-musleabihf' ;; \
+        *) echo >&2 "error: unsupported $TARGETPLATFORM architecture"; exit 1 ;; \
+    esac; \
+    wget --quiet -O /tmp/static-web-server.tar.gz "https://github.com/joseluisq/static-web-server/releases/download/v${SERVER_VERSION}/static-web-server-v${SERVER_VERSION}-${target}.tar.gz"; \
     tar xzvf /tmp/static-web-server.tar.gz; \
     cp static-web-server-v${SERVER_VERSION}-${target}/static-web-server /usr/local/bin/; \
-	rm -rf /tmp/static-web-server.tar.gz static-web-server-v${SERVER_VERSION}-${target}; \
-	chmod +x /usr/local/bin/static-web-server
+    rm -rf /tmp/static-web-server.tar.gz static-web-server-v${SERVER_VERSION}-${target}; \
+    chmod +x /usr/local/bin/static-web-server
 
-FROM alpine:3.15
+FROM alpine:3.16
 
 ARG SERVER_VERSION=0.0.0
 ENV SERVER_VERSION=${SERVER_VERSION}
