@@ -8,7 +8,7 @@ The format to use is the following:
 
 > `username:encrypted-password`
 
-Both separated by a `:` (punctuation mark) character.
+Both are separated by a `:` (punctuation mark) character.
 
 !!! info "Password Encryption"
     Only the password must be encoded using the [`BCrypt`](https://en.wikipedia.org/wiki/Bcrypt) password-hashing function.
@@ -25,15 +25,15 @@ htpasswd -nBC10 "username"
 !!! tip "Password Security Advice"
     The password verification happens at runtime but its verification speed depends on the computing time cost of `bcrypt` algorithm used.
 
-    For example the `htpasswd` tool supports a `-C` argument in order to adjust the `bcrypt`'s computing time.
+    For example, the `htpasswd` tool supports a `-C` argument to adjust the `bcrypt`'s computing time.
     
-    Using a higher value is more secure but slower. The default values is `5` and the possible values are ranging from `4` to `17`.
+    Using a higher value is more secure but slower. The default value is `5` and the possible values are ranging from `4` to `17`.
 
 !!! tip "Docker Compose Advice"
-    If you are using `SERVER_BASIC_AUTH` env via a `docker-compose.yml` file don't forget to replace single `$` (dollar sign) with a `$$` (double-dollar sign) when you want individual `$` dollar signs in your configuration to be treated by Docker as literals.<br>
+    If you are using `SERVER_BASIC_AUTH` env via a `docker-compose.yml` file don't forget to replace a single `$` (dollar sign) with a `$$` (double-dollar sign) when you want individual `$` dollar signs in your configuration to be treated by Docker as literals.<br>
     More details at [Docker Compose file: variable substitution](https://docs.docker.com/compose/compose-file/compose-file-v2/#variable-substitution)
 
-Finally assign the credentails and run the server.
+Finally, assign the credentials and run the server.
 
 ```sh
 static-web-server \

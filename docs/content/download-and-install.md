@@ -42,13 +42,9 @@ Via [Scoop](https://scoop.sh/)
 scoop install static-web-server
 ```
 
-Via [Chocolatey](https://chocolatey.org/)
-
-```powershell
-choco install static-web-server --version=2.9.0
-```
-
 ## Binaries
+
+Precompiled binaries grouped by CPU architectures.
 
 ### x86_64
 

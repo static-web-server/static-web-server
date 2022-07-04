@@ -1,28 +1,28 @@
 # Custom HTTP Headers
 
-**`SWS`** allows to customize the server [HTTP Response headers](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers) on demand.
+**SWS** allows customizing the server [HTTP Response headers](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers) on demand.
 
 ## Structure
 
-The Server HTTP response headers should be defined mainly as [Array of Tables](https://toml.io/en/v1.0.0#array-of-tables).
+The Server HTTP response headers should be defined mainly as an [Array of Tables](https://toml.io/en/v1.0.0#array-of-tables).
 
 Each table entry should have two key/value pairs:
 
-- One `source` key containing an string *glob pattern*.
+- One `source` key containing a string _glob pattern_.
 - One `headers` key containing a [set or hash table](https://toml.io/en/v1.0.0#table) describing plain HTTP headers to apply.
 
-A particular set of HTTP headers can only be applied when a `source` matches against the request uri.
+A particular set of HTTP headers can only be applied when a `source` matches against the request URI.
 
 !!! info "Custom HTTP headers take precedence over existing ones"
     Whatever custom HTTP header could **replace** an existing one if it was previously defined (E.g server default headers) and matches its `source`.
 
-    The headers order is important since it determine its precedence.
+    The headers order is important since it determines its precedence.
 
     **Example:** if the feature `--cache-control-headers=true` is enabled but also a custom `cache-control` header was defined then the custom header will have priority.
 
 ### Source
 
-Source is a [Glob pattern](https://en.wikipedia.org/wiki/Glob_(programming)) that should match against the uri that is requesting a resource file.
+The source is a [Glob pattern](https://en.wikipedia.org/wiki/Glob_(programming)) that should match against the URI that is requesting a resource file.
 
 ### Headers
 
@@ -30,9 +30,9 @@ A set of valid plain [HTTP headers](https://developer.mozilla.org/en-US/docs/Web
 
 ## Examples
 
-Below some examples of how to customize server HTTP headers in three variants.
+Below are some examples of how to customize server HTTP headers in three variants.
 
-### Oneline version
+### One-line version
 
 ```toml
 [advanced]

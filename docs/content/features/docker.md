@@ -20,7 +20,7 @@ To give the server a quick try just run the following commands.
 
 !!! info "Tips"
     - [Server CLI arguments](/configuration/command-line-arguments/) can be provided directly to the container or omitted as shown below.
-    - It can specify a Docker volume like `-v $HOME/my-public-dir:/public` in order to overwrite the default root directory.
+    - It can specify a Docker volume like `-v $HOME/my-public-dir:/public` to overwrite the default root directory.
 
 Run the scratch Docker image (just the binary)
 

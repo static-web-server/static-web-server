@@ -1,10 +1,10 @@
 # Logging
 
-**`SWS`** provides logging support just specifying a log level in lower case. The values allowed are `error`, `warn`, `info`, `debug` and `trace`. The default value is `error`.
+**`SWS`** provides logging support by just specifying a log level in lower case. The values allowed are `error`, `warn`, `info`, `debug` and `trace`. The default value is `error`.
 
 This feature is enabled by default and can be controlled by the string `-g, --log-level` option or the equivalent [SERVER_LOG_LEVEL](./../configuration/environment-variables.md#server_log_level) env.
 
-Below an example of how to adjust the log level.
+Below is an example of how to adjust the log level.
 
 ```sh
 static-web-server \
@@ -19,7 +19,7 @@ SWS provides **Remote Address (IP)** logging for every request via an `INFO` log
 
 This feature is disabled by default and can be enabled by the boolean `--log-remote-address` option or the equivalent [SERVER_LOG_REMOTE_ADDRESS](./../configuration/environment-variables.md#server_log_remote_address) env.
 
-If the feature is enabled then log entries for requests will contain a `remote_addr` section with the remote address (IP) value. Otherwise it will be empty.
+If the feature is enabled then log entries for requests will contain a `remote_addr` section with the remote address (IP) value. Otherwise, it will be empty.
 
 Log entry example:
 
@@ -27,7 +27,7 @@ Log entry example:
 2022-05-23T22:24:50.519540Z  INFO static_web_server::handler: incoming request: method=GET uri=/ remote_addr=192.168.1.126:57625
 ```
 
-Below an example of how to enable Remote Address (IP) logging. Note the last two entries.
+Below is an example of how to enable Remote Address (IP) logging. Note the last two entries.
 
 ```sh
 static-web-server -a "0.0.0.0" -p 8080 -d docker/public/ -g info --log-remote-address=true

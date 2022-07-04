@@ -25,7 +25,7 @@
 
 **Static Web Server** (or **`SWS`** abbreviated) is a very small and fast production-ready web server suitable to serve static web files or assets.
 
-It is focused on **lightness and easy to use** principles but keeping [high performance and safety](https://blog.rust-lang.org/2015/04/10/Fearless-Concurrency.html) powered by [The Rust Programming Language](https://rust-lang.org).
+It is focused on **lightness and easy-to-use** principles while keeping [high performance and safety](https://blog.rust-lang.org/2015/04/10/Fearless-Concurrency.html) powered by [The Rust Programming Language](https://rust-lang.org).
 
 Written on top of [Hyper](https://github.com/hyperium/hyper) and [Tokio](https://github.com/tokio-rs/tokio) runtime. It provides [concurrent and asynchronous networking abilities](https://rust-lang.github.io/async-book/01_getting_started/02_why_async.html) as well as the latest HTTP/1 - HTTP/2 implementations.
 
@@ -37,12 +37,12 @@ It's cross-platform and available for `Linux`, `macOS`, `Windows` and `FreeBSD` 
 
 - Built with [Rust](https://rust-lang.org) which is focused on [safety, speed and concurrency](https://kornel.ski/rust-c-speed).
 - Memory safe and very reduced CPU and RAM overhead.
-- Blazing fast static files-serving and asynchronous powered by latest [Hyper](https://github.com/hyperium/hyper/), [Tokio](https://github.com/tokio-rs/tokio) and a set of [awesome crates](https://github.com/joseluisq/static-web-server/blob/master/Cargo.toml).
+- Blazing fast static files-serving and asynchronous powered by the latest [Hyper](https://github.com/hyperium/hyper/), [Tokio](https://github.com/tokio-rs/tokio) and a set of [awesome crates](https://github.com/joseluisq/static-web-server/blob/master/Cargo.toml).
 - Single __4MB__ (uncompressed) and fully static binary with no dependencies ([Musl libc](https://doc.rust-lang.org/edition-guide/rust-2018/platform-and-target-support/musl-support-for-fully-static-binaries.html)). Suitable for running on [any Linux distro](https://en.wikipedia.org/wiki/Linux_distribution) or [Docker container](https://hub.docker.com/r/joseluisq/static-web-server/tags).
 - Optional GZip, Deflate or Brotli compression for text-based web files only.
-- Compression on demand via [Accept-Encoding](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Accept-Encoding) header.
+- Compression on-demand via [Accept-Encoding](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Accept-Encoding) header.
 - [Partial Content Delivery](https://en.wikipedia.org/wiki/Byte_serving) support for byte-serving of large files.
-- Optional [Cache Control](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Cache-Control) headers for assets.
+- Optional [Cache-Control](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Cache-Control) headers for assets.
 - [Termination signal](https://www.gnu.org/software/libc/manual/html_node/Termination-Signals.html) handling with [graceful shutdown](https://cloud.google.com/blog/products/containers-kubernetes/kubernetes-best-practices-terminating-with-grace) ability and grace period.
 - [HTTP/2](https://tools.ietf.org/html/rfc7540) + TLS support.
 - [Security headers](https://web.dev/security-headers/) for HTTP/2 by default.
@@ -53,13 +53,13 @@ It's cross-platform and available for `Linux`, `macOS`, `Windows` and `FreeBSD` 
 - [CORS](https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS) support.
 - Basic HTTP Authentication.
 - Customizable HTTP Response Headers for specific file requests via glob patterns.
-- Fallback pages for 404 errors useful for Single-page applications.
+- Fallback pages for 404 errors are useful for Single-page applications.
 - Run the server as [Windows Service](https://docs.microsoft.com/en-us/previous-versions/windows/it-pro/windows-server-2003/cc783643(v=ws.10)).
 - Configurable using CLI arguments, environment variables or a file.
 - Default and custom error pages.
-- First-class [Docker](https://docs.docker.com/get-started/overview/) support. [Scratch](https://hub.docker.com/_/scratch) and latest [Alpine Linux](https://hub.docker.com/_/alpine) Docker images available.
+- First-class [Docker](https://docs.docker.com/get-started/overview/) support. [Scratch](https://hub.docker.com/_/scratch) and the latest [Alpine Linux](https://hub.docker.com/_/alpine) Docker images available.
 - Ability to accept a socket listener as a file descriptor for use in sandboxing and on-demand applications (E.g [systemd](http://0pointer.de/blog/projects/socket-activation.html)).
-- Cross-platform. Binaries available for Linux, macOS, Windows & FreeBSD x86_64 / ARM.
+- Cross-platform and binaries are available for Linux, macOS, Windows & FreeBSD x86_64 / ARM.
 
 ## Documentation
 

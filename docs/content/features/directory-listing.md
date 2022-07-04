@@ -1,6 +1,6 @@
 # Directory Listing
 
-**`SWS`** provides a directory listing feature to display content of directories.
+**`SWS`** provides a directory listing feature to display the content of directories.
 
 This feature is disabled by default and can be controlled by the boolean `-z, --directory-listing` option or the equivalent [SERVER_DIRECTORY_LISTING](./../configuration/environment-variables.md#server_directory_listing) env.
 
@@ -17,19 +17,19 @@ And here an example of how the directory listing looks like.
 
 ## Sorting
 
-Sorting by `Name`, `Last modified` and `Size` is enabled as clickable columns when directory listing is activated via the `--directory-listing=true` option.
+Sorting by `Name`, `Last modified` and `Size` is enabled as clickable columns when the directory listing is activated via the `--directory-listing=true` option.
 
-You can also use the `sort` query parameter to sort manually by certain attribute from URI. E.g `https://localhost/?sort=5`.
+You can also use the `sort` query parameter to sort manually by certain attributes from URI. E.g `https://localhost/?sort=5`.
 
 ## Sorting by default
 
-Some times one wants to sort by certain attribute but by **default**. In that case default ascending or descending ordering of files/dirs by their attributes is provided by the numeric `--directory-listing-order` option or the equivalent [SERVER_DIRECTORY_LISTING_ORDER](./../configuration/environment-variables.md#server_directory_listing_order) env.
+Sometimes one wants to sort by certain attribute but by **default**. In that case, the default ascending or descending ordering of files/dirs by their attributes is provided by the numeric `--directory-listing-order` option or the equivalent [SERVER_DIRECTORY_LISTING_ORDER](./../configuration/environment-variables.md#server_directory_listing_order) env.
 
 To do so you have to pass a [code sorting number](#code-numbers-for-sorting). E.g `--directory-listing-order=2`.
 
 ## Code numbers for sorting
 
-Below the possible number code values for sorting/ordering which are grouped by attribute.
+Below are the possible number code values for sorting or ordering which are grouped by attribute.
 
 ### Name
 
@@ -52,7 +52,7 @@ Below the possible number code values for sorting/ordering which are grouped by 
 
 !!! info "Tips"
     - The `--directory-listing-order` option depends on `--directory-listing` to be enabled.
-    - Use the query `?sort=NUMBER` to customize the sorting. E.g `https://localhost/?sort=5` (sort by Size in descending order)
+    - Use the query `?sort=NUMBER` to customize the sorting. E.g `https://localhost/?sort=5` (sort by size in descending order)
 
 Example:
 

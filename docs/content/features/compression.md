@@ -2,7 +2,7 @@
 
 **`SWS`** provides [`Gzip`](https://datatracker.ietf.org/doc/html/rfc1952), [`Deflate`](https://datatracker.ietf.org/doc/html/rfc1951#section-Abstract) and [`Brotli`](https://www.ietf.org/rfc/rfc7932.txt) compression of HTTP responses.
 
-The compression functionality is determined by the [`Accept-Encoding`](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Accept-Encoding) header and is only applied to text-based web file types only.
+The compression functionality is determined by the [`Accept-Encoding`](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Accept-Encoding) header and is only applied to text-based web file types.
 
 ## MIME types compressed
 

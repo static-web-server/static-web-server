@@ -9,12 +9,12 @@ This feature is disabled by default and can be controlled by the boolean `-s, --
 
 **Important notes**
 
-- This is a Windows platform specific feature. It means the `--windows-service` argument and its env will not be present in Unix-like systems.
-- Running SWS as a Windows service doesn't require to enable it via the [configuration file](../configuration/config-file.md) (`windows-service = true`) because it's already enabled during the service installation.
+- This is a Windows platform-specific feature. It means the `--windows-service` argument and its env will not be present in Unix-like systems.
+- Running SWS as a Windows service doesn't require enabling it via the [configuration file](../configuration/config-file.md) (`windows-service = true`) because it's already enabled during the service installation.
 
 ## Service privileges
 
-To either install or uninstall the SWS Windows service requires *administrator* privileges, so make sure to open the terminal application as administrator or give to your [Powershell](https://docs.microsoft.com/en-us/powershell/scripting/overview?view=powershell-7.2) session enough privileges otherwise you will get an `"Access is denied"` error.
+To either install or uninstall the SWS Windows service requires *administrator* privileges, so make sure to open the terminal application as administrator or give your [Powershell](https://docs.microsoft.com/en-us/powershell/scripting/overview?view=powershell-7.2)](https://docs.microsoft.com/en-us/powershell/scripting/overview?view=powershell-7.2) session enough privileges otherwise you will get an `"Access is denied"` error.
 
 We recommend a [Powershell](https://docs.microsoft.com/en-us/powershell/scripting/overview?view=powershell-7.2) session with administrator privileges.
 
@@ -37,7 +37,7 @@ static-web-server.exe -w C:\Users\MyUser\config.toml install
 
 SWS doesn't provide a way to interact with Windows services directly. Instead, use the Windows built-in tools to interact with the SWS service once created.
 
-For that purpose you can use either the Windows [sc.exe](https://docs.microsoft.com/en-us/windows/win32/services/configuring-a-service-using-sc) or the [services.msc](https://docs.microsoft.com/en-us/windows/win32/services/services) application.
+For that purpose, you can use either the Windows [sc.exe](https://docs.microsoft.com/en-us/windows/win32/services/configuring-a-service-using-sc) or the [services.msc](https://docs.microsoft.com/en-us/windows/win32/services/services) application.
 
 For example, using `sc.exe` you can show the SWS service configuration used once installed.
 
@@ -59,7 +59,7 @@ sc.exe qc "static-web-server"
 #         SERVICE_START_NAME : LocalSystem
 ```
 
-Remember that alternatively you can also use the `services.msc` application if you prefer GUI service control.
+Remember that alternatively, you can also use the `services.msc` application if you prefer GUI service control.
 
 ### Start
 
@@ -126,7 +126,7 @@ sc.exe query "static-web-server"
 
 ## Uninstall the service
 
-To uninstall the SWS service just use the `uninstall` command. Note that the service should be first stopped before to uninstall it.
+To uninstall the SWS service just use the `uninstall` command. Note that the service should be first stopped before uninstalling it.
 
 ```powershell
 static-web-server.exe uninstall

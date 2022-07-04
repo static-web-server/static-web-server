@@ -1,14 +1,14 @@
 # Building from Source
 
-Follow these instructions to either build **`SWS`** project from source or the HTML documentation.
+Follow these instructions to either build **`SWS`** project from the source or the HTML documentation.
 
 ## Building project from source
 
-If you want to build **`SWS`** from source, all you need is a [Rust 2021 Edition](https://blog.rust-lang.org/2021/05/11/edition-2021.html) installed.
+If you want to build **SWS** from the source, all you need is a [Rust 2021 Edition](https://blog.rust-lang.org/2021/05/11/edition-2021.html) installed.
 
 So make sure to install Rust [1.56.0](https://blog.rust-lang.org/2021/10/21/Rust-1.56.0.html) or higher (or nightly) along with [the toolchain(s)](https://rust-lang.github.io/rustup/concepts/toolchains.html) of your preference.
 
-Then clone the repository and use [Cargo](https://doc.rust-lang.org/cargo/) to build the project from source.
+Then clone the repository and use [Cargo](https://doc.rust-lang.org/cargo/) to build the project from the source.
 
 ```sh
 git clone https://github.com/joseluisq/static-web-server.git
@@ -23,13 +23,13 @@ Finally, the release binary should be available at `target/release/static-web-se
 
 ## Building documentation from source
 
-All HTML documentation is located in `docs/` project's directory and is built using [Material for MkDocs](https://github.com/squidfunk/mkdocs-material).
+All HTML documentation is located in the `docs/` project's directory and is built using [Material for MkDocs](https://github.com/squidfunk/mkdocs-material).
 
 It's only necessary to have [Docker](https://www.docker.com/get-started/) installed.
 
 ### Building documentation
 
-By default the docs will be built in `/tmp/docs` directory, to do so follow these steps.
+By default the docs will be built in the `/tmp/docs` directory, to do so follow these steps.
 
 ```sh
 git clone https://github.com/joseluisq/static-web-server.git
