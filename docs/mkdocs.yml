@@ -139,6 +139,7 @@ nav:
     - 'Worker Threads Customization': 'features/worker-threads.md'
     - 'Error Pages': 'features/error-pages.md'
     - 'Custom HTTP Headers': 'features/custom-http-headers.md'
+    - 'URL Rewrites': 'features/url-rewrites.md'
     - 'Windows Service': 'features/windows-service.md'
   - 'Platforms & Architectures': 'platforms-architectures.md'
   - 'Migration from v1 to v2': 'migration.md'
