@@ -20,9 +20,18 @@ pub struct Headers {
     pub headers: HeaderMap,
 }
 
+/// The `Rewrites` file options.
+pub struct Rewrites {
+    /// Source pattern glob matcher
+    pub source: GlobMatcher,
+    /// A local file that must exist
+    pub destination: String,
+}
+
 /// The `advanced` file options.
 pub struct Advanced {
     pub headers: Option<Vec<Headers>>,
+    pub rewrites: Option<Vec<Rewrites>>,
 }
 
 /// The full server CLI and File options.
@@ -81,7 +90,7 @@ impl Settings {
 
                 config_file = Some(path_resolved);
 
-                // Assign the corresponding file option values
+                // File-based "general" options
                 if let Some(general) = settings.general {
                     if let Some(v) = general.host {
                         host = v
@@ -151,7 +160,7 @@ impl Settings {
                     }
                 }
 
-                // Prepare the "advanced" options
+                // File-based "advanced" options
                 if let Some(advanced) = settings.advanced {
                     // 1. Custom HTTP headers assignment
                     let headers_entries = match advanced.headers {
@@ -179,8 +188,35 @@ impl Settings {
                         _ => None,
                     };
 
+                    // 2. Rewrites assignment
+                    let rewrites_entries = match advanced.rewrites {
+                        Some(rewrites_entries) => {
+                            let mut rewrites_vec: Vec<Rewrites> = Vec::new();
+
+                            // Compile a glob pattern for each rewrite sources entry
+                            for rewrites_entry in rewrites_entries.iter() {
+                                let source = Glob::new(&rewrites_entry.source)
+                                    .with_context(|| {
+                                        format!(
+                                            "can not compile glob pattern for rewrite source: {}",
+                                            &rewrites_entry.source
+                                        )
+                                    })?
+                                    .compile_matcher();
+
+                                rewrites_vec.push(Rewrites {
+                                    source,
+                                    destination: rewrites_entry.destination.to_owned(),
+                                });
+                            }
+                            Some(rewrites_vec)
+                        }
+                        _ => None,
+                    };
+
                     settings_advanced = Some(Advanced {
                         headers: headers_entries,
+                        rewrites: rewrites_entries,
                     });
                 }
             }

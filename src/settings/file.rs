@@ -7,7 +7,7 @@ use std::{collections::BTreeSet, path::PathBuf};
 
 use crate::{helpers, Context, Result};
 
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "kebab-case")]
 pub enum LogLevel {
     Error,
@@ -37,12 +37,21 @@ pub struct Headers {
     pub headers: HeaderMap,
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "kebab-case")]
+pub struct Rewrites {
+    pub source: String,
+    pub destination: String,
+}
+
 /// Advanced server options only available in configuration file mode.
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "kebab-case")]
 pub struct Advanced {
     // Headers
     pub headers: Option<Vec<Headers>>,
+    // Rewrites
+    pub rewrites: Option<Vec<Rewrites>>,
 }
 
 /// General server options available in configuration file mode.
