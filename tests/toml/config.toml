@@ -2,7 +2,7 @@
 
 #### Address & Root dir
 host = "::"
-port = 8087
+port = 8787
 root = "docker/public"
 
 #### Logging
@@ -45,9 +45,6 @@ grace-period = 0
 #### Page fallback for 404s
 page-fallback = ""
 
-#### Page fallback for 404s
-page-fallback = ""
-
 #### Log request Remote Address if available
 log-remote-address = false
 
@@ -79,3 +76,14 @@ Strict-Transport-Security = "max-age=63072000; includeSubDomains; preload"
 [[advanced.headers]]
 source = "**/*.{jpg,jpeg,png,ico,gif}"
 headers.Strict-Transport-Security = "max-age=63072000; includeSubDomains; preload"
+
+
+### URL Rewrites
+
+[[advanced.rewrites]]
+source = "**/*.{png,ico,gif}"
+destination = "/assets/favicon.ico"
+
+[[advanced.rewrites]]
+source = "**/*.{jpg,jpeg}"
+destination = "/images/nomad.png"

@@ -3,7 +3,7 @@ use std::{future::Future, net::SocketAddr, path::PathBuf, sync::Arc};
 
 use crate::{
     basic_auth, compression, control_headers, cors, custom_headers, error_page, fallback_page,
-    security_headers, settings::Advanced, static_files, Error, Result,
+    rewrites, security_headers, settings::Advanced, static_files, Error, Result,
 };
 
 /// It defines options for a request handler.
@@ -43,7 +43,7 @@ impl RequestHandler {
         let uri = req.uri();
 
         let root_dir = &self.opts.root_dir;
-        let uri_path = uri.path();
+        let mut uri_path = uri.path();
         let uri_query = uri.query();
         let dir_listing = self.opts.dir_listing;
         let dir_listing_order = self.opts.dir_listing_order;
@@ -65,7 +65,7 @@ impl RequestHandler {
         );
 
         async move {
-            // Check for disallowed HTTP methods and reject request accordently
+            // Check for disallowed HTTP methods and reject requests accordingly
             if !(method == Method::GET || method == Method::HEAD || method == Method::OPTIONS) {
                 return error_page::error_response(
                     uri,
@@ -125,6 +125,13 @@ impl RequestHandler {
                         &self.opts.page404,
                         &self.opts.page50x,
                     );
+                }
+            }
+
+            // Rewrites
+            if let Some(advanced) = &self.opts.advanced_opts {
+                if let Some(uri) = rewrites::rewrite_uri_path(uri_path, &advanced.rewrites) {
+                    uri_path = uri
                 }
             }
 
