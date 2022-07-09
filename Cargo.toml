@@ -48,6 +48,7 @@ pin-project = "1.0"
 rustls-pemfile = "0.2"
 serde = { version = "1.0", default-features = false, features = ["derive"] }
 serde_ignored = "0.1"
+serde_repr = "0.1"
 structopt = { version = "0.3", default-features = false }
 time = { version = "0.1", default-features = false }
 tokio = { version = "1", default-features = false, features = ["rt-multi-thread", "macros", "fs", "io-util", "signal"] }
