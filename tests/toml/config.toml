@@ -78,6 +78,18 @@ source = "**/*.{jpg,jpeg,png,ico,gif}"
 headers.Strict-Transport-Security = "max-age=63072000; includeSubDomains; preload"
 
 
+### URL Redirects
+
+[[advanced.redirects]]
+source = "**/*.{jpg,jpeg}"
+destination = "/images/generic1.png"
+kind = 301
+
+[[advanced.redirects]]
+source = "/index.html"
+destination = "https://sws.joseluisq.net"
+kind = 302
+
 ### URL Rewrites
 
 [[advanced.rewrites]]

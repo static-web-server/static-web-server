@@ -19,6 +19,7 @@ pub mod fallback_page;
 pub mod handler;
 pub mod helpers;
 pub mod logger;
+pub mod redirects;
 pub mod rewrites;
 pub mod security_headers;
 pub mod server;

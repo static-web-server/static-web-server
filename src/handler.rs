@@ -1,9 +1,10 @@
+use headers::HeaderValue;
 use hyper::{header::WWW_AUTHENTICATE, Body, Method, Request, Response, StatusCode};
 use std::{future::Future, net::SocketAddr, path::PathBuf, sync::Arc};
 
 use crate::{
     basic_auth, compression, control_headers, cors, custom_headers, error_page, fallback_page,
-    rewrites, security_headers, settings::Advanced, static_files, Error, Result,
+    redirects, rewrites, security_headers, settings::Advanced, static_files, Error, Result,
 };
 
 /// It defines options for a request handler.
@@ -128,8 +129,35 @@ impl RequestHandler {
                 }
             }
 
-            // Rewrites
             if let Some(advanced) = &self.opts.advanced_opts {
+                // Redirects
+                if let Some(parts) = redirects::get_redirection(uri_path, &advanced.redirects) {
+                    let (uri_dest, status) = parts;
+                    match HeaderValue::from_str(uri_dest) {
+                        Ok(loc) => {
+                            let mut resp = Response::new(Body::empty());
+                            resp.headers_mut().insert(hyper::header::LOCATION, loc);
+                            *resp.status_mut() = *status;
+                            tracing::trace!(
+                                "uri matches redirect pattern, redirecting with status {}",
+                                status.canonical_reason().unwrap_or_default()
+                            );
+                            return Ok(resp);
+                        }
+                        Err(err) => {
+                            tracing::error!("invalid header value from current uri: {:?}", err);
+                            return error_page::error_response(
+                                uri,
+                                method,
+                                &StatusCode::INTERNAL_SERVER_ERROR,
+                                &self.opts.page404,
+                                &self.opts.page50x,
+                            );
+                        }
+                    };
+                }
+
+                // Rewrites
                 if let Some(uri) = rewrites::rewrite_uri_path(uri_path, &advanced.rewrites) {
                     uri_path = uri
                 }

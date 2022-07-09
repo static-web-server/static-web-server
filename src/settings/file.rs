@@ -2,6 +2,7 @@
 
 use headers::HeaderMap;
 use serde::Deserialize;
+use serde_repr::{Deserialize_repr, Serialize_repr};
 use std::path::Path;
 use std::{collections::BTreeSet, path::PathBuf};
 
@@ -37,6 +38,23 @@ pub struct Headers {
     pub headers: HeaderMap,
 }
 
+#[derive(Debug, Serialize_repr, Deserialize_repr, Clone)]
+#[repr(u16)]
+pub enum RedirectsKind {
+    /// Moved Permanently
+    Permanent = 301,
+    /// Found
+    Temporary = 302,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "kebab-case")]
+pub struct Redirects {
+    pub source: String,
+    pub destination: String,
+    pub kind: RedirectsKind,
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "kebab-case")]
 pub struct Rewrites {
@@ -52,6 +70,8 @@ pub struct Advanced {
     pub headers: Option<Vec<Headers>>,
     // Rewrites
     pub rewrites: Option<Vec<Rewrites>>,
+    // Redirects
+    pub redirects: Option<Vec<Redirects>>,
 }
 
 /// General server options available in configuration file mode.

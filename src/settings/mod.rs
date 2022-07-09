@@ -1,5 +1,6 @@
 use globset::{Glob, GlobMatcher};
 use headers::HeaderMap;
+use hyper::StatusCode;
 use structopt::StructOpt;
 
 use crate::{Context, Result};
@@ -28,10 +29,21 @@ pub struct Rewrites {
     pub destination: String,
 }
 
+/// The `Redirects` file options.
+pub struct Redirects {
+    /// Source pattern glob matcher
+    pub source: GlobMatcher,
+    /// A local file that must exist
+    pub destination: String,
+    /// Redirection type either 301 (Moved Permanently) or 302 (Found)
+    pub kind: StatusCode,
+}
+
 /// The `advanced` file options.
 pub struct Advanced {
     pub headers: Option<Vec<Headers>>,
     pub rewrites: Option<Vec<Rewrites>>,
+    pub redirects: Option<Vec<Redirects>>,
 }
 
 /// The full server CLI and File options.
@@ -214,9 +226,40 @@ impl Settings {
                         _ => None,
                     };
 
+                    // 3. Redirects assignment
+                    let redirects_entries = match advanced.redirects {
+                        Some(redirects_entries) => {
+                            let mut redirects_vec: Vec<Redirects> = Vec::new();
+
+                            // Compile a glob pattern for each redirect sources entry
+                            for redirects_entry in redirects_entries.iter() {
+                                let source = Glob::new(&redirects_entry.source)
+                                    .with_context(|| {
+                                        format!(
+                                            "can not compile glob pattern for redirect source: {}",
+                                            &redirects_entry.source
+                                        )
+                                    })?
+                                    .compile_matcher();
+
+                                let status_code = redirects_entry.kind.to_owned() as u16;
+                                redirects_vec.push(Redirects {
+                                    source,
+                                    destination: redirects_entry.destination.to_owned(),
+                                    kind: StatusCode::from_u16(status_code).with_context(|| {
+                                        format!("invalid redirect status code: {}", status_code)
+                                    })?,
+                                });
+                            }
+                            Some(redirects_vec)
+                        }
+                        _ => None,
+                    };
+
                     settings_advanced = Some(Advanced {
                         headers: headers_entries,
                         rewrites: rewrites_entries,
+                        redirects: redirects_entries,
                     });
                 }
             }
