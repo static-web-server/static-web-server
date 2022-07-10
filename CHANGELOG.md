@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _**Note:** See changelog for v1 under the [1.x](https://github.com/joseluisq/static-web-server/blob/1.x/CHANGELOG.md) branch._
 
+## v2.10.0 - 2022-07-10
+
+__Fixes__
+
+- [b902cb7](https://github.com/joseluisq/static-web-server/commit/b902cb7) Bugfix/security dependency updates including tokio, hyper, tracing, jemallocator and other crates (also [5c9b797](https://github.com/joseluisq/static-web-server/commit/5c9b797), [4cf9a6b](https://github.com/joseluisq/static-web-server/commit/4cf9a6b)).
+- [b73959f](https://github.com/joseluisq/static-web-server/commit/b73959f) Fix wrong prefix config file path (`\\?\`) when logging on Windows.
+
+__Features__
+
+- [5163564](https://github.com/joseluisq/static-web-server/commit/5163564) URL Rewrites with pattern matching support. PR [#122](https://github.com/joseluisq/static-web-server/pull/122). See [docs](https://sws.joseluisq.net/features/url-rewrites/).
+- [5ef3b62](https://github.com/joseluisq/static-web-server/commit/5ef3b62) URL Redirects with pattern matching. PR [#123](https://github.com/joseluisq/static-web-server/pull/123). See [docs](https://sws.joseluisq.net/features/url-rewrites/).
+- [9072977](https://github.com/joseluisq/static-web-server/commit/9072977) Homebrew installation support for MacOS/Linux. See [docs](https://sws.joseluisq.net/download-and-install/#macos).
+- [975132f](https://github.com/joseluisq/static-web-server/commit/975132f) [Scoop](https://scoop.sh/#/apps?q=static-web-server&s=0&d=1&o=true) installation support for Windows. See [docs](https://sws.joseluisq.net/download-and-install/#windows).
+- [78a5611](https://github.com/joseluisq/static-web-server/commit/78a5611) Alpine 3.16 Docker image.
+
+__Docs__
+
+- [b0ca3d1](https://github.com/joseluisq/static-web-server/commit/b0ca3d1) Several doc typo fixes.
+
 ## v2.9.0 - 2022-05-28
 
 __Fixes__

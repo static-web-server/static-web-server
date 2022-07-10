@@ -130,7 +130,7 @@ jobs:
     - name: Use Cross
       if: matrix.target != ''
       run: |
-        cargo install cross
+        cargo install cross@0.2.1
         echo "CARGO_BIN=cross" >> $GITHUB_ENV
         echo "TARGET_FLAGS=--target ${{ matrix.target }}" >> $GITHUB_ENV
         echo "TARGET_DIR=./target/${{ matrix.target }}" >> $GITHUB_ENV
