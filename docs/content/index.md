@@ -61,6 +61,8 @@ It's cross-platform and available for `Linux`, `macOS`, `Windows` and `FreeBSD` 
 - Run the server as [Windows Service](https://docs.microsoft.com/en-us/previous-versions/windows/it-pro/windows-server-2003/cc783643(v=ws.10)).
 - Configurable using CLI arguments, environment variables or a file.
 - Default and custom error pages.
+- Custom URL rewrites.
+- Custom URL redirects.
 - First-class [Docker](https://docs.docker.com/get-started/overview/) support. [Scratch](https://hub.docker.com/_/scratch) and latest [Alpine Linux](https://hub.docker.com/_/alpine) Docker images available.
 - Ability to accept a socket listener as a file descriptor for use in sandboxing and on-demand applications (E.g [systemd](http://0pointer.de/blog/projects/socket-activation.html)).
 - Cross-platform. Binaries available for Linux, macOS, Windows & FreeBSD x86_64 / ARM.
