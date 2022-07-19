@@ -15,7 +15,7 @@ static-web-server \
 
 ## Log Remote Addresses
 
-SWS provides **Remote Address (IP)** logging for every request via an `INFO` log level.
+SWS provides *Remote Address (IP)* logging for every request via an `INFO` log level.
 
 This feature is disabled by default and can be enabled by the boolean `--log-remote-address` option or the equivalent [SERVER_LOG_REMOTE_ADDRESS](./../configuration/environment-variables.md#server_log_remote_address) env.
 

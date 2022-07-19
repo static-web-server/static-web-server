@@ -4,7 +4,7 @@ The server can be configured via the following environment variables.
 
 !!! tip "Remember"
     - Environment variables are equivalent to their command-line arguments.
-    - Command-line arguments](./command-line-arguments.md) take precedence over their equivalent environment variables.
+    - [Command-line arguments](./command-line-arguments.md) take precedence over their equivalent environment variables.
 
 ### SERVER_HOST
 The address of the host (E.g 127.0.0.1). Default `[::]`.
@@ -79,4 +79,4 @@ It provides [The "Basic" HTTP Authentication Scheme](https://datatracker.ietf.or
 The following options and commands are Windows platform-specific.
 
 ### SERVER_WINDOWS_SERVICE
-Run the web server as a Windows Service. See [more details](../features/windows-service.md).
+Run the web server in a Windows Service context. See [more details](../features/windows-service.md).

@@ -1,22 +1,24 @@
 # Windows Service
 
-**`SWS`** can be also executed as a [Windows Service](https://docs.microsoft.com/en-us/previous-versions/windows/it-pro/windows-server-2003/cc783643(v=ws.10)).
+**`SWS`** can be also executed in a [Windows Service](https://docs.microsoft.com/en-us/previous-versions/windows/it-pro/windows-server-2003/cc783643(v=ws.10)) context.
 
 This feature is disabled by default and can be controlled by the boolean `-s, --windows-service` option or the equivalent [SERVER_WINDOWS_SERVICE](./../configuration/environment-variables.md#server_windows_service) env.
 
 ![Static Web Server running as a Windows Service](https://user-images.githubusercontent.com/1700322/169807572-d62a7bab-b596-4597-85f7-31a7c02aeefe.png)
 > _Static Web Server running as a Windows Service and displayed by 'services.msc' application._
 
-**Important notes**
+## Important Notes
 
-- This is a Windows platform-specific feature. It means the `--windows-service` argument and its env will not be present in Unix-like systems.
-- Running SWS as a Windows service doesn't require enabling it via the [configuration file](../configuration/config-file.md) (`windows-service = true`) because it's already enabled during the service installation.
+- This is a Windows platform-specific feature.
+- The SWS Windows Service option (`windows-service`) doesn't create a Windows Service per se. It just tells SWS to run in a Windows Service context. So it's necessary to [install the SWS Windows Service](#install-the-service) first.
+- Enabling the `windows-service` option via the [configuration file](../configuration/config-file.md) is unnecessary if you use the [install subcommand](#install-the-service) to create the service since it already enables it during the service installation.
+- However, you can enable the `windows-service` option for example if you plan to create your own Windows Service and use SWS with it.
 
 ## Service privileges
 
-To either install or uninstall the SWS Windows service requires *administrator* privileges, so make sure to open the terminal application as administrator or give your [Powershell](https://docs.microsoft.com/en-us/powershell/scripting/overview?view=powershell-7.2)](https://docs.microsoft.com/en-us/powershell/scripting/overview?view=powershell-7.2) session enough privileges otherwise you will get an `"Access is denied"` error.
+To either install or uninstall the SWS Windows service requires *administrator* privileges, so make sure to open the terminal application as administrator or give your [Powershell](https://docs.microsoft.com/en-us/powershell/scripting/overview?view=powershell-7.2) session enough privileges otherwise you will get an `"Access is denied"` error.
 
-We recommend a [Powershell](https://docs.microsoft.com/en-us/powershell/scripting/overview?view=powershell-7.2) session with administrator privileges.
+We recommend a Powershell session with administrator privileges.
 
 ## Install the service
 

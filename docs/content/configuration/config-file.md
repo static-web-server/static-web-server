@@ -2,7 +2,7 @@
 
 **`SWS`** can be configured using a [TOML](https://toml.io/en/) file to adjust the general server features as well as other advanced ones.
 
-It's disabled by default and can be enabled by passing a _string__ file path_* via the `-w, --config-file` option or its equivalent [SERVER_CONFIG_FILE](./../configuration/environment-variables.md#server_config_file) env.
+It's disabled by default and can be enabled by passing a _string file path_ via the `-w, --config-file` option or its equivalent [SERVER_CONFIG_FILE](./../configuration/environment-variables.md#server_config_file) env.
 
 ## TOML File (Manifest)
 
@@ -66,7 +66,12 @@ log-remote-address = false
 
 ### Windows Only
 
-#### Run the web server as a Windows Service
+#### Windows Service suport.
+#### NOTE: this doesn't create a Windows Service per se,
+#### instead, it just tells SWS to run in a Windows Service context,
+#### so it's necessary to install the SWS Windows Service first
+#### using the `static-web-server.exe -w config.toml install` command.
+#### More details on https://sws.joseluisq.net/features/windows-service/
 # windows-service = false
 
 
@@ -80,7 +85,7 @@ log-remote-address = false
 
 The TOML `[general]` section allows adjusting the current options available via the CLI/ENV ones.
 
-So they are equivalent to each other **except** for the `-w`, --config-file` option which is omitted and can not be used for obvious reasons.
+So they are equivalent to each other **except** for the `-w, --config-file` option which is omitted and can not be used for obvious reasons.
 
 !!! info "Config file-based features are optional"
     All server feature options via the configuration file are optional and can be omitted as needed.
