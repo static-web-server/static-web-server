@@ -190,7 +190,7 @@ pub struct General {
         default_value = "false",
         env = "SERVER_WINDOWS_SERVICE"
     )]
-    /// Run the web server as a Windows Service.
+    /// Tell the web server to run in a Windows Service context. Note that the `install` subcommand will enable this option automatically.
     pub windows_service: bool,
 
     // Windows commands

@@ -1,4 +1,4 @@
-// Module that lets SWS to run as a "Windows Service"
+//! Module that lets SWS to run in a "Windows Service" context
 
 use std::ffi::OsString;
 use std::thread;

@@ -127,6 +127,9 @@ pub struct General {
     pub page_fallback: Option<PathBuf>,
 
     pub log_remote_address: Option<bool>,
+
+    #[cfg(windows)]
+    pub windows_service: Option<bool>,
 }
 
 /// Full server configuration

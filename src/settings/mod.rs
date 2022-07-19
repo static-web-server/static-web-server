@@ -84,6 +84,10 @@ impl Settings {
         let mut page_fallback = opts.page_fallback;
         let mut log_remote_address = opts.log_remote_address;
 
+        // Windows-only options
+        #[cfg(windows)]
+        let mut windows_service = opts.windows_service;
+
         // Define the advanced file options
         let mut settings_advanced: Option<Advanced> = None;
 
@@ -169,6 +173,12 @@ impl Settings {
                     }
                     if let Some(v) = general.log_remote_address {
                         log_remote_address = v
+                    }
+
+                    // Windows-only options
+                    #[cfg(windows)]
+                    if let Some(v) = general.windows_service {
+                        windows_service = v
                     }
                 }
 
@@ -291,10 +301,9 @@ impl Settings {
                 page_fallback,
                 log_remote_address,
 
-                // NOTE:
                 // Windows-only options and commands
                 #[cfg(windows)]
-                windows_service: opts.windows_service,
+                windows_service,
                 #[cfg(windows)]
                 commands: opts.commands,
             },
