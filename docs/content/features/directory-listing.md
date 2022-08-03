@@ -50,9 +50,9 @@ Below are the possible number code values for sorting or ordering which are grou
 
 - `6`: Unordered
 
-!!! info "Tips"
+!!! tip "Tips"
     - The `--directory-listing-order` option depends on `--directory-listing` to be enabled.
-    - Use the query `?sort=NUMBER` to customize the sorting. E.g `https://localhost/?sort=5` (sort by size in descending order)
+    - Use the query `?sort=NUMBER` to customize the sorting via the URI. E.g `https://localhost/?sort=5` (sort by size in descending order)
 
 Example:
 

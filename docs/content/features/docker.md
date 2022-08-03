@@ -18,9 +18,9 @@ View all images on [Docker Hub](https://hub.docker.com/r/joseluisq/static-web-se
 
 To give the server a quick try just run the following commands.
 
-!!! info "Tips"
-    - [Server CLI arguments](/configuration/command-line-arguments/) can be provided directly to the container or omitted as shown below.
-    - It can specify a Docker volume like `-v $HOME/my-public-dir:/public` to overwrite the default root directory.
+!!! tip "Tips"
+    - [The SWS CLI arguments](/configuration/command-line-arguments/) can be provided directly to the container or omitted as shown below.
+    - A Docker volume like `-v $HOME/my-public-dir:/public` can be specified to overwrite the default root directory.
 
 Run the scratch Docker image (just the binary)
 

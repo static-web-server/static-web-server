@@ -1,6 +1,6 @@
 # Windows Service
 
-**`SWS`** can be also executed in a [Windows Service](https://docs.microsoft.com/en-us/previous-versions/windows/it-pro/windows-server-2003/cc783643(v=ws.10)) context.
+**`SWS`** can be also executed in a [Windows Service](https://docs.microsoft.com/en-us/previous-versions/windows/it-pro/windows-server-2003/cc783643(v=ws.10)) context. Therefore it also provides a subcommand to *install* SWS as a Windows Service.
 
 This feature is disabled by default and can be controlled by the boolean `-s, --windows-service` option or the equivalent [SERVER_WINDOWS_SERVICE](./../configuration/environment-variables.md#server_windows_service) env.
 
@@ -9,7 +9,7 @@ This feature is disabled by default and can be controlled by the boolean `-s, --
 
 ## Important Notes
 
-- This is a Windows platform-specific feature.
+- This is an obvious Windows platform-specific feature.
 - The SWS Windows Service option (`windows-service`) doesn't create a Windows Service per se. It just tells SWS to run in a Windows Service context. So it's necessary to [install the SWS Windows Service](#install-the-service) first.
 - Enabling the `windows-service` option via the [configuration file](../configuration/config-file.md) is unnecessary if you use the [install subcommand](#install-the-service) to create the service since it already enables it during the service installation.
 - However, you can enable the `windows-service` option for example if you plan to create your own Windows Service and use SWS with it.

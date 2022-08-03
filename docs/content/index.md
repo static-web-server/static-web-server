@@ -9,7 +9,7 @@
   <h1 align="center">Static Web Server</h1>
 
   <h4 align="center">
-    A blazing fast and asynchronous web server for static files-serving ⚡
+    A blazing fast and asynchronous web server for static files serving ⚡
   </h4>
 
 <div align="center">
@@ -25,17 +25,17 @@
 
 **Static Web Server** (or **`SWS`** abbreviated) is a very small and fast production-ready web server suitable to serve static web files or assets.
 
-It is focused on **lightness and easy-to-use** principles while keeping [high](https://blog.rust-lang.org/2015/04/10/Fearless-Concurrency.html) performance and safety](https://blog.rust-lang.org/2015/04/10/Fearless-Concurrency.html) powered by [The Rust Programming Language](https://rust-lang.org).
+It is focused on **lightness** and **easy-to-use** principles while keeping [high performance and safety](https://blog.rust-lang.org/2015/04/10/Fearless-Concurrency.html) powered by [The Rust Programming Language](https://rust-lang.org).
 
 Written on top of [Hyper](https://github.com/hyperium/hyper) and [Tokio](https://github.com/tokio-rs/tokio) runtime. It provides [concurrent and asynchronous networking abilities](https://rust-lang.github.io/async-book/01_getting_started/02_why_async.html) as well as the latest HTTP/1 - HTTP/2 implementations.
 
-It's cross-platform and available for `Linux`, `macOS`, `Windows` and `FreeBSD` (`x86`/`x86_64`,  `ARM`/`ARM64`) as well as `Docker`.
+It's cross-platform and available for Linux, macOS, Windows and FreeBSD (`x86`,`x86_64`,`ARM`,`ARM64`) as well as Docker.
 
 ![static-web-server](https://user-images.githubusercontent.com/1700322/152613820-658f025c-d0a4-46b3-aa6d-bdc7f638ce77.png)
 
 !!! tip "Tips"
-    - If you're looking for `v1` please go to [1.x](https://github.com/joseluisq/static-web-server/tree/1.x) branch.
-    - If you want to migrate from `v1` to `v2` please take a look at [v2.0.0](https://github.com/joseluisq/static-web-server/releases/tag/v2.0.0) release.
+    - If you're looking for `v1` please go to [1.x branch](https://github.com/joseluisq/static-web-server/tree/1.x).
+    - If you want to migrate from `v1` to `v2` please take a look at [v2.0.0](https://github.com/joseluisq/static-web-server/releases/tag/v2.0.0) release notes.
 
 ## Features
 
@@ -46,9 +46,9 @@ It's cross-platform and available for `Linux`, `macOS`, `Windows` and `FreeBSD` 
 - Optional GZip, Deflate or Brotli compression for text-based web files only.
 - Compression on-demand via [Accept-Encoding](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Accept-Encoding) header.
 - [Partial Content Delivery](https://en.wikipedia.org/wiki/Byte_serving) support for byte-serving of large files.
-- Optional [Cache Control](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Cache-Control) headers for assets.
+- Optional [Cache-Control](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Cache-Control) headers for assets.
 - [Termination signal](https://www.gnu.org/software/libc/manual/html_node/Termination-Signals.html) handling with [graceful shutdown](https://cloud.google.com/blog/products/containers-kubernetes/kubernetes-best-practices-terminating-with-grace) ability and grace period.
-- [HTTP/2](https://tools.ietf.org/html/rfc7540) + TLS support.
+- [HTTP/2](https://tools.ietf.org/html/rfc7540) and TLS support.
 - [Security headers](https://web.dev/security-headers/) for HTTP/2 by default.
 - [HEAD](https://tools.ietf.org/html/rfc7231#section-4.3.2) responses.
 - Lightweight and configurable logging via [tracing](https://github.com/tokio-rs/tracing) crate.
@@ -56,13 +56,13 @@ It's cross-platform and available for `Linux`, `macOS`, `Windows` and `FreeBSD` 
 - Optional directory listing.
 - [CORS](https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS) support.
 - Basic HTTP Authentication.
-- Customizable HTTP Response Headers for specific file requests via glob patterns.
-- Fallback pages for 404 errors useful for Single-page applications.
-- Run the server as [Windows Service](https://docs.microsoft.com/en-us/previous-versions/windows/it-pro/windows-server-2003/cc783643(v=ws.10)).
-- Configurable using CLI arguments, environment variables or a file.
+- Customizable HTTP response headers for specific file requests via glob patterns.
+- Fallback pages for 404 errors, useful for Single-page applications.
+- Run the server as a [Windows Service](https://docs.microsoft.com/en-us/previous-versions/windows/it-pro/windows-server-2003/cc783643(v=ws.10)).
+- Configurable using CLI arguments, environment variables or a TOML file.
 - Default and custom error pages.
-- Custom URL rewrites.
-- Custom URL redirects.
-- First-class [Docker](https://docs.docker.com/get-started/overview/) support. [Scratch](https://hub.docker.com/_/scratch) and latest [Alpine Linux](https://hub.docker.com/_/alpine) Docker images available.
+- Custom URL rewrites via glob patterns.
+- Custom URL redirects via glob patterns.
+- First-class [Docker](https://docs.docker.com/get-started/overview/) support. [Scratch](https://hub.docker.com/_/scratch) and latest [Alpine Linux](https://hub.docker.com/_/alpine) Docker images.
 - Ability to accept a socket listener as a file descriptor for use in sandboxing and on-demand applications (E.g [systemd](http://0pointer.de/blog/projects/socket-activation.html)).
-- Cross-platform. Binaries available for Linux, macOS, Windows & FreeBSD x86_64 / ARM.
+- Cross-platform. Pre-compiled binaries for Linux, macOS, Windows and FreeBSD (`x86`,`x86_64`,`ARM`,`ARM64`).
