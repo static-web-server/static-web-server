@@ -37,14 +37,14 @@ It's cross-platform and available for `Linux`, `macOS`, `Windows` and `FreeBSD` 
 
 - Built with [Rust](https://rust-lang.org) which is focused on [safety, speed and concurrency](https://kornel.ski/rust-c-speed).
 - Memory safe and very reduced CPU and RAM overhead.
-- Blazing fast static files-serving and asynchronous powered by the latest [Hyper](https://github.com/hyperium/hyper/), [Tokio](https://github.com/tokio-rs/tokio) and a set of [awesome crates](https://github.com/joseluisq/static-web-server/blob/master/Cargo.toml).
+- Blazing fast static files-serving and asynchronous powered by latest [Hyper](https://github.com/hyperium/hyper/), [Tokio](https://github.com/tokio-rs/tokio) and a set of [awesome crates](https://github.com/joseluisq/static-web-server/blob/master/Cargo.toml).
 - Single __4MB__ (uncompressed) and fully static binary with no dependencies ([Musl libc](https://doc.rust-lang.org/edition-guide/rust-2018/platform-and-target-support/musl-support-for-fully-static-binaries.html)). Suitable for running on [any Linux distro](https://en.wikipedia.org/wiki/Linux_distribution) or [Docker container](https://hub.docker.com/r/joseluisq/static-web-server/tags).
 - Optional GZip, Deflate or Brotli compression for text-based web files only.
 - Compression on-demand via [Accept-Encoding](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Accept-Encoding) header.
 - [Partial Content Delivery](https://en.wikipedia.org/wiki/Byte_serving) support for byte-serving of large files.
 - Optional [Cache-Control](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Cache-Control) headers for assets.
 - [Termination signal](https://www.gnu.org/software/libc/manual/html_node/Termination-Signals.html) handling with [graceful shutdown](https://cloud.google.com/blog/products/containers-kubernetes/kubernetes-best-practices-terminating-with-grace) ability and grace period.
-- [HTTP/2](https://tools.ietf.org/html/rfc7540) + TLS support.
+- [HTTP/2](https://tools.ietf.org/html/rfc7540) and TLS support.
 - [Security headers](https://web.dev/security-headers/) for HTTP/2 by default.
 - [HEAD](https://tools.ietf.org/html/rfc7231#section-4.3.2) responses.
 - Lightweight and configurable logging via [tracing](https://github.com/tokio-rs/tracing) crate.
@@ -52,16 +52,16 @@ It's cross-platform and available for `Linux`, `macOS`, `Windows` and `FreeBSD` 
 - Optional directory listing.
 - [CORS](https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS) support.
 - Basic HTTP Authentication.
-- Customizable HTTP Response Headers for specific file requests via glob patterns.
-- Fallback pages for 404 errors are useful for Single-page applications.
-- Run the server as [Windows Service](https://docs.microsoft.com/en-us/previous-versions/windows/it-pro/windows-server-2003/cc783643(v=ws.10)).
-- Configurable using CLI arguments, environment variables or a file.
+- Customizable HTTP response headers for specific file requests via glob patterns.
+- Fallback pages for 404 errors, useful for Single-page applications.
+- Run the server as a [Windows Service](https://docs.microsoft.com/en-us/previous-versions/windows/it-pro/windows-server-2003/cc783643(v=ws.10)).
+- Configurable using CLI arguments, environment variables or a TOML file.
 - Default and custom error pages.
-- Custom URL rewrites.
-- Custom URL redirects.
-- First-class [Docker](https://docs.docker.com/get-started/overview/) support. [Scratch](https://hub.docker.com/_/scratch) and the latest [Alpine Linux](https://hub.docker.com/_/alpine) Docker images available.
+- Custom URL rewrites via glob patterns.
+- Custom URL redirects via glob patterns.
+- First-class [Docker](https://docs.docker.com/get-started/overview/) support. [Scratch](https://hub.docker.com/_/scratch) and latest [Alpine Linux](https://hub.docker.com/_/alpine) Docker images.
 - Ability to accept a socket listener as a file descriptor for use in sandboxing and on-demand applications (E.g [systemd](http://0pointer.de/blog/projects/socket-activation.html)).
-- Cross-platform and binaries are available for Linux, macOS, Windows & FreeBSD x86_64 / ARM.
+- Cross-platform. Pre-compiled binaries for Linux, macOS, Windows and FreeBSD (`x86`,`x86_64`,`ARM`,`ARM64`).
 
 ## Documentation
 
