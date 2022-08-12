@@ -49,6 +49,7 @@ pub async fn handle(
     uri_query: Option<&str>,
     dir_listing: bool,
     dir_listing_order: u8,
+    redirect_trailing_slash: bool,
 ) -> Result<Response<Body>, StatusCode> {
     // Check for disallowed HTTP methods and reject request accordently
     if !(method == Method::GET || method == Method::HEAD || method == Method::OPTIONS) {
@@ -62,7 +63,7 @@ pub async fn handle(
 
     // Check for a trailing slash on the current directory path
     // and redirect if that path doesn't end with the slash char
-    if auto_index && !uri_path.ends_with('/') {
+    if redirect_trailing_slash && auto_index && !uri_path.ends_with('/') {
         let uri = [uri_path, "/"].concat();
         let loc = match HeaderValue::from_str(uri.as_str()) {
             Ok(val) => val,

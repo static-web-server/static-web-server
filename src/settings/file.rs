@@ -128,6 +128,8 @@ pub struct General {
 
     pub log_remote_address: Option<bool>,
 
+    pub redirect_trailing_slash: Option<bool>,
+
     #[cfg(windows)]
     pub windows_service: Option<bool>,
 }

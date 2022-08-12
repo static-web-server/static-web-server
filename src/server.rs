@@ -167,6 +167,10 @@ impl Server {
         let log_remote_address = general.log_remote_address;
         tracing::info!("log remote address: enabled={}", log_remote_address);
 
+        // Log redirect trailing slash option
+        let redirect_trailing_slash = general.redirect_trailing_slash;
+        tracing::info!("redirect trailing slash: enabled={}", redirect_trailing_slash);
+
         // Grace period option
         let grace_period = general.grace_period;
         tracing::info!("grace period before graceful shutdown: {}s", grace_period);
@@ -186,6 +190,7 @@ impl Server {
                 page_fallback,
                 basic_auth,
                 log_remote_address,
+                redirect_trailing_slash,
                 advanced_opts,
             }),
         });
