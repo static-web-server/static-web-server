@@ -63,6 +63,9 @@ grace-period = 0
 #### Log request Remote Address if available
 log-remote-address = false
 
+#### Redirect to trailing slash in the requested directory uri
+redirect-trailing-slash = false
+
 
 ### Windows Only
 

@@ -88,6 +88,9 @@ OPTIONS:
             HTML file path for 50x errors. If the path is not specified or simply doesn't exist then the server will use
             a generic HTML error message [env: SERVER_ERROR_PAGE_50X=]  [default: ./public/50x.html]
     -p, --port <port>                                          Host port [env: SERVER_PORT=]  [default: 80]
+        --redirect-trailing-slash <redirect-trailing-slash>
+            Check for trailing slash in the requested directory uri and redirect permanent (308) to the same path with a
+            trailing slash suffix if it is missing [env: REDIRECT_TRAILING_SLASH=]  [default: true]
     -d, --root <root>
             Root directory path of static files [env: SERVER_ROOT=]  [default: ./public]
 
