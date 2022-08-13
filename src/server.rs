@@ -169,7 +169,10 @@ impl Server {
 
         // Log redirect trailing slash option
         let redirect_trailing_slash = general.redirect_trailing_slash;
-        tracing::info!("redirect trailing slash: enabled={}", redirect_trailing_slash);
+        tracing::info!(
+            "redirect trailing slash: enabled={}",
+            redirect_trailing_slash
+        );
 
         // Grace period option
         let grace_period = general.grace_period;
