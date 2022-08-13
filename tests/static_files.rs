@@ -11,7 +11,10 @@ mod tests {
     use std::fs;
     use std::path::PathBuf;
 
-    use static_web_server::{compression, static_files};
+    use static_web_server::{
+        compression,
+        static_files::{self, HandleOpts},
+    };
 
     fn root_dir() -> PathBuf {
         PathBuf::from("docker/public/")
@@ -19,15 +22,16 @@ mod tests {
 
     #[tokio::test]
     async fn handle_file() {
-        let mut res = static_files::handle(
-            &Method::GET,
-            &HeaderMap::new(),
-            root_dir(),
-            "index.html",
-            None,
-            false,
-            6,
-        )
+        let mut res = static_files::handle(&HandleOpts {
+            method: &Method::GET,
+            headers: &HeaderMap::new(),
+            base_path: &root_dir(),
+            uri_path: "index.html",
+            uri_query: None,
+            dir_listing: false,
+            dir_listing_order: 6,
+            redirect_trailing_slash: true,
+        })
         .await
         .expect("unexpected error response on `handle` function");
 
@@ -57,15 +61,16 @@ mod tests {
 
     #[tokio::test]
     async fn handle_file_head() {
-        let mut res = static_files::handle(
-            &Method::HEAD,
-            &HeaderMap::new(),
-            root_dir(),
-            "index.html",
-            None,
-            false,
-            6,
-        )
+        let mut res = static_files::handle(&HandleOpts {
+            method: &Method::HEAD,
+            headers: &HeaderMap::new(),
+            base_path: &root_dir(),
+            uri_path: "index.html",
+            uri_query: None,
+            dir_listing: false,
+            dir_listing_order: 6,
+            redirect_trailing_slash: true,
+        })
         .await
         .expect("unexpected error response on `handle` function");
 
@@ -96,15 +101,16 @@ mod tests {
     #[tokio::test]
     async fn handle_file_not_found() {
         for method in [Method::HEAD, Method::GET] {
-            match static_files::handle(
-                &method,
-                &HeaderMap::new(),
-                root_dir(),
-                "xyz.html",
-                None,
-                false,
-                6,
-            )
+            match static_files::handle(&HandleOpts {
+                method: &method,
+                headers: &HeaderMap::new(),
+                base_path: &root_dir(),
+                uri_path: "xyz.html",
+                uri_query: None,
+                dir_listing: false,
+                dir_listing_order: 6,
+                redirect_trailing_slash: true,
+            })
             .await
             {
                 Ok(_) => {
@@ -119,15 +125,16 @@ mod tests {
 
     #[tokio::test]
     async fn handle_trailing_slash_redirection() {
-        let mut res = static_files::handle(
-            &Method::GET,
-            &HeaderMap::new(),
-            root_dir(),
-            "assets",
-            None,
-            false,
-            0,
-        )
+        let mut res = static_files::handle(&HandleOpts {
+            method: &Method::GET,
+            headers: &HeaderMap::new(),
+            base_path: &root_dir(),
+            uri_path: "assets",
+            uri_query: None,
+            dir_listing: false,
+            dir_listing_order: 0,
+            redirect_trailing_slash: true,
+        })
         .await
         .expect("unexpected error response on `handle` function");
 
@@ -142,6 +149,53 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn handle_trailing_slash_redirection_subdir() {
+        match static_files::handle(&HandleOpts {
+            method: &Method::GET,
+            headers: &HeaderMap::new(),
+            base_path: &root_dir(),
+            uri_path: "assets",
+            uri_query: None,
+            dir_listing: false,
+            dir_listing_order: 0,
+            redirect_trailing_slash: true,
+        })
+        .await
+        {
+            Ok(res) => {
+                assert_eq!(res.status(), 308);
+                assert_eq!(res.headers()["location"], "assets/");
+            }
+            Err(status) => {
+                panic!("expected a status 308 but not a status {}", status)
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn handle_disabled_trailing_slash_redirection_subdir() {
+        match static_files::handle(&HandleOpts {
+            method: &Method::GET,
+            headers: &HeaderMap::new(),
+            base_path: &root_dir(),
+            uri_path: "assets",
+            uri_query: None,
+            dir_listing: false,
+            dir_listing_order: 0,
+            redirect_trailing_slash: false,
+        })
+        .await
+        {
+            Ok(res) => {
+                assert_eq!(res.status(), 200);
+            }
+            Err(status) => {
+                panic!("expected a status 200 but not a status {}", status)
+            }
+        }
+    }
+
+    #[tokio::test]
     async fn handle_append_index_on_dir() {
         let buf = fs::read(root_dir().join("index.html"))
             .expect("unexpected error during index.html reading");
@@ -149,15 +203,16 @@ mod tests {
 
         for method in [Method::HEAD, Method::GET] {
             for uri in ["", "/"] {
-                match static_files::handle(
-                    &method,
-                    &HeaderMap::new(),
-                    root_dir(),
-                    uri,
-                    None,
-                    false,
-                    6,
-                )
+                match static_files::handle(&HandleOpts {
+                    method: &method,
+                    headers: &HeaderMap::new(),
+                    base_path: &root_dir(),
+                    uri_path: uri,
+                    uri_query: None,
+                    dir_listing: false,
+                    dir_listing_order: 6,
+                    redirect_trailing_slash: true,
+                })
                 .await
                 {
                     Ok(mut res) => {
@@ -192,15 +247,16 @@ mod tests {
         let buf = Bytes::from(buf);
 
         for method in [Method::HEAD, Method::GET] {
-            match static_files::handle(
-                &method,
-                &HeaderMap::new(),
-                root_dir(),
-                "/index%2ehtml",
-                None,
-                false,
-                6,
-            )
+            match static_files::handle(&HandleOpts {
+                method: &method,
+                headers: &HeaderMap::new(),
+                base_path: &root_dir(),
+                uri_path: "/index%2ehtml",
+                uri_query: None,
+                dir_listing: false,
+                dir_listing_order: 6,
+                redirect_trailing_slash: true,
+            })
             .await
             {
                 Ok(res) => {
@@ -217,15 +273,16 @@ mod tests {
     #[tokio::test]
     async fn handle_bad_encoded_path() {
         for method in [Method::HEAD, Method::GET] {
-            match static_files::handle(
-                &method,
-                &HeaderMap::new(),
-                root_dir(),
-                "/%2E%2e.html",
-                None,
-                false,
-                6,
-            )
+            match static_files::handle(&HandleOpts {
+                method: &method,
+                headers: &HeaderMap::new(),
+                base_path: &root_dir(),
+                uri_path: "/%2E%2e.html",
+                uri_query: None,
+                dir_listing: false,
+                dir_listing_order: 6,
+                redirect_trailing_slash: true,
+            })
             .await
             {
                 Ok(_) => {
@@ -245,15 +302,16 @@ mod tests {
         let buf = Bytes::from(buf);
 
         for method in [Method::HEAD, Method::GET] {
-            let res1 = match static_files::handle(
-                &method,
-                &HeaderMap::new(),
-                root_dir(),
-                "index.html",
-                None,
-                false,
-                6,
-            )
+            let res1 = match static_files::handle(&HandleOpts {
+                method: &method,
+                headers: &HeaderMap::new(),
+                base_path: &root_dir(),
+                uri_path: "index.html",
+                uri_query: None,
+                dir_listing: false,
+                dir_listing_order: 6,
+                redirect_trailing_slash: true,
+            })
             .await
             {
                 Ok(res) => {
@@ -273,8 +331,17 @@ mod tests {
                 res1.headers()["last-modified"].to_owned(),
             );
 
-            match static_files::handle(&method, &headers, root_dir(), "index.html", None, false, 6)
-                .await
+            match static_files::handle(&HandleOpts {
+                method: &method,
+                headers: &headers,
+                base_path: &root_dir(),
+                uri_path: "index.html",
+                uri_query: None,
+                dir_listing: false,
+                dir_listing_order: 6,
+                redirect_trailing_slash: true,
+            })
+            .await
             {
                 Ok(mut res) => {
                     assert_eq!(res.status(), 304);
@@ -296,8 +363,17 @@ mod tests {
                 "Mon, 18 Nov 1974 00:00:00 GMT".parse().unwrap(),
             );
 
-            match static_files::handle(&method, &headers, root_dir(), "index.html", None, false, 6)
-                .await
+            match static_files::handle(&HandleOpts {
+                method: &method,
+                headers: &headers,
+                base_path: &root_dir(),
+                uri_path: "index.html",
+                uri_query: None,
+                dir_listing: false,
+                dir_listing_order: 6,
+                redirect_trailing_slash: true,
+            })
+            .await
             {
                 Ok(mut res) => {
                     assert_eq!(res.status(), 200);
@@ -317,15 +393,16 @@ mod tests {
     #[tokio::test]
     async fn handle_precondition() {
         for method in [Method::HEAD, Method::GET] {
-            let res1 = match static_files::handle(
-                &method,
-                &HeaderMap::new(),
-                root_dir(),
-                "index.html",
-                None,
-                false,
-                6,
-            )
+            let res1 = match static_files::handle(&HandleOpts {
+                method: &method,
+                headers: &HeaderMap::new(),
+                base_path: &root_dir(),
+                uri_path: "index.html",
+                uri_query: None,
+                dir_listing: false,
+                dir_listing_order: 6,
+                redirect_trailing_slash: true,
+            })
             .await
             {
                 Ok(res) => {
@@ -344,8 +421,17 @@ mod tests {
                 res1.headers()["last-modified"].to_owned(),
             );
 
-            match static_files::handle(&method, &headers, root_dir(), "index.html", None, false, 6)
-                .await
+            match static_files::handle(&HandleOpts {
+                method: &method,
+                headers: &headers,
+                base_path: &root_dir(),
+                uri_path: "index.html",
+                uri_query: None,
+                dir_listing: false,
+                dir_listing_order: 6,
+                redirect_trailing_slash: true,
+            })
+            .await
             {
                 Ok(res) => {
                     assert_eq!(res.status(), 200);
@@ -362,8 +448,17 @@ mod tests {
                 "Mon, 18 Nov 1974 00:00:00 GMT".parse().unwrap(),
             );
 
-            match static_files::handle(&method, &headers, root_dir(), "index.html", None, false, 6)
-                .await
+            match static_files::handle(&HandleOpts {
+                method: &method,
+                headers: &headers,
+                base_path: &root_dir(),
+                uri_path: "index.html",
+                uri_query: None,
+                dir_listing: false,
+                dir_listing_order: 6,
+                redirect_trailing_slash: true,
+            })
+            .await
             {
                 Ok(mut res) => {
                     assert_eq!(res.status(), 412);
@@ -394,15 +489,16 @@ mod tests {
             Method::TRACE,
         ];
         for method in methods {
-            match static_files::handle(
-                &method,
-                &HeaderMap::new(),
-                root_dir(),
-                "index.html",
-                None,
-                false,
-                6,
-            )
+            match static_files::handle(&HandleOpts {
+                method: &method,
+                headers: &HeaderMap::new(),
+                base_path: &root_dir(),
+                uri_path: "index.html",
+                uri_query: None,
+                dir_listing: false,
+                dir_listing_order: 6,
+                redirect_trailing_slash: true,
+            })
             .await
             {
                 Ok(mut res) => match method {
@@ -451,8 +547,17 @@ mod tests {
             let mut headers = HeaderMap::new();
             headers.insert(http::header::ACCEPT_ENCODING, enc.parse().unwrap());
 
-            match static_files::handle(method, &headers, root_dir(), "index.html", None, false, 6)
-                .await
+            match static_files::handle(&HandleOpts {
+                method,
+                headers: &headers,
+                base_path: &root_dir(),
+                uri_path: "index.html",
+                uri_query: None,
+                dir_listing: false,
+                dir_listing_order: 6,
+                redirect_trailing_slash: true,
+            })
+            .await
             {
                 Ok(res) => {
                     let res = compression::auto(method, &headers, res)
@@ -503,8 +608,17 @@ mod tests {
         let buf = Bytes::from(buf);
 
         for method in [Method::HEAD, Method::GET] {
-            match static_files::handle(&method, &headers, root_dir(), "index.html", None, false, 6)
-                .await
+            match static_files::handle(&HandleOpts {
+                method: &method,
+                headers: &headers,
+                base_path: &root_dir(),
+                uri_path: "index.html",
+                uri_query: None,
+                dir_listing: false,
+                dir_listing_order: 6,
+                redirect_trailing_slash: true,
+            })
+            .await
             {
                 Ok(mut res) => {
                     assert_eq!(res.status(), 206);
@@ -535,8 +649,17 @@ mod tests {
         let buf = Bytes::from(buf);
 
         for method in [Method::HEAD, Method::GET] {
-            match static_files::handle(&method, &headers, root_dir(), "index.html", None, false, 6)
-                .await
+            match static_files::handle(&HandleOpts {
+                method: &method,
+                headers: &headers,
+                base_path: &root_dir(),
+                uri_path: "index.html",
+                uri_query: None,
+                dir_listing: false,
+                dir_listing_order: 6,
+                redirect_trailing_slash: true,
+            })
+            .await
             {
                 Ok(mut res) => {
                     assert_eq!(res.status(), 416);
@@ -568,8 +691,17 @@ mod tests {
         let buf = Bytes::from(buf);
 
         for method in [Method::HEAD, Method::GET] {
-            match static_files::handle(&method, &headers, root_dir(), "index.html", None, false, 6)
-                .await
+            match static_files::handle(&HandleOpts {
+                method: &method,
+                headers: &headers,
+                base_path: &root_dir(),
+                uri_path: "index.html",
+                uri_query: None,
+                dir_listing: false,
+                dir_listing_order: 6,
+                redirect_trailing_slash: true,
+            })
+            .await
             {
                 Ok(res) => {
                     assert_eq!(res.status(), 200);
@@ -593,8 +725,17 @@ mod tests {
         let buf = Bytes::from(buf);
 
         for method in [Method::HEAD, Method::GET] {
-            match static_files::handle(&method, &headers, root_dir(), "index.html", None, false, 6)
-                .await
+            match static_files::handle(&HandleOpts {
+                method: &method,
+                headers: &headers,
+                base_path: &root_dir(),
+                uri_path: "index.html",
+                uri_query: None,
+                dir_listing: false,
+                dir_listing_order: 6,
+                redirect_trailing_slash: true,
+            })
+            .await
             {
                 Ok(mut res) => {
                     assert_eq!(res.status(), 206);
@@ -628,8 +769,17 @@ mod tests {
         let buf = Bytes::from(buf);
 
         for method in [Method::HEAD, Method::GET] {
-            match static_files::handle(&method, &headers, root_dir(), "index.html", None, false, 6)
-                .await
+            match static_files::handle(&HandleOpts {
+                method: &method,
+                headers: &headers,
+                base_path: &root_dir(),
+                uri_path: "index.html",
+                uri_query: None,
+                dir_listing: false,
+                dir_listing_order: 6,
+                redirect_trailing_slash: true,
+            })
+            .await
             {
                 Ok(mut res) => {
                     assert_eq!(res.status(), 206);
@@ -660,8 +810,17 @@ mod tests {
         let buf = Bytes::from(buf);
 
         for method in [Method::HEAD, Method::GET] {
-            match static_files::handle(&method, &headers, root_dir(), "index.html", None, false, 6)
-                .await
+            match static_files::handle(&HandleOpts {
+                method: &method,
+                headers: &headers,
+                base_path: &root_dir(),
+                uri_path: "index.html",
+                uri_query: None,
+                dir_listing: false,
+                dir_listing_order: 6,
+                redirect_trailing_slash: true,
+            })
+            .await
             {
                 Ok(mut res) => {
                     assert_eq!(res.status(), 416);
@@ -695,8 +854,17 @@ mod tests {
         );
 
         for method in [Method::HEAD, Method::GET] {
-            match static_files::handle(&method, &headers, root_dir(), "index.html", None, false, 6)
-                .await
+            match static_files::handle(&HandleOpts {
+                method: &method,
+                headers: &headers,
+                base_path: &root_dir(),
+                uri_path: "index.html",
+                uri_query: None,
+                dir_listing: false,
+                dir_listing_order: 6,
+                redirect_trailing_slash: true,
+            })
+            .await
             {
                 Ok(mut res) => {
                     assert_eq!(res.status(), 416);
@@ -728,8 +896,17 @@ mod tests {
         headers.insert("range", "bytes=".parse().unwrap());
 
         for method in [Method::HEAD, Method::GET] {
-            match static_files::handle(&method, &headers, root_dir(), "index.html", None, false, 6)
-                .await
+            match static_files::handle(&HandleOpts {
+                method: &method,
+                headers: &headers,
+                base_path: &root_dir(),
+                uri_path: "index.html",
+                uri_query: None,
+                dir_listing: false,
+                dir_listing_order: 6,
+                redirect_trailing_slash: true,
+            })
+            .await
             {
                 Ok(mut res) => {
                     assert_eq!(res.status(), 200);
@@ -756,8 +933,17 @@ mod tests {
         headers.insert("range", format!("bytes=100-{}", buf.len()).parse().unwrap());
 
         for method in [Method::HEAD, Method::GET] {
-            match static_files::handle(&method, &headers, root_dir(), "index.html", None, false, 6)
-                .await
+            match static_files::handle(&HandleOpts {
+                method: &method,
+                headers: &headers,
+                base_path: &root_dir(),
+                uri_path: "index.html",
+                uri_query: None,
+                dir_listing: false,
+                dir_listing_order: 6,
+                redirect_trailing_slash: true,
+            })
+            .await
             {
                 Ok(mut res) => {
                     assert_eq!(res.status(), 206);
@@ -795,8 +981,17 @@ mod tests {
         );
 
         for method in [Method::HEAD, Method::GET] {
-            match static_files::handle(&method, &headers, root_dir(), "index.html", None, false, 6)
-                .await
+            match static_files::handle(&HandleOpts {
+                method: &method,
+                headers: &headers,
+                base_path: &root_dir(),
+                uri_path: "index.html",
+                uri_query: None,
+                dir_listing: false,
+                dir_listing_order: 6,
+                redirect_trailing_slash: true,
+            })
+            .await
             {
                 Ok(mut res) => {
                     assert_eq!(res.status(), 206);

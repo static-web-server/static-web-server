@@ -179,6 +179,15 @@ pub struct General {
     /// Log incoming requests information along with its remote address if available using the `info` log level.
     pub log_remote_address: bool,
 
+    #[structopt(
+        long,
+        parse(try_from_str),
+        default_value = "true",
+        env = "REDIRECT_TRAILING_SLASH"
+    )]
+    /// Check for trailing slash in the requested directory uri and redirect permanent (308) to the same path with a trailing slash suffix if it is missing.
+    pub redirect_trailing_slash: bool,
+
     //
     // Windows specific arguments and commands
     //

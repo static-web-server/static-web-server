@@ -9,7 +9,7 @@ mod tests {
     use http::{Method, StatusCode};
     use std::path::PathBuf;
 
-    use static_web_server::static_files;
+    use static_web_server::static_files::{self, HandleOpts};
 
     fn root_dir() -> PathBuf {
         PathBuf::from("docker/public/")
@@ -28,15 +28,16 @@ mod tests {
             Method::TRACE,
         ];
         for method in methods {
-            match static_files::handle(
-                &method,
-                &HeaderMap::new(),
-                root_dir(),
-                "/assets",
-                None,
-                true,
-                6,
-            )
+            match static_files::handle(&HandleOpts {
+                method: &method,
+                headers: &HeaderMap::new(),
+                base_path: &root_dir(),
+                uri_path: "/assets",
+                uri_query: None,
+                dir_listing: true,
+                dir_listing_order: 6,
+                redirect_trailing_slash: true,
+            })
             .await
             {
                 Ok(res) => {

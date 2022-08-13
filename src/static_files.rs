@@ -39,30 +39,37 @@ impl AsRef<Path> for ArcPath {
     }
 }
 
+/// Defines all options needed by the static-files handler.
+pub struct HandleOpts<'a> {
+    pub method: &'a Method,
+    pub headers: &'a HeaderMap<HeaderValue>,
+    pub base_path: &'a PathBuf,
+    pub uri_path: &'a str,
+    pub uri_query: Option<&'a str>,
+    pub dir_listing: bool,
+    pub dir_listing_order: u8,
+    pub redirect_trailing_slash: bool,
+}
+
 /// Entry point to handle incoming requests which map to specific files
 /// on file system and return a file response.
-pub async fn handle(
-    method: &Method,
-    headers: &HeaderMap<HeaderValue>,
-    base_path: impl Into<PathBuf>,
-    uri_path: &str,
-    uri_query: Option<&str>,
-    dir_listing: bool,
-    dir_listing_order: u8,
-) -> Result<Response<Body>, StatusCode> {
+pub async fn handle<'a>(opts: &HandleOpts<'a>) -> Result<Response<Body>, StatusCode> {
+    let method = opts.method;
+    let uri_path = opts.uri_path;
+
     // Check for disallowed HTTP methods and reject request accordently
     if !(method == Method::GET || method == Method::HEAD || method == Method::OPTIONS) {
         return Err(StatusCode::METHOD_NOT_ALLOWED);
     }
 
-    let base = Arc::new(base_path.into());
+    let base = Arc::new(opts.base_path.into());
     let (filepath, meta, auto_index) = path_from_tail(base, uri_path).await?;
 
     // NOTE: `auto_index` appends an `index.html` to an `uri_path` of kind directory only.
 
     // Check for a trailing slash on the current directory path
     // and redirect if that path doesn't end with the slash char
-    if auto_index && !uri_path.ends_with('/') {
+    if opts.redirect_trailing_slash && auto_index && !uri_path.ends_with('/') {
         let uri = [uri_path, "/"].concat();
         let loc = match HeaderValue::from_str(uri.as_str()) {
             Ok(val) => val,
@@ -97,18 +104,18 @@ pub async fn handle(
     // 1. Check if "directory listing" feature is enabled
     // if current path is a valid directory and
     // if it does not contain an `index.html` file (if a proper auto index is generated)
-    if dir_listing && auto_index && !filepath.as_ref().exists() {
+    if opts.dir_listing && auto_index && !filepath.as_ref().exists() {
         return directory_listing(
             method,
             uri_path,
-            uri_query,
+            opts.uri_query,
             filepath.as_ref(),
-            dir_listing_order,
+            opts.dir_listing_order,
         )
         .await;
     }
 
-    file_reply(headers, (filepath, &meta, auto_index)).await
+    file_reply(opts.headers, (filepath, &meta, auto_index)).await
 }
 
 /// Convert an incoming uri into a valid and sanitized path then returns a tuple

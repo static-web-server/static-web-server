@@ -83,6 +83,7 @@ impl Settings {
         let mut grace_period = opts.grace_period;
         let mut page_fallback = opts.page_fallback;
         let mut log_remote_address = opts.log_remote_address;
+        let mut redirect_trailing_slash = opts.redirect_trailing_slash;
 
         // Windows-only options
         #[cfg(windows)]
@@ -173,6 +174,9 @@ impl Settings {
                     }
                     if let Some(v) = general.log_remote_address {
                         log_remote_address = v
+                    }
+                    if let Some(v) = general.redirect_trailing_slash {
+                        redirect_trailing_slash = v
                     }
 
                     // Windows-only options
@@ -300,6 +304,7 @@ impl Settings {
                 grace_period,
                 page_fallback,
                 log_remote_address,
+                redirect_trailing_slash,
 
                 // Windows-only options and commands
                 #[cfg(windows)]

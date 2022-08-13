@@ -49,6 +49,9 @@ page-fallback = ""
 log-remote-address = false
 
 
+#### Redirect to trailing slash in the requested directory uri
+redirect-trailing-slash = true
+
 ### Windows Only
 
 #### Run the web server as a Windows Service

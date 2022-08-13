@@ -4,7 +4,10 @@ use std::{future::Future, net::SocketAddr, path::PathBuf, sync::Arc};
 
 use crate::{
     basic_auth, compression, control_headers, cors, custom_headers, error_page, fallback_page,
-    redirects, rewrites, security_headers, settings::Advanced, static_files, Error, Result,
+    redirects, rewrites, security_headers,
+    settings::Advanced,
+    static_files::{self, HandleOpts},
+    Error, Result,
 };
 
 /// It defines options for a request handler.
@@ -22,6 +25,7 @@ pub struct RequestHandlerOpts {
     pub page_fallback: Vec<u8>,
     pub basic_auth: String,
     pub log_remote_address: bool,
+    pub redirect_trailing_slash: bool,
 
     // Advanced options
     pub advanced_opts: Option<Advanced>,
@@ -43,12 +47,13 @@ impl RequestHandler {
         let headers = req.headers();
         let uri = req.uri();
 
-        let root_dir = &self.opts.root_dir;
+        let base_path = &self.opts.root_dir;
         let mut uri_path = uri.path();
         let uri_query = uri.query();
         let dir_listing = self.opts.dir_listing;
         let dir_listing_order = self.opts.dir_listing_order;
         let log_remote_addr = self.opts.log_remote_address;
+        let redirect_trailing_slash = self.opts.redirect_trailing_slash;
 
         let mut cors_headers: Option<http::HeaderMap> = None;
 
@@ -164,15 +169,16 @@ impl RequestHandler {
             }
 
             // Static files
-            match static_files::handle(
+            match static_files::handle(&HandleOpts {
                 method,
                 headers,
-                root_dir,
+                base_path,
                 uri_path,
                 uri_query,
                 dir_listing,
                 dir_listing_order,
-            )
+                redirect_trailing_slash,
+            })
             .await
             {
                 Ok(mut resp) => {
