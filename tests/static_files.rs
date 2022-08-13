@@ -146,6 +146,53 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn handle_trailing_slash_redirection_subdir() {
+        match static_files::handle(
+            &Method::GET,
+            &HeaderMap::new(),
+            root_dir(),
+            "subdir",
+            None,
+            false,
+            0,
+            true,
+        )
+         .await
+            {
+                Ok(res) => {
+                    assert_eq!(res.status(), 308);
+                    assert_eq!(res.headers()["location"], "subdir/");
+                }
+                Err(status) => {
+                    panic!("expected a status 200 but not a status {}", status)
+                }
+            }
+    }
+
+    #[tokio::test]
+    async fn handle_disabled_trailing_slash_redirection_subdir() {
+        match static_files::handle(
+            &Method::GET,
+            &HeaderMap::new(),
+            root_dir(),
+            "subdir",
+            None,
+            false,
+            0,
+            false,
+        )
+         .await
+            {
+                Ok(res) => {
+                    assert_eq!(res.status(), 200);
+                }
+                Err(status) => {
+                    panic!("expected a status 200 but not a status {}", status)
+                }
+            }
+    }
+
+    #[tokio::test]
     async fn handle_append_index_on_dir() {
         let buf = fs::read(root_dir().join("index.html"))
             .expect("unexpected error during index.html reading");
