@@ -154,7 +154,7 @@ mod tests {
             method: &Method::GET,
             headers: &HeaderMap::new(),
             base_path: &root_dir(),
-            uri_path: "subdir",
+            uri_path: "assets",
             uri_query: None,
             dir_listing: false,
             dir_listing_order: 0,
@@ -164,10 +164,10 @@ mod tests {
         {
             Ok(res) => {
                 assert_eq!(res.status(), 308);
-                assert_eq!(res.headers()["location"], "subdir/");
+                assert_eq!(res.headers()["location"], "assets/");
             }
             Err(status) => {
-                panic!("expected a status 200 but not a status {}", status)
+                panic!("expected a status 308 but not a status {}", status)
             }
         }
     }
@@ -178,7 +178,7 @@ mod tests {
             method: &Method::GET,
             headers: &HeaderMap::new(),
             base_path: &root_dir(),
-            uri_path: "subdir",
+            uri_path: "assets",
             uri_query: None,
             dir_listing: false,
             dir_listing_order: 0,

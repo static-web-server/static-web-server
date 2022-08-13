@@ -83,7 +83,7 @@ impl Settings {
         let mut grace_period = opts.grace_period;
         let mut page_fallback = opts.page_fallback;
         let mut log_remote_address = opts.log_remote_address;
-        let mut redirect_trailing_slash: bool = opts.redirect_trailing_slash;
+        let mut redirect_trailing_slash = opts.redirect_trailing_slash;
 
         // Windows-only options
         #[cfg(windows)]
