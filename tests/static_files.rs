@@ -27,6 +27,7 @@ mod tests {
             None,
             false,
             6,
+            true,
         )
         .await
         .expect("unexpected error response on `handle` function");
@@ -65,6 +66,7 @@ mod tests {
             None,
             false,
             6,
+            true,
         )
         .await
         .expect("unexpected error response on `handle` function");
@@ -104,6 +106,7 @@ mod tests {
                 None,
                 false,
                 6,
+                true,
             )
             .await
             {
@@ -127,6 +130,7 @@ mod tests {
             None,
             false,
             0,
+            true,
         )
         .await
         .expect("unexpected error response on `handle` function");
@@ -157,6 +161,7 @@ mod tests {
                     None,
                     false,
                     6,
+                    true,
                 )
                 .await
                 {
@@ -200,6 +205,7 @@ mod tests {
                 None,
                 false,
                 6,
+                true,
             )
             .await
             {
@@ -225,6 +231,7 @@ mod tests {
                 None,
                 false,
                 6,
+                true,
             )
             .await
             {
@@ -253,6 +260,7 @@ mod tests {
                 None,
                 false,
                 6,
+                true,
             )
             .await
             {
@@ -273,7 +281,7 @@ mod tests {
                 res1.headers()["last-modified"].to_owned(),
             );
 
-            match static_files::handle(&method, &headers, root_dir(), "index.html", None, false, 6)
+            match static_files::handle(&method, &headers, root_dir(), "index.html", None, false, 6, true)
                 .await
             {
                 Ok(mut res) => {
@@ -296,7 +304,7 @@ mod tests {
                 "Mon, 18 Nov 1974 00:00:00 GMT".parse().unwrap(),
             );
 
-            match static_files::handle(&method, &headers, root_dir(), "index.html", None, false, 6)
+            match static_files::handle(&method, &headers, root_dir(), "index.html", None, false, 6, true)
                 .await
             {
                 Ok(mut res) => {
@@ -325,6 +333,7 @@ mod tests {
                 None,
                 false,
                 6,
+                true,
             )
             .await
             {
@@ -344,7 +353,7 @@ mod tests {
                 res1.headers()["last-modified"].to_owned(),
             );
 
-            match static_files::handle(&method, &headers, root_dir(), "index.html", None, false, 6)
+            match static_files::handle(&method, &headers, root_dir(), "index.html", None, false, 6, true)
                 .await
             {
                 Ok(res) => {
@@ -362,7 +371,7 @@ mod tests {
                 "Mon, 18 Nov 1974 00:00:00 GMT".parse().unwrap(),
             );
 
-            match static_files::handle(&method, &headers, root_dir(), "index.html", None, false, 6)
+            match static_files::handle(&method, &headers, root_dir(), "index.html", None, false, 6, true)
                 .await
             {
                 Ok(mut res) => {
@@ -402,6 +411,7 @@ mod tests {
                 None,
                 false,
                 6,
+                true,
             )
             .await
             {
@@ -451,7 +461,7 @@ mod tests {
             let mut headers = HeaderMap::new();
             headers.insert(http::header::ACCEPT_ENCODING, enc.parse().unwrap());
 
-            match static_files::handle(method, &headers, root_dir(), "index.html", None, false, 6)
+            match static_files::handle(method, &headers, root_dir(), "index.html", None, false, 6, true)
                 .await
             {
                 Ok(res) => {
@@ -503,7 +513,7 @@ mod tests {
         let buf = Bytes::from(buf);
 
         for method in [Method::HEAD, Method::GET] {
-            match static_files::handle(&method, &headers, root_dir(), "index.html", None, false, 6)
+            match static_files::handle(&method, &headers, root_dir(), "index.html", None, false, 6, true)
                 .await
             {
                 Ok(mut res) => {
@@ -535,7 +545,7 @@ mod tests {
         let buf = Bytes::from(buf);
 
         for method in [Method::HEAD, Method::GET] {
-            match static_files::handle(&method, &headers, root_dir(), "index.html", None, false, 6)
+            match static_files::handle(&method, &headers, root_dir(), "index.html", None, false, 6, true)
                 .await
             {
                 Ok(mut res) => {
@@ -568,7 +578,7 @@ mod tests {
         let buf = Bytes::from(buf);
 
         for method in [Method::HEAD, Method::GET] {
-            match static_files::handle(&method, &headers, root_dir(), "index.html", None, false, 6)
+            match static_files::handle(&method, &headers, root_dir(), "index.html", None, false, 6, true)
                 .await
             {
                 Ok(res) => {
@@ -593,7 +603,7 @@ mod tests {
         let buf = Bytes::from(buf);
 
         for method in [Method::HEAD, Method::GET] {
-            match static_files::handle(&method, &headers, root_dir(), "index.html", None, false, 6)
+            match static_files::handle(&method, &headers, root_dir(), "index.html", None, false, 6, true)
                 .await
             {
                 Ok(mut res) => {
@@ -628,7 +638,7 @@ mod tests {
         let buf = Bytes::from(buf);
 
         for method in [Method::HEAD, Method::GET] {
-            match static_files::handle(&method, &headers, root_dir(), "index.html", None, false, 6)
+            match static_files::handle(&method, &headers, root_dir(), "index.html", None, false, 6, true)
                 .await
             {
                 Ok(mut res) => {
@@ -660,7 +670,7 @@ mod tests {
         let buf = Bytes::from(buf);
 
         for method in [Method::HEAD, Method::GET] {
-            match static_files::handle(&method, &headers, root_dir(), "index.html", None, false, 6)
+            match static_files::handle(&method, &headers, root_dir(), "index.html", None, false, 6, true)
                 .await
             {
                 Ok(mut res) => {
@@ -695,7 +705,7 @@ mod tests {
         );
 
         for method in [Method::HEAD, Method::GET] {
-            match static_files::handle(&method, &headers, root_dir(), "index.html", None, false, 6)
+            match static_files::handle(&method, &headers, root_dir(), "index.html", None, false, 6, true)
                 .await
             {
                 Ok(mut res) => {
@@ -728,7 +738,7 @@ mod tests {
         headers.insert("range", "bytes=".parse().unwrap());
 
         for method in [Method::HEAD, Method::GET] {
-            match static_files::handle(&method, &headers, root_dir(), "index.html", None, false, 6)
+            match static_files::handle(&method, &headers, root_dir(), "index.html", None, false, 6, true)
                 .await
             {
                 Ok(mut res) => {
@@ -756,7 +766,7 @@ mod tests {
         headers.insert("range", format!("bytes=100-{}", buf.len()).parse().unwrap());
 
         for method in [Method::HEAD, Method::GET] {
-            match static_files::handle(&method, &headers, root_dir(), "index.html", None, false, 6)
+            match static_files::handle(&method, &headers, root_dir(), "index.html", None, false, 6, true)
                 .await
             {
                 Ok(mut res) => {
@@ -795,7 +805,7 @@ mod tests {
         );
 
         for method in [Method::HEAD, Method::GET] {
-            match static_files::handle(&method, &headers, root_dir(), "index.html", None, false, 6)
+            match static_files::handle(&method, &headers, root_dir(), "index.html", None, false, 6, true)
                 .await
             {
                 Ok(mut res) => {

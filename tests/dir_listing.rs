@@ -36,6 +36,7 @@ mod tests {
                 None,
                 true,
                 6,
+                true,
             )
             .await
             {
