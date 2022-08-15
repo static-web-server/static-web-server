@@ -142,6 +142,7 @@ nav:
     - 'URL Rewrites': 'features/url-rewrites.md'
     - 'URL Redirects': 'features/url-redirects.md'
     - 'Windows Service': 'features/windows-service.md'
+    - 'Trailing Slash Redirect': 'features/trailing-slash-redirect.md'
   - 'Platforms & Architectures': 'platforms-architectures.md'
   - 'Migration from v1 to v2': 'migration.md'
   - 'Changelog v2 (latest stable)': 'https://github.com/joseluisq/static-web-server/blob/master/CHANGELOG.md'

@@ -10,7 +10,7 @@ The server can be configured via the following command-line arguments.
 ```
 $ static-web-server -h
 
-static-web-server 2.10.0
+static-web-server 2.11.0
 Jose Quintana <https://joseluisq.net>
 A blazing fast and asynchronous web server for static files-serving.
 
@@ -89,7 +89,7 @@ OPTIONS:
             a generic HTML error message [env: SERVER_ERROR_PAGE_50X=]  [default: ./public/50x.html]
     -p, --port <port>                                          Host port [env: SERVER_PORT=]  [default: 80]
         --redirect-trailing-slash <redirect-trailing-slash>
-            Check for trailing slash in the requested directory uri and redirect permanent (308) to the same path with a
+            Check for a trailing slash in the requested directory uri and redirect permanent (308) to the same path with a
             trailing slash suffix if it is missing [env: REDIRECT_TRAILING_SLASH=]  [default: true]
     -d, --root <root>
             Root directory path of static files [env: SERVER_ROOT=]  [default: ./public]

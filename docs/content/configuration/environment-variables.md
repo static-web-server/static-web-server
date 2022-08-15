@@ -76,7 +76,7 @@ Enable cache control headers for incoming requests based on a set of file types.
 It provides [The "Basic" HTTP Authentication Scheme](https://datatracker.ietf.org/doc/html/rfc7617) using credentials as `user-id:password` pairs, encoded using `Base64`. Password must be encoded using the [BCrypt](https://en.wikipedia.org/wiki/Bcrypt) password-hashing function. Default empty (disabled).
 
 ### REDIRECT_TRAILING_SLASH
-Check for trailing slash in the requested directory uri and redirect permanent (308) to the same path with a trailing slash suffix if it is missing. Default `true` (enabled).
+Check for a trailing slash in the requested directory URI and redirect permanent (308) to the same path with a trailing slash suffix if it is missing. Default `true` (enabled).
 
 ## Windows
 The following options and commands are Windows platform-specific.
