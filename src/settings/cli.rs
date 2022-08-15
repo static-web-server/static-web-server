@@ -185,7 +185,7 @@ pub struct General {
         default_value = "true",
         env = "REDIRECT_TRAILING_SLASH"
     )]
-    /// Check for trailing slash in the requested directory uri and redirect permanent (308) to the same path with a trailing slash suffix if it is missing.
+    /// Check for a trailing slash in the requested directory URI and redirect permanently (308) to the same path with a trailing slash suffix if it is missing.
     pub redirect_trailing_slash: bool,
 
     //

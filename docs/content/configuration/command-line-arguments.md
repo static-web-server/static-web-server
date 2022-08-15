@@ -89,8 +89,8 @@ OPTIONS:
             a generic HTML error message [env: SERVER_ERROR_PAGE_50X=]  [default: ./public/50x.html]
     -p, --port <port>                                          Host port [env: SERVER_PORT=]  [default: 80]
         --redirect-trailing-slash <redirect-trailing-slash>
-            Check for a trailing slash in the requested directory uri and redirect permanent (308) to the same path with a
-            trailing slash suffix if it is missing [env: REDIRECT_TRAILING_SLASH=]  [default: true]
+            Check for a trailing slash in the requested directory URI and redirect permanently (308) to the same path
+            with a trailing slash suffix if it is missing [env: REDIRECT_TRAILING_SLASH=]  [default: true]
     -d, --root <root>
             Root directory path of static files [env: SERVER_ROOT=]  [default: ./public]
 

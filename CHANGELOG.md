@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _**Note:** See changelog for v1 under the [1.x](https://github.com/joseluisq/static-web-server/blob/1.x/CHANGELOG.md) branch._
 
+## v2.11.0 - 2022-08-15
+
+__Fixes__
+
+- [1b7636c](https://github.com/joseluisq/static-web-server/commit/1b7636c) Bugfix/security dependency updates including tokio, serde, tracing, libc, futures and other crates (also [6840d0f](https://github.com/joseluisq/static-web-server/commit/6840d0f), [32517b6](https://github.com/joseluisq/static-web-server/commit/32517b6)).
+- [6570498](https://github.com/joseluisq/static-web-server/commit/6570498) Enable the missing `windows-service` option when used via the config file.
+
+__Features__
+
+- [5163564](https://github.com/joseluisq/static-web-server/commit/5163564) New `redirect-trailing-slash` option. PR [#131](https://github.com/joseluisq/static-web-server/pull/131) by [@phartenfeller](https://github.com/phartenfeller). See [docs](https://sws.joseluisq.net/features/trailing-slash-redirect/).
+
+__Docs__
+
+- [10f403f](https://github.com/joseluisq/static-web-server/commit/10f403f) Redirect trailing slash page.
+- [e4228af](https://github.com/joseluisq/static-web-server/commit/e4228af) Typos and content improvements (also [e674940](https://github.com/joseluisq/static-web-server/commit/e674940)).
+
 ## v2.10.0 - 2022-07-10
 
 __Fixes__
