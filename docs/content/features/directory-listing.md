@@ -11,9 +11,18 @@ static-web-server \
     --directory-listing true
 ```
 
-And here an example of how the directory listing looks like.
+And here is an example of how the directory listing looks like.
 
 <img title="SWS - Directory Listing" src="https://user-images.githubusercontent.com/1700322/145420578-5a508d2a-773b-4239-acc0-197ea2062ff4.png" width="400">
+
+## Relative paths for entries
+
+SWS uses relative paths for the directory listing entries (file or directory) and is used regardless of the [redirect trailing slash](../features/trailing-slash-redirect.md) feature.
+
+However, when the *"redirect trailing slash"* feature is disabled and a directory request URI doesn't contain a trailing slash then the entries will contain the path `parent-dir/entry-name` as the link value. Otherwise, just an `entry-name` link value is used (default behavior).
+
+Note also that in both cases, SWS will append a trailing slash to the entry if is a directory.
+
 
 ## Sorting
 
