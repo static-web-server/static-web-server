@@ -145,8 +145,8 @@ fn path_from_tail(
 }
 
 /// Provides directory listing support for the current request.
-/// Note that this function is a highly dependent on `path_from_tail()`
-// function which must be called first. See `handle()` more for details.
+/// Note that this function highly depends on `path_from_tail()` function
+/// which must be called first. See `handle()` for more details.
 fn directory_listing<'a>(
     method: &'a Method,
     current_path: &'a str,
@@ -209,7 +209,8 @@ fn directory_listing<'a>(
     })
 }
 
-// It reads current directory entries and create the index page content. Otherwise returns a status error.
+/// It reads the current directory entries and create an index page content.
+/// Otherwise it returns a status error.
 async fn read_directory_entries(
     mut entries: tokio::fs::ReadDir,
     base_path: &str,
@@ -219,7 +220,7 @@ async fn read_directory_entries(
 ) -> Result<Response<Body>> {
     let mut dirs_count: usize = 0;
     let mut files_count: usize = 0;
-    let mut files_found: Vec<(String, String, u64, String)> = Vec::new();
+    let mut files_found: Vec<(String, String, u64, Option<String>)> = vec![];
 
     while let Some(entry) = entries.next_entry().await? {
         let meta = entry.metadata().await?;
@@ -250,7 +251,29 @@ async fn read_directory_entries(
             continue;
         }
 
-        let uri = [base_path, &name].concat();
+        let mut uri = None;
+        // NOTE: Use relative paths by default and absolute ones only
+        // when "redirect trailing slash" feature is disabled and
+        // `base_path` doesn't end with a slash char
+        if !base_path.ends_with('/') {
+            let base_path = Path::new(base_path);
+            let parent_dir = base_path.parent().unwrap_or(base_path);
+            let mut base_dir = base_path;
+            if base_path != parent_dir {
+                base_dir = base_path.strip_prefix(parent_dir)?;
+            }
+            let mut base_str = String::new();
+            if !base_dir.starts_with("/") {
+                let base_dir = base_dir.to_str().unwrap_or_default();
+                if !base_dir.is_empty() {
+                    base_str.push_str(base_dir);
+                }
+                base_str.push('/');
+            }
+            base_str.push_str(&name);
+            uri = Some(base_str);
+        }
+
         let modified = match parse_last_modified(meta.modified()?) {
             Ok(tm) => tm.to_local().strftime("%F %T")?.to_string(),
             Err(err) => {
@@ -340,14 +363,11 @@ async fn read_directory_entries(
             filesize_str = String::from("-");
         }
 
+        let entry_uri = uri.unwrap_or_else(|| name.to_owned());
+
         entries_str = format!(
-            "{}<tr><td><a href=\"{}\" title=\"{}\">{}</a></td><td>{}</td><td align=\"right\">{}</td></tr>",
-            entries_str,
-            uri,
-            name,
-            name,
-            modified,
-            filesize_str
+            "{}<tr><td><a href=\"{}\">{}</a></td><td>{}</td><td align=\"right\">{}</td></tr>",
+            entries_str, entry_uri, name, modified, filesize_str
         );
     }
 
