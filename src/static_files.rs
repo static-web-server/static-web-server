@@ -252,9 +252,13 @@ async fn read_directory_entries(
         }
 
         let mut uri = None;
-        // NOTE: Use relative paths by default and absolute ones only
-        // when "redirect trailing slash" feature is disabled and
-        // `base_path` doesn't end with a slash char
+        // NOTE: Use relative paths by default independently of
+        // the "redirect trailing slash" feature.
+        // However, when "redirect trailing slash" is disabled
+        // and a request path doesn't contain a trailing slash then
+        // entries should contain the "parent/entry-name" as a link format.
+        // Otherwise, we just use the "entry-name" as a link (default behavior).
+        // Note that in both cases, we add a trailing slash if the entry is a directory.
         if !base_path.ends_with('/') {
             let base_path = Path::new(base_path);
             let parent_dir = base_path.parent().unwrap_or(base_path);
