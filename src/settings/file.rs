@@ -93,6 +93,9 @@ pub struct General {
     // Compression
     pub compression: Option<bool>,
 
+    // Check for a pre-compressed file on disk
+    pub compression_static: Option<bool>,
+
     // Error pages
     pub page404: Option<PathBuf>,
     pub page50x: Option<PathBuf>,

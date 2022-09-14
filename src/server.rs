@@ -138,6 +138,10 @@ impl Server {
         let compression = general.compression;
         tracing::info!("auto compression: enabled={}", compression);
 
+        // Check pre-compressed files based on the `Accept-Encoding` header
+        let compression_static = general.compression_static;
+        tracing::info!("compression static: enabled={}", compression_static);
+
         // Directory listing option
         let dir_listing = general.directory_listing;
         tracing::info!("directory listing: enabled={}", dir_listing);
@@ -183,6 +187,7 @@ impl Server {
             opts: Arc::from(RequestHandlerOpts {
                 root_dir,
                 compression,
+                compression_static,
                 dir_listing,
                 dir_listing_order,
                 cors,

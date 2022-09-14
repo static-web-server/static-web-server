@@ -22,7 +22,7 @@ mod tests {
 
     #[tokio::test]
     async fn handle_file() {
-        let mut res = static_files::handle(&HandleOpts {
+        let (mut res, _) = static_files::handle(&HandleOpts {
             method: &Method::GET,
             headers: &HeaderMap::new(),
             base_path: &root_dir(),
@@ -31,6 +31,7 @@ mod tests {
             dir_listing: false,
             dir_listing_order: 6,
             redirect_trailing_slash: true,
+            compression_static: false,
         })
         .await
         .expect("unexpected error response on `handle` function");
@@ -61,7 +62,7 @@ mod tests {
 
     #[tokio::test]
     async fn handle_file_head() {
-        let mut res = static_files::handle(&HandleOpts {
+        let (mut res, _) = static_files::handle(&HandleOpts {
             method: &Method::HEAD,
             headers: &HeaderMap::new(),
             base_path: &root_dir(),
@@ -70,6 +71,7 @@ mod tests {
             dir_listing: false,
             dir_listing_order: 6,
             redirect_trailing_slash: true,
+            compression_static: false,
         })
         .await
         .expect("unexpected error response on `handle` function");
@@ -110,6 +112,7 @@ mod tests {
                 dir_listing: false,
                 dir_listing_order: 6,
                 redirect_trailing_slash: true,
+                compression_static: false,
             })
             .await
             {
@@ -125,7 +128,7 @@ mod tests {
 
     #[tokio::test]
     async fn handle_trailing_slash_redirection() {
-        let mut res = static_files::handle(&HandleOpts {
+        let (mut res, _) = static_files::handle(&HandleOpts {
             method: &Method::GET,
             headers: &HeaderMap::new(),
             base_path: &root_dir(),
@@ -134,6 +137,7 @@ mod tests {
             dir_listing: false,
             dir_listing_order: 0,
             redirect_trailing_slash: true,
+            compression_static: false,
         })
         .await
         .expect("unexpected error response on `handle` function");
@@ -159,10 +163,11 @@ mod tests {
             dir_listing: false,
             dir_listing_order: 0,
             redirect_trailing_slash: true,
+            compression_static: false,
         })
         .await
         {
-            Ok(res) => {
+            Ok((res, _)) => {
                 assert_eq!(res.status(), 308);
                 assert_eq!(res.headers()["location"], "assets/");
             }
@@ -183,10 +188,11 @@ mod tests {
             dir_listing: false,
             dir_listing_order: 0,
             redirect_trailing_slash: false,
+            compression_static: false,
         })
         .await
         {
-            Ok(res) => {
+            Ok((res, _)) => {
                 assert_eq!(res.status(), 200);
             }
             Err(status) => {
@@ -212,10 +218,11 @@ mod tests {
                     dir_listing: false,
                     dir_listing_order: 6,
                     redirect_trailing_slash: true,
+                    compression_static: false,
                 })
                 .await
                 {
-                    Ok(mut res) => {
+                    Ok((mut res, _)) => {
                         if uri.is_empty() {
                             // it should redirect permanently
                             assert_eq!(res.status(), 308);
@@ -256,10 +263,11 @@ mod tests {
                 dir_listing: false,
                 dir_listing_order: 6,
                 redirect_trailing_slash: true,
+                compression_static: false,
             })
             .await
             {
-                Ok(res) => {
+                Ok((res, _)) => {
                     assert_eq!(res.status(), 200);
                     assert_eq!(res.headers()["content-length"], buf.len().to_string());
                 }
@@ -282,6 +290,7 @@ mod tests {
                 dir_listing: false,
                 dir_listing_order: 6,
                 redirect_trailing_slash: true,
+                compression_static: false,
             })
             .await
             {
@@ -311,10 +320,11 @@ mod tests {
                 dir_listing: false,
                 dir_listing_order: 6,
                 redirect_trailing_slash: true,
+                compression_static: false,
             })
             .await
             {
-                Ok(res) => {
+                Ok((res, _)) => {
                     assert_eq!(res.status(), 200);
                     assert_eq!(res.headers()["content-length"], buf.len().to_string());
                     res
@@ -340,10 +350,11 @@ mod tests {
                 dir_listing: false,
                 dir_listing_order: 6,
                 redirect_trailing_slash: true,
+                compression_static: false,
             })
             .await
             {
-                Ok(mut res) => {
+                Ok((mut res, _)) => {
                     assert_eq!(res.status(), 304);
                     assert_eq!(res.headers().get("content-length"), None);
                     let body = hyper::body::to_bytes(res.body_mut())
@@ -372,10 +383,11 @@ mod tests {
                 dir_listing: false,
                 dir_listing_order: 6,
                 redirect_trailing_slash: true,
+                compression_static: false,
             })
             .await
             {
-                Ok(mut res) => {
+                Ok((mut res, _)) => {
                     assert_eq!(res.status(), 200);
                     let body = hyper::body::to_bytes(res.body_mut())
                         .await
@@ -402,10 +414,11 @@ mod tests {
                 dir_listing: false,
                 dir_listing_order: 6,
                 redirect_trailing_slash: true,
+                compression_static: false,
             })
             .await
             {
-                Ok(res) => {
+                Ok((res, _)) => {
                     assert_eq!(res.status(), 200);
                     res
                 }
@@ -430,10 +443,11 @@ mod tests {
                 dir_listing: false,
                 dir_listing_order: 6,
                 redirect_trailing_slash: true,
+                compression_static: false,
             })
             .await
             {
-                Ok(res) => {
+                Ok((res, _)) => {
                     assert_eq!(res.status(), 200);
                 }
                 Err(_) => {
@@ -457,10 +471,11 @@ mod tests {
                 dir_listing: false,
                 dir_listing_order: 6,
                 redirect_trailing_slash: true,
+                compression_static: false,
             })
             .await
             {
-                Ok(mut res) => {
+                Ok((mut res, _)) => {
                     assert_eq!(res.status(), 412);
 
                     let body = hyper::body::to_bytes(res.body_mut())
@@ -498,10 +513,11 @@ mod tests {
                 dir_listing: false,
                 dir_listing_order: 6,
                 redirect_trailing_slash: true,
+                compression_static: false,
             })
             .await
             {
-                Ok(mut res) => match method {
+                Ok((mut res, _)) => match method {
                     // The handle only accepts HEAD or GET request methods
                     Method::GET | Method::HEAD => {
                         let buf = fs::read(root_dir().join("index.html"))
@@ -556,10 +572,11 @@ mod tests {
                 dir_listing: false,
                 dir_listing_order: 6,
                 redirect_trailing_slash: true,
+                compression_static: false,
             })
             .await
             {
-                Ok(res) => {
+                Ok((res, _)) => {
                     let res = compression::auto(method, &headers, res)
                         .expect("unexpected bytes error during body compression");
 
@@ -617,10 +634,11 @@ mod tests {
                 dir_listing: false,
                 dir_listing_order: 6,
                 redirect_trailing_slash: true,
+                compression_static: false,
             })
             .await
             {
-                Ok(mut res) => {
+                Ok((mut res, _)) => {
                     assert_eq!(res.status(), 206);
                     assert_eq!(
                         res.headers()["content-range"],
@@ -658,10 +676,11 @@ mod tests {
                 dir_listing: false,
                 dir_listing_order: 6,
                 redirect_trailing_slash: true,
+                compression_static: false,
             })
             .await
             {
-                Ok(mut res) => {
+                Ok((mut res, _)) => {
                     assert_eq!(res.status(), 416);
                     assert_eq!(
                         res.headers()["content-range"],
@@ -700,10 +719,11 @@ mod tests {
                 dir_listing: false,
                 dir_listing_order: 6,
                 redirect_trailing_slash: true,
+                compression_static: false,
             })
             .await
             {
-                Ok(res) => {
+                Ok((res, _)) => {
                     assert_eq!(res.status(), 200);
                     assert_eq!(res.headers()["content-length"], buf.len().to_string());
                     assert_eq!(res.headers().get("content-range"), None);
@@ -734,10 +754,11 @@ mod tests {
                 dir_listing: false,
                 dir_listing_order: 6,
                 redirect_trailing_slash: true,
+                compression_static: false,
             })
             .await
             {
-                Ok(mut res) => {
+                Ok((mut res, _)) => {
                     assert_eq!(res.status(), 206);
                     assert_eq!(
                         res.headers()["content-range"],
@@ -778,10 +799,11 @@ mod tests {
                 dir_listing: false,
                 dir_listing_order: 6,
                 redirect_trailing_slash: true,
+                compression_static: false,
             })
             .await
             {
-                Ok(mut res) => {
+                Ok((mut res, _)) => {
                     assert_eq!(res.status(), 206);
                     assert_eq!(
                         res.headers()["content-range"],
@@ -819,10 +841,11 @@ mod tests {
                 dir_listing: false,
                 dir_listing_order: 6,
                 redirect_trailing_slash: true,
+                compression_static: false,
             })
             .await
             {
-                Ok(mut res) => {
+                Ok((mut res, _)) => {
                     assert_eq!(res.status(), 416);
                     assert_eq!(
                         res.headers()["content-range"],
@@ -863,10 +886,11 @@ mod tests {
                 dir_listing: false,
                 dir_listing_order: 6,
                 redirect_trailing_slash: true,
+                compression_static: false,
             })
             .await
             {
-                Ok(mut res) => {
+                Ok((mut res, _)) => {
                     assert_eq!(res.status(), 416);
                     assert_eq!(
                         res.headers()["content-range"],
@@ -905,10 +929,11 @@ mod tests {
                 dir_listing: false,
                 dir_listing_order: 6,
                 redirect_trailing_slash: true,
+                compression_static: false,
             })
             .await
             {
-                Ok(mut res) => {
+                Ok((mut res, _)) => {
                     assert_eq!(res.status(), 200);
                     let body = hyper::body::to_bytes(res.body_mut())
                         .await
@@ -942,10 +967,11 @@ mod tests {
                 dir_listing: false,
                 dir_listing_order: 6,
                 redirect_trailing_slash: true,
+                compression_static: false,
             })
             .await
             {
-                Ok(mut res) => {
+                Ok((mut res, _)) => {
                     assert_eq!(res.status(), 206);
                     assert_eq!(
                         res.headers()["content-range"],
@@ -990,10 +1016,11 @@ mod tests {
                 dir_listing: false,
                 dir_listing_order: 6,
                 redirect_trailing_slash: true,
+                compression_static: false,
             })
             .await
             {
-                Ok(mut res) => {
+                Ok((mut res, _)) => {
                     assert_eq!(res.status(), 206);
                     assert_eq!(
                         res.headers()["content-range"],

@@ -44,6 +44,14 @@ pub const TEXT_MIME_TYPES: [&str; 24] = [
     "application/wasm",
 ];
 
+/// Returns the prefered `content-enconding` of `accept-encoding` header.
+pub fn get_prefered_encoding(headers: &HeaderMap<HeaderValue>) -> Option<ContentCoding> {
+    if let Some(ref accept_encoding) = headers.typed_get::<AcceptEncoding>() {
+        return accept_encoding.prefered_encoding();
+    }
+    None
+}
+
 /// Create a wrapping handler that compresses the Body of a [`Response`](hyper::Response)
 /// using `gzip`, `deflate` or `brotli` if is specified in the `Accept-Encoding` header, adding
 /// `content-encoding: <coding>` to the Response's [`HeaderMap`](hyper::HeaderMap)
@@ -59,28 +67,26 @@ pub fn auto(
     }
 
     // Compress response based on Accept-Encoding header
-    if let Some(ref accept_encoding) = headers.typed_get::<AcceptEncoding>() {
-        if let Some(encoding) = accept_encoding.prefered_encoding() {
-            // Skip compression for non-text-based MIME types
-            if let Some(content_type) = resp.headers().typed_get::<ContentType>() {
-                let content_type = &content_type.to_string();
-                if !TEXT_MIME_TYPES.iter().any(|h| *h == content_type) {
-                    return Ok(resp);
-                }
+    if let Some(encoding) = get_prefered_encoding(headers) {
+        // Skip compression for non-text-based MIME types
+        if let Some(content_type) = resp.headers().typed_get::<ContentType>() {
+            let content_type = &content_type.to_string();
+            if !TEXT_MIME_TYPES.iter().any(|h| *h == content_type) {
+                return Ok(resp);
             }
+        }
 
-            if encoding == ContentCoding::GZIP {
-                let (head, body) = resp.into_parts();
-                return Ok(gzip(head, body.into()));
-            }
-            if encoding == ContentCoding::DEFLATE {
-                let (head, body) = resp.into_parts();
-                return Ok(deflate(head, body.into()));
-            }
-            if encoding == ContentCoding::BROTLI {
-                let (head, body) = resp.into_parts();
-                return Ok(brotli(head, body.into()));
-            }
+        if encoding == ContentCoding::GZIP {
+            let (head, body) = resp.into_parts();
+            return Ok(gzip(head, body.into()));
+        }
+        if encoding == ContentCoding::DEFLATE {
+            let (head, body) = resp.into_parts();
+            return Ok(deflate(head, body.into()));
+        }
+        if encoding == ContentCoding::BROTLI {
+            let (head, body) = resp.into_parts();
+            return Ok(brotli(head, body.into()));
         }
     }
 
