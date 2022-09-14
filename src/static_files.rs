@@ -136,10 +136,10 @@ async fn get_composed_metadata(
             if let Some(ext) = file_ext.to_str() {
                 // TODO: evaluate the possibility to look for `.tar.x` files too
                 let ext = [".", ext].concat();
-                let file_name = file_name.strip_suffix(ext.as_str()).unwrap();
+                let new_file_name = file_name.strip_suffix(ext.as_str()).unwrap();
 
                 buf.pop();
-                buf.push(file_name);
+                buf.push(new_file_name);
             }
 
             // determine prefered-encoding if available
@@ -149,14 +149,32 @@ async fn get_composed_metadata(
                 _ => None,
             };
 
-            // then fetch the metadata for the pre-compressed file
+            // fetch the metadata for the pre-compressed file
             if let Some(ext) = precompressed_ext {
                 buf.set_extension(ext);
 
-                let (meta, auto_index) = fs_metadata(buf.as_ref()).await?;
-                is_precompressed = true;
+                match fs_metadata(buf.as_ref()).await {
+                    Ok(composed_meta) => {
+                        let (meta, auto_index) = composed_meta;
+                        is_precompressed = true;
 
-                return Ok((ArcPath(Arc::new(buf)), meta, auto_index, is_precompressed));
+                        return Ok((ArcPath(Arc::new(buf)), meta, auto_index, is_precompressed));
+                    }
+                    Err(err) => {
+                        // if an error occurs (E.g no such file or dir) then
+                        // log, restore the original file path and
+                        // continue normal workflow below
+
+                        tracing::debug!(
+                            "pre-compresed file not found ({:?}): {}",
+                            err,
+                            buf.display(),
+                        );
+
+                        buf.pop();
+                        buf.push(file_name);
+                    }
+                };
             }
         }
     }
