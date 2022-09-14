@@ -1,6 +1,6 @@
 use headers::HeaderValue;
 use hyper::{header::WWW_AUTHENTICATE, Body, Method, Request, Response, StatusCode};
-use std::{future::Future, net::SocketAddr, path::PathBuf, sync::Arc};
+use std::{future::Future, net::IpAddr, net::SocketAddr, path::PathBuf, sync::Arc};
 
 use crate::{
     basic_auth, compression, control_headers, cors, custom_headers, error_page, fallback_page,
@@ -63,9 +63,12 @@ impl RequestHandler {
             remote_addr_str.push_str(" remote_addr=");
             remote_addr_str.push_str(&remote_addr.map_or("".to_owned(), |v| v.to_string()));
 
-            if let Some(client_ip_address) = headers.get("X-Forwarded-For") {
-                remote_addr_str.push_str(" real_remote_ip=");
-                remote_addr_str.push_str(client_ip_address.to_str().unwrap())
+            if let Some(client_ip_address) = headers.get("X-Forwarded-For")
+                .and_then(|v| v.to_str().ok())
+                .and_then(|s| s.split(',').next())
+                .and_then(|s| s.trim().parse::<IpAddr>().ok()) {
+                    remote_addr_str.push_str(" real_remote_ip=");
+                    remote_addr_str.push_str(&client_ip_address.to_string())
             }
         }
         tracing::info!(
