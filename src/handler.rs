@@ -63,8 +63,7 @@ impl RequestHandler {
             remote_addr_str.push_str(" remote_addr=");
             remote_addr_str.push_str(&remote_addr.map_or("".to_owned(), |v| v.to_string()));
 
-            let forwarded_ip = headers.get("X-Forwarded-For");
-            if let Some(client_ip_address) = forwarded_ip {
+            if let Some(client_ip_address) = headers.get("X-Forwarded-For") {
                 remote_addr_str.push_str(" real_remote_ip=");
                 remote_addr_str.push_str(client_ip_address.to_str().unwrap())
             }
