@@ -47,3 +47,35 @@ static-web-server -a "0.0.0.0" -p 8080 -d docker/public/ -g info --log-remote-ad
 # 2022-05-23T22:24:50.519540Z  INFO static_web_server::handler: incoming request: method=GET uri=/ remote_addr=192.168.1.126:57625
 # 2022-05-23T22:25:26.516841Z  INFO static_web_server::handler: incoming request: method=GET uri=/favicon.ico remote_addr=192.168.1.126:57625
 ```
+## Log Real Remote IP
+
+When used behind reverse proxy, reported `remote_addr` indicate proxy internal IP address and port, and not client real remote IP.
+Proxy server can be configured to provide [X-Forwarded-For header](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Forwarded-For), containing comma-separated list of IP addresses, starting with *client real remote IP*, and all following intermediate proxies (if any).
+
+When *Remote Address (IP) logging* [is enabled](#log-remote-addresses), and `X-Forwarded-For` header is present and correctly formated, then log entries for requests will contain a `real_remote_ip` section with IP of remote client, **as reported by this header**. 
+
+We can simulate request as from behind reverse proxy with additional intermediate-proxy with following command:
+
+```sh
+curl --header "X-Forwarded-For: 203.0.113.195, 2001:db8:85a3:8d3:1319:8a2e:370:7348" http://0.0.0.0:8080
+```
+
+Log entry for such case will look like:
+
+```log
+2022-05-23T22:24:50.519540Z  INFO static_web_server::handler: incoming request: method=GET uri=/ remote_addr=192.168.1.126:57625 real_remote_ip=203.0.113.195
+```
+
+**`SWS`** will parse `X-Forwarded-For` header, and if format of provided IP is invalid - it will be ignored to prevent log poisoning attacks. In such case `real_remote_ip` section will not be added.
+
+Example from above, but with invalid header:
+
+```sh
+curl --header "X-Forwarded-For: <iframe src=//malware.attack>" http://0.0.0.0:8080
+```
+
+```log
+2022-05-23T22:24:50.519540Z  INFO static_web_server::handler: incoming request: method=GET uri=/ remote_addr=192.168.1.126:57625
+```
+
+Be aware, that contents of `X-Forwarded-For` header can be augumented by all proxies in the chain, and as such - remote IP address reported by it may not be trusted.
