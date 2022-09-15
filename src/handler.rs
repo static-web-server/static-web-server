@@ -63,12 +63,14 @@ impl RequestHandler {
             remote_addr_str.push_str(" remote_addr=");
             remote_addr_str.push_str(&remote_addr.map_or("".to_owned(), |v| v.to_string()));
 
-            if let Some(client_ip_address) = headers.get("X-Forwarded-For")
+            if let Some(client_ip_address) = headers
+                .get("X-Forwarded-For")
                 .and_then(|v| v.to_str().ok())
                 .and_then(|s| s.split(',').next())
-                .and_then(|s| s.trim().parse::<IpAddr>().ok()) {
-                    remote_addr_str.push_str(" real_remote_ip=");
-                    remote_addr_str.push_str(&client_ip_address.to_string())
+                .and_then(|s| s.trim().parse::<IpAddr>().ok())
+            {
+                remote_addr_str.push_str(" real_remote_ip=");
+                remote_addr_str.push_str(&client_ip_address.to_string())
             }
         }
         tracing::info!(
