@@ -3,7 +3,7 @@ use hyper::StatusCode;
 use crate::settings::Redirects;
 
 /// It returns a redirect's destination path and status code if the current request uri
-/// matches againt the provided redirect's array.
+/// matches against the provided redirect's array.
 pub fn get_redirection<'a>(
     uri_path: &'a str,
     redirects_opts_vec: &'a Option<Vec<Redirects>>,

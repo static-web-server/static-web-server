@@ -52,7 +52,7 @@ static-web-server -a "0.0.0.0" -p 8080 -d docker/public/ -g info --log-remote-ad
 When used behind reverse proxy, reported `remote_addr` indicate proxy internal IP address and port, and not client real remote IP.
 Proxy server can be configured to provide [X-Forwarded-For header](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Forwarded-For), containing comma-separated list of IP addresses, starting with *client real remote IP*, and all following intermediate proxies (if any).
 
-When *Remote Address (IP) logging* [is enabled](#log-remote-addresses), and `X-Forwarded-For` header is present and correctly formated, then log entries for requests will contain a `real_remote_ip` section with IP of remote client, **as reported by this header**. 
+When *Remote Address (IP) logging* [is enabled](#log-remote-addresses), and `X-Forwarded-For` header is present and correctly formatted, then log entries for requests will contain a `real_remote_ip` section with IP of remote client, **as reported by this header**. 
 
 We can simulate request as from behind reverse proxy with additional intermediate-proxy with following command:
 

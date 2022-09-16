@@ -2,7 +2,7 @@
 
 set -e
 
-# Check if incomming command contains flags.
+# Check if incoming command contains flags.
 if [ "${1#-}" != "$1" ]; then
     set -- static-web-server "$@"
 fi

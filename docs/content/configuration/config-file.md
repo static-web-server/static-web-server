@@ -41,7 +41,7 @@ security-headers = true
 cors-allow-origins = ""
 cors-allow-headers = ""
 
-#### Directoy listing
+#### Directory listing
 directory-listing = false
 directory-listing-order = 6
 
@@ -69,7 +69,7 @@ redirect-trailing-slash = true
 
 ### Windows Only
 
-#### Windows Service suport.
+#### Windows Service support.
 #### NOTE: this doesn't create a Windows Service per se,
 #### instead, it just tells SWS to run in a Windows Service context,
 #### so it's necessary to install the SWS Windows Service first
@@ -99,7 +99,7 @@ The TOML `[advanced]` section is intended for more complex features.
 
 For example [Custom HTTP Headers](../features/custom-http-headers.md).
 
-### Precendence
+### Precedence
 
 Whatever config file-based feature option will take precedence over its CLI or ENV equivalent.
 

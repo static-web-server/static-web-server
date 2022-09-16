@@ -109,7 +109,7 @@ pub struct General {
     pub cors_allow_origins: Option<String>,
     pub cors_allow_headers: Option<String>,
 
-    // Directoy listing
+    // Directory listing
     pub directory_listing: Option<bool>,
     pub directory_listing_order: Option<u8>,
 
@@ -164,7 +164,7 @@ impl Settings {
 
         for key in unused {
             println!(
-                "Warning: unused configuration manifest key \"{}\" or unsuported",
+                "Warning: unused configuration manifest key \"{}\" or unsupported",
                 key
             );
         }
