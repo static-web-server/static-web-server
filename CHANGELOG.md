@@ -420,7 +420,7 @@ __Refactorings__
 
 - [2a699e4](https://github.com/joseluisq/static-web-server/commit/2a699e4) Follow symlinks during directory listing, displaying the index page properly for symlinks that points to directories or files.
 - [b4f1bcc](https://github.com/joseluisq/static-web-server/commit/b4f1bcc) Prefer stabilized `Poll::map_err` on compression stream.
-- [55ffd06](https://github.com/joseluisq/static-web-server/commit/55ffd06) Handle potencial panic for 404/50x error page responses.
+- [55ffd06](https://github.com/joseluisq/static-web-server/commit/55ffd06) Handle potential panic for 404/50x error page responses.
 - [920acb2](https://github.com/joseluisq/static-web-server/commit/920acb2) Prefer `to_owned()` for string literals over `to_string()` in some cases.
 - [c0dca6e](https://github.com/joseluisq/static-web-server/commit/c0dca6e) Improve directory path scanning when directory listing.
 - [0ed6287](https://github.com/joseluisq/static-web-server/commit/0ed6287) Auto compression error result logging.
@@ -462,7 +462,7 @@ __Refactorings__
 
 - [2b2da3a](https://github.com/joseluisq/static-web-server/commit/2b2da3a) `--http2-tls-cert` and `--http2-tls-key` options now require `--http2` enabled.
 - [6fe04a5](https://github.com/joseluisq/static-web-server/commit/6fe04a5) Update Docker files in order to get the new Linux binary source.
-- [77d231c](https://github.com/joseluisq/static-web-server/commit/77d231c) Drop redudant reference on CORS module.
+- [77d231c](https://github.com/joseluisq/static-web-server/commit/77d231c) Drop redundant reference on CORS module.
 - [d5189ec](https://github.com/joseluisq/static-web-server/commit/d5189ec) Drop root arc-path on static files module.
 
 ## v2.0.0-beta.4 - 2021-06-02

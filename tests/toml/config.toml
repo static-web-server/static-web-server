@@ -27,7 +27,7 @@ http2-tls-key = ""
 security-headers = true
 cors-allow-origins = ""
 
-#### Directoy listing
+#### Directory listing
 directory-listing = false
 
 #### Basich Authentication
