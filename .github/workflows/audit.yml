@@ -1,3 +1,4 @@
+name: audit
 on:
   schedule:
     - cron: '10 01 * * *' # Every day at 01:10 UTC
@@ -16,7 +17,7 @@ on:
 
 jobs:
   audit:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v2
       - uses: actions-rs/audit-check@v1
