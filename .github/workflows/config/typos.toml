@@ -1,0 +1,5 @@
+[default.extend-words]
+Compressable = "Compressable"
+ba = "ba"
+flate = "flate"
+prefered = "prefered"

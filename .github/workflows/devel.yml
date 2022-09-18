@@ -45,7 +45,7 @@ jobs:
           - windows-pc-gnu
           # - windows-msvc-arm64
         include:
-          # Specific Rust channels 
+          # Specific Rust channels
           - build: pinned
             os: ubuntu-20.04
             rust: 1.56.1
@@ -164,6 +164,11 @@ jobs:
     steps:
     - name: Checkout repository
       uses: actions/checkout@v3
+
+    - name: Check typos
+      uses: crate-ci/typos@master
+      with:
+        config: ./.github/workflows/config/typos.toml
 
     - name: Install stable toolchain
       uses: dtolnay/rust-toolchain@stable
