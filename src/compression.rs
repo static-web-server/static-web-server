@@ -141,7 +141,7 @@ pub fn brotli(
 }
 
 /// Given an optional existing encoding header, appends to the existing or creates a new one.
-fn create_encoding_header(existing: Option<HeaderValue>, coding: ContentCoding) -> HeaderValue {
+pub fn create_encoding_header(existing: Option<HeaderValue>, coding: ContentCoding) -> HeaderValue {
     if let Some(val) = existing {
         if let Ok(str_val) = val.to_str() {
             return HeaderValue::from_str(&[str_val, ", ", coding.to_static()].concat())

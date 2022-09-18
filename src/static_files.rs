@@ -62,14 +62,15 @@ pub async fn handle<'a>(opts: &HandleOpts<'a>) -> Result<(Response<Body>, bool),
     let base = Arc::<PathBuf>::new(opts.base_path.into());
     let file_path = sanitize_path(base.as_ref(), uri_path)?;
 
-    let (file_path, meta, auto_index, is_precompressed) =
+    let (file_path, meta, is_dir, meta_precompressed) =
         get_composed_metadata(file_path, opts.headers, opts.compression_static).await?;
+    let is_precompressed = meta_precompressed.is_some();
 
     // NOTE: `auto_index` appends an `index.html` to an `uri_path` of kind directory only.
 
     // Check for a trailing slash on the current directory path
     // and redirect if that path doesn't end with the slash char
-    if opts.redirect_trailing_slash && auto_index && !uri_path.ends_with('/') {
+    if opts.redirect_trailing_slash && is_dir && !uri_path.ends_with('/') {
         let uri = [uri_path, "/"].concat();
         let loc = match HeaderValue::from_str(uri.as_str()) {
             Ok(val) => val,
@@ -104,7 +105,7 @@ pub async fn handle<'a>(opts: &HandleOpts<'a>) -> Result<(Response<Body>, bool),
     // 1. Check if "directory listing" feature is enabled
     // if current path is a valid directory and
     // if it does not contain an `index.html` file (if a proper auto index is generated)
-    if opts.dir_listing && auto_index && !file_path.as_ref().exists() {
+    if opts.dir_listing && is_dir && !file_path.as_ref().exists() {
         let resp = directory_listing::auto_index(
             method,
             uri_path,
@@ -116,83 +117,90 @@ pub async fn handle<'a>(opts: &HandleOpts<'a>) -> Result<(Response<Body>, bool),
         return Ok((resp, is_precompressed));
     }
 
-    let resp = file_reply(opts.headers, (file_path, &meta, auto_index)).await?;
+    let resp = if let Some(meta_precompressed) = meta_precompressed {
+        let (path_precomp, meta_precomp) = meta_precompressed;
+        file_reply(
+            opts.headers,
+            (file_path, &meta),
+            Some((path_precomp, &meta_precomp)),
+        )
+        .await?
+    } else {
+        file_reply(opts.headers, (file_path, &meta), None).await?
+    };
+
     Ok((resp, is_precompressed))
 }
 
 async fn get_composed_metadata(
-    mut buf: PathBuf,
+    mut file_path: PathBuf,
     headers: &HeaderMap<HeaderValue>,
     compression_static: bool,
-) -> Result<(ArcPath, Metadata, bool, bool), StatusCode> {
-    let mut is_precompressed = false;
+) -> Result<(ArcPath, Metadata, bool, Option<(ArcPath, Metadata)>), StatusCode> {
+    tracing::debug!("getting metadata for file {}", file_path.display());
+    let (mut meta, mut is_dir) = fs_metadata(file_path.as_ref()).await?;
+    let mut precompressed = None;
 
-    // Check for pre-compresed files
-    if compression_static {
-        if let Some(file_ext) = buf.extension() {
-            let file_name = buf.file_name().unwrap().to_str().unwrap().to_owned();
+    if is_dir {
+        // Append auto html index if a directory
+        tracing::debug!("dir: appending index.html to the directory path");
+        file_path.push("index.html");
 
-            // if the file has extension then remove it
-            if let Some(ext) = file_ext.to_str() {
-                // TODO: evaluate the possibility to look for `.tar.x` files too
-                let ext = [".", ext].concat();
-                let new_file_name = file_name.strip_suffix(ext.as_str()).unwrap();
+        (meta, is_dir) = fs_metadata(file_path.as_ref()).await?;
+    } else {
+        // Check for pre-compresed files
+        if compression_static {
+            // TODO: evaluate the possibility to look for `.tar.x` files too
 
-                buf.pop();
-                buf.push(new_file_name);
-            }
-
-            // determine prefered-encoding if available
+            // determine prefered-encoding extension if available
             let precompressed_ext = match compression::get_prefered_encoding(headers) {
                 Some(ContentCoding::GZIP | ContentCoding::DEFLATE) => Some("gz"),
                 Some(ContentCoding::BROTLI) => Some("br"),
                 _ => None,
             };
 
+            if precompressed_ext.is_none() {
+                tracing::debug!("prefered-encoding is not determined to get the file extension",);
+            }
+
             // fetch the metadata for the pre-compressed file
             if let Some(ext) = precompressed_ext {
-                buf.set_extension(ext);
+                let mut filepath_precomp = file_path.clone();
+                let filename = filepath_precomp.file_name().unwrap().to_str().unwrap();
+                let precomp_file_name = [filename, ".", ext].concat();
+                filepath_precomp.set_file_name(precomp_file_name);
 
-                match fs_metadata(buf.as_ref()).await {
-                    Ok(composed_meta) => {
-                        let (meta, auto_index) = composed_meta;
-                        is_precompressed = true;
-
-                        return Ok((ArcPath(Arc::new(buf)), meta, auto_index, is_precompressed));
+                match fs_metadata(&filepath_precomp).await {
+                    Ok((meta, _)) => {
+                        tracing::debug!(
+                            "pre-compressed file variant found, serving {}",
+                            filepath_precomp.display()
+                        );
+                        precompressed = Some((ArcPath(Arc::new(filepath_precomp)), meta));
                     }
                     Err(err) => {
                         // if an error occurs (E.g no such file or dir) then
-                        // log, restore the original file path and
-                        // continue normal workflow below
-
-                        tracing::debug!(
-                            "pre-compresed file not found ({:?}): {}",
+                        // just log and continue normal workflow below
+                        tracing::warn!(
+                            "pre-compresed file variant not found: {} - {:?})",
+                            file_path.display(),
                             err,
-                            buf.display(),
                         );
-
-                        buf.pop();
-                        buf.push(file_name);
                     }
                 };
             }
         }
     }
 
-    let (meta, auto_index) = fs_metadata(buf.as_ref()).await?;
-    if auto_index {
-        tracing::debug!("dir: appending index.html to directory path");
-        buf.push("index.html");
-    }
-    Ok((ArcPath(Arc::new(buf)), meta, auto_index, is_precompressed))
+    Ok((ArcPath(Arc::new(file_path)), meta, is_dir, precompressed))
 }
 
 async fn fs_metadata(buf: &Path) -> Result<(Metadata, bool), StatusCode> {
     match tokio::fs::metadata(buf).await {
         Ok(meta) => {
-            let auto_index = meta.is_dir();
-            tracing::trace!("file to serve: {:?}", buf);
-            Ok((meta, auto_index))
+            let is_dir = meta.is_dir();
+            tracing::trace!("file found: {:?}", buf);
+            Ok((meta, is_dir))
         }
         Err(err) => {
             tracing::debug!("file not found: {:?} {:?}", buf, err);
@@ -204,16 +212,38 @@ async fn fs_metadata(buf: &Path) -> Result<(Metadata, bool), StatusCode> {
 /// Reply with the corresponding file content.
 fn file_reply<'a>(
     headers: &'a HeaderMap<HeaderValue>,
-    meta_compose: (ArcPath, &'a Metadata, bool),
+    meta_compose: (ArcPath, &'a Metadata),
+    meta_precompressed: Option<(ArcPath, &'a Metadata)>,
 ) -> impl Future<Output = Result<Response<Body>, StatusCode>> + Send + 'a {
-    let (path, meta, auto_index) = meta_compose;
+    // FIXME: pass the pre-compressed `meta` instead of the requested file.
+    // Tip: check 'response_body'
+
+    let (path, meta) = meta_compose;
     let conditionals = get_conditional_headers(headers);
-    TkFile::open(path.clone()).then(move |res| match res {
-        Ok(file) => Either::Left(file_conditional(file, path, meta, auto_index, conditionals)),
+
+    let mut p = None;
+    let mut o = None;
+    if let Some((path_precomp, meta_precomp)) = meta_precompressed {
+        p = Some(path_precomp);
+        o = Some(meta_precomp);
+    };
+
+    let p = p.unwrap_or_else(|| path.clone());
+    TkFile::open(p).then(move |res| match res {
+        Ok(file) => {
+            if let Some(meta) = o {
+                Either::Left(file_conditional(file, path, meta, conditionals))
+            } else {
+                Either::Left(file_conditional(file, path, meta, conditionals))
+            }
+        }
         Err(err) => {
             let status = match err.kind() {
                 io::ErrorKind::NotFound => {
-                    tracing::debug!("file not found: {:?}", path.as_ref().display());
+                    tracing::debug!(
+                        "file can't be opened or not found: {:?}",
+                        path.as_ref().display()
+                    );
                     StatusCode::NOT_FOUND
                 }
                 io::ErrorKind::PermissionDenied => {
@@ -353,20 +383,9 @@ async fn file_conditional(
     file: TkFile,
     path: ArcPath,
     meta: &Metadata,
-    auto_index: bool,
     conditionals: Conditionals,
 ) -> Result<Response<Body>, StatusCode> {
-    if auto_index {
-        match file.metadata().await {
-            Ok(meta) => Ok(response_body(file, &meta, path, conditionals)),
-            Err(err) => {
-                tracing::debug!("file metadata error: {}", err);
-                Err(StatusCode::INTERNAL_SERVER_ERROR)
-            }
-        }
-    } else {
-        Ok(response_body(file, meta, path, conditionals))
-    }
+    Ok(response_body(file, meta, path, conditionals))
 }
 
 fn response_body(
