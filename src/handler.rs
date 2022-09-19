@@ -207,8 +207,6 @@ impl RequestHandler {
 
                     // Auto compression based on the `Accept-Encoding` header
                     if self.opts.compression && !is_precompressed {
-                        tracing::debug!("compressing file on the fly");
-
                         resp = match compression::auto(method, headers, resp) {
                             Ok(res) => res,
                             Err(err) => {
