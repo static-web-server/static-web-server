@@ -146,6 +146,7 @@ impl RequestHandler {
                 }
             }
 
+            // Advanced options
             if let Some(advanced) = &self.opts.advanced_opts {
                 // Redirects
                 if let Some(parts) = redirects::get_redirection(uri_path, &advanced.redirects) {

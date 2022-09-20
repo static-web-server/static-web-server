@@ -11,6 +11,7 @@ extern crate serde;
 
 pub mod basic_auth;
 pub mod compression;
+pub mod compression_static;
 pub mod control_headers;
 pub mod cors;
 pub mod custom_headers;

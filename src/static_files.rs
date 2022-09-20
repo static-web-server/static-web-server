@@ -5,8 +5,8 @@ use bytes::{Bytes, BytesMut};
 use futures_util::future::Either;
 use futures_util::{future, ready, stream, FutureExt, Stream, StreamExt};
 use headers::{
-    AcceptRanges, ContentCoding, ContentLength, ContentRange, ContentType, HeaderMap, HeaderMapExt,
-    HeaderValue, IfModifiedSince, IfRange, IfUnmodifiedSince, LastModified, Range,
+    AcceptRanges, ContentLength, ContentRange, ContentType, HeaderMap, HeaderMapExt, HeaderValue,
+    IfModifiedSince, IfRange, IfUnmodifiedSince, LastModified, Range,
 };
 use http::header::CONTENT_LENGTH;
 use hyper::{header::CONTENT_ENCODING, Body, Method, Response, StatusCode};
@@ -24,7 +24,7 @@ use tokio::fs::File as TkFile;
 use tokio::io::AsyncSeekExt;
 use tokio_util::io::poll_read_buf;
 
-use crate::{compression, directory_listing, Result};
+use crate::{compression_static, directory_listing, Result};
 
 /// Arc `PathBuf` reference wrapper since Arc<PathBuf> doesn't implement AsRef<Path>.
 #[derive(Clone, Debug)]
@@ -63,11 +63,11 @@ pub async fn handle<'a>(opts: &HandleOpts<'a>) -> Result<(Response<Body>, bool),
     let base = Arc::<PathBuf>::new(opts.base_path.into());
     let file_path = sanitize_path(base.as_ref(), uri_path)?;
 
-    let (file_path, meta, is_dir, meta_precompressed) =
-        get_composed_metadata(file_path, opts.headers, opts.compression_static).await?;
+    let (file_path, meta, is_dir, precompressed_variant) =
+        composed_file_metadata(file_path, opts.headers, opts.compression_static).await?;
 
     // `is_precompressed` relates to `opts.compression_static` value
-    let is_precompressed = meta_precompressed.is_some();
+    let is_precompressed = precompressed_variant.is_some();
 
     // NOTE: `is_dir` means an "auto index" for the current directory request
 
@@ -105,7 +105,7 @@ pub async fn handle<'a>(opts: &HandleOpts<'a>) -> Result<(Response<Body>, bool),
     }
 
     // Directory listing
-    // 1. Check if "directory listing" feature is enabled
+    // Check if "directory listing" feature is enabled,
     // if current path is a valid directory and
     // if it does not contain an `index.html` file (if a proper auto index is generated)
     if opts.dir_listing && is_dir && !file_path.as_ref().exists() {
@@ -121,8 +121,8 @@ pub async fn handle<'a>(opts: &HandleOpts<'a>) -> Result<(Response<Body>, bool),
         return Ok((resp, is_precompressed));
     }
 
-    // Check for a pre-compressed file variant that relates to `opts.compression_static`
-    let resp = if let Some(meta_precompressed) = meta_precompressed {
+    // Check for a pre-compressed file variant if present under the `opts.compression_static` context
+    if let Some(meta_precompressed) = precompressed_variant {
         let (path_precomp, meta_precomp, precomp_ext) = meta_precompressed;
         let mut resp = file_reply(
             opts.headers,
@@ -131,102 +131,54 @@ pub async fn handle<'a>(opts: &HandleOpts<'a>) -> Result<(Response<Body>, bool),
         )
         .await?;
 
+        // Prepare corresponding headers to let know how to decode the payload
         resp.headers_mut().remove(CONTENT_LENGTH);
         resp.headers_mut()
             .insert(CONTENT_ENCODING, precomp_ext.parse().unwrap());
 
-        resp
-    } else {
-        file_reply(opts.headers, (file_path, &meta), None).await?
-    };
+        return Ok((resp, is_precompressed));
+    }
+
+    let resp = file_reply(opts.headers, (file_path, &meta), None).await?;
 
     Ok((resp, is_precompressed))
 }
 
-async fn get_composed_metadata(
+/// Returns the final composed metadata information (tuple) containing
+/// the Arc `PathBuf` reference wrapper for the current `file_path` with its file metadata
+/// as well as its optional pre-compressed variant.
+async fn composed_file_metadata(
     mut file_path: PathBuf,
     headers: &HeaderMap<HeaderValue>,
     compression_static: bool,
 ) -> Result<(ArcPath, Metadata, bool, Option<(ArcPath, Metadata, &str)>), StatusCode> {
     tracing::debug!("getting metadata for file {}", file_path.display());
 
-    let (mut meta, is_dir) = get_fs_metadata(file_path.as_ref()).await?;
+    let (mut meta, is_dir) = file_metadata(file_path.as_ref()).await?;
     let mut precompressed = None;
 
     if is_dir {
-        // Append a html index if a directory by default (`autoindex`)
-        tracing::debug!("dir: appending index.html to the directory path");
+        // Append a HTML index page by default if it's a directory path (`autoindex`)
+        tracing::debug!("dir: appending an index.html to the directory path");
         file_path.push("index.html");
 
-        // If file exists then overwrite `meta`.
-        // Noting that it is still a directory request.
-        if let Ok(meta_composed) = get_fs_metadata(file_path.as_ref()).await {
-            (meta, _) = meta_composed
+        // If file exists then overwrite the `meta`.
+        // Also noting that it's still a directory request.
+        if let Ok(meta_res) = file_metadata(file_path.as_ref()).await {
+            (meta, _) = meta_res
         }
     }
 
-    // Pre-compressed variant check for the original file
+    // Pre-compressed variant check for the given file path
     if compression_static {
-        precompressed = get_precompressed(file_path.clone(), headers).await;
+        precompressed = compression_static::precompressed_variant(file_path.clone(), headers).await;
     }
 
     Ok((ArcPath(Arc::new(file_path)), meta, is_dir, precompressed))
 }
 
-/// Search for the pre-compressed variant of the current file path.
-async fn get_precompressed(
-    file_path: PathBuf,
-    headers: &HeaderMap<HeaderValue>,
-) -> Option<(ArcPath, Metadata, &str)> {
-    let mut precompressed = None;
-    // TODO: evaluate the possibility to look for `.tar.x` files too
-    tracing::debug!("searching for pre-compressed file variant on file system");
-
-    // Determine prefered-encoding extension if available
-    let precomp_ext = match compression::get_prefered_encoding(headers) {
-        Some(ContentCoding::GZIP | ContentCoding::DEFLATE) => Some("gz"),
-        Some(ContentCoding::BROTLI) => Some("br"),
-        _ => None,
-    };
-
-    if precomp_ext.is_none() {
-        tracing::debug!("prefered-encoding does not determined the file extension");
-    }
-
-    // Fetch the metadata for the pre-compressed file
-    if let Some(ext) = precomp_ext {
-        let mut filepath_precomp = file_path;
-        let filename = filepath_precomp.file_name().unwrap().to_str().unwrap();
-        let precomp_file_name = [filename, ".", ext].concat();
-        filepath_precomp.set_file_name(precomp_file_name);
-
-        match get_fs_metadata(&filepath_precomp).await {
-            Ok((meta, _)) => {
-                tracing::debug!(
-                    "pre-compressed file variant found, serving directly {}",
-                    filepath_precomp.display()
-                );
-
-                let encoding = if ext == "gz" { "gzip" } else { ext };
-                precompressed = Some((ArcPath(Arc::new(filepath_precomp)), meta, encoding));
-            }
-            Err(err) => {
-                // If an error occurs (E.g no such file or dir) then
-                // just log and continue normal workflow below
-                tracing::warn!(
-                    "pre-compressed file variant was not found: {} - {:?})",
-                    filepath_precomp.display(),
-                    err,
-                );
-            }
-        };
-    }
-
-    precompressed
-}
-
-/// Get the file system metadata for the file path.
-async fn get_fs_metadata(file_path: &Path) -> Result<(Metadata, bool), StatusCode> {
+/// Try to find the file system metadata for the given file path.
+pub async fn file_metadata(file_path: &Path) -> Result<(Metadata, bool), StatusCode> {
     match tokio::fs::metadata(file_path).await {
         Ok(meta) => {
             let is_dir = meta.is_dir();
@@ -243,26 +195,26 @@ async fn get_fs_metadata(file_path: &Path) -> Result<(Metadata, bool), StatusCod
 /// Reply with the corresponding file content.
 fn file_reply<'a>(
     headers: &'a HeaderMap<HeaderValue>,
-    meta_compose: (ArcPath, &'a Metadata),
+    meta_composed: (ArcPath, &'a Metadata),
     meta_precompressed: Option<(ArcPath, &'a Metadata)>,
 ) -> impl Future<Output = Result<Response<Body>, StatusCode>> + Send + 'a {
-    let (path, meta) = meta_compose;
     let conditionals = get_conditional_headers(headers);
 
-    let mut fpath = None;
-    let mut fmeta = None;
+    let mut path_comp = None;
+    let mut meta_comp = None;
     if let Some((path_precomp, meta_precomp)) = meta_precompressed {
-        fpath = Some(path_precomp);
-        fmeta = Some(meta_precomp);
+        path_comp = Some(path_precomp);
+        meta_comp = Some(meta_precomp);
     };
 
-    let fpath = fpath.unwrap_or_else(|| path.clone());
+    let (path, meta) = meta_composed;
+    let path_comp = path_comp.unwrap_or_else(|| path.clone());
 
-    TkFile::open(fpath).then(move |res| match res {
+    TkFile::open(path_comp).then(move |res| match res {
         Ok(file) => Either::Left(file_conditional(
             file,
             path,
-            fmeta.unwrap_or(meta),
+            meta_comp.unwrap_or(meta),
             conditionals,
         )),
         Err(err) => {

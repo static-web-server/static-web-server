@@ -44,7 +44,7 @@ pub const TEXT_MIME_TYPES: [&str; 24] = [
     "application/wasm",
 ];
 
-/// Returns the prefered `content-encoding` of `accept-encoding` header.
+/// Try to get the prefered `content-encoding` via the `accept-encoding` header.
 pub fn get_prefered_encoding(headers: &HeaderMap<HeaderValue>) -> Option<ContentCoding> {
     if let Some(ref accept_encoding) = headers.typed_get::<AcceptEncoding>() {
         return accept_encoding.prefered_encoding();
@@ -99,7 +99,7 @@ pub fn gzip(
     mut head: http::response::Parts,
     body: CompressableBody<Body, hyper::Error>,
 ) -> Response<Body> {
-    tracing::debug!("compressing response body on the fly using gzip");
+    tracing::trace!("compressing response body on the fly using gzip");
 
     let body = Body::wrap_stream(ReaderStream::new(GzipEncoder::new(StreamReader::new(body))));
     let header = create_encoding_header(head.headers.remove(CONTENT_ENCODING), ContentCoding::GZIP);
@@ -114,7 +114,7 @@ pub fn deflate(
     mut head: http::response::Parts,
     body: CompressableBody<Body, hyper::Error>,
 ) -> Response<Body> {
-    tracing::debug!("compressing response body on the fly using deflate");
+    tracing::trace!("compressing response body on the fly using deflate");
 
     let body = Body::wrap_stream(ReaderStream::new(DeflateEncoder::new(StreamReader::new(
         body,
@@ -134,7 +134,7 @@ pub fn brotli(
     mut head: http::response::Parts,
     body: CompressableBody<Body, hyper::Error>,
 ) -> Response<Body> {
-    tracing::debug!("compressing response body on the fly using brotli");
+    tracing::trace!("compressing response body on the fly using brotli");
 
     let body = Body::wrap_stream(ReaderStream::new(BrotliEncoder::new(StreamReader::new(
         body,
