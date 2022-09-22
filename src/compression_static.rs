@@ -13,7 +13,10 @@ pub async fn precompressed_variant(
 ) -> Option<(ArcPath, Metadata, &str)> {
     let mut precompressed = None;
 
-    tracing::trace!("searching for pre-compressed file variant on file system");
+    tracing::trace!(
+        "preparing pre-compressed file path variant of {}",
+        file_path.display()
+    );
 
     // Determine prefered-encoding extension if available
     let precomp_ext = match compression::get_prefered_encoding(headers) {
@@ -35,26 +38,19 @@ pub async fn precompressed_variant(
         let precomp_file_name = [filename, ".", ext].concat();
         filepath_precomp.set_file_name(precomp_file_name);
 
-        match file_metadata(&filepath_precomp).await {
-            Ok((meta, _)) => {
-                tracing::trace!(
-                    "pre-compressed file variant found, serving it directly {}",
-                    filepath_precomp.display()
-                );
+        tracing::trace!(
+            "getting metadata for pre-compressed file variant {}",
+            filepath_precomp.display()
+        );
 
-                let encoding = if ext == "gz" { "gzip" } else { ext };
-                precompressed = Some((ArcPath(Arc::new(filepath_precomp)), meta, encoding));
-            }
-            Err(err) => {
-                // If an error occurs (E.g no such file or dir) then
-                // just log and continue normal workflow below
-                tracing::trace!(
-                    "pre-compressed file variant was not found: {} - {:?})",
-                    filepath_precomp.display(),
-                    err,
-                );
-            }
-        };
+        if let Ok((meta, _)) = file_metadata(&filepath_precomp).await {
+            tracing::trace!("pre-compressed file variant found, serving it directly");
+
+            let encoding = if ext == "gz" { "gzip" } else { ext };
+            precompressed = Some((ArcPath(Arc::new(filepath_precomp)), meta, encoding));
+        }
+
+        // Note: In error case like "no such file or dir" the workflow just continues
     }
 
     precompressed
