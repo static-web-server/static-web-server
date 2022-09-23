@@ -15,6 +15,7 @@ pub struct RequestHandlerOpts {
     // General options
     pub root_dir: PathBuf,
     pub compression: bool,
+    pub compression_static: bool,
     pub dir_listing: bool,
     pub dir_listing_order: u8,
     pub cors: Option<cors::Configured>,
@@ -54,6 +55,7 @@ impl RequestHandler {
         let dir_listing_order = self.opts.dir_listing_order;
         let log_remote_addr = self.opts.log_remote_address;
         let redirect_trailing_slash = self.opts.redirect_trailing_slash;
+        let compression_static = self.opts.compression_static;
 
         let mut cors_headers: Option<http::HeaderMap> = None;
 
@@ -144,6 +146,7 @@ impl RequestHandler {
                 }
             }
 
+            // Advanced options
             if let Some(advanced) = &self.opts.advanced_opts {
                 // Redirects
                 if let Some(parts) = redirects::get_redirection(uri_path, &advanced.redirects) {
@@ -188,10 +191,11 @@ impl RequestHandler {
                 dir_listing,
                 dir_listing_order,
                 redirect_trailing_slash,
+                compression_static,
             })
             .await
             {
-                Ok(mut resp) => {
+                Ok((mut resp, is_precompressed)) => {
                     // Append CORS headers if they are present
                     if let Some(cors_headers) = cors_headers {
                         if !cors_headers.is_empty() {
@@ -203,7 +207,7 @@ impl RequestHandler {
                     }
 
                     // Auto compression based on the `Accept-Encoding` header
-                    if self.opts.compression {
+                    if self.opts.compression && !is_precompressed {
                         resp = match compression::auto(method, headers, resp) {
                             Ok(res) => res,
                             Err(err) => {

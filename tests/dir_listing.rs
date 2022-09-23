@@ -41,10 +41,11 @@ mod tests {
                 dir_listing: true,
                 dir_listing_order: 6,
                 redirect_trailing_slash: true,
+                compression_static: false,
             })
             .await
             {
-                Ok(res) => {
+                Ok((res, _)) => {
                     assert_eq!(res.status(), 308);
                     assert_eq!(res.headers()["location"], "/assets/");
                 }
@@ -68,10 +69,11 @@ mod tests {
                 dir_listing: true,
                 dir_listing_order: 6,
                 redirect_trailing_slash: true,
+                compression_static: false,
             })
             .await
             {
-                Ok(mut res) => {
+                Ok((mut res, _)) => {
                     assert_eq!(res.status(), 200);
                     assert_eq!(res.headers()["content-type"], "text/html; charset=utf-8");
 
@@ -105,10 +107,11 @@ mod tests {
                 dir_listing: true,
                 dir_listing_order: 6,
                 redirect_trailing_slash: false,
+                compression_static: false,
             })
             .await
             {
-                Ok(mut res) => {
+                Ok((mut res, _)) => {
                     assert_eq!(res.status(), 200);
                     assert_eq!(res.headers()["content-type"], "text/html; charset=utf-8");
 
@@ -142,10 +145,11 @@ mod tests {
                 dir_listing: true,
                 dir_listing_order: 6,
                 redirect_trailing_slash: false,
+                compression_static: false,
             })
             .await
             {
-                Ok(res) => {
+                Ok((res, _)) => {
                     assert_eq!(res.status(), 200);
                     assert_eq!(res.headers()["content-type"], "text/markdown");
                 }

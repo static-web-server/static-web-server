@@ -118,6 +118,16 @@ pub struct General {
 
     #[structopt(
         long,
+        parse(try_from_str),
+        default_value = "false",
+        env = "SERVER_COMPRESSION_STATIC"
+    )]
+    /// Check for a pre-compressed file on disk and serve it if available.
+    /// The order of precedence is determined by the `Accept-Encoding` header.
+    pub compression_static: bool,
+
+    #[structopt(
+        long,
         short = "z",
         parse(try_from_str),
         default_value = "false",

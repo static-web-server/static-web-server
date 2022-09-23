@@ -3,12 +3,13 @@
 
 use bytes::{Bytes, BytesMut};
 use futures_util::future::Either;
-use futures_util::{future, ready, stream, FutureExt, Stream, StreamExt, TryFutureExt};
+use futures_util::{future, ready, stream, FutureExt, Stream, StreamExt};
 use headers::{
     AcceptRanges, ContentLength, ContentRange, ContentType, HeaderMap, HeaderMapExt, HeaderValue,
     IfModifiedSince, IfRange, IfUnmodifiedSince, LastModified, Range,
 };
-use hyper::{Body, Method, Response, StatusCode};
+use http::header::CONTENT_LENGTH;
+use hyper::{header::CONTENT_ENCODING, Body, Method, Response, StatusCode};
 use percent_encoding::percent_decode_str;
 use std::fs::Metadata;
 use std::future::Future;
@@ -23,7 +24,7 @@ use tokio::fs::File as TkFile;
 use tokio::io::AsyncSeekExt;
 use tokio_util::io::poll_read_buf;
 
-use crate::{directory_listing, Result};
+use crate::{compression_static, directory_listing, Result};
 
 /// Arc `PathBuf` reference wrapper since Arc<PathBuf> doesn't implement AsRef<Path>.
 #[derive(Clone, Debug)]
@@ -45,11 +46,12 @@ pub struct HandleOpts<'a> {
     pub dir_listing: bool,
     pub dir_listing_order: u8,
     pub redirect_trailing_slash: bool,
+    pub compression_static: bool,
 }
 
 /// Entry point to handle incoming requests which map to specific files
 /// on file system and return a file response.
-pub async fn handle<'a>(opts: &HandleOpts<'a>) -> Result<Response<Body>, StatusCode> {
+pub async fn handle<'a>(opts: &HandleOpts<'a>) -> Result<(Response<Body>, bool), StatusCode> {
     let method = opts.method;
     let uri_path = opts.uri_path;
 
@@ -58,14 +60,23 @@ pub async fn handle<'a>(opts: &HandleOpts<'a>) -> Result<Response<Body>, StatusC
         return Err(StatusCode::METHOD_NOT_ALLOWED);
     }
 
-    let base = Arc::new(opts.base_path.into());
-    let (filepath, meta, auto_index) = path_from_tail(base, uri_path).await?;
+    let headers_opt = opts.headers;
+    let compression_static_opt = opts.compression_static;
 
-    // NOTE: `auto_index` appends an `index.html` to an `uri_path` of kind directory only.
+    let base = Arc::<PathBuf>::new(opts.base_path.into());
+    let file_path = sanitize_path(base.as_ref(), uri_path)?;
+
+    let (file_path, meta, is_dir, precompressed_variant) =
+        composed_file_metadata(file_path, headers_opt, compression_static_opt).await?;
+
+    // `is_precompressed` relates to `opts.compression_static` value
+    let is_precompressed = precompressed_variant.is_some();
+
+    // NOTE: `is_dir` means an "auto index" for the current directory request
 
     // Check for a trailing slash on the current directory path
     // and redirect if that path doesn't end with the slash char
-    if opts.redirect_trailing_slash && auto_index && !uri_path.ends_with('/') {
+    if opts.redirect_trailing_slash && is_dir && !uri_path.ends_with('/') {
         let uri = [uri_path, "/"].concat();
         let loc = match HeaderValue::from_str(uri.as_str()) {
             Ok(val) => val,
@@ -78,11 +89,12 @@ pub async fn handle<'a>(opts: &HandleOpts<'a>) -> Result<Response<Body>, StatusC
         let mut resp = Response::new(Body::empty());
         resp.headers_mut().insert(hyper::header::LOCATION, loc);
         *resp.status_mut() = StatusCode::PERMANENT_REDIRECT;
+
         tracing::trace!("uri doesn't end with a slash so redirecting permanently");
-        return Ok(resp);
+        return Ok((resp, is_precompressed));
     }
 
-    // Respond the permitted communication options
+    // Respond with the permitted communication options
     if method == Method::OPTIONS {
         let mut resp = Response::new(Body::empty());
         *resp.status_mut() = StatusCode::NO_CONTENT;
@@ -93,66 +105,138 @@ pub async fn handle<'a>(opts: &HandleOpts<'a>) -> Result<Response<Body>, StatusC
                 Method::GET,
             ]));
         resp.headers_mut().typed_insert(AcceptRanges::bytes());
-        return Ok(resp);
+
+        return Ok((resp, is_precompressed));
     }
 
     // Directory listing
-    // 1. Check if "directory listing" feature is enabled
+    // Check if "directory listing" feature is enabled,
     // if current path is a valid directory and
     // if it does not contain an `index.html` file (if a proper auto index is generated)
-    if opts.dir_listing && auto_index && !filepath.as_ref().exists() {
-        return directory_listing::auto_index(
+    if opts.dir_listing && is_dir && !file_path.as_ref().exists() {
+        let resp = directory_listing::auto_index(
             method,
             uri_path,
             opts.uri_query,
-            filepath.as_ref(),
+            file_path.as_ref(),
             opts.dir_listing_order,
         )
-        .await;
+        .await?;
+
+        return Ok((resp, is_precompressed));
     }
 
-    file_reply(opts.headers, (filepath, &meta, auto_index)).await
+    // Check for a pre-compressed file variant if present under the `opts.compression_static` context
+    if let Some(meta_precompressed) = precompressed_variant {
+        let (path_precomp, precomp_ext) = meta_precompressed;
+
+        let mut resp = file_reply(headers_opt, file_path, &meta, Some(path_precomp)).await?;
+
+        // Prepare corresponding headers to let know how to decode the payload
+        resp.headers_mut().remove(CONTENT_LENGTH);
+        resp.headers_mut()
+            .insert(CONTENT_ENCODING, precomp_ext.parse().unwrap());
+
+        return Ok((resp, is_precompressed));
+    }
+
+    let resp = file_reply(headers_opt, file_path, &meta, None).await?;
+
+    Ok((resp, is_precompressed))
 }
 
-/// Convert an incoming uri into a valid and sanitized path then returns a tuple
-// with the path as well as its file metadata and an auto index check if it's a directory.
-fn path_from_tail(
-    base: Arc<PathBuf>,
-    tail: &str,
-) -> impl Future<Output = Result<(ArcPath, Metadata, bool), StatusCode>> + Send {
-    future::ready(sanitize_path(base.as_ref(), tail)).and_then(|mut buf| async {
-        match tokio::fs::metadata(&buf).await {
-            Ok(meta) => {
-                let mut auto_index = false;
-                if meta.is_dir() {
-                    tracing::debug!("dir: appending index.html to directory path");
-                    buf.push("index.html");
-                    auto_index = true;
-                }
-                tracing::trace!("dir: {:?}", buf);
-                Ok((ArcPath(Arc::new(buf)), meta, auto_index))
-            }
-            Err(err) => {
-                tracing::debug!("file not found: {} {:?}", buf.display(), err);
-                Err(StatusCode::NOT_FOUND)
-            }
+/// Returns the final composed metadata information (tuple) containing
+/// the Arc `PathBuf` reference wrapper for the current `file_path` with its file metadata
+/// as well as its optional pre-compressed variant.
+async fn composed_file_metadata(
+    mut file_path: PathBuf,
+    headers: &HeaderMap<HeaderValue>,
+    compression_static: bool,
+) -> Result<(ArcPath, Metadata, bool, Option<(ArcPath, &str)>), StatusCode> {
+    // First pre-compressed variant check for the given file path
+    let mut tried_precompressed = false;
+    if compression_static {
+        tried_precompressed = true;
+        if let Some((path, meta, ext)) =
+            compression_static::precompressed_variant(file_path.clone(), headers).await
+        {
+            return Ok((ArcPath(Arc::new(file_path)), meta, false, Some((path, ext))));
         }
-    })
+    }
+
+    tracing::trace!("getting metadata for file {}", file_path.display());
+
+    match file_metadata(file_path.as_ref()).await {
+        Ok((mut meta, is_dir)) => {
+            if is_dir {
+                // Append a HTML index page by default if it's a directory path (`autoindex`)
+                tracing::debug!("dir: appending an index.html to the directory path");
+                file_path.push("index.html");
+
+                // If file exists then overwrite the `meta`
+                // Also noting that it's still a directory request
+                if let Ok(meta_res) = file_metadata(file_path.as_ref()).await {
+                    (meta, _) = meta_res
+                }
+            }
+
+            Ok((ArcPath(Arc::new(file_path)), meta, is_dir, None))
+        }
+        Err(err) => {
+            // Second pre-compressed variant check for the given file path
+            if compression_static && !tried_precompressed {
+                if let Some((path, meta, ext)) =
+                    compression_static::precompressed_variant(file_path.clone(), headers).await
+                {
+                    return Ok((ArcPath(Arc::new(file_path)), meta, false, Some((path, ext))));
+                }
+            }
+
+            Err(err)
+        }
+    }
 }
 
-/// Reply with a file content.
+/// Try to find the file system metadata for the given file path.
+pub async fn file_metadata(file_path: &Path) -> Result<(Metadata, bool), StatusCode> {
+    match tokio::fs::metadata(file_path).await {
+        Ok(meta) => {
+            let is_dir = meta.is_dir();
+            tracing::trace!("file found: {:?}", file_path);
+            Ok((meta, is_dir))
+        }
+        Err(err) => {
+            tracing::debug!("file not found: {:?} {:?}", file_path, err);
+            Err(StatusCode::NOT_FOUND)
+        }
+    }
+}
+
+/// Reply with the corresponding file content taking into account
+/// its precompressed variant if any.
+/// The `path` param should contains always the original requested file path and
+/// the `meta` param value should corresponds to it.
+/// However, if `path_precompressed` contains some value then
+/// the `meta` param  value will belong to the `path_precompressed` (precompressed file variant).
 fn file_reply<'a>(
     headers: &'a HeaderMap<HeaderValue>,
-    res: (ArcPath, &'a Metadata, bool),
+    path: ArcPath,
+    meta: &'a Metadata,
+    path_precompressed: Option<ArcPath>,
 ) -> impl Future<Output = Result<Response<Body>, StatusCode>> + Send + 'a {
-    let (path, meta, auto_index) = res;
     let conditionals = get_conditional_headers(headers);
-    TkFile::open(path.clone()).then(move |res| match res {
-        Ok(file) => Either::Left(file_conditional(file, path, meta, auto_index, conditionals)),
+
+    let file_path = path_precompressed.unwrap_or_else(|| path.clone());
+
+    TkFile::open(file_path).then(move |res| match res {
+        Ok(file) => Either::Left(file_conditional(file, path, meta, conditionals)),
         Err(err) => {
             let status = match err.kind() {
                 io::ErrorKind::NotFound => {
-                    tracing::debug!("file not found: {:?}", path.as_ref().display());
+                    tracing::debug!(
+                        "file can't be opened or not found: {:?}",
+                        path.as_ref().display()
+                    );
                     StatusCode::NOT_FOUND
                 }
                 io::ErrorKind::PermissionDenied => {
@@ -187,6 +271,7 @@ fn get_conditional_headers(header_list: &HeaderMap<HeaderValue>) -> Conditionals
     }
 }
 
+/// Sanitizes a base/tail paths and then it returns an unified one.
 fn sanitize_path(base: impl AsRef<Path>, tail: &str) -> Result<PathBuf, StatusCode> {
     let path_decoded = match percent_decode_str(tail.trim_start_matches('/')).decode_utf8() {
         Ok(p) => p,
@@ -198,7 +283,7 @@ fn sanitize_path(base: impl AsRef<Path>, tail: &str) -> Result<PathBuf, StatusCo
 
     let path_decoded = Path::new(&*path_decoded);
     let mut full_path = base.as_ref().to_path_buf();
-    tracing::trace!("dir? base={:?}, route={:?}", full_path, path_decoded);
+    tracing::trace!("dir: base={:?}, route={:?}", full_path, path_decoded);
 
     for component in path_decoded.components() {
         match component {
@@ -291,20 +376,9 @@ async fn file_conditional(
     file: TkFile,
     path: ArcPath,
     meta: &Metadata,
-    auto_index: bool,
     conditionals: Conditionals,
 ) -> Result<Response<Body>, StatusCode> {
-    if auto_index {
-        match file.metadata().await {
-            Ok(meta) => Ok(response_body(file, &meta, path, conditionals)),
-            Err(err) => {
-                tracing::debug!("file metadata error: {}", err);
-                Err(StatusCode::INTERNAL_SERVER_ERROR)
-            }
-        }
-    } else {
-        Ok(response_body(file, meta, path, conditionals))
-    }
+    Ok(response_body(file, meta, path, conditionals))
 }
 
 fn response_body(

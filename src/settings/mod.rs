@@ -67,6 +67,7 @@ impl Settings {
         let mut config_file = opts.config_file.clone();
         let mut cache_control_headers = opts.cache_control_headers;
         let mut compression = opts.compression;
+        let mut compression_static = opts.compression_static;
         let mut page404 = opts.page404;
         let mut page50x = opts.page50x;
         let mut http2 = opts.http2;
@@ -126,6 +127,9 @@ impl Settings {
                     }
                     if let Some(v) = general.compression {
                         compression = v
+                    }
+                    if let Some(v) = general.compression_static {
+                        compression_static = v
                     }
                     if let Some(v) = general.page404 {
                         page404 = v
@@ -288,6 +292,7 @@ impl Settings {
                 config_file,
                 cache_control_headers,
                 compression,
+                compression_static,
                 page404,
                 page50x,
                 http2,

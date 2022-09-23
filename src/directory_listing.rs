@@ -14,7 +14,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use crate::Result;
 
 /// Provides directory listing support for the current request.
-/// Note that this function highly depends on `static_files::path_from_tail()` function
+/// Note that this function highly depends on `static_files::get_composed_metadata()` function
 /// which must be called first. See `static_files::handle()` for more details.
 pub fn auto_index<'a>(
     method: &'a Method,
@@ -28,7 +28,7 @@ pub fn auto_index<'a>(
     // Note: it's safe to call `parent()` here since `filepath`
     // value always refer to a path with file ending and under
     // a root directory boundary.
-    // See `path_from_tail()` function which sanitizes the requested
+    // See `get_composed_metadata()` function which sanitizes the requested
     // path before to be delegated here.
     let parent = filepath.parent().unwrap_or(filepath);
 
