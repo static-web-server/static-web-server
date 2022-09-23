@@ -60,11 +60,14 @@ pub async fn handle<'a>(opts: &HandleOpts<'a>) -> Result<(Response<Body>, bool),
         return Err(StatusCode::METHOD_NOT_ALLOWED);
     }
 
+    let headers_opt = opts.headers;
+    let compression_static_opt = opts.compression_static;
+
     let base = Arc::<PathBuf>::new(opts.base_path.into());
     let file_path = sanitize_path(base.as_ref(), uri_path)?;
 
     let (file_path, meta, is_dir, precompressed_variant) =
-        composed_file_metadata(file_path, opts.headers, opts.compression_static).await?;
+        composed_file_metadata(file_path, headers_opt, compression_static_opt).await?;
 
     // `is_precompressed` relates to `opts.compression_static` value
     let is_precompressed = precompressed_variant.is_some();
@@ -86,6 +89,7 @@ pub async fn handle<'a>(opts: &HandleOpts<'a>) -> Result<(Response<Body>, bool),
         let mut resp = Response::new(Body::empty());
         resp.headers_mut().insert(hyper::header::LOCATION, loc);
         *resp.status_mut() = StatusCode::PERMANENT_REDIRECT;
+
         tracing::trace!("uri doesn't end with a slash so redirecting permanently");
         return Ok((resp, is_precompressed));
     }
@@ -101,6 +105,7 @@ pub async fn handle<'a>(opts: &HandleOpts<'a>) -> Result<(Response<Body>, bool),
                 Method::GET,
             ]));
         resp.headers_mut().typed_insert(AcceptRanges::bytes());
+
         return Ok((resp, is_precompressed));
     }
 
@@ -125,7 +130,7 @@ pub async fn handle<'a>(opts: &HandleOpts<'a>) -> Result<(Response<Body>, bool),
     if let Some(meta_precompressed) = precompressed_variant {
         let (path_precomp, precomp_ext) = meta_precompressed;
 
-        let mut resp = file_reply(opts.headers, file_path, &meta, Some(path_precomp)).await?;
+        let mut resp = file_reply(headers_opt, file_path, &meta, Some(path_precomp)).await?;
 
         // Prepare corresponding headers to let know how to decode the payload
         resp.headers_mut().remove(CONTENT_LENGTH);
@@ -135,7 +140,7 @@ pub async fn handle<'a>(opts: &HandleOpts<'a>) -> Result<(Response<Body>, bool),
         return Ok((resp, is_precompressed));
     }
 
-    let resp = file_reply(opts.headers, file_path, &meta, None).await?;
+    let resp = file_reply(headers_opt, file_path, &meta, None).await?;
 
     Ok((resp, is_precompressed))
 }
@@ -212,7 +217,7 @@ pub async fn file_metadata(file_path: &Path) -> Result<(Metadata, bool), StatusC
 /// The `path` param should contains always the original requested file path and
 /// the `meta` param value should corresponds to it.
 /// However, if `path_precompressed` contains some value then
-/// the `meta` param  value will belongs to the `path_precompressed` (precompressed file variant).
+/// the `meta` param  value will belong to the `path_precompressed` (precompressed file variant).
 fn file_reply<'a>(
     headers: &'a HeaderMap<HeaderValue>,
     path: ArcPath,
