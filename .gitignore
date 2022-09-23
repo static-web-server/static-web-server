@@ -26,3 +26,4 @@ docs/*/**.html
 
 !sample.env
 !/docs
+!/tests/fixtures/**/*
