@@ -10,7 +10,7 @@ The server can be configured via the following command-line arguments.
 ```
 $ static-web-server -h
 
-static-web-server 2.11.0
+static-web-server 2.12.0
 Jose Quintana <https://joseluisq.net>
 A blazing fast and asynchronous web server for static files-serving.
 
@@ -31,6 +31,10 @@ OPTIONS:
     -x, --compression <compression>
             Gzip, Deflate or Brotli compression on demand determined by the Accept-Encoding header and applied to text-
             based web file types only [env: SERVER_COMPRESSION=]  [default: true]
+        --compression-static <compression-static>
+            Look up the pre-compressed file variant (`.gz` or `.br`) on disk of a requested file and serves it directly
+            if available. The compression type is determined by the `Accept-Encoding` header [env:
+            SERVER_COMPRESSION_STATIC=]  [default: false]
     -w, --config-file <config-file>
             Server TOML configuration file path [env: SERVER_CONFIG_FILE=]
 

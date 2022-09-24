@@ -60,6 +60,9 @@ Specify an optional CORS list of allowed HTTP headers separated by commas. It re
 ### SERVER_COMPRESSION
 `Gzip`, `Deflate` or `Brotli` compression on demand determined by the `Accept-Encoding` header and applied to text-based web file types only. See [ad-hoc mime-type list](https://github.com/joseluisq/static-web-server/blob/master/src/compression.rs#L20). Default `true` (enabled).
 
+### SERVER_COMPRESSION_STATIC
+Look up the pre-compressed file variant (`.gz` or `.br`) on disk of a requested file and serves it directly if available. Default `false` (disabled). The compression type is determined by the `Accept-Encoding` header.
+
 ### SERVER_DIRECTORY_LISTING
 Enable directory listing for all requests ending with the slash character (‘/’). Default `false` (disabled).
 

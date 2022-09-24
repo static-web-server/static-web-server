@@ -122,8 +122,8 @@ pub struct General {
         default_value = "false",
         env = "SERVER_COMPRESSION_STATIC"
     )]
-    /// Check for a pre-compressed file on disk and serve it if available.
-    /// The order of precedence is determined by the `Accept-Encoding` header.
+    /// Look up the pre-compressed file variant (`.gz` or `.br`) on disk of a requested file and serves it directly if available.
+    /// The compression type is determined by the `Accept-Encoding` header.
     pub compression_static: bool,
 
     #[structopt(
