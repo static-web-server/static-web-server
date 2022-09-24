@@ -76,7 +76,7 @@ pub struct General {
         default_value = "",
         env = "SERVER_CORS_ALLOW_ORIGINS"
     )]
-    /// Specify an optional CORS list of allowed origin hosts separated by comas. Host ports or protocols aren't being checked. Use an asterisk (*) to allow any host.
+    /// Specify an optional CORS list of allowed origin hosts separated by commas. Host ports or protocols aren't being checked. Use an asterisk (*) to allow any host.
     pub cors_allow_origins: String,
 
     #[structopt(
@@ -85,7 +85,7 @@ pub struct General {
         default_value = "origin, content-type",
         env = "SERVER_CORS_ALLOW_HEADERS"
     )]
-    /// Specify an optional CORS list of allowed headers separated by comas. Default "origin, content-type". It requires `--cors-allow-origins` to be used along with.
+    /// Specify an optional CORS list of allowed headers separated by commas. Default "origin, content-type". It requires `--cors-allow-origins` to be used along with.
     pub cors_allow_headers: String,
 
     #[structopt(
