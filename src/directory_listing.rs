@@ -1,3 +1,4 @@
+use chrono::{DateTime, Local, NaiveDateTime, Utc};
 use futures_util::future::Either;
 use futures_util::{future, FutureExt};
 use headers::{ContentLength, ContentType, HeaderMapExt};
@@ -145,7 +146,7 @@ async fn read_dir_entries(
         }
 
         let modified = match parse_last_modified(meta.modified()?) {
-            Ok(tm) => tm.to_local().strftime("%F %T")?.to_string(),
+            Ok(local_dt) => local_dt.format("%F %T").to_string(),
             Err(err) => {
                 tracing::error!("error determining file last modified: {:?}", err);
                 String::from("-")
@@ -310,7 +311,9 @@ fn sort_files(
     (name, last_modified, size)
 }
 
-fn parse_last_modified(modified: SystemTime) -> Result<time::Tm, Box<dyn std::error::Error>> {
+fn parse_last_modified(
+    modified: SystemTime,
+) -> Result<DateTime<Local>, Box<dyn std::error::Error>> {
     let since_epoch = modified.duration_since(UNIX_EPOCH)?;
     // HTTP times don't have nanosecond precision, so we truncate
     // the modification time.
@@ -321,6 +324,10 @@ fn parse_last_modified(modified: SystemTime) -> Result<time::Tm, Box<dyn std::er
     // the modification time of a file with greater than second
     // precision appears to be something that only is possible to
     // do on Linux.
-    let ts = time::Timespec::new(since_epoch.as_secs() as i64, 0);
-    Ok(time::at_utc(ts))
+    let utc_dt = NaiveDateTime::from_timestamp(
+        since_epoch.as_secs() as i64,
+        since_epoch.subsec_nanos() as u32,
+    );
+    let local_dt = DateTime::<Utc>::from_utc(utc_dt, Utc).with_timezone(&Local);
+    Ok(local_dt)
 }
