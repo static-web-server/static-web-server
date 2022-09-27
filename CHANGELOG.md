@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _**Note:** See changelog for v1 under the [1.x](https://github.com/joseluisq/static-web-server/blob/1.x/CHANGELOG.md) branch._
 
+## v2.12.0 - 2022-09-27
+
+__Fixes__
+
+- [467affc](https://github.com/joseluisq/static-web-server/commit/467affc) Bugfix/security dependency updates including tokio, serde, tracing, h2, httparse, futures and other crates (also [303d1b4](https://github.com/joseluisq/static-web-server/commit/303d1b4), [c340f8f](https://github.com/joseluisq/static-web-server/commit/c340f8f)).
+- [82caf15](https://github.com/joseluisq/static-web-server/commit/82caf15) Potential segfault in the `time` crate. `RUSTSEC-2020-0071` [#142](https://github.com/joseluisq/static-web-server/issues/142)
+- [76fd7ea](https://github.com/joseluisq/static-web-server/commit/76fd7ea) Unmaintained `ansi_term` crate. `RUSTSEC-2021-0139` [#143](https://github.com/joseluisq/static-web-server/issues/143)
+
+__Features__
+
+- [91b6ba2](https://github.com/joseluisq/static-web-server/commit/91b6ba2) Relative paths for directory listing entries. PR [#137](https://github.com/joseluisq/static-web-server/pull/137) resolves [#136](https://github.com/joseluisq/static-web-server/issues/136) suggested by [@jtackaberry](https://github.com/jtackaberry). See [docs](https://sws.joseluisq.net/features/directory-listing/#relative-paths-for-entries).
+- [5f10771](https://github.com/joseluisq/static-web-server/commit/5f10771) Log Real Remote IP in case of proxies. PR [#138](https://github.com/joseluisq/static-web-server/pull/138) by [@dlvoy](https://github.com/dlvoy). See [docs](https://sws.joseluisq.net/features/logging/#log-real-remote-ip).
+- [48f9458](https://github.com/joseluisq/static-web-server/commit/48f9458) Support for serving pre-compressed (Gzip/Brotli) files. PR [#139](https://github.com/joseluisq/static-web-server/pull/139) resolves [#114](https://github.com/joseluisq/static-web-server/issues/114) suggested by [@JonasGilg](https://github.com/JonasGilg). See [docs](https://sws.joseluisq.net/features/compression-static/).
+
+__Refactorings__
+
+- [e9a4aa3](https://github.com/joseluisq/static-web-server/commit/e9a4aa3) Directory listing module.
+- [eee45f9](https://github.com/joseluisq/static-web-server/commit/eee45f9) Remove indirections on static file module (performance improvement).
+
+__Docs__
+
+- [59a75e6](https://github.com/joseluisq/static-web-server/commit/59a75e6) Fix documentation typos. PR [#140](https://github.com/joseluisq/static-web-server/pull/140) by [@kianmeng](https://github.com/kianmeng).
+- [3ca743a](https://github.com/joseluisq/static-web-server/commit/3ca743a) Page for pre-compressed files serving feature. See [docs](https://sws.joseluisq.net/features/compression-static/).
+- [88a886f](https://github.com/joseluisq/static-web-server/commit/88a886f) Building project from source now requires Rust `1.59.0` or later. See [docs](https://sws.joseluisq.net/building-from-source/#building-project-from-source).
+
+__Codebase__
+ 
+- [5148da9](https://github.com/joseluisq/static-web-server/commit/5148da9) CI workflow for Rust security audit.
+- [28f8818](https://github.com/joseluisq/static-web-server/commit/28f8818) CI development job for typos. PR [#141](https://github.com/joseluisq/static-web-server/pull/141) by [@kianmeng](https://github.com/kianmeng). See [docs](https://sws.joseluisq.net/features/logging/#log-real-remote-ip).
+
 ## v2.11.0 - 2022-08-15
 
 __Fixes__

@@ -63,6 +63,7 @@ It's cross-platform and available for Linux, macOS, Windows and FreeBSD (`x86`,`
 - Default and custom error pages.
 - Custom URL rewrites via glob patterns.
 - Custom URL redirects via glob patterns.
+- Support for serving pre-compressed (Gzip/Brotli) files.
 - First-class [Docker](https://docs.docker.com/get-started/overview/) support. [Scratch](https://hub.docker.com/_/scratch) and latest [Alpine Linux](https://hub.docker.com/_/alpine) Docker images.
 - Ability to accept a socket listener as a file descriptor for use in sandboxing and on-demand applications (E.g [systemd](http://0pointer.de/blog/projects/socket-activation.html)).
 - Cross-platform. Pre-compiled binaries for Linux, macOS, Windows and FreeBSD (`x86`,`x86_64`,`ARM`,`ARM64`).
