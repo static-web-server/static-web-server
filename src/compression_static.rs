@@ -1,16 +1,13 @@
 use headers::{ContentCoding, HeaderMap, HeaderValue};
-use std::{fs::Metadata, path::PathBuf, sync::Arc};
+use std::{fs::Metadata, path::PathBuf};
 
-use crate::{
-    compression,
-    static_files::{file_metadata, ArcPath},
-};
+use crate::{compression, static_files::file_metadata};
 
 /// Search for the pre-compressed variant of the given file path.
 pub async fn precompressed_variant(
     file_path: PathBuf,
     headers: &HeaderMap<HeaderValue>,
-) -> Option<(ArcPath, Metadata, &str)> {
+) -> Option<(PathBuf, Metadata, &str)> {
     let mut precompressed = None;
 
     tracing::trace!(
@@ -47,7 +44,7 @@ pub async fn precompressed_variant(
             tracing::trace!("pre-compressed file variant found, serving it directly");
 
             let encoding = if ext == "gz" { "gzip" } else { ext };
-            precompressed = Some((ArcPath(Arc::new(filepath_precomp)), meta, encoding));
+            precompressed = Some((filepath_precomp, meta, encoding));
         }
 
         // Note: In error case like "no such file or dir" the workflow just continues

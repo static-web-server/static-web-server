@@ -17,7 +17,6 @@ use std::io;
 use std::ops::Bound;
 use std::path::{Component, PathBuf};
 use std::pin::Pin;
-use std::sync::Arc;
 use std::task::Poll;
 use std::{cmp, path::Path};
 use tokio::fs::File as TkFile;
@@ -25,16 +24,6 @@ use tokio::io::AsyncSeekExt;
 use tokio_util::io::poll_read_buf;
 
 use crate::{compression_static, directory_listing, Result};
-
-/// Arc `PathBuf` reference wrapper since Arc<PathBuf> doesn't implement AsRef<Path>.
-#[derive(Clone, Debug)]
-pub struct ArcPath(pub Arc<PathBuf>);
-
-impl AsRef<Path> for ArcPath {
-    fn as_ref(&self) -> &Path {
-        (*self.0).as_ref()
-    }
-}
 
 /// Defines all options needed by the static-files handler.
 pub struct HandleOpts<'a> {
@@ -63,11 +52,10 @@ pub async fn handle<'a>(opts: &HandleOpts<'a>) -> Result<(Response<Body>, bool),
     let headers_opt = opts.headers;
     let compression_static_opt = opts.compression_static;
 
-    let base = Arc::<PathBuf>::new(opts.base_path.into());
-    let file_path = sanitize_path(base.as_ref(), uri_path)?;
+    let mut file_path = sanitize_path(opts.base_path, uri_path)?;
 
     let (file_path, meta, is_dir, precompressed_variant) =
-        composed_file_metadata(file_path, headers_opt, compression_static_opt).await?;
+        composed_file_metadata(&mut file_path, headers_opt, compression_static_opt).await?;
 
     // `is_precompressed` relates to `opts.compression_static` value
     let is_precompressed = precompressed_variant.is_some();
@@ -113,7 +101,7 @@ pub async fn handle<'a>(opts: &HandleOpts<'a>) -> Result<(Response<Body>, bool),
     // Check if "directory listing" feature is enabled,
     // if current path is a valid directory and
     // if it does not contain an `index.html` file (if a proper auto index is generated)
-    if opts.dir_listing && is_dir && !file_path.as_ref().exists() {
+    if opts.dir_listing && is_dir && !file_path.exists() {
         let resp = directory_listing::auto_index(
             method,
             uri_path,
@@ -148,11 +136,11 @@ pub async fn handle<'a>(opts: &HandleOpts<'a>) -> Result<(Response<Body>, bool),
 /// Returns the final composed metadata information (tuple) containing
 /// the Arc `PathBuf` reference wrapper for the current `file_path` with its file metadata
 /// as well as its optional pre-compressed variant.
-async fn composed_file_metadata(
-    mut file_path: PathBuf,
-    headers: &HeaderMap<HeaderValue>,
+async fn composed_file_metadata<'a>(
+    file_path: &'a mut PathBuf,
+    headers: &'a HeaderMap<HeaderValue>,
     compression_static: bool,
-) -> Result<(ArcPath, Metadata, bool, Option<(ArcPath, &str)>), StatusCode> {
+) -> Result<(&'a PathBuf, Metadata, bool, Option<(PathBuf, &'a str)>), StatusCode> {
     // First pre-compressed variant check for the given file path
     let mut tried_precompressed = false;
     if compression_static {
@@ -160,7 +148,7 @@ async fn composed_file_metadata(
         if let Some((path, meta, ext)) =
             compression_static::precompressed_variant(file_path.clone(), headers).await
         {
-            return Ok((ArcPath(Arc::new(file_path)), meta, false, Some((path, ext))));
+            return Ok((file_path, meta, false, Some((path, ext))));
         }
     }
 
@@ -180,7 +168,7 @@ async fn composed_file_metadata(
                 }
             }
 
-            Ok((ArcPath(Arc::new(file_path)), meta, is_dir, None))
+            Ok((file_path, meta, is_dir, None))
         }
         Err(err) => {
             // Second pre-compressed variant check for the given file path
@@ -188,7 +176,7 @@ async fn composed_file_metadata(
                 if let Some((path, meta, ext)) =
                     compression_static::precompressed_variant(file_path.clone(), headers).await
                 {
-                    return Ok((ArcPath(Arc::new(file_path)), meta, false, Some((path, ext))));
+                    return Ok((file_path, meta, false, Some((path, ext))));
                 }
             }
 
@@ -220,35 +208,28 @@ pub async fn file_metadata(file_path: &Path) -> Result<(Metadata, bool), StatusC
 /// the `meta` param  value will belong to the `path_precompressed` (precompressed file variant).
 fn file_reply<'a>(
     headers: &'a HeaderMap<HeaderValue>,
-    path: ArcPath,
+    path: &'a PathBuf,
     meta: &'a Metadata,
-    path_precompressed: Option<ArcPath>,
+    path_precompressed: Option<PathBuf>,
 ) -> impl Future<Output = Result<Response<Body>, StatusCode>> + Send + 'a {
     let conditionals = get_conditional_headers(headers);
 
     let file_path = path_precompressed.unwrap_or_else(|| path.clone());
 
     TkFile::open(file_path).then(move |res| match res {
-        Ok(file) => Either::Left(file_conditional(file, path, meta, conditionals)),
+        Ok(file) => Either::Left(response_body(file, path, meta, conditionals)),
         Err(err) => {
             let status = match err.kind() {
                 io::ErrorKind::NotFound => {
-                    tracing::debug!(
-                        "file can't be opened or not found: {:?}",
-                        path.as_ref().display()
-                    );
+                    tracing::debug!("file can't be opened or not found: {:?}", path.display());
                     StatusCode::NOT_FOUND
                 }
                 io::ErrorKind::PermissionDenied => {
-                    tracing::warn!("file permission denied: {:?}", path.as_ref().display());
+                    tracing::warn!("file permission denied: {:?}", path.display());
                     StatusCode::FORBIDDEN
                 }
                 _ => {
-                    tracing::error!(
-                        "file open error (path={:?}): {} ",
-                        path.as_ref().display(),
-                        err
-                    );
+                    tracing::error!("file open error (path={:?}): {} ", path.display(), err);
                     StatusCode::INTERNAL_SERVER_ERROR
                 }
             };
@@ -372,24 +353,15 @@ impl Conditionals {
     }
 }
 
-async fn file_conditional(
+async fn response_body(
     file: TkFile,
-    path: ArcPath,
+    path: &PathBuf,
     meta: &Metadata,
     conditionals: Conditionals,
 ) -> Result<Response<Body>, StatusCode> {
-    Ok(response_body(file, meta, path, conditionals))
-}
-
-fn response_body(
-    file: TkFile,
-    meta: &Metadata,
-    path: ArcPath,
-    conditionals: Conditionals,
-) -> Response<Body> {
     let mut len = meta.len();
     let modified = meta.modified().ok().map(LastModified::from);
-    match conditionals.check(modified) {
+    let resp = match conditionals.check(modified) {
         Cond::NoBody(resp) => resp,
         Cond::WithBody(range) => {
             bytes_range(range, len)
@@ -431,7 +403,9 @@ fn response_body(
                     resp
                 })
         }
-    }
+    };
+
+    Ok(resp)
 }
 
 struct BadRange;
