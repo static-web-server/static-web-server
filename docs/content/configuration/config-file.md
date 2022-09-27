@@ -66,6 +66,9 @@ log-remote-address = false
 #### Redirect to trailing slash in the requested directory uri
 redirect-trailing-slash = true
 
+#### Check for existing pre-compressed files
+compression-static = false
+
 
 ### Windows Only
 
@@ -76,7 +79,6 @@ redirect-trailing-slash = true
 #### using the `static-web-server.exe -w config.toml install` command.
 #### More details on https://sws.joseluisq.net/features/windows-service/
 # windows-service = false
-
 
 
 [advanced]
