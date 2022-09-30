@@ -45,7 +45,7 @@ mime_guess = "2.0"
 num_cpus = { version = "1.13" }
 percent-encoding = "2.1"
 pin-project = "1.0"
-rustls-pemfile = "0.2"
+rustls-pemfile = "1.0"
 serde = { version = "1.0", default-features = false, features = ["derive"] }
 serde_ignored = "0.1"
 serde_repr = "0.1"
