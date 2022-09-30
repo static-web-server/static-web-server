@@ -399,8 +399,8 @@ checksum = "8a9ee70c43aaf417c914396645a0fa852624801b24ebb7ae78fe8272889ac888"
 
 [[package]]
 name = "headers"
-version = "0.3.7"
-source = "git+https://github.com/joseluisq/hyper-headers.git?branch=headers_encoding#681c1a51b64aecff24cdcff758a934324f155c14"
+version = "0.3.8"
+source = "git+https://github.com/joseluisq/hyper-headers.git?branch=headers_encoding#f36805ed4c6b2752b34a315baf7532286d692bd6"
 dependencies = [
  "base64",
  "bitflags",
@@ -410,13 +410,13 @@ dependencies = [
  "httpdate",
  "itertools",
  "mime",
- "sha-1",
+ "sha1",
 ]
 
 [[package]]
 name = "headers-core"
 version = "0.2.0"
-source = "git+https://github.com/joseluisq/hyper-headers.git?branch=headers_encoding#681c1a51b64aecff24cdcff758a934324f155c14"
+source = "git+https://github.com/joseluisq/hyper-headers.git?branch=headers_encoding#f36805ed4c6b2752b34a315baf7532286d692bd6"
 dependencies = [
  "http",
 ]
@@ -568,9 +568,9 @@ checksum = "e2abad23fbc42b3700f2f279844dc832adb2b2eb069b2df918f455c4e18cc646"
 
 [[package]]
 name = "libc"
-version = "0.2.133"
+version = "0.2.134"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c0f80d65747a3e43d1596c7c5492d95d5edddaabd45a7fcdb02b95f644164966"
+checksum = "329c933548736bc49fd575ee68c89e8be4d260064184389a5b77517cddd99ffb"
 
 [[package]]
 name = "listenfd"
@@ -773,9 +773,9 @@ dependencies = [
 
 [[package]]
 name = "proc-macro2"
-version = "1.0.44"
+version = "1.0.46"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7bd7356a8122b6c4a24a82b278680c73357984ca2fc79a0f9fa6dea7dced7c58"
+checksum = "94e2ef8dbfc347b10c094890f778ee2e36ca9bb4262e86dc99cd217e35f3470b"
 dependencies = [
  "unicode-ident",
 ]
@@ -914,10 +914,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "sha-1"
-version = "0.10.0"
+name = "sha1"
+version = "0.10.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "028f48d513f9678cda28f6e4064755b3fbb2af6acd672f2c209b62323f7aea0f"
+checksum = "f04293dc80c3993519f2d7f6f511707ee7094fe0c6d3406feb330cdb3540eba3"
 dependencies = [
  "cfg-if",
  "cpufeatures",
@@ -1103,9 +1103,9 @@ dependencies = [
 
 [[package]]
 name = "tikv-jemalloc-sys"
-version = "0.5.1+5.3.0-patched"
+version = "0.5.2+5.3.0-patched"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "931e876f91fed0827f863a2d153897790da0b24d882c721a79cb3beb0b903261"
+checksum = "ec45c14da997d0925c7835883e4d5c181f196fa142f8c19d7643d1e9af2592c3"
 dependencies = [
  "cc",
  "fs_extra",
