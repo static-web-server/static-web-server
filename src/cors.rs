@@ -2,8 +2,8 @@
 // -> Part of the file is borrowed from https://github.com/seanmonstar/warp/blob/master/src/filters/cors.rs
 
 use headers::{
-    AccessControlAllowHeaders, AccessControlExposeHeaders, AccessControlAllowMethods, HeaderMapExt, HeaderName, HeaderValue,
-    Origin,
+    AccessControlAllowHeaders, AccessControlAllowMethods, AccessControlExposeHeaders, HeaderMapExt,
+    HeaderName, HeaderValue, Origin,
 };
 use http::header;
 use std::{collections::HashSet, convert::TryFrom};
@@ -19,23 +19,31 @@ pub struct Cors {
 }
 
 /// It builds a new CORS instance.
-pub fn new(origins_str: &str, headers_str: &str) -> Option<Configured> {
+pub fn new(
+    origins_str: &str,
+    allow_headers_str: &str,
+    expose_headers_str: &str,
+) -> Option<Configured> {
     let cors = Cors::new();
     let cors = if origins_str.is_empty() {
         None
     } else {
-        let headers_vec = if headers_str.is_empty() {
-            vec!["origin", "content-type"]
-        } else {
-            headers_str.split(',').map(|s| s.trim()).collect::<Vec<_>>()
-        };
-        let headers_str = headers_vec.join(",");
+        let [allow_headers_vec, expose_headers_vec] =
+            [allow_headers_str, expose_headers_str].map(|s| {
+                if s.is_empty() {
+                    vec!["origin", "content-type"]
+                } else {
+                    s.split(',').map(|s| s.trim()).collect::<Vec<_>>()
+                }
+            });
+        let [allow_headers_str, expose_headers_str] =
+            [allow_headers_vec, expose_headers_vec].map(|v| v.join(","));
 
         let cors_res = if origins_str == "*" {
             Some(
                 cors.allow_any_origin()
-                    .allow_headers(headers_vec.clone())
-                    .expose_headers(headers_vec)
+                    .allow_headers(allow_headers_vec)
+                    .expose_headers(expose_headers_vec)
                     .allow_methods(vec!["GET", "HEAD", "OPTIONS"]),
             )
         } else {
@@ -45,8 +53,8 @@ pub fn new(origins_str: &str, headers_str: &str) -> Option<Configured> {
             } else {
                 Some(
                     cors.allow_origins(hosts)
-                        .allow_headers(headers_vec.clone())
-                        .expose_headers(headers_vec)
+                        .allow_headers(allow_headers_vec)
+                        .expose_headers(expose_headers_vec)
                         .allow_methods(vec!["GET", "HEAD", "OPTIONS"]),
                 )
             }
@@ -54,9 +62,10 @@ pub fn new(origins_str: &str, headers_str: &str) -> Option<Configured> {
 
         if cors_res.is_some() {
             tracing::info!(
-                    "enabled=true, allow_methods=[GET,HEAD,OPTIONS], allow_origins={}, allow_headers=[{}]",
+                    "enabled=true, allow_methods=[GET,HEAD,OPTIONS], allow_origins={}, allow_headers=[{}], expose_headers=[{}]",
                     origins_str,
-                    headers_str
+                    allow_headers_str,
+                    expose_headers_str,
                 );
         }
         cors_res
