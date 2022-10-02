@@ -90,6 +90,14 @@ pub struct General {
 
     #[structopt(
         long,
+        default_value = "origin, content-type",
+        env = "SERVER_CORS_EXPOSE_HEADERS"
+    )]
+    /// Specify an optional CORS list of exposed headers separated by commas. Default "origin, content-type". It requires `--cors-expose-origins` to be used along with.
+    pub cors_expose_headers: String,
+
+    #[structopt(
+        long,
         short = "t",
         parse(try_from_str),
         default_value = "false",

@@ -158,6 +158,7 @@ impl Server {
         let cors = cors::new(
             general.cors_allow_origins.trim(),
             general.cors_allow_headers.trim(),
+            general.cors_expose_headers.trim(),
         );
 
         // `Basic` HTTP Authentication Schema option

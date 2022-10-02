@@ -111,6 +111,7 @@ pub struct General {
     // CORS
     pub cors_allow_origins: Option<String>,
     pub cors_allow_headers: Option<String>,
+    pub cors_expose_headers: Option<String>,
 
     // Directory listing
     pub directory_listing: Option<bool>,

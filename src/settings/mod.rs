@@ -76,6 +76,7 @@ impl Settings {
         let mut security_headers = opts.security_headers;
         let mut cors_allow_origins = opts.cors_allow_origins;
         let mut cors_allow_headers = opts.cors_allow_headers;
+        let mut cors_expose_headers = opts.cors_expose_headers;
         let mut directory_listing = opts.directory_listing;
         let mut directory_listing_order = opts.directory_listing_order;
         let mut basic_auth = opts.basic_auth;
@@ -154,6 +155,9 @@ impl Settings {
                     }
                     if let Some(ref v) = general.cors_allow_headers {
                         cors_allow_headers = v.to_owned()
+                    }
+                    if let Some(ref v) = general.cors_expose_headers {
+                        cors_expose_headers = v.to_owned()
                     }
                     if let Some(v) = general.directory_listing {
                         directory_listing = v
@@ -301,6 +305,7 @@ impl Settings {
                 security_headers,
                 cors_allow_origins,
                 cors_allow_headers,
+                cors_expose_headers,
                 directory_listing,
                 directory_listing_order,
                 basic_auth,

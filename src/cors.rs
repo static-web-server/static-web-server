@@ -37,7 +37,7 @@ pub fn new(
                 }
             });
         let [allow_headers_str, expose_headers_str] =
-            [allow_headers_vec, expose_headers_vec].map(|v| v.join(","));
+            [&allow_headers_vec, &expose_headers_vec].map(|v| v.join(","));
 
         let cors_res = if origins_str == "*" {
             Some(
