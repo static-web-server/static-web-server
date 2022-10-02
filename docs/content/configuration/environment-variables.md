@@ -57,6 +57,9 @@ Specify an optional CORS list of allowed origin hosts separated by commas. Host 
 ### SERVER_CORS_ALLOW_HEADERS
 Specify an optional CORS list of allowed HTTP headers separated by commas. It requires `SERVER_CORS_ALLOW_ORIGINS` to be used along with. Default `origin, content-type`.
 
+### SERVER_CORS_EXPOSE_HEADERS
+Specify an optional CORS list of exposed HTTP headers separated by commas. It requires `SERVER_CORS_ALLOW_ORIGINS` to be used along with. Default `origin, content-type`.
+
 ### SERVER_COMPRESSION
 `Gzip`, `Deflate` or `Brotli` compression on demand determined by the `Accept-Encoding` header and applied to text-based web file types only. See [ad-hoc mime-type list](https://github.com/joseluisq/static-web-server/blob/master/src/compression.rs#L20). Default `true` (enabled).
 
