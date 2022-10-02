@@ -39,10 +39,13 @@ Gzip, Deflate or Brotli compression on demand determined by the Accept-Encoding 
 Server TOML configuration file path [env: SERVER_CONFIG_FILE=]
 
 -j, --cors-allow-headers <cors-allow-headers>::
-Specify an optional CORS list of allowed headers separated by comas. Default "origin, content-type". It requires ``--cors-allow-origins`` to be used along with [env: SERVER_CORS_ALLOW_HEADERS=]  [default: origin, content-type]
+Specify an optional CORS list of allowed headers separated by commas. Default "origin, content-type". It requires ``--cors-allow-origins`` to be used along with [env: SERVER_CORS_ALLOW_HEADERS=]  [default: origin, content-type]
 
 -c, --cors-allow-origins <cors-allow-origins>::
-Specify an optional CORS list of allowed origin hosts separated by comas. Host ports or protocols aren't being checked. Use an asterisk (*) to allow any host [env: SERVER_CORS_ALLOW_ORIGINS=]  [default: ]
+Specify an optional CORS list of allowed origin hosts separated by commas. Host ports or protocols aren't being checked. Use an asterisk (*) to allow any host [env: SERVER_CORS_ALLOW_ORIGINS=]  [default: ]
+
+--cors-expose-headers <cors-expose-headers>::
+Specify an optional CORS list of exposed headers separated by commas. Default "origin, content-type". It requires ``--cors-expose-origins`` to be used along with [env: SERVER_CORS_EXPOSE_HEADERS=]  [default: origin, content-type]
 
 -z, --directory-listing <directory-listing>::
 Enable directory listing for all requests ending with the slash character (‘/’) [env: SERVER_DIRECTORY_LISTING=]  [default: false]
