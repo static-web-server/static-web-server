@@ -11,14 +11,14 @@ mod tests {
 
     #[tokio::test]
     async fn allow_methods() {
-        let cors = cors::new("*", "").unwrap();
+        let cors = cors::new("*", "", "").unwrap();
         let headers = HeaderMap::new();
         let methods = &[Method::GET, Method::HEAD, Method::OPTIONS];
         for method in methods {
             assert!(cors.check_request(method, &headers).is_ok());
         }
 
-        let cors = cors::new("https://localhost", "").unwrap();
+        let cors = cors::new("https://localhost", "", "").unwrap();
         let mut headers = HeaderMap::new();
         headers.insert("origin", "https://localhost".parse().unwrap());
         headers.insert("access-control-request-method", "GET".parse().unwrap());
@@ -29,7 +29,7 @@ mod tests {
 
     #[test]
     fn disallow_methods() {
-        let cors = cors::new("*", "").unwrap();
+        let cors = cors::new("*", "", "").unwrap();
         let headers = HeaderMap::new();
         let methods = [
             Method::CONNECT,
@@ -50,7 +50,7 @@ mod tests {
 
     #[tokio::test]
     async fn origin_allowed() {
-        let cors = cors::new("*", "").unwrap();
+        let cors = cors::new("*", "", "").unwrap();
         let mut headers = HeaderMap::new();
         headers.insert("origin", "https://localhost".parse().unwrap());
         let methods = [Method::GET, Method::HEAD, Method::OPTIONS];
@@ -67,7 +67,7 @@ mod tests {
 
     #[tokio::test]
     async fn origin_not_allowed() {
-        let cors = cors::new("https://localhost.rs", "").unwrap();
+        let cors = cors::new("https://localhost.rs", "", "").unwrap();
         let mut headers = HeaderMap::new();
         headers.insert("origin", "https://localhost".parse().unwrap());
         let methods = [Method::GET, Method::HEAD, Method::OPTIONS];
@@ -80,7 +80,7 @@ mod tests {
 
     #[tokio::test]
     async fn method_allowed() {
-        let cors = cors::new("*", "").unwrap();
+        let cors = cors::new("*", "", "").unwrap();
         let mut headers = HeaderMap::new();
         headers.insert("origin", "https://localhost".parse().unwrap());
         headers.insert("access-control-request-method", "GET".parse().unwrap());
@@ -92,7 +92,7 @@ mod tests {
 
     #[tokio::test]
     async fn method_disallowed() {
-        let cors = cors::new("*", "").unwrap();
+        let cors = cors::new("*", "", "").unwrap();
         let mut headers = HeaderMap::new();
         headers.insert("origin", "https://localhost".parse().unwrap());
         headers.insert("access-control-request-method", "POST".parse().unwrap());
@@ -110,7 +110,7 @@ mod tests {
 
     #[tokio::test]
     async fn headers_allowed() {
-        let cors = cors::new("*", "").unwrap();
+        let cors = cors::new("*", "", "").unwrap();
         let mut headers = HeaderMap::new();
         headers.insert("origin", "https://localhost".parse().unwrap());
         headers.insert("access-control-request-method", "GET".parse().unwrap());
@@ -127,7 +127,7 @@ mod tests {
 
     #[tokio::test]
     async fn headers_invalid() {
-        let cors = cors::new("*", "").unwrap();
+        let cors = cors::new("*", "", "").unwrap();
         let mut headers = HeaderMap::new();
         headers.insert("origin", "https://localhost".parse().unwrap());
         headers.insert(
