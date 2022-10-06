@@ -18,10 +18,16 @@ pub fn init(log_level: &str) -> Result {
 fn configure(level: &str) -> Result {
     let level = level.parse::<Level>()?;
 
+    #[cfg(unix)]
+    let enable_ansi = true;
+    #[cfg(windows)]
+    let enable_ansi = false;
+
     match tracing_subscriber::fmt()
         .with_writer(std::io::stderr)
         .with_max_level(level)
         .with_span_events(FmtSpan::CLOSE)
+        .with_ansi(enable_ansi)
         .try_init()
     {
         Err(err) => Err(anyhow!(err)),
