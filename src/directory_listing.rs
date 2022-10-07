@@ -5,7 +5,7 @@ use headers::{ContentLength, ContentType, HeaderMapExt};
 use humansize::{file_size_opts, FileSize};
 use hyper::{Body, Method, Response, StatusCode};
 use mime_guess::mime;
-use percent_encoding::percent_decode_str;
+use percent_encoding::{percent_decode_str, utf8_percent_encode, NON_ALPHANUMERIC};
 use std::cmp::Ordering;
 use std::future::Future;
 use std::io;
@@ -92,15 +92,16 @@ async fn read_dir_entries(
     while let Some(entry) = file_entries.next_entry().await? {
         let meta = entry.metadata().await?;
 
-        let mut name = entry
+        let name = entry
             .file_name()
             .into_string()
             .map_err(|err| anyhow::anyhow!(err.into_string().unwrap_or_default()))?;
+        let mut name_encoded = utf8_percent_encode(&name, NON_ALPHANUMERIC).to_string();
 
         let mut filesize = 0_u64;
 
         if meta.is_dir() {
-            name += "/";
+            name_encoded += "/";
             dirs_count += 1;
         } else if meta.is_file() {
             filesize = meta.len();
@@ -108,7 +109,7 @@ async fn read_dir_entries(
         } else if meta.file_type().is_symlink() {
             let m = tokio::fs::symlink_metadata(entry.path().canonicalize()?).await?;
             if m.is_dir() {
-                name += "/";
+                name_encoded += "/";
                 dirs_count += 1;
             } else {
                 filesize = meta.len();
@@ -141,7 +142,7 @@ async fn read_dir_entries(
                 }
                 base_str.push('/');
             }
-            base_str.push_str(&name);
+            base_str.push_str(&name_encoded);
             uri = Some(base_str);
         }
 
@@ -152,7 +153,7 @@ async fn read_dir_entries(
                 String::from("-")
             }
         };
-        files_found.push((name, modified, filesize, uri));
+        files_found.push((name_encoded, modified, filesize, uri));
     }
 
     // Check the query request uri for a sorting type. E.g https://blah/?sort=5
@@ -228,14 +229,15 @@ fn create_auto_index(
         }
 
         let file_uri = uri.clone().unwrap_or_else(|| file_name.to_owned());
+        let file_name_decoded = percent_decode_str(file_name).decode_utf8()?.to_string();
 
         table_row = format!(
             "{}<tr><td><a href=\"{}\">{}</a></td><td>{}</td><td align=\"right\">{}</td></tr>",
-            table_row, file_uri, file_name, file_modified, filesize_str
+            table_row, file_uri, file_name_decoded, file_modified, filesize_str
         );
     }
 
-    let current_path = percent_decode_str(base_path).decode_utf8()?.to_owned();
+    let current_path = percent_decode_str(base_path).decode_utf8()?.to_string();
     let dirs_str = if dirs_count == 1 {
         "directory"
     } else {
