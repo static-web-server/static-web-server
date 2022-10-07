@@ -160,4 +160,44 @@ mod tests {
             }
         }
     }
+
+    #[tokio::test]
+    async fn dir_listing_links_properly_encoded() {
+        for method in METHODS {
+            match static_files::handle(&HandleOpts {
+                method: &method,
+                headers: &HeaderMap::new(),
+                base_path: &root_dir("tests/fixtures/public/"),
+                uri_path: "/",
+                uri_query: None,
+                dir_listing: true,
+                dir_listing_order: 6,
+                redirect_trailing_slash: true,
+                compression_static: false,
+            })
+            .await
+            {
+                Ok((mut res, _)) => {
+                    assert_eq!(res.status(), 200);
+                    assert_eq!(res.headers()["content-type"], "text/html; charset=utf-8");
+
+                    let body = hyper::body::to_bytes(res.body_mut())
+                        .await
+                        .expect("unexpected bytes error during `body` conversion");
+                    let body_str = std::str::from_utf8(&body).unwrap();
+
+                    assert_eq!(
+                        body_str.contains(
+                            r#"<a href="sp%C3%A9cial%20direct%C3%B6ry/">spécial directöry/</a>"#
+                        ),
+                        method == Method::GET
+                    );
+                }
+                Err(status) => {
+                    assert!(method != Method::GET && method != Method::HEAD);
+                    assert_eq!(status, StatusCode::METHOD_NOT_ALLOWED);
+                }
+            }
+        }
+    }
 }
