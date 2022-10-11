@@ -10,7 +10,10 @@ mod tests {
     use http::Method;
     use std::path::PathBuf;
 
-    use static_web_server::static_files::{self, HandleOpts};
+    use static_web_server::{
+        directory_listing::DirListFmt,
+        static_files::{self, HandleOpts},
+    };
 
     fn public_dir() -> PathBuf {
         PathBuf::from("docker/public/")
@@ -37,6 +40,7 @@ mod tests {
             uri_query: None,
             dir_listing: false,
             dir_listing_order: 6,
+            dir_listing_format: &DirListFmt::Html,
             redirect_trailing_slash: true,
             compression_static: true,
         })
@@ -89,6 +93,7 @@ mod tests {
             uri_query: None,
             dir_listing: false,
             dir_listing_order: 6,
+            dir_listing_format: &DirListFmt::Html,
             redirect_trailing_slash: true,
             compression_static: true,
         })

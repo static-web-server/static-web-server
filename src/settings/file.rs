@@ -6,6 +6,7 @@ use serde_repr::{Deserialize_repr, Serialize_repr};
 use std::path::Path;
 use std::{collections::BTreeSet, path::PathBuf};
 
+use crate::directory_listing::DirListFmt;
 use crate::{helpers, Context, Result};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -116,6 +117,7 @@ pub struct General {
     // Directory listing
     pub directory_listing: Option<bool>,
     pub directory_listing_order: Option<u8>,
+    pub directory_listing_format: Option<DirListFmt>,
 
     // Basich Authentication
     pub basic_auth: Option<String>,

@@ -23,6 +23,7 @@ use tokio::fs::File as TkFile;
 use tokio::io::AsyncSeekExt;
 use tokio_util::io::poll_read_buf;
 
+use crate::directory_listing::DirListFmt;
 use crate::{compression_static, directory_listing, Result};
 
 /// Defines all options needed by the static-files handler.
@@ -34,6 +35,7 @@ pub struct HandleOpts<'a> {
     pub uri_query: Option<&'a str>,
     pub dir_listing: bool,
     pub dir_listing_order: u8,
+    pub dir_listing_format: &'a DirListFmt,
     pub redirect_trailing_slash: bool,
     pub compression_static: bool,
 }
@@ -108,6 +110,7 @@ pub async fn handle<'a>(opts: &HandleOpts<'a>) -> Result<(Response<Body>, bool),
             opts.uri_query,
             file_path.as_ref(),
             opts.dir_listing_order,
+            opts.dir_listing_format,
         )
         .await?;
 

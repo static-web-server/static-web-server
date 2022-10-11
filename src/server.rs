@@ -150,6 +150,10 @@ impl Server {
         let dir_listing_order = general.directory_listing_order;
         tracing::info!("directory listing order code: {}", dir_listing_order);
 
+        // Directory listing format
+        let dir_listing_format = general.directory_listing_format;
+        tracing::info!("directory listing format: {}", dir_listing_format);
+
         // Cache control headers option
         let cache_control_headers = general.cache_control_headers;
         tracing::info!("cache control headers: enabled={}", cache_control_headers);
@@ -191,6 +195,7 @@ impl Server {
                 compression_static,
                 dir_listing,
                 dir_listing_order,
+                dir_listing_format,
                 cors,
                 security_headers,
                 cache_control_headers,

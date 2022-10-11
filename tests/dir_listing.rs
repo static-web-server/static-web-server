@@ -7,9 +7,13 @@
 mod tests {
     use headers::HeaderMap;
     use http::{Method, StatusCode};
+    use serde::{Deserialize, Serialize};
     use std::path::{Path, PathBuf};
 
-    use static_web_server::static_files::{self, HandleOpts};
+    use static_web_server::{
+        directory_listing::DirListFmt,
+        static_files::{self, HandleOpts},
+    };
 
     const METHODS: [Method; 8] = [
         Method::CONNECT,
@@ -40,6 +44,7 @@ mod tests {
                 uri_query: None,
                 dir_listing: true,
                 dir_listing_order: 6,
+                dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: true,
                 compression_static: false,
             })
@@ -68,6 +73,7 @@ mod tests {
                 uri_query: None,
                 dir_listing: true,
                 dir_listing_order: 6,
+                dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: true,
                 compression_static: false,
             })
@@ -106,6 +112,7 @@ mod tests {
                 uri_query: None,
                 dir_listing: true,
                 dir_listing_order: 6,
+                dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: false,
                 compression_static: false,
             })
@@ -144,6 +151,7 @@ mod tests {
                 uri_query: None,
                 dir_listing: true,
                 dir_listing_order: 6,
+                dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: false,
                 compression_static: false,
             })
@@ -172,6 +180,7 @@ mod tests {
                 uri_query: None,
                 dir_listing: true,
                 dir_listing_order: 6,
+                dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: true,
                 compression_static: false,
             })
@@ -192,6 +201,68 @@ mod tests {
                         ),
                         method == Method::GET
                     );
+                }
+                Err(status) => {
+                    assert!(method != Method::GET && method != Method::HEAD);
+                    assert_eq!(status, StatusCode::METHOD_NOT_ALLOWED);
+                }
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn dir_listing_json_format() {
+        #[derive(Serialize, Deserialize)]
+        struct FileEntry {
+            name: String,
+            #[serde(rename = "type")]
+            typed: String,
+            mtime: String,
+            size: Option<usize>,
+        }
+
+        for method in METHODS {
+            match static_files::handle(&HandleOpts {
+                method: &method,
+                headers: &HeaderMap::new(),
+                base_path: &root_dir("tests/fixtures/public/"),
+                uri_path: "/",
+                uri_query: None,
+                dir_listing: true,
+                dir_listing_order: 1,
+                dir_listing_format: &DirListFmt::Json,
+                redirect_trailing_slash: true,
+                compression_static: false,
+            })
+            .await
+            {
+                Ok((mut res, _)) => {
+                    assert_eq!(res.status(), 200);
+                    assert_eq!(res.headers()["content-type"], "application/json");
+
+                    let body = hyper::body::to_bytes(res.body_mut())
+                        .await
+                        .expect("unexpected bytes error during `body` conversion");
+                    let body_str = std::str::from_utf8(&body).unwrap();
+
+                    if method == Method::GET {
+                        let entries: Vec<FileEntry> = serde_json::from_str(body_str).unwrap();
+                        assert_eq!(entries.len(), 2);
+
+                        let first_entry = entries.first().unwrap();
+                        assert_eq!(first_entry.name, "spécial directöry");
+                        assert_eq!(first_entry.typed, "directory");
+                        assert_eq!(first_entry.mtime.is_empty(), false);
+                        assert!(first_entry.size.is_none());
+
+                        let last_entry = entries.last().unwrap();
+                        assert_eq!(last_entry.name, "index.html.gz");
+                        assert_eq!(last_entry.typed, "file");
+                        assert_eq!(last_entry.mtime.is_empty(), false);
+                        assert!(last_entry.size.unwrap() > 300);
+                    } else {
+                        assert!(body_str.is_empty());
+                    }
                 }
                 Err(status) => {
                     assert!(method != Method::GET && method != Method::HEAD);

@@ -3,6 +3,8 @@
 use std::path::PathBuf;
 use structopt::StructOpt;
 
+use crate::directory_listing::DirListFmt;
+
 /// General server configuration available in CLI and config file options.
 #[derive(Debug, StructOpt)]
 #[structopt(about, author)]
@@ -152,6 +154,17 @@ pub struct General {
     )]
     /// Specify a default code number to order directory listing entries per `Name`, `Last modified` or `Size` attributes (columns). Code numbers supported: 0 (Name asc), 1 (Name desc), 2 (Last modified asc), 3 (Last modified desc), 4 (Size asc), 5 (Size desc). Default 6 (unordered)
     pub directory_listing_order: u8,
+
+    #[structopt(
+        long,
+        required_if("directory_listing", "true"),
+        possible_values = &DirListFmt::variants(),
+        default_value = "html",
+        env = "SERVER_DIRECTORY_LISTING_FORMAT",
+        case_insensitive = true
+    )]
+    /// Specify a content format for directory listing entries. Formats supported: "html" or "json". Default "html".
+    pub directory_listing_format: DirListFmt,
 
     #[structopt(
         long,
