@@ -13,6 +13,7 @@ mod tests {
 
     use static_web_server::{
         compression,
+        directory_listing::DirListFmt,
         static_files::{self, HandleOpts},
     };
 
@@ -30,6 +31,7 @@ mod tests {
             uri_query: None,
             dir_listing: false,
             dir_listing_order: 6,
+            dir_listing_format: &DirListFmt::Html,
             redirect_trailing_slash: true,
             compression_static: false,
         })
@@ -70,6 +72,7 @@ mod tests {
             uri_query: None,
             dir_listing: false,
             dir_listing_order: 6,
+            dir_listing_format: &DirListFmt::Html,
             redirect_trailing_slash: true,
             compression_static: false,
         })
@@ -111,6 +114,7 @@ mod tests {
                 uri_query: None,
                 dir_listing: false,
                 dir_listing_order: 6,
+                dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: true,
                 compression_static: false,
             })
@@ -136,6 +140,7 @@ mod tests {
             uri_query: None,
             dir_listing: false,
             dir_listing_order: 0,
+            dir_listing_format: &DirListFmt::Html,
             redirect_trailing_slash: true,
             compression_static: false,
         })
@@ -162,6 +167,7 @@ mod tests {
             uri_query: None,
             dir_listing: false,
             dir_listing_order: 0,
+            dir_listing_format: &DirListFmt::Html,
             redirect_trailing_slash: true,
             compression_static: false,
         })
@@ -187,6 +193,7 @@ mod tests {
             uri_query: None,
             dir_listing: false,
             dir_listing_order: 0,
+            dir_listing_format: &DirListFmt::Html,
             redirect_trailing_slash: false,
             compression_static: false,
         })
@@ -217,6 +224,7 @@ mod tests {
                     uri_query: None,
                     dir_listing: false,
                     dir_listing_order: 6,
+                    dir_listing_format: &DirListFmt::Html,
                     redirect_trailing_slash: true,
                     compression_static: false,
                 })
@@ -262,6 +270,7 @@ mod tests {
                 uri_query: None,
                 dir_listing: false,
                 dir_listing_order: 6,
+                dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: true,
                 compression_static: false,
             })
@@ -289,6 +298,7 @@ mod tests {
                 uri_query: None,
                 dir_listing: false,
                 dir_listing_order: 6,
+                dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: true,
                 compression_static: false,
             })
@@ -319,6 +329,7 @@ mod tests {
                 uri_query: None,
                 dir_listing: false,
                 dir_listing_order: 6,
+                dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: true,
                 compression_static: false,
             })
@@ -349,6 +360,7 @@ mod tests {
                 uri_query: None,
                 dir_listing: false,
                 dir_listing_order: 6,
+                dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: true,
                 compression_static: false,
             })
@@ -382,6 +394,7 @@ mod tests {
                 uri_query: None,
                 dir_listing: false,
                 dir_listing_order: 6,
+                dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: true,
                 compression_static: false,
             })
@@ -413,6 +426,7 @@ mod tests {
                 uri_query: None,
                 dir_listing: false,
                 dir_listing_order: 6,
+                dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: true,
                 compression_static: false,
             })
@@ -442,6 +456,7 @@ mod tests {
                 uri_query: None,
                 dir_listing: false,
                 dir_listing_order: 6,
+                dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: true,
                 compression_static: false,
             })
@@ -470,6 +485,7 @@ mod tests {
                 uri_query: None,
                 dir_listing: false,
                 dir_listing_order: 6,
+                dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: true,
                 compression_static: false,
             })
@@ -512,6 +528,7 @@ mod tests {
                 uri_query: None,
                 dir_listing: false,
                 dir_listing_order: 6,
+                dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: true,
                 compression_static: false,
             })
@@ -571,6 +588,7 @@ mod tests {
                 uri_query: None,
                 dir_listing: false,
                 dir_listing_order: 6,
+                dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: true,
                 compression_static: false,
             })
@@ -633,6 +651,7 @@ mod tests {
                 uri_query: None,
                 dir_listing: false,
                 dir_listing_order: 6,
+                dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: true,
                 compression_static: false,
             })
@@ -675,6 +694,7 @@ mod tests {
                 uri_query: None,
                 dir_listing: false,
                 dir_listing_order: 6,
+                dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: true,
                 compression_static: false,
             })
@@ -718,6 +738,7 @@ mod tests {
                 uri_query: None,
                 dir_listing: false,
                 dir_listing_order: 6,
+                dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: true,
                 compression_static: false,
             })
@@ -753,6 +774,7 @@ mod tests {
                 uri_query: None,
                 dir_listing: false,
                 dir_listing_order: 6,
+                dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: true,
                 compression_static: false,
             })
@@ -798,6 +820,7 @@ mod tests {
                 uri_query: None,
                 dir_listing: false,
                 dir_listing_order: 6,
+                dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: true,
                 compression_static: false,
             })
@@ -840,6 +863,7 @@ mod tests {
                 uri_query: None,
                 dir_listing: false,
                 dir_listing_order: 6,
+                dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: true,
                 compression_static: false,
             })
@@ -885,6 +909,7 @@ mod tests {
                 uri_query: None,
                 dir_listing: false,
                 dir_listing_order: 6,
+                dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: true,
                 compression_static: false,
             })
@@ -928,6 +953,7 @@ mod tests {
                 uri_query: None,
                 dir_listing: false,
                 dir_listing_order: 6,
+                dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: true,
                 compression_static: false,
             })
@@ -966,6 +992,7 @@ mod tests {
                 uri_query: None,
                 dir_listing: false,
                 dir_listing_order: 6,
+                dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: true,
                 compression_static: false,
             })
@@ -1015,6 +1042,7 @@ mod tests {
                 uri_query: None,
                 dir_listing: false,
                 dir_listing_order: 6,
+                dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: true,
                 compression_static: false,
             })

@@ -3,7 +3,7 @@
 #### Address & Root dir
 host = "::"
 port = 8787
-root = "docker/public"
+root = "tests/fixtures/public"
 
 #### Logging
 log-level = "trace"
@@ -28,7 +28,13 @@ security-headers = true
 cors-allow-origins = ""
 
 #### Directory listing
-directory-listing = false
+directory-listing = true
+
+#### Directory listing sorting code
+directory-listing-order = 1
+
+#### Directory listing content format
+directory-listing-format = "json"
 
 #### Basich Authentication
 basic-auth = ""

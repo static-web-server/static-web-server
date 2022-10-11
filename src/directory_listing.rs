@@ -11,11 +11,22 @@ use std::future::Future;
 use std::io;
 use std::path::Path;
 use std::time::{SystemTime, UNIX_EPOCH};
+use structopt::clap::arg_enum;
 
 use crate::Result;
 
+arg_enum! {
+    #[derive(Debug, Serialize, Deserialize, Clone)]
+    #[serde(rename_all = "lowercase")]
+    /// Directory listing output format for file entries.
+    pub enum DirListFmt {
+        Html,
+        Json,
+    }
+}
+
 /// Provides directory listing support for the current request.
-/// Note that this function highly depends on `static_files::get_composed_metadata()` function
+/// Note that this function highly depends on `static_files::composed_file_metadata()` function
 /// which must be called first. See `static_files::handle()` for more details.
 pub fn auto_index<'a>(
     method: &'a Method,
@@ -23,20 +34,28 @@ pub fn auto_index<'a>(
     uri_query: Option<&'a str>,
     filepath: &'a Path,
     dir_listing_order: u8,
+    dir_listing_format: &'a DirListFmt,
 ) -> impl Future<Output = Result<Response<Body>, StatusCode>> + Send + 'a {
     let is_head = method == Method::HEAD;
 
     // Note: it's safe to call `parent()` here since `filepath`
     // value always refer to a path with file ending and under
     // a root directory boundary.
-    // See `get_composed_metadata()` function which sanitizes the requested
+    // See `composed_file_metadata()` function which sanitizes the requested
     // path before to be delegated here.
     let parent = filepath.parent().unwrap_or(filepath);
 
     tokio::fs::read_dir(parent).then(move |res| match res {
-        Ok(entries) => Either::Left(async move {
-            match read_dir_entries(entries, current_path, uri_query, is_head, dir_listing_order)
-                .await
+        Ok(dir_reader) => Either::Left(async move {
+            match read_dir_entries(
+                dir_reader,
+                current_path,
+                uri_query,
+                is_head,
+                dir_listing_order,
+                dir_listing_format,
+            )
+            .await
             {
                 Ok(resp) => Ok(resp),
                 Err(err) => {
@@ -76,23 +95,43 @@ pub fn auto_index<'a>(
 const STYLE: &str = r#"<style>html{background-color:#fff;-moz-osx-font-smoothing:grayscale;-webkit-font-smoothing:antialiased;min-width:20rem;text-rendering:optimizeLegibility;-webkit-text-size-adjust:100%;-moz-text-size-adjust:100%;text-size-adjust:100%}body{padding:1rem;font-family:Consolas,'Liberation Mono',Menlo,monospace;font-size:.875rem;max-width:70rem;margin:0 auto;color:#4a4a4a;font-weight:400;line-height:1.5}h1{margin:0;padding:0;font-size:1.375rem;line-height:1.25;margin-bottom:0.5rem;}table{width:100%;border-spacing: 0;}table th,table td{padding:.2rem .5rem;white-space:nowrap;vertical-align:top}table th a,table td a{display:inline-block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:95%;vertical-align:top}table tr:hover td{background-color:#f5f5f5}footer{padding-top:0.5rem}table tr th{text-align:left;}</style>"#;
 const FOOTER: &str = r#"<footer>Powered by <a target="_blank" href="https://github.com/joseluisq/static-web-server">static-web-server</a> | MIT &amp; Apache 2.0</footer>"#;
 
+const DATETIME_FORMAT_UTC: &str = "%FT%TZ";
+const DATETIME_FORMAT_LOCAL: &str = "%F %T";
+
+/// Defines a file entry and its properties.
+struct FileEntry {
+    name: String,
+    name_encoded: String,
+    modified: Option<DateTime<Local>>,
+    filesize: u64,
+    uri: Option<String>,
+}
+
+/// Defines sorting attributes for file entries.
+struct SortingAttr<'a> {
+    name: &'a str,
+    last_modified: &'a str,
+    size: &'a str,
+}
+
 /// It reads a list of directory entries and create an index page content.
 /// Otherwise it returns a status error.
 async fn read_dir_entries(
-    mut file_entries: tokio::fs::ReadDir,
+    mut dir_reader: tokio::fs::ReadDir,
     base_path: &str,
     uri_query: Option<&str>,
     is_head: bool,
-    mut dir_listing_order: u8,
+    mut order_code: u8,
+    content_format: &DirListFmt,
 ) -> Result<Response<Body>> {
     let mut dirs_count: usize = 0;
     let mut files_count: usize = 0;
-    let mut files_found: Vec<(String, String, u64, Option<String>)> = vec![];
+    let mut file_entries: Vec<FileEntry> = vec![];
 
-    while let Some(entry) = file_entries.next_entry().await? {
-        let meta = entry.metadata().await?;
+    while let Some(dir_entry) = dir_reader.next_entry().await? {
+        let meta = dir_entry.metadata().await?;
 
-        let name = entry
+        let name = dir_entry
             .file_name()
             .into_string()
             .map_err(|err| anyhow::anyhow!(err.into_string().unwrap_or_default()))?;
@@ -107,7 +146,7 @@ async fn read_dir_entries(
             filesize = meta.len();
             files_count += 1;
         } else if meta.file_type().is_symlink() {
-            let m = tokio::fs::symlink_metadata(entry.path().canonicalize()?).await?;
+            let m = tokio::fs::symlink_metadata(dir_entry.path().canonicalize()?).await?;
             if m.is_dir() {
                 name_encoded += "/";
                 dirs_count += 1;
@@ -134,6 +173,7 @@ async fn read_dir_entries(
             if base_path != parent_dir {
                 base_dir = base_path.strip_prefix(parent_dir)?;
             }
+
             let mut base_str = String::new();
             if !base_dir.starts_with("/") {
                 let base_dir = base_dir.to_str().unwrap_or_default();
@@ -142,18 +182,25 @@ async fn read_dir_entries(
                 }
                 base_str.push('/');
             }
+
             base_str.push_str(&name_encoded);
             uri = Some(base_str);
         }
 
         let modified = match parse_last_modified(meta.modified()?) {
-            Ok(local_dt) => local_dt.format("%F %T").to_string(),
+            Ok(local_dt) => Some(local_dt),
             Err(err) => {
                 tracing::error!("error determining file last modified: {:?}", err);
-                String::from("-")
+                None
             }
         };
-        files_found.push((name_encoded, modified, filesize, uri));
+        file_entries.push(FileEntry {
+            name,
+            name_encoded,
+            modified,
+            filesize,
+            uri,
+        });
     }
 
     // Check the query request uri for a sorting type. E.g https://blah/?sort=5
@@ -164,7 +211,7 @@ async fn read_dir_entries(
             if let Some(sort) = parts.next() {
                 if sort.0 == "sort" && !sort.1.trim().is_empty() {
                     match sort.1.parse::<u8>() {
-                        Ok(order_code) => dir_listing_order = order_code,
+                        Ok(code) => order_code = code,
                         Err(err) => {
                             tracing::debug!(
                                 "sorting: query value error when converting to u8: {:?}",
@@ -177,63 +224,145 @@ async fn read_dir_entries(
         }
     }
 
-    let html = create_auto_index(
-        base_path,
-        dirs_count,
-        files_count,
-        dir_listing_order,
-        &mut files_found,
-    )?;
-
     let mut resp = Response::new(Body::empty());
+
+    // Handle directory listing content format
+    let content = match content_format {
+        DirListFmt::Json => {
+            // JSON
+            resp.headers_mut()
+                .typed_insert(ContentType::from(mime::APPLICATION_JSON));
+
+            json_auto_index(&mut file_entries, order_code)?
+        }
+        // HTML (default)
+        _ => {
+            resp.headers_mut()
+                .typed_insert(ContentType::from(mime::TEXT_HTML_UTF_8));
+
+            html_auto_index(
+                base_path,
+                dirs_count,
+                files_count,
+                &mut file_entries,
+                order_code,
+            )?
+        }
+    };
+
     resp.headers_mut()
-        .typed_insert(ContentType::from(mime::TEXT_HTML_UTF_8));
-    resp.headers_mut()
-        .typed_insert(ContentLength(html.len() as u64));
+        .typed_insert(ContentLength(content.len() as u64));
 
     // We skip the body for HEAD requests
     if is_head {
         return Ok(resp);
     }
 
-    *resp.body_mut() = Body::from(html);
+    *resp.body_mut() = Body::from(content);
 
     Ok(resp)
 }
 
-/// Create an auto index html content.
-fn create_auto_index(
-    base_path: &str,
+/// Create an auto index in JSON format.
+fn json_auto_index(entries: &mut [FileEntry], order_code: u8) -> Result<String> {
+    sort_file_entries(entries, order_code);
+
+    let mut json = String::from('[');
+
+    for entry in entries {
+        let file_size = &entry.filesize;
+        let file_name = &entry.name;
+        let is_empty = *file_size == 0_u64;
+        let file_type = if is_empty { "directory" } else { "file" };
+        let file_modified = &entry.modified;
+
+        json.push('{');
+        json.push_str(format!("\"name\":{},", json_quote_str(file_name.as_str())).as_str());
+        json.push_str(format!("\"type\":\"{}\",", file_type).as_str());
+
+        let file_modified_str = file_modified.map_or("".to_owned(), |local_dt| {
+            local_dt
+                .with_timezone(&Utc)
+                .format(DATETIME_FORMAT_UTC)
+                .to_string()
+        });
+        json.push_str(format!("\"mtime\":\"{}\"", file_modified_str).as_str());
+
+        if !is_empty {
+            json.push_str(format!(",\"size\":{}", file_size).as_str());
+        }
+        json.push_str("},");
+    }
+
+    json.pop();
+    json.push(']');
+
+    Ok(json)
+}
+
+/// Quotes a string value.
+fn json_quote_str(s: &str) -> String {
+    let mut r = String::from("\"");
+    for c in s.chars() {
+        match c {
+            '\\' => r.push_str("\\\\"),
+            '\u{0008}' => r.push_str("\\b"),
+            '\u{000c}' => r.push_str("\\f"),
+            '\n' => r.push_str("\\n"),
+            '\r' => r.push_str("\\r"),
+            '\t' => r.push_str("\\t"),
+            '"' => r.push_str("\\\""),
+            c if c.is_control() => r.push_str(format!("\\u{:04x}", c as u32).as_str()),
+            c => r.push(c),
+        };
+    }
+    r.push('\"');
+    r
+}
+
+/// Create an auto index in HTML format.
+fn html_auto_index<'a>(
+    base_path: &'a str,
     dirs_count: usize,
     files_count: usize,
-    dir_listing_order: u8,
-    files_found: &mut Vec<(String, String, u64, Option<String>)>,
+    entries: &'a mut [FileEntry],
+    order_code: u8,
 ) -> Result<String> {
-    // Sorting the files by an specific order code and create the table header
-    let table_header = create_table_header(sort_files(files_found, dir_listing_order));
+    let sort_attrs = sort_file_entries(entries, order_code);
 
-    // Prepare table row
+    // Create the table header specifying every order code column
+    let table_header = format!(
+        r#"<thead><tr><th><a href="?sort={}">Name</a></th><th style="width:160px;"><a href="?sort={}">Last modified</a></th><th style="width:120px;text-align:right;"><a href="?sort={}">Size</a></th></tr></thead>"#,
+        sort_attrs.name, sort_attrs.last_modified, sort_attrs.size,
+    );
+
+    // Prepare table row template
     let mut table_row = String::new();
     if base_path != "/" {
         table_row = String::from(r#"<tr><td colspan="3"><a href="../">../</a></td></tr>"#);
     }
 
-    for file in files_found {
-        let (file_name, file_modified, file_size, uri) = file;
-        let mut filesize_str = file_size
+    for entry in entries {
+        let file_name = &entry.name_encoded;
+        let file_modified = &entry.modified;
+        let file_uri = &entry.uri.clone().unwrap_or_else(|| file_name.to_owned());
+        let file_name_decoded = percent_decode_str(file_name).decode_utf8()?.to_string();
+        let mut filesize = entry
+            .filesize
             .file_size(file_size_opts::DECIMAL)
             .map_err(anyhow::Error::msg)?;
 
-        if *file_size == 0_u64 {
-            filesize_str = String::from("-");
+        if entry.filesize == 0_u64 {
+            filesize = String::from("-");
         }
 
-        let file_uri = uri.clone().unwrap_or_else(|| file_name.to_owned());
-        let file_name_decoded = percent_decode_str(file_name).decode_utf8()?.to_string();
+        let file_modified_str = file_modified.map_or("-".to_owned(), |local_dt| {
+            local_dt.format(DATETIME_FORMAT_LOCAL).to_string()
+        });
 
         table_row = format!(
             "{}<tr><td><a href=\"{}\">{}</a></td><td>{}</td><td align=\"right\">{}</td></tr>",
-            table_row, file_uri, file_name_decoded, file_modified, filesize_str
+            table_row, file_uri, file_name_decoded, file_modified_str, filesize
         );
     }
 
@@ -256,66 +385,56 @@ fn create_auto_index(
     Ok(html_page)
 }
 
-/// Create a table header providing the sorting attributes.
-fn create_table_header(sorting_attrs: (String, String, String)) -> String {
-    let (name, last_modified, size) = sorting_attrs;
-    format!(
-        r#"<thead><tr><th><a href="?sort={}">Name</a></th><th style="width:160px;"><a href="?sort={}">Last modified</a></th><th style="width:120px;text-align:right;"><a href="?sort={}">Size</a></th></tr></thead>"#,
-        name, last_modified, size,
-    )
-}
-
-/// Sort a list of files by an specific order code.
-fn sort_files(
-    files: &mut [(String, String, u64, Option<String>)],
-    order_code: u8,
-) -> (String, String, String) {
+/// Sort a list of file entries by a specific order code.
+fn sort_file_entries(files: &mut [FileEntry], order_code: u8) -> SortingAttr<'_> {
     // Default sorting type values
-    let mut name = "0".to_owned();
-    let mut last_modified = "2".to_owned();
-    let mut size = "4".to_owned();
+    let mut name = "0";
+    let mut last_modified = "2";
+    let mut size = "4";
 
     files.sort_by(|a, b| match order_code {
         // Name (asc, desc)
         0 => {
-            name = "1".to_owned();
-            a.0.to_lowercase().cmp(&b.0.to_lowercase())
+            name = "1";
+            a.name.to_lowercase().cmp(&b.name.to_lowercase())
         }
         1 => {
-            name = "0".to_owned();
-            b.0.to_lowercase().cmp(&a.0.to_lowercase())
+            name = "0";
+            b.name.to_lowercase().cmp(&a.name.to_lowercase())
         }
 
         // Modified (asc, desc)
         2 => {
-            last_modified = "3".to_owned();
-            a.1.cmp(&b.1)
+            last_modified = "3";
+            a.modified.cmp(&b.modified)
         }
         3 => {
-            last_modified = "2".to_owned();
-            b.1.cmp(&a.1)
+            last_modified = "2";
+            b.modified.cmp(&a.modified)
         }
 
         // File size (asc, desc)
         4 => {
-            size = "5".to_owned();
-            a.2.cmp(&b.2)
+            size = "5";
+            a.filesize.cmp(&b.filesize)
         }
         5 => {
-            size = "4".to_owned();
-            b.2.cmp(&a.2)
+            size = "4";
+            b.filesize.cmp(&a.filesize)
         }
 
         // Unordered
         _ => Ordering::Equal,
     });
 
-    (name, last_modified, size)
+    SortingAttr {
+        name,
+        last_modified,
+        size,
+    }
 }
 
-fn parse_last_modified(
-    modified: SystemTime,
-) -> Result<DateTime<Local>, Box<dyn std::error::Error>> {
+fn parse_last_modified(modified: SystemTime) -> Result<DateTime<Local>> {
     let since_epoch = modified.duration_since(UNIX_EPOCH)?;
     // HTTP times don't have nanosecond precision, so we truncate
     // the modification time.

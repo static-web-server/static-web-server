@@ -136,7 +136,7 @@ jobs:
         echo "TARGET_DIR=./target/${{ matrix.target }}" >> $GITHUB_ENV
 
     - name: Cache cargo registry and git trees
-      uses: Swatinem/rust-cache@v1
+      uses: Swatinem/rust-cache@v2
 
     - name: Show command used for Cargo
       run: |

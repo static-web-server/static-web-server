@@ -3,8 +3,9 @@ use hyper::{header::WWW_AUTHENTICATE, Body, Method, Request, Response, StatusCod
 use std::{future::Future, net::IpAddr, net::SocketAddr, path::PathBuf, sync::Arc};
 
 use crate::{
-    basic_auth, compression, control_headers, cors, custom_headers, error_page, fallback_page,
-    redirects, rewrites, security_headers,
+    basic_auth, compression, control_headers, cors, custom_headers,
+    directory_listing::DirListFmt,
+    error_page, fallback_page, redirects, rewrites, security_headers,
     settings::Advanced,
     static_files::{self, HandleOpts},
     Error, Result,
@@ -18,6 +19,7 @@ pub struct RequestHandlerOpts {
     pub compression_static: bool,
     pub dir_listing: bool,
     pub dir_listing_order: u8,
+    pub dir_listing_format: DirListFmt,
     pub cors: Option<cors::Configured>,
     pub security_headers: bool,
     pub cache_control_headers: bool,
@@ -53,6 +55,7 @@ impl RequestHandler {
         let uri_query = uri.query();
         let dir_listing = self.opts.dir_listing;
         let dir_listing_order = self.opts.dir_listing_order;
+        let dir_listing_format = &self.opts.dir_listing_format;
         let log_remote_addr = self.opts.log_remote_address;
         let redirect_trailing_slash = self.opts.redirect_trailing_slash;
         let compression_static = self.opts.compression_static;
@@ -190,6 +193,7 @@ impl RequestHandler {
                 uri_query,
                 dir_listing,
                 dir_listing_order,
+                dir_listing_format,
                 redirect_trailing_slash,
                 compression_static,
             })

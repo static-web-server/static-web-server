@@ -79,6 +79,7 @@ impl Settings {
         let mut cors_expose_headers = opts.cors_expose_headers;
         let mut directory_listing = opts.directory_listing;
         let mut directory_listing_order = opts.directory_listing_order;
+        let mut directory_listing_format = opts.directory_listing_format;
         let mut basic_auth = opts.basic_auth;
         let mut fd = opts.fd;
         let mut threads_multiplier = opts.threads_multiplier;
@@ -164,6 +165,9 @@ impl Settings {
                     }
                     if let Some(v) = general.directory_listing_order {
                         directory_listing_order = v
+                    }
+                    if let Some(v) = general.directory_listing_format {
+                        directory_listing_format = v
                     }
                     if let Some(ref v) = general.basic_auth {
                         basic_auth = v.to_owned()
@@ -308,6 +312,7 @@ impl Settings {
                 cors_expose_headers,
                 directory_listing,
                 directory_listing_order,
+                directory_listing_format,
                 basic_auth,
                 fd,
                 threads_multiplier,
