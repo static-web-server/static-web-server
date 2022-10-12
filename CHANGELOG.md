@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _**Note:** See changelog for v1 under the [1.x](https://github.com/joseluisq/static-web-server/blob/1.x/CHANGELOG.md) branch._
 
+## v2.13.0 - 2022-10-12
+
+__Fixes__
+
+- [cce7a85](https://github.com/joseluisq/static-web-server/commit/cce7a85) Bugfix/security dependency updates including jemallocator, http headers, async-compression, rustls-pemfile, tracing and other crates (also [ed8dec3](https://github.com/joseluisq/static-web-server/commit/ed8dec3), [ea0facd](https://github.com/joseluisq/static-web-server/commit/ea0facd)).
+- [3c863fd](https://github.com/joseluisq/static-web-server/commit/3c863fd) Directory listing links not encoded properly. PR [#150](https://github.com/joseluisq/static-web-server/issues/150) fixes [#149](https://github.com/joseluisq/static-web-server/issues/149) reported by [@nestor-custodio](https://github.com/nestor-custodio).
+
+__Features__
+
+- [f369c80](https://github.com/joseluisq/static-web-server/commit/f369c80) CORS exposed headers support via new `--cors-expose-headers` option. PR [#144](https://github.com/joseluisq/static-web-server/pull/144) by [@nelsonjchen](https://github.com/nelsonjchen). See [docs](https://sws.joseluisq.net/features/cors/#exposed-headers).
+- [997e493](https://github.com/joseluisq/static-web-server/commit/997e493) HTML/JSON support for directory listing entries via new `--directory-listing-format` option. PR [#151](https://github.com/joseluisq/static-web-server/pull/151). See [docs](https://sws.joseluisq.net/features/directory-listing/#output-format).
+
+__Refactorings__
+
+- [61d4bb2](https://github.com/joseluisq/static-web-server/commit/61d4bb2) Restore ANSI terminal colors for Unix systems previously disabled.
+
+__Docs__
+
+- [3d8c74b](https://github.com/joseluisq/static-web-server/commit/3d8c74b) Directory listing format description.
+
+__Codebase__
+ 
+- [6a5ed83](https://github.com/joseluisq/static-web-server/commit/6a5ed83) Update CI workflow dependencies.
+
 ## v2.12.0 - 2022-09-27
 
 __Fixes__
