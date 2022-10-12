@@ -43,7 +43,12 @@ cors-allow-headers = ""
 
 #### Directory listing
 directory-listing = false
+
+#### Directory listing sorting code
 directory-listing-order = 6
+
+#### Directory listing content format ("html" or "json")
+directory-listing-format = "html"
 
 #### Basich Authentication
 basic-auth = ""
@@ -99,7 +104,7 @@ So they are equivalent to each other **except** for the `-w, --config-file` opti
 
 The TOML `[advanced]` section is intended for more complex features.
 
-For example [Custom HTTP Headers](../features/custom-http-headers.md).
+For example [Custom HTTP Headers](../features/custom-http-headers.md) or [Custom URL Redirects](../features/url-redirects.md).
 
 ### Precedence
 

@@ -39,11 +39,11 @@ OPTIONS:
             Server TOML configuration file path [env: SERVER_CONFIG_FILE=]
 
     -j, --cors-allow-headers <cors-allow-headers>
-            Specify an optional CORS list of allowed headers separated by comas. Default "origin, content-type". It
+            Specify an optional CORS list of allowed headers separated by commas. Default "origin, content-type". It
             requires `--cors-allow-origins` to be used along with [env: SERVER_CORS_ALLOW_HEADERS=]  [default: origin,
             content-type]
     -c, --cors-allow-origins <cors-allow-origins>
-            Specify an optional CORS list of allowed origin hosts separated by comas. Host ports or protocols aren't
+            Specify an optional CORS list of allowed origin hosts separated by commas. Host ports or protocols aren't
             being checked. Use an asterisk (*) to allow any host [env: SERVER_CORS_ALLOW_ORIGINS=]  [default: ]
         --cors-expose-headers <cors-expose-headers>
             Specify an optional CORS list of exposed headers separated by commas. Default "origin, content-type". It
@@ -52,6 +52,9 @@ OPTIONS:
     -z, --directory-listing <directory-listing>
             Enable directory listing for all requests ending with the slash character (‘/’) [env:
             SERVER_DIRECTORY_LISTING=]  [default: false]
+        --directory-listing-format <directory-listing-format>
+            Specify a content format for directory listing entries. Formats supported: "html" or "json". Default "html"
+            [env: SERVER_DIRECTORY_LISTING_FORMAT=]  [default: html]  [possible values: Html, Json]
         --directory-listing-order <directory-listing-order>
             Specify a default code number to order directory listing entries per `Name`, `Last modified` or `Size`
             attributes (columns). Code numbers supported: 0 (Name asc), 1 (Name desc), 2 (Last modified asc), 3 (Last
@@ -95,7 +98,7 @@ OPTIONS:
         --page50x <page50x>
             HTML file path for 50x errors. If the path is not specified or simply doesn't exist then the server will use
             a generic HTML error message [env: SERVER_ERROR_PAGE_50X=]  [default: ./public/50x.html]
-    -p, --port <port>                                          Host port [env: SERVER_PORT=]  [default: 80]
+    -p, --port <port>                                            Host port [env: SERVER_PORT=]  [default: 80]
         --redirect-trailing-slash <redirect-trailing-slash>
             Check for a trailing slash in the requested directory URI and redirect permanently (308) to the same path
             with a trailing slash suffix if it is missing [env: REDIRECT_TRAILING_SLASH=]  [default: true]
