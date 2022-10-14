@@ -271,4 +271,60 @@ mod tests {
             }
         }
     }
+
+    #[tokio::test]
+    async fn dir_listing_json_format_empty() {
+        #[derive(Serialize, Deserialize)]
+        struct FileEntry {
+            name: String,
+            #[serde(rename = "type")]
+            typed: String,
+            mtime: String,
+            size: Option<usize>,
+        }
+
+        let empty_dir = PathBuf::from("tests/fixtures/empty");
+        if empty_dir.exists() {
+            std::fs::remove_dir(&empty_dir).unwrap();
+        }
+        std::fs::create_dir(&empty_dir).unwrap();
+
+        for method in METHODS {
+            match static_files::handle(&HandleOpts {
+                method: &method,
+                headers: &HeaderMap::new(),
+                base_path: &root_dir(&empty_dir),
+                uri_path: "/",
+                uri_query: None,
+                dir_listing: true,
+                dir_listing_order: 1,
+                dir_listing_format: &DirListFmt::Json,
+                redirect_trailing_slash: true,
+                compression_static: false,
+            })
+            .await
+            {
+                Ok((mut res, _)) => {
+                    assert_eq!(res.status(), 200);
+                    assert_eq!(res.headers()["content-type"], "application/json");
+
+                    let body = hyper::body::to_bytes(res.body_mut())
+                        .await
+                        .expect("unexpected bytes error during `body` conversion");
+                    let body_str = std::str::from_utf8(&body).unwrap();
+
+                    if method == Method::GET {
+                        let entries: Vec<FileEntry> = serde_json::from_str(body_str).unwrap();
+                        assert!(entries.is_empty())
+                    } else {
+                        assert!(body_str.is_empty());
+                    }
+                }
+                Err(status) => {
+                    assert!(method != Method::GET && method != Method::HEAD);
+                    assert_eq!(status, StatusCode::METHOD_NOT_ALLOWED);
+                }
+            }
+        }
+    }
 }

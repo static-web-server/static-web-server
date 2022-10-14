@@ -294,7 +294,11 @@ fn json_auto_index(entries: &mut [FileEntry], order_code: u8) -> Result<String> 
         json.push_str("},");
     }
 
-    json.pop();
+    // Strip trailing comma out in case of available items
+    if json.len() > 1 {
+        json.pop();
+    }
+
     json.push(']');
 
     Ok(json)
