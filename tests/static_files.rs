@@ -634,7 +634,50 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn handle_byte_ranges() {
+    async fn handle_byte_ranges_single() {
+        let mut headers = HeaderMap::new();
+        headers.insert("range", "bytes=0-0".parse().unwrap());
+
+        let buf = fs::read(root_dir().join("index.html"))
+            .expect("unexpected error during index.html reading");
+        let buf = Bytes::from(buf);
+
+        for method in [Method::HEAD, Method::GET] {
+            match static_files::handle(&HandleOpts {
+                method: &method,
+                headers: &headers,
+                base_path: &root_dir(),
+                uri_path: "index.html",
+                uri_query: None,
+                dir_listing: false,
+                dir_listing_order: 6,
+                dir_listing_format: &DirListFmt::Html,
+                redirect_trailing_slash: true,
+                compression_static: false,
+            })
+            .await
+            {
+                Ok((mut res, _)) => {
+                    assert_eq!(res.status(), 206);
+                    assert_eq!(
+                        res.headers()["content-range"],
+                        format!("bytes 0-0/{}", buf.len())
+                    );
+                    assert_eq!(res.headers()["content-length"], "1");
+                    let body = hyper::body::to_bytes(res.body_mut())
+                        .await
+                        .expect("unexpected bytes error during `body` conversion");
+                    assert_eq!(body, &buf[..=0]);
+                }
+                Err(_) => {
+                    panic!("expected a normal response rather than a status error")
+                }
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn handle_byte_ranges_multiple() {
         let mut headers = HeaderMap::new();
         headers.insert("range", "bytes=100-200".parse().unwrap());
 

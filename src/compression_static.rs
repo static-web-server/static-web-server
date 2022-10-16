@@ -40,7 +40,7 @@ pub async fn precompressed_variant(
             filepath_precomp.display()
         );
 
-        if let Ok((meta, _)) = file_metadata(&filepath_precomp).await {
+        if let Ok((meta, _)) = file_metadata(&filepath_precomp) {
             tracing::trace!("pre-compressed file variant found, serving it directly");
 
             let encoding = if ext == "gz" { "gzip" } else { ext };
