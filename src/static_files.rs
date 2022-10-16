@@ -1,9 +1,11 @@
-// Static File handler
-// -> Most of the file is borrowed from https://github.com/seanmonstar/warp/blob/master/src/filters/fs.rs
+//! Static File handler
+//!
+//! Part of the file is borrowed and adapted at a convenience from
+//! https://github.com/seanmonstar/warp/blob/master/src/filters/fs.rs
 
 use bytes::{Bytes, BytesMut};
-use futures_util::future::Either;
-use futures_util::{future, ready, stream, FutureExt, Stream, StreamExt};
+use futures_util::future::{Either, Future};
+use futures_util::{future, Stream};
 use headers::{
     AcceptRanges, ContentLength, ContentRange, ContentType, HeaderMap, HeaderMapExt, HeaderValue,
     IfModifiedSince, IfRange, IfUnmodifiedSince, LastModified, Range,
@@ -11,17 +13,13 @@ use headers::{
 use http::header::CONTENT_LENGTH;
 use hyper::{header::CONTENT_ENCODING, Body, Method, Response, StatusCode};
 use percent_encoding::percent_decode_str;
-use std::fs::Metadata;
-use std::future::Future;
-use std::io;
+use std::fs::{File, Metadata};
+use std::io::{self, BufReader, Read, Seek, SeekFrom};
 use std::ops::Bound;
-use std::path::{Component, PathBuf};
+use std::path::{Component, Path, PathBuf};
 use std::pin::Pin;
-use std::task::Poll;
-use std::{cmp, path::Path};
-use tokio::fs::File as TkFile;
-use tokio::io::AsyncSeekExt;
-use tokio_util::io::poll_read_buf;
+use std::sync::Mutex;
+use std::task::{Context, Poll};
 
 use crate::directory_listing::DirListFmt;
 use crate::{compression_static, directory_listing, Result};
@@ -157,7 +155,7 @@ async fn composed_file_metadata<'a>(
 
     tracing::trace!("getting metadata for file {}", file_path.display());
 
-    match file_metadata(file_path.as_ref()).await {
+    match file_metadata(file_path.as_ref()) {
         Ok((mut meta, is_dir)) => {
             if is_dir {
                 // Append a HTML index page by default if it's a directory path (`autoindex`)
@@ -166,7 +164,7 @@ async fn composed_file_metadata<'a>(
 
                 // If file exists then overwrite the `meta`
                 // Also noting that it's still a directory request
-                if let Ok(meta_res) = file_metadata(file_path.as_ref()).await {
+                if let Ok(meta_res) = file_metadata(file_path.as_ref()) {
                     (meta, _) = meta_res
                 }
             }
@@ -189,8 +187,8 @@ async fn composed_file_metadata<'a>(
 }
 
 /// Try to find the file system metadata for the given file path.
-pub async fn file_metadata(file_path: &Path) -> Result<(Metadata, bool), StatusCode> {
-    match tokio::fs::metadata(file_path).await {
+pub fn file_metadata(file_path: &Path) -> Result<(Metadata, bool), StatusCode> {
+    match std::fs::metadata(file_path) {
         Ok(meta) => {
             let is_dir = meta.is_dir();
             tracing::trace!("file found: {:?}", file_path);
@@ -219,7 +217,7 @@ fn file_reply<'a>(
 
     let file_path = path_precompressed.unwrap_or_else(|| path.clone());
 
-    TkFile::open(file_path).then(move |res| match res {
+    match File::open(file_path) {
         Ok(file) => Either::Left(response_body(file, path, meta, conditionals)),
         Err(err) => {
             let status = match err.kind() {
@@ -238,7 +236,7 @@ fn file_reply<'a>(
             };
             Either::Right(future::err(status))
         }
-    })
+    }
 }
 
 fn get_conditional_headers(header_list: &HeaderMap<HeaderValue>) -> Conditionals {
@@ -356,24 +354,71 @@ impl Conditionals {
     }
 }
 
+#[cfg(unix)]
+const READ_BUF_SIZE: usize = 4_096;
+
+#[cfg(not(unix))]
+const READ_BUF_SIZE: usize = 8_192;
+
+#[derive(Debug)]
+pub struct FileStream<T> {
+    reader: Mutex<T>,
+}
+
+impl<T: Read> Stream for FileStream<T> {
+    type Item = Result<Bytes>;
+
+    fn poll_next(self: Pin<&mut Self>, _: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        let mut reader = match self.reader.lock() {
+            Ok(reader) => reader,
+            Err(err) => {
+                tracing::error!("file stream error: {:?}", err);
+                return Poll::Ready(Some(Err(anyhow::anyhow!("failed to read stream file"))));
+            }
+        };
+
+        let mut buf = BytesMut::zeroed(READ_BUF_SIZE);
+        match reader.read(&mut buf[..]) {
+            Ok(n) => {
+                if n == 0 {
+                    Poll::Ready(None)
+                } else {
+                    buf.truncate(n);
+                    Poll::Ready(Some(Ok(buf.freeze())))
+                }
+            }
+            Err(err) => Poll::Ready(Some(Err(anyhow::Error::from(err)))),
+        }
+    }
+}
+
 async fn response_body(
-    file: TkFile,
+    mut file: File,
     path: &PathBuf,
     meta: &Metadata,
     conditionals: Conditionals,
 ) -> Result<Response<Body>, StatusCode> {
     let mut len = meta.len();
     let modified = meta.modified().ok().map(LastModified::from);
-    let resp = match conditionals.check(modified) {
-        Cond::NoBody(resp) => resp,
+
+    match conditionals.check(modified) {
+        Cond::NoBody(resp) => Ok(resp),
         Cond::WithBody(range) => {
             bytes_range(range, len)
                 .map(|(start, end)| {
-                    let sub_len = end - start;
-                    let buf_size = optimal_buf_size(meta);
-                    let stream = file_stream(file, buf_size, (start, end));
-                    let body = Body::wrap_stream(stream);
+                    match file.seek(SeekFrom::Start(start)) {
+                        Ok(_) => (),
+                        Err(err) => {
+                            tracing::error!("seek file from start error: {:?}", err);
+                            return Err(StatusCode::INTERNAL_SERVER_ERROR);
+                        }
+                    };
 
+                    let sub_len = end - start;
+                    let reader = Mutex::new(BufReader::new(file).take(sub_len));
+                    let stream = FileStream { reader };
+
+                    let body = Body::wrap_stream(stream);
                     let mut resp = Response::new(body);
 
                     if sub_len != len {
@@ -395,7 +440,7 @@ async fn response_body(
                         resp.headers_mut().typed_insert(last_modified);
                     }
 
-                    resp
+                    Ok(resp)
                 })
                 .unwrap_or_else(|BadRange| {
                     // bad byte range
@@ -403,12 +448,10 @@ async fn response_body(
                     *resp.status_mut() = StatusCode::RANGE_NOT_SATISFIABLE;
                     resp.headers_mut()
                         .typed_insert(ContentRange::unsatisfied_bytes(len));
-                    resp
+                    Ok(resp)
                 })
         }
-    };
-
-    Ok(resp)
+    }
 }
 
 struct BadRange;
@@ -451,95 +494,9 @@ fn bytes_range(range: Option<Range>, max_len: u64) -> Result<(u64, u64), BadRang
     res
 }
 
-fn file_stream(
-    mut file: TkFile,
-    buf_size: usize,
-    (start, end): (u64, u64),
-) -> impl Stream<Item = Result<Bytes, io::Error>> + Send {
-    let seek = async move {
-        if start != 0 {
-            file.seek(io::SeekFrom::Start(start)).await?;
-        }
-        Ok(file)
-    };
-
-    seek.into_stream()
-        .map(move |result| {
-            let mut buf = BytesMut::new();
-            let mut len = end - start;
-            let mut f = match result {
-                Ok(f) => f,
-                Err(f) => return Either::Left(stream::once(future::err(f))),
-            };
-
-            Either::Right(stream::poll_fn(move |cx| {
-                if len == 0 {
-                    return Poll::Ready(None);
-                }
-                reserve_at_least(&mut buf, buf_size);
-
-                let n = match ready!(poll_read_buf(Pin::new(&mut f), cx, &mut buf)) {
-                    Ok(n) => n as u64,
-                    Err(err) => {
-                        tracing::debug!("file read error: {}", err);
-                        return Poll::Ready(Some(Err(err)));
-                    }
-                };
-
-                if n == 0 {
-                    tracing::debug!("file read found EOF before expected length");
-                    return Poll::Ready(None);
-                }
-
-                let mut chunk = buf.split().freeze();
-                if n > len {
-                    chunk = chunk.split_to(len as usize);
-                    len = 0;
-                } else {
-                    len -= n;
-                }
-
-                Poll::Ready(Some(Ok(chunk)))
-            }))
-        })
-        .flatten()
-}
-
-fn reserve_at_least(buf: &mut BytesMut, cap: usize) {
-    if buf.capacity() - buf.len() < cap {
-        buf.reserve(cap);
-    }
-}
-
-const DEFAULT_READ_BUF_SIZE: usize = 8_192;
-
-fn optimal_buf_size(metadata: &Metadata) -> usize {
-    let block_size = get_block_size(metadata);
-
-    // If file length is smaller than block size, don't waste space
-    // reserving a bigger-than-needed buffer.
-    cmp::min(block_size as u64, metadata.len()) as usize
-}
-
-#[cfg(unix)]
-fn get_block_size(metadata: &Metadata) -> usize {
-    use std::os::unix::fs::MetadataExt;
-    //TODO: blksize() returns u64, should handle bad cast...
-    //(really, a block size bigger than 4gb?)
-
-    // Use device blocksize unless it's really small.
-    cmp::max(metadata.blksize() as usize, DEFAULT_READ_BUF_SIZE)
-}
-
-#[cfg(not(unix))]
-fn get_block_size(_metadata: &Metadata) -> usize {
-    DEFAULT_READ_BUF_SIZE
-}
-
 #[cfg(test)]
 mod tests {
     use super::sanitize_path;
-    use bytes::BytesMut;
     use std::path::PathBuf;
 
     fn root_dir() -> PathBuf {
@@ -569,18 +526,5 @@ mod tests {
             sanitize_path(BASE_DIR, "/C:\\/foo.html").unwrap(),
             expected_path
         );
-    }
-
-    #[test]
-    fn test_reserve_at_least() {
-        let mut buf = BytesMut::new();
-        let cap = 8_192;
-
-        assert_eq!(buf.len(), 0);
-        assert_eq!(buf.capacity(), 0);
-
-        super::reserve_at_least(&mut buf, cap);
-        assert_eq!(buf.len(), 0);
-        assert_eq!(buf.capacity(), cap);
     }
 }
