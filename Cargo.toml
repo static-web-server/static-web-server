@@ -1,6 +1,6 @@
 [package]
 name = "static-web-server"
-version = "2.13.0"
+version = "2.13.1"
 authors = ["Jose Quintana <https://joseluisq.net>"]
 license = "MIT OR Apache-2.0"
 description = "A blazing fast and asynchronous web server for static files-serving."

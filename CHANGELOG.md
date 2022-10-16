@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _**Note:** See changelog for v1 under the [1.x](https://github.com/joseluisq/static-web-server/blob/1.x/CHANGELOG.md) branch._
 
+## v2.13.1 - 2022-10-17
+
+__Fixes__
+
+- [41dd5c6](https://github.com/joseluisq/static-web-server/commit/41dd5c6) Bugfix/security dependency updates including cxx and proc-macro2 crates.
+- [abef785](https://github.com/joseluisq/static-web-server/commit/abef785) Directory listing JSON syntax error when requesting for an empty folder.
+
+__Refactorings__
+
+- [d1b72fd](https://github.com/joseluisq/static-web-server/commit/d1b72fd) Significant `~58%` performance boost for serving static files and `~10%` *(CPU)* / `~52%` *(RAM)* less resource utilization. PR [#153](https://github.com/joseluisq/static-web-server/issues/153) resolves [#146](https://github.com/joseluisq/static-web-server/issues/146) reported by [@jonashaag](https://github.com/jonashaag).
+
 ## v2.13.0 - 2022-10-12
 
 __Fixes__
