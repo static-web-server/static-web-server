@@ -12,7 +12,7 @@ $ static-web-server -h
 
 static-web-server 2.13.1
 Jose Quintana <https://joseluisq.net>
-A blazing fast and asynchronous web server for static files-serving.
+A cross-platform, blazing fast and asynchronous web server for static files-serving.
 
 USAGE:
     static-web-server [OPTIONS]

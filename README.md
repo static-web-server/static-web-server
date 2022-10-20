@@ -13,7 +13,7 @@
   </h4>
 
 <div align="center">
-<a href="https://github.com/joseluisq/static-web-server/actions/workflows/devel.yml" title="devel ci"><img src="https://github.com/joseluisq/static-web-server/actions/workflows/devel.yml/badge.svg?branch=master"></a> 
+<a href="https://github.com/static-web-server/static-web-server/actions/workflows/devel.yml" title="devel ci"><img src="https://github.com/static-web-server/static-web-server/actions/workflows/devel.yml/badge.svg?branch=master"></a> 
 <a href="https://hub.docker.com/r/joseluisq/static-web-server/" title="Docker Image Version (tag latest semver)"><img src="https://img.shields.io/docker/v/joseluisq/static-web-server/2"></a> 
 <a href="https://hub.docker.com/r/joseluisq/static-web-server/tags" title="Docker Image Size (tag)"><img src="https://img.shields.io/docker/image-size/joseluisq/static-web-server/2"></a> 
 <a href="https://hub.docker.com/r/joseluisq/static-web-server/" title="Docker Image"><img src="https://img.shields.io/docker/pulls/joseluisq/static-web-server.svg"></a> 
@@ -37,7 +37,7 @@ It's cross-platform and available for `Linux`, `macOS`, `Windows` and `FreeBSD` 
 
 - Built with [Rust](https://rust-lang.org) which is focused on [safety, speed and concurrency](https://kornel.ski/rust-c-speed).
 - Memory safe and very reduced CPU and RAM overhead.
-- Blazing fast static files-serving and asynchronous powered by latest [Hyper](https://github.com/hyperium/hyper/), [Tokio](https://github.com/tokio-rs/tokio) and a set of [awesome crates](https://github.com/joseluisq/static-web-server/blob/master/Cargo.toml).
+- Blazing fast static files-serving and asynchronous powered by latest [Hyper](https://github.com/hyperium/hyper/), [Tokio](https://github.com/tokio-rs/tokio) and a set of [awesome crates](https://github.com/static-web-server/static-web-server/blob/master/Cargo.toml).
 - Single __4MB__ (uncompressed) and fully static binary with no dependencies ([Musl libc](https://doc.rust-lang.org/edition-guide/rust-2018/platform-and-target-support/musl-support-for-fully-static-binaries.html)). Suitable for running on [any Linux distro](https://en.wikipedia.org/wiki/Linux_distribution) or [Docker container](https://hub.docker.com/r/joseluisq/static-web-server/tags).
 - Optional GZip, Deflate or Brotli compression for text-based web files only.
 - Compression on-demand via [Accept-Encoding](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Accept-Encoding) header.
@@ -71,7 +71,7 @@ For more details about the API, usage and examples please have a look at [The Do
 ## Releases
 
 - [Docker Images](https://hub.docker.com/r/joseluisq/static-web-server/)
-- [Release Binaries](https://github.com/joseluisq/static-web-server/releases)
+- [Release Binaries](https://github.com/static-web-server/static-web-server/releases)
 - [Platforms/Architectures Supported](https://sws.joseluisq.net/platforms-architectures/)
 
 ## Benchmarks
@@ -82,14 +82,14 @@ See more details on [benchmark/BENCHMARKS.md](benchmark/BENCHMARKS.md)
 
 ## Notes
 
-- If you're looking for `v1` please go to [1.x](https://github.com/joseluisq/static-web-server/tree/1.x) branch.
+- If you're looking for `v1` please go to [1.x](https://github.com/static-web-server/static-web-server/tree/1.x) branch.
 - If you want to migrate from `v1` to `v2` please take a look at [Migrating from `v1` to `v2`](https://sws.joseluisq.net/migration/) release.
 
 ## Contributions
 
 Unless you explicitly state otherwise, any contribution intentionally submitted for inclusion in current work by you, as defined in the Apache-2.0 license, shall be dual licensed as described below, without any additional terms or conditions.
 
-Feel free to send some [Pull request](https://github.com/joseluisq/static-web-server/pulls) or file an [issue](https://github.com/joseluisq/static-web-server/issues).
+Feel free to send some [Pull request](https://github.com/static-web-server/static-web-server/pulls) or file an [issue](https://github.com/static-web-server/static-web-server/issues).
 
 ## License
 

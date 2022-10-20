@@ -61,7 +61,7 @@ Specify an optional CORS list of allowed HTTP headers separated by commas. It re
 Specify an optional CORS list of exposed HTTP headers separated by commas. It requires `SERVER_CORS_ALLOW_ORIGINS` to be used along with. Default `origin, content-type`.
 
 ### SERVER_COMPRESSION
-`Gzip`, `Deflate` or `Brotli` compression on demand determined by the `Accept-Encoding` header and applied to text-based web file types only. See [ad-hoc mime-type list](https://github.com/joseluisq/static-web-server/blob/master/src/compression.rs#L20). Default `true` (enabled).
+`Gzip`, `Deflate` or `Brotli` compression on demand determined by the `Accept-Encoding` header and applied to text-based web file types only. See [ad-hoc mime-type list](https://github.com/static-web-server/static-web-server/blob/master/src/compression.rs#L20). Default `true` (enabled).
 
 ### SERVER_COMPRESSION_STATIC
 Look up the pre-compressed file variant (`.gz` or `.br`) on disk of a requested file and serves it directly if available. Default `false` (disabled). The compression type is determined by the `Accept-Encoding` header.
@@ -79,7 +79,7 @@ Specify a content format for the directory listing entries. Formats supported: `
 Enable security headers by default when HTTP/2 feature is activated. Headers included: `Strict-Transport-Security: max-age=63072000; includeSubDomains; preload` (2 years max-age), `X-Frame-Options: DENY`, `X-XSS-Protection: 1; mode=block` and `Content-Security-Policy: frame-ancestors 'self'`. Default `false` (disabled).
 
 ### SERVER_CACHE_CONTROL_HEADERS
-Enable cache control headers for incoming requests based on a set of file types. The file type list can be found on [`src/control_headers.rs`](https://github.com/joseluisq/static-web-server/blob/master//src/control_headers.rs) file. Default `true` (enabled).
+Enable cache control headers for incoming requests based on a set of file types. The file type list can be found on [`src/control_headers.rs`](https://github.com/static-web-server/static-web-server/blob/master//src/control_headers.rs) file. Default `true` (enabled).
 
 ### SERVER_BASIC_AUTH
 It provides [The "Basic" HTTP Authentication Scheme](https://datatracker.ietf.org/doc/html/rfc7617) using credentials as `user-id:password` pairs, encoded using `Base64`. Password must be encoded using the [BCrypt](https://en.wikipedia.org/wiki/Bcrypt) password-hashing function. Default empty (disabled).

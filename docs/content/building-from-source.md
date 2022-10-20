@@ -11,7 +11,7 @@ So make sure to install Rust [1.59.0](https://blog.rust-lang.org/2022/02/24/Rust
 Then clone the repository and use [Cargo](https://doc.rust-lang.org/cargo/) to build the project from the source.
 
 ```sh
-git clone https://github.com/joseluisq/static-web-server.git
+git clone https://github.com/static-web-server/static-web-server.git
 cd static-web-server
 cargo build --release
 ```
@@ -32,7 +32,7 @@ It's only necessary to have [Docker](https://www.docker.com/get-started/) instal
 By default the docs will be built in the `/tmp/docs` directory, to do so follow these steps.
 
 ```sh
-git clone https://github.com/joseluisq/static-web-server.git
+git clone https://github.com/static-web-server/static-web-server.git
 cd static-web-server
 mkdir /tmp/docs
 docker run -it --rm \
@@ -48,7 +48,7 @@ docker run -it --rm \
 If you want to improve the documentation then run the built-in development server via `docs/docker-compose.yml`.
 
 ```sh
-git clone https://github.com/joseluisq/static-web-server.git
+git clone https://github.com/static-web-server/static-web-server.git
 cd static-web-server
 docker-compose -f docs/docker-compose.yml up
 ```

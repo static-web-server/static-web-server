@@ -8,7 +8,7 @@ on:
     - trying
 
 env:
-  DOCKER_IMAGE: localhost:5000/joseluisq/static-web-server
+  DOCKER_IMAGE: localhost:5000/github.com/static-web-server/static-web-server
 
 jobs:
   docker-alpine:

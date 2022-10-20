@@ -114,7 +114,7 @@ REPORTING BUGS
 
 Report bugs and feature requests in the issue tracker. Please do your best to provide a reproducible test case for bugs.
 
-https://github.com/joseluisq/static-web-server/issues
+https://github.com/static-web-server/static-web-server/issues
 
 AUTHORS
 -------

@@ -12,7 +12,7 @@ option.
 
 ## Systemd
 
-If you're using `systemd` on Linux, there is a fully working example in the SWS Git repository under the [.`/systemd`](https://github.com/joseluisq/static-web-server/tree/master/systemd) directory.
+If you're using `systemd` on Linux, there is a fully working example in the SWS Git repository under the [.`/systemd`](https://github.com/static-web-server/static-web-server/tree/master/systemd) directory.
 
 ## Testing
 

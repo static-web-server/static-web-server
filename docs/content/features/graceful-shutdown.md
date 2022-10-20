@@ -10,7 +10,7 @@ It means that when a `SIGTERM` [termination signal](https://www.gnu.org/software
 
 ## Grace Period
 
-Sometimes one wants to control the graceful shutdown process for different reasons. For example during [Kubernetes rollouts](https://github.com/joseluisq/static-web-server/issues/79).
+Sometimes one wants to control the graceful shutdown process for different reasons. For example during [Kubernetes rollouts](https://github.com/static-web-server/static-web-server/issues/79).
 
 In these situations, SWS allows delaying the graceful shutdown process right after a `SIGTERM` providing a *grace period* in seconds.
 

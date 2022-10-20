@@ -13,7 +13,7 @@
   </h4>
 
 <div align="center">
-<a href="https://github.com/joseluisq/static-web-server/actions/workflows/devel.yml" title="devel ci"><img src="https://github.com/joseluisq/static-web-server/actions/workflows/devel.yml/badge.svg?branch=master"></a> 
+<a href="https://github.com/static-web-server/static-web-server/actions/workflows/devel.yml" title="devel ci"><img src="https://github.com/static-web-server/static-web-server/actions/workflows/devel.yml/badge.svg?branch=master"></a> 
 <a href="https://hub.docker.com/r/joseluisq/static-web-server/" title="Docker Image Version (tag latest semver)"><img src="https://img.shields.io/docker/v/joseluisq/static-web-server/2"></a> 
 <a href="https://hub.docker.com/r/joseluisq/static-web-server/tags" title="Docker Image Size (tag)"><img src="https://img.shields.io/docker/image-size/joseluisq/static-web-server/2"></a> 
 <a href="https://hub.docker.com/r/joseluisq/static-web-server/" title="Docker Image"><img src="https://img.shields.io/docker/pulls/joseluisq/static-web-server.svg"></a> 
@@ -34,14 +34,14 @@ It's cross-platform and available for Linux, macOS, Windows and FreeBSD (`x86`,`
 ![static-web-server](https://user-images.githubusercontent.com/1700322/152613820-658f025c-d0a4-46b3-aa6d-bdc7f638ce77.png)
 
 !!! tip "Tips"
-    - If you're looking for `v1` please go to [1.x branch](https://github.com/joseluisq/static-web-server/tree/1.x).
-    - If you want to migrate from `v1` to `v2` please take a look at [v2.0.0](https://github.com/joseluisq/static-web-server/releases/tag/v2.0.0) release notes.
+    - If you're looking for `v1` please go to [1.x branch](https://github.com/static-web-server/static-web-server/tree/1.x).
+    - If you want to migrate from `v1` to `v2` please take a look at [v2.0.0](https://github.com/static-web-server/static-web-server/releases/tag/v2.0.0) release notes.
 
 ## Features
 
 - Built with [Rust](https://rust-lang.org) which is focused on [safety, speed and concurrency](https://kornel.ski/rust-c-speed).
 - Memory safe and very reduced CPU and RAM overhead.
-- Blazing fast static files-serving and asynchronous powered by latest [Hyper](https://github.com/hyperium/hyper/), [Tokio](https://github.com/tokio-rs/tokio) and a set of [awesome crates](https://github.com/joseluisq/static-web-server/blob/master/Cargo.toml).
+- Blazing fast static files-serving and asynchronous powered by latest [Hyper](https://github.com/hyperium/hyper/), [Tokio](https://github.com/tokio-rs/tokio) and a set of [awesome crates](https://github.com/static-web-server/static-web-server/blob/master/Cargo.toml).
 - Single __4MB__ (uncompressed) and fully static binary with no dependencies ([Musl libc](https://doc.rust-lang.org/edition-guide/rust-2018/platform-and-target-support/musl-support-for-fully-static-binaries.html)). Suitable for running on [any Linux distro](https://en.wikipedia.org/wiki/Linux_distribution) or [Docker container](https://hub.docker.com/r/joseluisq/static-web-server/tags).
 - Optional GZip, Deflate or Brotli compression for text-based web files only.
 - Compression on-demand via [Accept-Encoding](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Accept-Encoding) header.
