@@ -282,11 +282,16 @@ promote:
 .PHONY: promote
 
 loadtest:
+	@vegeta --version
 	@echo "GET http://localhost:8787" | \
-		vegeta -cpus=12 attack -workers=10 -duration=60s -connections=10000 -rate=200 -http2=false > results.bin
+		vegeta -cpus=12 attack -workers=12 -connections=500 -rate=6500/s -duration=10s -http2=false > results.bin
 	@cat results.bin | vegeta report -type='hist[0,2ms,4ms,6ms]'
 	@cat results.bin | vegeta plot > plot.html
 .PHONY: loadtest
+
+wrk:
+	@wrk -c 500 -t 12 -d 10s --latency -s benchmark/wrk_collector.lua $(WRK_URL)
+.PHONY: wrk
 
 man:
 	@asciidoctor --doctype=manpage --backend=manpage docs/man/static-web-server.1.rst

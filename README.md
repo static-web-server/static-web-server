@@ -74,6 +74,12 @@ For more details about the API, usage and examples please have a look at [The Do
 - [Release Binaries](https://github.com/joseluisq/static-web-server/releases)
 - [Platforms/Architectures Supported](https://sws.joseluisq.net/platforms-architectures/)
 
+## Benchmarks
+
+<img title="SWS - Benchmarks 2022" src="benchmark/sws_benchmarks.png" width="860">
+
+See more details on [benchmark/BENCHMARKS.md](benchmark/BENCHMARKS.md)
+
 ## Notes
 
 - If you're looking for `v1` please go to [1.x](https://github.com/joseluisq/static-web-server/tree/1.x) branch.

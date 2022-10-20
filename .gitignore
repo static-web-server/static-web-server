@@ -18,6 +18,8 @@
 **/*.out*
 **/*.perf*
 **/*empty*
+**/*.json
+**/*.csv
 release
 .vscode
 TODO
@@ -28,3 +30,4 @@ docs/*/**.html
 !sample.env
 !/docs
 !/tests/fixtures/**/*
+!benchmark/sws_benchmarks*.csv
