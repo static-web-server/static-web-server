@@ -8,8 +8,7 @@
 **/.idea
 **/*.txt
 **/*.zip
-**/*.tar.gz
-**/*.tar
+**/*.tar*
 **/*.gz
 **/.DS_Store
 **/*.env
@@ -27,7 +26,6 @@ docs/site
 docs/*/**.html
 */**/*.1
 
-!sample.env
 !/docs
 !/tests/fixtures/**/*
 !benchmark/sws_benchmarks*.csv

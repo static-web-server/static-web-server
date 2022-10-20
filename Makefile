@@ -24,16 +24,6 @@ install:
 	@cargo install cargo-audit
 .PHONY: install
 
-run:
-	@rustc -vV
-	@cargo make --makefile Makefile.toml run
-.PHONY: run
-
-dev:
-	@rustc -vV
-	@cargo make --makefile Makefile.toml watch
-.PHONY: dev
-
 lint:
 	@rustc -vV
 	@cargo clippy --all-features -- -D warnings
@@ -277,17 +267,13 @@ docs-deploy:
 	@git checkout master
 .PHONY: docs-deploy
 
-promote:
-	@drone build promote joseluisq/static-web-server $(BUILD) $(ENV)
-.PHONY: promote
-
-loadtest:
+vegeta:
 	@vegeta --version
 	@echo "GET http://localhost:8787" | \
 		vegeta -cpus=12 attack -workers=12 -connections=500 -rate=6500/s -duration=10s -http2=false > results.bin
 	@cat results.bin | vegeta report -type='hist[0,2ms,4ms,6ms]'
 	@cat results.bin | vegeta plot > plot.html
-.PHONY: loadtest
+.PHONY: vegeta
 
 wrk:
 	@wrk -c 500 -t 12 -d 10s --latency -s benchmark/wrk_collector.lua $(WRK_URL)

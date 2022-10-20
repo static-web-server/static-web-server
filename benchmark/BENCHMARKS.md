@@ -2,11 +2,11 @@
 
 > A benchmark suite which measures the requests per second and latency in average for several web servers.
 
-<img title="SWS - Benchmarks 2022" src="data/sws_benchmarks.png" width="860">
+<img title="SWS - Benchmarks 2022" src="sws_benchmarks.png" width="860">
 
 ## How to use
 
-Change `WRK_URL` with the corresponding server URL to export the wrk metrics.
+Change `WRK_URL` env with the corresponding server URL to export the wrk metrics.
 
 ```sh
 WRK_URL="http://localhost" make wrk
@@ -21,4 +21,4 @@ WRK_URL="http://localhost" make wrk
 
 ## Data
 
-For data used see [data](./data/) directory for more details.
+For data used see [sws_benchmarks.csv](sws_benchmarks.csv) file.
