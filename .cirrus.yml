@@ -11,42 +11,31 @@ task:
     RUSTFLAGS: -Dwarnings
   matrix:
     - name: freebsd-amd64-test
-      setup_script:
-        - pkg install -y bash curl
-        - curl https://sh.rustup.rs -sSf --output rustup.sh
-        - sh rustup.sh -y --profile minimal --default-toolchain stable
-        - . $HOME/.cargo/env
-        - |
-          echo "~~~~ rustc --version ~~~~"
-          rustc --version
-          rustup show active-toolchain
-      test_script:
-        - . $HOME/.cargo/env
-        - cargo test --all
-      build_test_script:
-        - . $HOME/.cargo/env
-        - |
-          cargo build --verbose
-
+      env:
+        BINARY_ARCH: x86_64
     - name: freebsd-i686-test
-      setup_script:
-        - pkg install -y bash curl
-        - curl https://sh.rustup.rs -sSf --output rustup.sh
-        - sh rustup.sh -y --profile minimal --default-toolchain stable
-        - . $HOME/.cargo/env
-        - rustup target add i686-unknown-freebsd
-        - |
-          echo "~~~~ rustc --version ~~~~"
-          rustc --version
-          rustup show active-toolchain
-      test_script:
-        - . $HOME/.cargo/env
-        - |
-          cargo test --all --target i686-unknown-freebsd
-      build_test_script:
-        - . $HOME/.cargo/env
-        - |
-          cargo build --verbose --target i686-unknown-freebsd
+      env:
+        BINARY_ARCH: i686
+  setup_script:
+    - pkg install -y bash curl
+    - curl https://sh.rustup.rs -sSf --output rustup.sh
+    - sh rustup.sh -y --profile minimal --default-toolchain stable
+    - . $HOME/.cargo/env
+    - rustc --version
+  toolchain_script:
+    - . $HOME/.cargo/env
+    - rustup target add $BINARY_ARCH-unknown-freebsd
+  info_script:
+    - . $HOME/.cargo/env
+    - rustup show
+  test_script:
+    - . $HOME/.cargo/env
+    - |
+      cargo test --all --target="$BINARY_ARCH-unknown-freebsd"
+  build_test_script:
+    - . $HOME/.cargo/env
+    - |
+      cargo build --verbose --target="$BINARY_ARCH-unknown-freebsd"
 
 task:
   only_if: $CIRRUS_TAG != ''
@@ -57,50 +46,30 @@ task:
     - name: freebsd-amd64-release
       env:
         BINARY_ARCH: x86_64
-      setup_script:
-        - pkg install -y bash curl jq
-        - curl https://sh.rustup.rs -sSf --output rustup.sh
-        - sh rustup.sh -y --profile minimal --default-toolchain stable
-        - . $HOME/.cargo/env
-        - |
-          echo "~~~~ rustc --version ~~~~"
-          rustc --version
-      build_script: |
-        . $HOME/.cargo/env
-        cargo build --verbose --release --target=x86_64-unknown-freebsd
-      archive_script: |
-        . $HOME/.cargo/env
-        staging="static-web-server-$CIRRUS_TAG-x86_64-unknown-freebsd"
-        mkdir -p "$staging/"
-        cp "target/x86_64-unknown-freebsd/release/static-web-server" "$staging/"
-        strip "$staging/static-web-server"
-        cp {README.md,LICENSE-APACHE,LICENSE-MIT} "$staging/"
-        tar czf "$staging.tar.gz" "$staging"
-      upload_script: |
-        ./ci/upload_release_file.sh
-
     - name: freebsd-i686-release
       env:
         BINARY_ARCH: i686
-      setup_script:
-        - pkg install -y bash curl jq
-        - curl https://sh.rustup.rs -sSf --output rustup.sh
-        - sh rustup.sh -y --profile minimal --default-toolchain stable
-        - . $HOME/.cargo/env
-        - rustup target add i686-unknown-freebsd
-        - |
-          echo "~~~~ rustc --version ~~~~"
-          rustc --version
-      build_script: |
-        . $HOME/.cargo/env
-        cargo build --verbose --release --target=i686-unknown-freebsd
-      archive_script: |
-        . $HOME/.cargo/env
-        staging="static-web-server-$CIRRUS_TAG-i686-unknown-freebsd"
-        mkdir -p "$staging/"
-        cp "target/i686-unknown-freebsd/release/static-web-server" "$staging/"
-        strip "$staging/static-web-server"
-        cp {README.md,LICENSE-APACHE,LICENSE-MIT} "$staging/"
-        tar czf "$staging.tar.gz" "$staging"
-      upload_script: |
-        ./ci/upload_release_file.sh
+  setup_script:
+    - pkg install -y bash curl jq
+    - curl https://sh.rustup.rs -sSf --output rustup.sh
+    - sh rustup.sh -y --profile minimal --default-toolchain stable
+    - . $HOME/.cargo/env
+    - rustc --version
+  toolchain_script:
+    - . $HOME/.cargo/env
+    - rustup target add $BINARY_ARCH-unknown-freebsd
+  info_script:
+    - . $HOME/.cargo/env
+    - rustup show
+  build_script: |
+    . $HOME/.cargo/env
+    cargo build --verbose --release --target="$BINARY_ARCH-unknown-freebsd"
+  archive_script: |
+    staging="static-web-server-$CIRRUS_TAG-$BINARY_ARCH-unknown-freebsd"
+    mkdir -p "$staging/"
+    cp "target/$BINARY_ARCH-unknown-freebsd/release/static-web-server" "$staging/"
+    strip "$staging/static-web-server"
+    cp {README.md,LICENSE-APACHE,LICENSE-MIT} "$staging/"
+    tar czf "$staging.tar.gz" "$staging"
+  upload_script: |
+    ./ci/upload_release_file.sh
