@@ -67,3 +67,9 @@ It's cross-platform and available for Linux, macOS, Windows and FreeBSD (`x86`,`
 - First-class [Docker](https://docs.docker.com/get-started/overview/) support. [Scratch](https://hub.docker.com/_/scratch) and latest [Alpine Linux](https://hub.docker.com/_/alpine) Docker images.
 - Ability to accept a socket listener as a file descriptor for use in sandboxing and on-demand applications (E.g [systemd](http://0pointer.de/blog/projects/socket-activation.html)).
 - Cross-platform. Pre-compiled binaries for Linux, macOS, Windows and FreeBSD (`x86`,`x86_64`,`ARM`,`ARM64`).
+
+## Benchmarks
+
+<img title="SWS - Benchmarks 2022" src="https://raw.githubusercontent.com/static-web-server/static-web-server/master/benchmark/sws_benchmarks.png" width="860">
+
+For more details see [benchmark/BENCHMARKS.md](https://github.com/static-web-server/static-web-server/blob/master/benchmark/BENCHMARKS.md).
