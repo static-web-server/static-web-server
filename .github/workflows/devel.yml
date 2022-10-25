@@ -130,13 +130,10 @@ jobs:
     - name: Use Cross
       if: matrix.target != ''
       run: |
-        cargo install cross@0.2.1
+        cargo install cross@^0.2
         echo "CARGO_BIN=cross" >> $GITHUB_ENV
         echo "TARGET_FLAGS=--target ${{ matrix.target }}" >> $GITHUB_ENV
         echo "TARGET_DIR=./target/${{ matrix.target }}" >> $GITHUB_ENV
-
-    - name: Cache cargo registry and git trees
-      uses: Swatinem/rust-cache@v2
 
     - name: Show command used for Cargo
       run: |
