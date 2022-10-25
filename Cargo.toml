@@ -40,7 +40,7 @@ http = "0.2"
 http-serde = "1.1"
 humansize = "1.1"
 hyper = { version = "0.14", features = ["stream", "http1", "http2", "tcp", "server"] }
-listenfd = "0.5"
+listenfd = "1.0"
 mime_guess = "2.0"
 num_cpus = { version = "1.13" }
 percent-encoding = "2.1"
@@ -66,8 +66,7 @@ signal-hook = { version = "0.3", features = ["extended-siginfo"] }
 signal-hook-tokio = { version = "0.3", features = ["futures-v0_3"], default-features = false }
 
 [target.'cfg(windows)'.dependencies]
-windows-service = { git = "https://github.com/joseluisq/windows-service-rs" }
-windows-sys = { version = "0.36.1", features = [ "Win32_Foundation", "Win32_NetworkManagement_IpHelper", "Win32_Networking_WinSock", "Win32_System_Memory" ] }
+windows-service = "0.5"
 
 [dev-dependencies]
 bytes = "1.1"
