@@ -28,7 +28,7 @@ Defines a grace period in seconds after a `SIGTERM` signal is caught which will 
 Specify a logging level in lower case. Possible values are `error`, `warn`, `info`, `debug` or `trace`. Default `error`.
 
 ### SERVER_LOG_REMOTE_ADDRESS
-Log incoming requests information along with its Remote Address (IP) if available using the `info` log level.
+Log incoming requests information along with its Remote Address (IP) if available using the `info` log level. Default `false`.
 
 ### SERVER_ERROR_PAGE_404
 HTML file path for 404 errors. If the path is not specified or simply doesn't exist then the server will use a generic HTML error message. Default `./public/404.html`.
@@ -73,7 +73,7 @@ Enable directory listing for all requests ending with the slash character (â€˜/â
 Specify a default code number to order directory listing entries per `Name`, `Last modified` or `Size` attributes (columns). Code numbers supported: `0` (Name asc), `1` (Name desc), `2` (Last modified asc), `3` (Last modified desc), `4` (Size asc), `5` (Size desc). Default `6` (unordered).
 
 ### SERVER_DIRECTORY_LISTING_FORMAT
-Specify a content format for the directory listing entries. Formats supported: `html` or `json`. Default `html`
+Specify a content format for the directory listing entries. Formats supported: `html` or `json`. Default `html`.
 
 ### SERVER_SECURITY_HEADERS
 Enable security headers by default when HTTP/2 feature is activated. Headers included: `Strict-Transport-Security: max-age=63072000; includeSubDomains; preload` (2 years max-age), `X-Frame-Options: DENY`, `X-XSS-Protection: 1; mode=block` and `Content-Security-Policy: frame-ancestors 'self'`. Default `false` (disabled).
