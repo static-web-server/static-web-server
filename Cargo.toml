@@ -27,6 +27,11 @@ include = ["src/**/*", "Cargo.toml", "Cargo.lock"]
 name = "static-web-server"
 path = "src/bin/server.rs"
 
+[features]
+default = [ ]
+tls = [ "tokio-rustls" ]
+http2 = [ "tls" ]
+
 [dependencies]
 anyhow = "1.0"
 async-compression = { version = "0.3", default-features = false, features = ["brotli", "deflate", "gzip", "tokio"] }
@@ -44,8 +49,9 @@ percent-encoding = "2.1"
 pin-project = "1.0"
 structopt = { version = "0.3", default-features = false }
 time = { version = "0.1", default-features = false }
-tokio = { git = "https://github.com/john-sharratt/tokio.git", default-features = false, features = ["rt-multi-thread", "macros", "fs", "io-util", "signal"] }
-tokio-rustls = { version = "0.23" }
+#tokio = { git = "https://github.com/john-sharratt/tokio.git", branch = "wasix-1.21.2", default-features = false, features = ["rt-multi-thread", "macros", "fs", "io-util", "signal"] }
+tokio = { path = "../tokio/tokio", default-features = false, features = ["rt-multi-thread", "macros", "fs", "io-util", "signal"]  }
+tokio-rustls = { version = "0.23", optional = true }
 rustls-pemfile = "0.2"
 tokio-util = { version = "0.7", default-features = false, features = ["io"] }
 tracing = { version = "0.1", default-features = false, features = ["std"] }
@@ -58,10 +64,14 @@ http-serde = "1.1"
 globset = { version = "0.4", features = ["serde1"] }
 
 [patch.crates-io]
-socket2 = { git = "https://github.com/john-sharratt/socket2.git" }
+socket2 = { git = "https://github.com/john-sharratt/socket2.git", branch = "wasix" }
 libc = { git = "https://github.com/john-sharratt/libc.git" }
-tokio = { git = "https://github.com/john-sharratt/tokio.git" }
-ring = { git = "https://github.com/john-sharratt/ring.git", branch = "v0.16.20" }
+#tokio = { git = "https://github.com/john-sharratt/tokio.git", branch = "wasix-1.21.2" }
+tokio = { path = "../tokio/tokio" }
+#mio = { git = "https://github.com/john-sharratt/mio.git", branch = "wasix" }
+mio = { path = "../mio" }
+#ring = { git = "https://github.com/john-sharratt/ring.git", branch = "v0.16.20" }
+#ring = { path = "../ring" }
 
 [target.'cfg(all(target_env = "musl", target_pointer_width = "64"))'.dependencies.tikv-jemallocator]
 version = "0.4"

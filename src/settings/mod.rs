@@ -48,8 +48,11 @@ impl Settings {
         let mut compression = opts.compression;
         let mut page404 = opts.page404;
         let mut page50x = opts.page50x;
+        #[cfg(feature = "http2")]
         let mut http2 = opts.http2;
+        #[cfg(feature = "http2")]
         let mut http2_tls_cert = opts.http2_tls_cert;
+        #[cfg(feature = "http2")]
         let mut http2_tls_key = opts.http2_tls_key;
         let mut security_headers = opts.security_headers;
         let mut cors_allow_origins = opts.cors_allow_origins;
@@ -107,12 +110,15 @@ impl Settings {
                     if let Some(v) = general.page50x {
                         page50x = v
                     }
+                    #[cfg(feature = "http2")]
                     if let Some(v) = general.http2 {
                         http2 = v
                     }
+                    #[cfg(feature = "http2")]
                     if let Some(v) = general.http2_tls_cert {
                         http2_tls_cert = Some(v)
                     }
+                    #[cfg(feature = "http2")]
                     if let Some(v) = general.http2_tls_key {
                         http2_tls_key = Some(v)
                     }
@@ -197,8 +203,11 @@ impl Settings {
                 compression,
                 page404,
                 page50x,
+                #[cfg(feature = "http2")]
                 http2,
+                #[cfg(feature = "http2")]
                 http2_tls_cert,
+                #[cfg(feature = "http2")]
                 http2_tls_key,
                 security_headers,
                 cors_allow_origins,
