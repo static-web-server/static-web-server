@@ -42,7 +42,7 @@ humansize = "1.1"
 hyper = { version = "0.14", features = ["stream", "http1", "http2", "tcp", "server"] }
 listenfd = "1.0"
 mime_guess = "2.0"
-num_cpus = { version = "1.13" }
+num_cpus = { version = "1.14" }
 percent-encoding = "2.1"
 pin-project = "1.0"
 rustls-pemfile = "1.0"
