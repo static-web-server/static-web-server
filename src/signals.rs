@@ -12,7 +12,7 @@ use tokio::sync::oneshot::Receiver;
 #[cfg(unix)]
 /// It creates a common list of signals stream for `SIGTERM`, `SIGINT` and `SIGQUIT` to be observed.
 pub fn create_signals() -> Result<Signals> {
-    Ok(Signals::new(&[SIGHUP, SIGTERM, SIGINT, SIGQUIT])?)
+    Ok(Signals::new([SIGHUP, SIGTERM, SIGINT, SIGQUIT])?)
 }
 
 #[cfg(unix)]
