@@ -438,6 +438,7 @@ fn sort_file_entries(files: &mut [FileEntry], order_code: u8) -> SortingAttr<'_>
     }
 }
 
+/// Return the last modified `DateTime` in local timescale.
 fn parse_last_modified(modified: SystemTime) -> Result<DateTime<Local>> {
     let since_epoch = modified.duration_since(UNIX_EPOCH)?;
     // HTTP times don't have nanosecond precision, so we truncate
@@ -449,10 +450,16 @@ fn parse_last_modified(modified: SystemTime) -> Result<DateTime<Local>> {
     // the modification time of a file with greater than second
     // precision appears to be something that only is possible to
     // do on Linux.
-    let utc_dt = NaiveDateTime::from_timestamp(
+
+    let utc_dt = NaiveDateTime::from_timestamp_opt(
         since_epoch.as_secs() as i64,
         since_epoch.subsec_nanos() as u32,
     );
-    let local_dt = DateTime::<Utc>::from_utc(utc_dt, Utc).with_timezone(&Local);
-    Ok(local_dt)
+
+    match utc_dt {
+        Some(utc_dt) => Ok(DateTime::<Utc>::from_utc(utc_dt, Utc).with_timezone(&Local)),
+        None => Err(anyhow!(
+            "out-of-range number of seconds and/or invalid nanosecond"
+        )),
+    }
 }
