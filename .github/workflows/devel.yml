@@ -93,6 +93,14 @@ jobs:
             os: ubuntu-20.04
             rust: stable
             target: armv7-unknown-linux-musleabihf
+          - build: linux-ppc64le
+            os: ubuntu-20.04
+            rust: stable
+            target: powerpc64le-unknown-linux-gnu
+          - build: linux-s390x
+            os: ubuntu-20.04
+            rust: stable
+            target: s390x-unknown-linux-gnu
           - build: macos
             os: macos-11
             rust: stable

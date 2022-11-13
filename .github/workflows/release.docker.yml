@@ -48,7 +48,7 @@ jobs:
         with:
           push: true
           context: .
-          platforms: linux/amd64,linux/arm64,linux/386,linux/arm/v7,linux/arm/v6
+          platforms: linux/amd64,linux/arm64,linux/386,linux/arm/v7,linux/arm/v6,linux/ppc64le,linux/s390x
           file: ${{ env.SERVER_DOCKERFILE }}
           tags: ${{ steps.meta_alpine.outputs.tags }}
           build-args: |
@@ -95,7 +95,7 @@ jobs:
         with:
           push: true
           context: .
-          platforms: linux/amd64,linux/arm64,linux/386,linux/arm/v7,linux/arm/v6
+          platforms: linux/amd64,linux/arm64,linux/386,linux/arm/v7,linux/arm/v6,linux/ppc64le,linux/s390x
           file: ${{ env.SERVER_DOCKERFILE }}
           tags: ${{ steps.meta_scratch.outputs.tags }}
           build-args: |
