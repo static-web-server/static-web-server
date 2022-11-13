@@ -68,7 +68,6 @@ task:
     staging="static-web-server-$CIRRUS_TAG-$BINARY_ARCH-unknown-freebsd"
     mkdir -p "$staging/"
     cp "target/$BINARY_ARCH-unknown-freebsd/release/static-web-server" "$staging/"
-    strip "$staging/static-web-server"
     cp {README.md,LICENSE-APACHE,LICENSE-MIT} "$staging/"
     tar czf "$staging.tar.gz" "$staging"
   upload_script: |
