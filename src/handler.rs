@@ -1,11 +1,13 @@
 use headers::HeaderValue;
-use hyper::{header::WWW_AUTHENTICATE, Body, Method, Request, Response, StatusCode};
+use hyper::{header::WWW_AUTHENTICATE, Body, Request, Response, StatusCode};
 use std::{future::Future, net::IpAddr, net::SocketAddr, path::PathBuf, sync::Arc};
 
 use crate::{
     basic_auth, compression, control_headers, cors, custom_headers,
     directory_listing::DirListFmt,
-    error_page, fallback_page, redirects, rewrites, security_headers,
+    error_page,
+    exts::http::MethodExt,
+    fallback_page, redirects, rewrites, security_headers,
     settings::Advanced,
     static_files::{self, HandleOpts},
     Error, Result,
@@ -86,8 +88,8 @@ impl RequestHandler {
         );
 
         async move {
-            // Check for disallowed HTTP methods and reject requests accordingly
-            if !(method == Method::GET || method == Method::HEAD || method == Method::OPTIONS) {
+            // Reject in case of incoming HTTP request method is not allowed
+            if !method.is_allowed() {
                 return error_page::error_response(
                     uri,
                     method,
@@ -246,7 +248,7 @@ impl RequestHandler {
                 }
                 Err(status) => {
                     // Check for a fallback response
-                    if method == Method::GET
+                    if method.is_get()
                         && status == StatusCode::NOT_FOUND
                         && !self.opts.page_fallback.is_empty()
                     {

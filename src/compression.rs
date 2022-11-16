@@ -14,7 +14,7 @@ use std::pin::Pin;
 use std::task::{Context, Poll};
 use tokio_util::io::{ReaderStream, StreamReader};
 
-use crate::Result;
+use crate::{exts::http::MethodExt, Result};
 
 /// Contains a fixed list of common text-based MIME types in order to apply compression.
 pub const TEXT_MIME_TYPES: [&str; 24] = [
@@ -62,7 +62,7 @@ pub fn auto(
     resp: Response<Body>,
 ) -> Result<Response<Body>> {
     // Skip compression for HEAD and OPTIONS request methods
-    if method == Method::HEAD || method == Method::OPTIONS {
+    if method.is_head() || method.is_options() {
         return Ok(resp);
     }
 
