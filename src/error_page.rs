@@ -2,7 +2,7 @@ use headers::{AcceptRanges, ContentLength, ContentType, HeaderMapExt};
 use hyper::{Body, Method, Response, StatusCode, Uri};
 use mime_guess::mime;
 
-use crate::Result;
+use crate::{exts::http::MethodExt, Result};
 
 /// It returns a HTTP error response which also handles available `404` or `50x` HTML content.
 pub fn error_response(
@@ -83,7 +83,7 @@ pub fn error_response(
     let mut body = Body::empty();
     let len = error_page_content.len() as u64;
 
-    if method != Method::HEAD {
+    if !method.is_head() {
         body = Body::from(error_page_content)
     }
 

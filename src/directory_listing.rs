@@ -13,7 +13,7 @@ use std::path::Path;
 use std::time::{SystemTime, UNIX_EPOCH};
 use structopt::clap::arg_enum;
 
-use crate::Result;
+use crate::{exts::http::MethodExt, Result};
 
 arg_enum! {
     #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -36,8 +36,6 @@ pub fn auto_index<'a>(
     dir_listing_order: u8,
     dir_listing_format: &'a DirListFmt,
 ) -> impl Future<Output = Result<Response<Body>, StatusCode>> + Send + 'a {
-    let is_head = method == Method::HEAD;
-
     // Note: it's safe to call `parent()` here since `filepath`
     // value always refer to a path with file ending and under
     // a root directory boundary.
@@ -47,6 +45,7 @@ pub fn auto_index<'a>(
 
     tokio::fs::read_dir(parent).then(move |res| match res {
         Ok(dir_reader) => Either::Left(async move {
+            let is_head = method.is_head();
             match read_dir_entries(
                 dir_reader,
                 current_path,

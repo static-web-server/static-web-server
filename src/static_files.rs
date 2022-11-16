@@ -22,6 +22,7 @@ use std::sync::Mutex;
 use std::task::{Context, Poll};
 
 use crate::directory_listing::DirListFmt;
+use crate::exts::http::{MethodExt, HTTP_SUPPORTED_METHODS};
 use crate::{compression_static, directory_listing, Result};
 
 /// Defines all options needed by the static-files handler.
@@ -44,8 +45,8 @@ pub async fn handle<'a>(opts: &HandleOpts<'a>) -> Result<(Response<Body>, bool),
     let method = opts.method;
     let uri_path = opts.uri_path;
 
-    // Check for disallowed HTTP methods and reject request accordently
-    if !(method == Method::GET || method == Method::HEAD || method == Method::OPTIONS) {
+    // Check if current HTTP method for incoming request is supported
+    if !method.is_allowed() {
         return Err(StatusCode::METHOD_NOT_ALLOWED);
     }
 
@@ -60,59 +61,55 @@ pub async fn handle<'a>(opts: &HandleOpts<'a>) -> Result<(Response<Body>, bool),
     // `is_precompressed` relates to `opts.compression_static` value
     let is_precompressed = precompressed_variant.is_some();
 
-    // NOTE: `is_dir` means an "auto index" for the current directory request
+    if is_dir {
+        // Check for a trailing slash on the current directory path
+        // and redirect if that path doesn't end with the slash char
+        if opts.redirect_trailing_slash && !uri_path.ends_with('/') {
+            let uri = [uri_path, "/"].concat();
+            let loc = match HeaderValue::from_str(uri.as_str()) {
+                Ok(val) => val,
+                Err(err) => {
+                    tracing::error!("invalid header value from current uri: {:?}", err);
+                    return Err(StatusCode::INTERNAL_SERVER_ERROR);
+                }
+            };
 
-    // Check for a trailing slash on the current directory path
-    // and redirect if that path doesn't end with the slash char
-    if opts.redirect_trailing_slash && is_dir && !uri_path.ends_with('/') {
-        let uri = [uri_path, "/"].concat();
-        let loc = match HeaderValue::from_str(uri.as_str()) {
-            Ok(val) => val,
-            Err(err) => {
-                tracing::error!("invalid header value from current uri: {:?}", err);
-                return Err(StatusCode::INTERNAL_SERVER_ERROR);
-            }
-        };
+            let mut resp = Response::new(Body::empty());
+            resp.headers_mut().insert(hyper::header::LOCATION, loc);
+            *resp.status_mut() = StatusCode::PERMANENT_REDIRECT;
 
-        let mut resp = Response::new(Body::empty());
-        resp.headers_mut().insert(hyper::header::LOCATION, loc);
-        *resp.status_mut() = StatusCode::PERMANENT_REDIRECT;
+            tracing::trace!("uri doesn't end with a slash so redirecting permanently");
+            return Ok((resp, is_precompressed));
+        }
 
-        tracing::trace!("uri doesn't end with a slash so redirecting permanently");
-        return Ok((resp, is_precompressed));
-    }
+        // Respond with the permitted communication options
+        if method.is_options() {
+            let mut resp = Response::new(Body::empty());
+            *resp.status_mut() = StatusCode::NO_CONTENT;
+            resp.headers_mut()
+                .typed_insert(headers::Allow::from_iter(HTTP_SUPPORTED_METHODS));
+            resp.headers_mut().typed_insert(AcceptRanges::bytes());
 
-    // Respond with the permitted communication options
-    if method == Method::OPTIONS {
-        let mut resp = Response::new(Body::empty());
-        *resp.status_mut() = StatusCode::NO_CONTENT;
-        resp.headers_mut()
-            .typed_insert(headers::Allow::from_iter(vec![
-                Method::OPTIONS,
-                Method::HEAD,
-                Method::GET,
-            ]));
-        resp.headers_mut().typed_insert(AcceptRanges::bytes());
+            return Ok((resp, is_precompressed));
+        }
 
-        return Ok((resp, is_precompressed));
-    }
+        // Directory listing
+        // Check if "directory listing" feature is enabled,
+        // if current path is a valid directory and
+        // if it does not contain an `index.html` file (if a proper auto index is generated)
+        if opts.dir_listing && !file_path.exists() {
+            let resp = directory_listing::auto_index(
+                method,
+                uri_path,
+                opts.uri_query,
+                file_path.as_ref(),
+                opts.dir_listing_order,
+                opts.dir_listing_format,
+            )
+            .await?;
 
-    // Directory listing
-    // Check if "directory listing" feature is enabled,
-    // if current path is a valid directory and
-    // if it does not contain an `index.html` file (if a proper auto index is generated)
-    if opts.dir_listing && is_dir && !file_path.exists() {
-        let resp = directory_listing::auto_index(
-            method,
-            uri_path,
-            opts.uri_query,
-            file_path.as_ref(),
-            opts.dir_listing_order,
-            opts.dir_listing_format,
-        )
-        .await?;
-
-        return Ok((resp, is_precompressed));
+            return Ok((resp, is_precompressed));
+        }
     }
 
     // Check for a pre-compressed file variant if present under the `opts.compression_static` context
