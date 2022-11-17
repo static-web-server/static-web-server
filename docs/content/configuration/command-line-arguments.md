@@ -101,7 +101,7 @@ OPTIONS:
     -p, --port <port>                                            Host port [env: SERVER_PORT=]  [default: 80]
         --redirect-trailing-slash <redirect-trailing-slash>
             Check for a trailing slash in the requested directory URI and redirect permanently (308) to the same path
-            with a trailing slash suffix if it is missing [env: REDIRECT_TRAILING_SLASH=]  [default: true]
+            with a trailing slash suffix if it is missing [env: SERVER_REDIRECT_TRAILING_SLASH=]  [default: true]
     -d, --root <root>
             Root directory path of static files [env: SERVER_ROOT=]  [default: ./public]
 
@@ -120,7 +120,7 @@ OPTIONS:
 
 ## Windows
 
-Following options and commands are Windows platform specific.
+The following options and commands are Windows platform specific.
 
 ```
  -s, --windows-service <windows-service>
