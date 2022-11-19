@@ -23,6 +23,7 @@ use std::task::{Context, Poll};
 
 use crate::directory_listing::DirListFmt;
 use crate::exts::http::{MethodExt, HTTP_SUPPORTED_METHODS};
+use crate::exts::path::PathExt;
 use crate::{compression_static, directory_listing, Result};
 
 /// Defines all options needed by the static-files handler.
@@ -37,6 +38,7 @@ pub struct HandleOpts<'a> {
     pub dir_listing_format: &'a DirListFmt,
     pub redirect_trailing_slash: bool,
     pub compression_static: bool,
+    pub ignore_hidden_files: bool,
 }
 
 /// Entry point to handle incoming requests which map to specific files
@@ -57,6 +59,11 @@ pub async fn handle<'a>(opts: &HandleOpts<'a>) -> Result<(Response<Body>, bool),
 
     let (file_path, meta, is_dir, precompressed_variant) =
         composed_file_metadata(&mut file_path, headers_opt, compression_static_opt).await?;
+
+    // Check for a hidden file/directory (dotfile) and ignore it if feature enabled
+    if opts.ignore_hidden_files && file_path.is_hidden() {
+        return Err(StatusCode::NOT_FOUND);
+    }
 
     // `is_precompressed` relates to `opts.compression_static` value
     let is_precompressed = precompressed_variant.is_some();
@@ -105,6 +112,7 @@ pub async fn handle<'a>(opts: &HandleOpts<'a>) -> Result<(Response<Body>, bool),
                 file_path.as_ref(),
                 opts.dir_listing_order,
                 opts.dir_listing_format,
+                opts.ignore_hidden_files,
             )
             .await?;
 

@@ -43,6 +43,7 @@ mod tests {
             dir_listing_format: &DirListFmt::Html,
             redirect_trailing_slash: true,
             compression_static: true,
+            ignore_hidden_files: false,
         })
         .await
         .expect("unexpected error response on `handle` function");
@@ -96,6 +97,7 @@ mod tests {
             dir_listing_format: &DirListFmt::Html,
             redirect_trailing_slash: true,
             compression_static: true,
+            ignore_hidden_files: false,
         })
         .await
         .expect("unexpected error response on `handle` function");

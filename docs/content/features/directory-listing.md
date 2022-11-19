@@ -23,7 +23,6 @@ However, when the *"redirect trailing slash"* feature is disabled and a director
 
 Note also that in both cases, SWS will append a trailing slash to the entry if is a directory.
 
-
 ## Sorting
 
 Sorting by `Name`, `Last modified` and `Size` is enabled as clickable columns when the directory listing is activated via the `--directory-listing=true` option.

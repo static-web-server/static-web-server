@@ -219,6 +219,15 @@ pub struct General {
     /// Check for a trailing slash in the requested directory URI and redirect permanently (308) to the same path with a trailing slash suffix if it is missing.
     pub redirect_trailing_slash: bool,
 
+    #[structopt(
+        long,
+        parse(try_from_str),
+        default_value = "false",
+        env = "SERVER_IGNORE_HIDDEN_FILES"
+    )]
+    /// Ignore hidden files/directories (dotfiles), preventing them to be served and being included in auto HTML index pages (directory listing).
+    pub ignore_hidden_files: bool,
+
     //
     // Windows specific arguments and commands
     //

@@ -183,6 +183,10 @@ impl Server {
             redirect_trailing_slash
         );
 
+        // Ignore hidden files option
+        let ignore_hidden_files = general.ignore_hidden_files;
+        tracing::info!("ignore hidden files: enabled={}", ignore_hidden_files);
+
         // Grace period option
         let grace_period = general.grace_period;
         tracing::info!("grace period before graceful shutdown: {}s", grace_period);
@@ -205,6 +209,7 @@ impl Server {
                 basic_auth,
                 log_remote_address,
                 redirect_trailing_slash,
+                ignore_hidden_files,
                 advanced_opts,
             }),
         });

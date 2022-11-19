@@ -31,6 +31,7 @@ pub struct RequestHandlerOpts {
     pub basic_auth: String,
     pub log_remote_address: bool,
     pub redirect_trailing_slash: bool,
+    pub ignore_hidden_files: bool,
 
     // Advanced options
     pub advanced_opts: Option<Advanced>,
@@ -61,6 +62,7 @@ impl RequestHandler {
         let log_remote_addr = self.opts.log_remote_address;
         let redirect_trailing_slash = self.opts.redirect_trailing_slash;
         let compression_static = self.opts.compression_static;
+        let ignore_hidden_files = self.opts.ignore_hidden_files;
 
         let mut cors_headers: Option<http::HeaderMap> = None;
 
@@ -198,6 +200,7 @@ impl RequestHandler {
                 dir_listing_format,
                 redirect_trailing_slash,
                 compression_static,
+                ignore_hidden_files,
             })
             .await
             {
