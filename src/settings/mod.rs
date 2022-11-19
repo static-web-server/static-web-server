@@ -87,6 +87,7 @@ impl Settings {
         let mut page_fallback = opts.page_fallback;
         let mut log_remote_address = opts.log_remote_address;
         let mut redirect_trailing_slash = opts.redirect_trailing_slash;
+        let mut ignore_hidden_files = opts.ignore_hidden_files;
 
         // Windows-only options
         #[cfg(windows)]
@@ -189,6 +190,9 @@ impl Settings {
                     }
                     if let Some(v) = general.redirect_trailing_slash {
                         redirect_trailing_slash = v
+                    }
+                    if let Some(v) = general.ignore_hidden_files {
+                        ignore_hidden_files = v
                     }
 
                     // Windows-only options
@@ -320,6 +324,7 @@ impl Settings {
                 page_fallback,
                 log_remote_address,
                 redirect_trailing_slash,
+                ignore_hidden_files,
 
                 // Windows-only options and commands
                 #[cfg(windows)]

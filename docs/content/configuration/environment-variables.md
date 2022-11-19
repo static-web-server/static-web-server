@@ -87,6 +87,9 @@ It provides [The "Basic" HTTP Authentication Scheme](https://datatracker.ietf.or
 ### SERVER_REDIRECT_TRAILING_SLASH
 Check for a trailing slash in the requested directory URI and redirect permanent (308) to the same path with a trailing slash suffix if it is missing. Default `true` (enabled).
 
+### SERVER_IGNORE_HIDDEN_FILES
+Ignore hidden files/directories (dotfiles), preventing them to be served and being included in auto HTML index pages (directory listing).
+
 ## Windows
 The following options and commands are Windows platform-specific.
 

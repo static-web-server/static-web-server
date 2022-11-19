@@ -74,6 +74,9 @@ redirect-trailing-slash = true
 #### Check for existing pre-compressed files
 compression-static = false
 
+#### Ignore hidden files/directories (dotfiles)
+ignore-hidden-files = false
+
 
 ### Windows Only
 

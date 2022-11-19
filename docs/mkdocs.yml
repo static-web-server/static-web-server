@@ -144,6 +144,7 @@ nav:
     - 'URL Redirects': 'features/url-redirects.md'
     - 'Windows Service': 'features/windows-service.md'
     - 'Trailing Slash Redirect': 'features/trailing-slash-redirect.md'
+    - 'Ignore Files': 'features/ignore-files.md'
   - 'Platforms & Architectures': 'platforms-architectures.md'
   - 'Migration from v1 to v2': 'migration.md'
   - 'Changelog v2 (latest stable)': 'https://github.com/static-web-server/static-web-server/blob/master/CHANGELOG.md'

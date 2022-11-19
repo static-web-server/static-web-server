@@ -136,6 +136,8 @@ pub struct General {
 
     pub redirect_trailing_slash: Option<bool>,
 
+    pub ignore_hidden_files: Option<bool>,
+
     #[cfg(windows)]
     pub windows_service: Option<bool>,
 }

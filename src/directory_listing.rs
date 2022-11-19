@@ -35,6 +35,7 @@ pub fn auto_index<'a>(
     filepath: &'a Path,
     dir_listing_order: u8,
     dir_listing_format: &'a DirListFmt,
+    ignore_hidden_files: bool,
 ) -> impl Future<Output = Result<Response<Body>, StatusCode>> + Send + 'a {
     // Note: it's safe to call `parent()` here since `filepath`
     // value always refer to a path with file ending and under
@@ -53,6 +54,7 @@ pub fn auto_index<'a>(
                 is_head,
                 dir_listing_order,
                 dir_listing_format,
+                ignore_hidden_files,
             )
             .await
             {
@@ -122,6 +124,7 @@ async fn read_dir_entries(
     is_head: bool,
     mut order_code: u8,
     content_format: &DirListFmt,
+    ignore_hidden_files: bool,
 ) -> Result<Response<Body>> {
     let mut dirs_count: usize = 0;
     let mut files_count: usize = 0;
@@ -134,8 +137,13 @@ async fn read_dir_entries(
             .file_name()
             .into_string()
             .map_err(|err| anyhow::anyhow!(err.into_string().unwrap_or_default()))?;
-        let mut name_encoded = utf8_percent_encode(&name, NON_ALPHANUMERIC).to_string();
 
+        // Check and ignore the current hidden file/directory (dotfile) if feature enabled
+        if ignore_hidden_files && name.starts_with('.') {
+            continue;
+        }
+
+        let mut name_encoded = utf8_percent_encode(&name, NON_ALPHANUMERIC).to_string();
         let mut filesize = 0_u64;
 
         if meta.is_dir() {

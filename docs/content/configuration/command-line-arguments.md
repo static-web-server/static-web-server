@@ -82,6 +82,9 @@ OPTIONS:
         --http2-tls-key <http2-tls-key>
             Specify the file path to read the private key [env: SERVER_HTTP2_TLS_KEY=]
 
+        --ignore-hidden-files <ignore-hidden-files>
+            Ignore hidden files/directories (dotfiles), preventing them to be served and being included in auto HTML
+            index pages (directory listing) [env: SERVER_IGNORE_HIDDEN_FILES=]  [default: false]
     -g, --log-level <log-level>
             Specify a logging level in lower case. Values: error, warn, info, debug or trace [env: SERVER_LOG_LEVEL=]
             [default: error]

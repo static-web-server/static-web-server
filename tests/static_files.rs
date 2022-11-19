@@ -34,6 +34,7 @@ mod tests {
             dir_listing_format: &DirListFmt::Html,
             redirect_trailing_slash: true,
             compression_static: false,
+            ignore_hidden_files: false,
         })
         .await
         .expect("unexpected error response on `handle` function");
@@ -75,6 +76,7 @@ mod tests {
             dir_listing_format: &DirListFmt::Html,
             redirect_trailing_slash: true,
             compression_static: false,
+            ignore_hidden_files: false,
         })
         .await
         .expect("unexpected error response on `handle` function");
@@ -117,6 +119,7 @@ mod tests {
                 dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: true,
                 compression_static: false,
+                ignore_hidden_files: false,
             })
             .await
             {
@@ -143,6 +146,7 @@ mod tests {
             dir_listing_format: &DirListFmt::Html,
             redirect_trailing_slash: true,
             compression_static: false,
+            ignore_hidden_files: false,
         })
         .await
         .expect("unexpected error response on `handle` function");
@@ -170,6 +174,7 @@ mod tests {
             dir_listing_format: &DirListFmt::Html,
             redirect_trailing_slash: true,
             compression_static: false,
+            ignore_hidden_files: false,
         })
         .await
         {
@@ -196,6 +201,7 @@ mod tests {
             dir_listing_format: &DirListFmt::Html,
             redirect_trailing_slash: false,
             compression_static: false,
+            ignore_hidden_files: false,
         })
         .await
         {
@@ -227,6 +233,7 @@ mod tests {
                     dir_listing_format: &DirListFmt::Html,
                     redirect_trailing_slash: true,
                     compression_static: false,
+                    ignore_hidden_files: false,
                 })
                 .await
                 {
@@ -273,6 +280,7 @@ mod tests {
                 dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: true,
                 compression_static: false,
+                ignore_hidden_files: false,
             })
             .await
             {
@@ -301,6 +309,7 @@ mod tests {
                 dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: true,
                 compression_static: false,
+                ignore_hidden_files: false,
             })
             .await
             {
@@ -332,6 +341,7 @@ mod tests {
                 dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: true,
                 compression_static: false,
+                ignore_hidden_files: false,
             })
             .await
             {
@@ -363,6 +373,7 @@ mod tests {
                 dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: true,
                 compression_static: false,
+                ignore_hidden_files: false,
             })
             .await
             {
@@ -397,6 +408,7 @@ mod tests {
                 dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: true,
                 compression_static: false,
+                ignore_hidden_files: false,
             })
             .await
             {
@@ -429,6 +441,7 @@ mod tests {
                 dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: true,
                 compression_static: false,
+                ignore_hidden_files: false,
             })
             .await
             {
@@ -459,6 +472,7 @@ mod tests {
                 dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: true,
                 compression_static: false,
+                ignore_hidden_files: false,
             })
             .await
             {
@@ -488,6 +502,7 @@ mod tests {
                 dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: true,
                 compression_static: false,
+                ignore_hidden_files: false,
             })
             .await
             {
@@ -531,6 +546,7 @@ mod tests {
                 dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: true,
                 compression_static: false,
+                ignore_hidden_files: false,
             })
             .await
             {
@@ -591,6 +607,7 @@ mod tests {
                 dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: true,
                 compression_static: false,
+                ignore_hidden_files: false,
             })
             .await
             {
@@ -654,6 +671,7 @@ mod tests {
                 dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: true,
                 compression_static: false,
+                ignore_hidden_files: false,
             })
             .await
             {
@@ -697,6 +715,7 @@ mod tests {
                 dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: true,
                 compression_static: false,
+                ignore_hidden_files: false,
             })
             .await
             {
@@ -740,6 +759,7 @@ mod tests {
                 dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: true,
                 compression_static: false,
+                ignore_hidden_files: false,
             })
             .await
             {
@@ -784,6 +804,7 @@ mod tests {
                 dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: true,
                 compression_static: false,
+                ignore_hidden_files: false,
             })
             .await
             {
@@ -820,6 +841,7 @@ mod tests {
                 dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: true,
                 compression_static: false,
+                ignore_hidden_files: false,
             })
             .await
             {
@@ -866,6 +888,7 @@ mod tests {
                 dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: true,
                 compression_static: false,
+                ignore_hidden_files: false,
             })
             .await
             {
@@ -909,6 +932,7 @@ mod tests {
                 dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: true,
                 compression_static: false,
+                ignore_hidden_files: false,
             })
             .await
             {
@@ -955,6 +979,7 @@ mod tests {
                 dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: true,
                 compression_static: false,
+                ignore_hidden_files: false,
             })
             .await
             {
@@ -999,6 +1024,7 @@ mod tests {
                 dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: true,
                 compression_static: false,
+                ignore_hidden_files: false,
             })
             .await
             {
@@ -1038,6 +1064,7 @@ mod tests {
                 dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: true,
                 compression_static: false,
+                ignore_hidden_files: false,
             })
             .await
             {
@@ -1088,6 +1115,7 @@ mod tests {
                 dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: true,
                 compression_static: false,
+                ignore_hidden_files: false,
             })
             .await
             {
@@ -1108,6 +1136,37 @@ mod tests {
                 }
                 Err(_) => {
                     panic!("expected a normal response rather than a status error")
+                }
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn handle_ignore_hidden_files() {
+        let root_dir = PathBuf::from("tests/fixtures/public/");
+        let headers = HeaderMap::new();
+
+        for method in [Method::HEAD, Method::GET] {
+            match static_files::handle(&HandleOpts {
+                method: &method,
+                headers: &headers,
+                base_path: &root_dir,
+                uri_path: ".dotfile",
+                uri_query: None,
+                dir_listing: false,
+                dir_listing_order: 6,
+                dir_listing_format: &DirListFmt::Html,
+                redirect_trailing_slash: true,
+                compression_static: true,
+                ignore_hidden_files: true,
+            })
+            .await
+            {
+                Ok(_) => {
+                    panic!("expected a status error 404 but not status 200")
+                }
+                Err(status) => {
+                    assert_eq!(status, StatusCode::NOT_FOUND);
                 }
             }
         }
