@@ -94,7 +94,7 @@ pub async fn handle<'a>(opts: &HandleOpts<'a>) -> Result<(Response<Body>, bool),
             let mut resp = Response::new(Body::empty());
             *resp.status_mut() = StatusCode::NO_CONTENT;
             resp.headers_mut()
-                .typed_insert(headers::Allow::from_iter(HTTP_SUPPORTED_METHODS));
+                .typed_insert(headers::Allow::from_iter(HTTP_SUPPORTED_METHODS.clone()));
             resp.headers_mut().typed_insert(AcceptRanges::bytes());
 
             return Ok((resp, is_precompressed));

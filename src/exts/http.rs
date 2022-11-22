@@ -3,7 +3,7 @@
 use hyper::Method;
 
 /// A fixed list of HTTP methods supported by SWS.
-pub const HTTP_SUPPORTED_METHODS: [Method; 3] = [Method::OPTIONS, Method::HEAD, Method::GET];
+pub const HTTP_SUPPORTED_METHODS: &[Method; 3] = &[Method::OPTIONS, Method::HEAD, Method::GET];
 
 /// SWS HTTP Method extensions trait.
 pub trait MethodExt {
