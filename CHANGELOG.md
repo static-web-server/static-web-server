@@ -7,6 +7,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _**Note:** See changelog for v1 under the [1.x](https://github.com/static-web-server/static-web-server/blob/1.x/CHANGELOG.md) branch._
 
+## v2.14.0 - 2022-11-22
+
+__Fixes__
+
+- [ff69788](https://github.com/static-web-server/static-web-server/commit/ff69788) Bugfix/security dependency updates including tokio, hyper, chrono, listenfd, num_cpus, windows-service, serde, regex and other crates. (also [d1baad6](https://github.com/static-web-server/static-web-server/commit/d1baad6), [efda237](https://github.com/static-web-server/static-web-server/commit/efda237), [676d7e9](https://github.com/static-web-server/static-web-server/commit/676d7e9))
+- [9d67d9d](https://github.com/static-web-server/static-web-server/commit/9d67d9d) Unhandled panic when get "last modified" info on `directory_listing` module.
+- [6f059fd](https://github.com/static-web-server/static-web-server/commit/6f059fd) Needless borrow on `signals` module.
+- [edc3fdf](https://github.com/static-web-server/static-web-server/commit/edc3fdf) Update CI `cross` dependency to latest 0.2.x.
+
+__Breaking__
+
+- [a09ff1f](https://github.com/static-web-server/static-web-server/commit/a09ff1f) Add missing `SERVER` prefix for the `REDIRECT_TRAILING_SLASH` env. PR [#161](https://github.com/static-web-server/static-web-server/pull/161).<br>
+  This is a breaking change *only* if the previous `REDIRECT_TRAILING_SLASH` env was used explicitly.<br>
+  Otherwise, if not set/used (default behavior) or using the equivalent CLI argument then there is no impact or action required.<br>
+  However, we highly encourage users to prefer `SERVER_REDIRECT_TRAILING_SLASH` env instead.
+
+__Features__
+
+- [800416d](https://github.com/static-web-server/static-web-server/commit/800416d) Ignore hidden files/directories (dotfiles) via the new `--ignore-hidden-files` option. PR [#162](https://github.com/static-web-server/static-web-server/pull/162). See [docs](https://sws.joseluisq.net/features/ignore-files/).
+
+__Refactorings__
+
+- [6798ff7](https://github.com/static-web-server/static-web-server/commit/6798ff7) Reduce allocations when using the fixed HTTP method list.
+- [2828f58](https://github.com/static-web-server/static-web-server/commit/2828f58) Strip symbols on release profile via Cargo.
+- [ea4c24c](https://github.com/static-web-server/static-web-server/commit/ea4c24c) Reorder imports on TLS module.
+- [0e538dd](https://github.com/static-web-server/static-web-server/commit/0e538dd) Introduce http-related extension traits. PR [#160](https://github.com/static-web-server/static-web-server/pull/160).
+- [fb3fb23](https://github.com/static-web-server/static-web-server/commit/fb3fb23) Move project to its [static-web-server](https://github.com/static-web-server) organization.
+- [5435f3c](https://github.com/static-web-server/static-web-server/commit/5435f3c) Simplify FreeBSD test and release CI pipelines.
+- [d66494c](https://github.com/static-web-server/static-web-server/commit/d66494c) Project files clean up.
+
+__Docs__
+
+- [2fc36b4](https://github.com/static-web-server/static-web-server/commit/2fc36b4) Benchmarks page. PR [#155](https://github.com/static-web-server/static-web-server/pull/155).
+- [5097738](https://github.com/static-web-server/static-web-server/commit/5097738) Clarify benchmark context and remarks. PR [#157](https://github.com/static-web-server/static-web-server/pull/157) resolves [#156](https://github.com/static-web-server/static-web-server/issues/156) suggested by [@mufeedvh](https://github.com/mufeedvh).
+- [70f37f6](https://github.com/static-web-server/static-web-server/commit/70f37f6) Minor environment variables fixes. PR [#158](https://github.com/static-web-server/static-web-server/pull/158) by [@funkyfuture](https://github.com/funkyfuture).
+
+**Advice about the new organization change**
+
+Certainly, there is no impact if you still rely on previous Github release links (E.g pre-compiled binaries) because they are always redirected permanently.<br>
+However, since we moved to a [new organization](https://github.com/static-web-server/static-web-server), we highly encourage you to update your links using the new GitHub release address of the `static-web-server` organization.
+
 ## v2.13.1 - 2022-10-17
 
 __Fixes__
