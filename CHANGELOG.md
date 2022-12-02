@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _**Note:** See changelog for v1 under the [1.x](https://github.com/static-web-server/static-web-server/blob/1.x/CHANGELOG.md) branch._
 
+## v2.14.1 - 2022-12-02
+
+__Fixes__
+
+- [e723716](https://github.com/static-web-server/static-web-server/commit/e723716) Bugfix/security dependency updates including tokio-macros, flate2, parking_lot, serde and other crates.
+- [b431c68](https://github.com/static-web-server/static-web-server/commit/b431c68) Panic on compression-static when root dir is a dot and client supports compression. PR [#166](https://github.com/static-web-server/static-web-server/pull/166) fixes [#165](https://github.com/static-web-server/static-web-server/issues/165) by [@eduardo-gomes](https://github.com/eduardo-gomes).
+
 ## v2.14.0 - 2022-11-22
 
 __Fixes__
