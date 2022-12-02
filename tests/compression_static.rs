@@ -126,4 +126,31 @@ mod tests {
             "body and index_gz_buf are not equal in length"
         );
     }
+
+    #[tokio::test]
+    async fn compression_static_base_path_as_dot() {
+        let mut headers = HeaderMap::new();
+        headers.insert(
+            http::header::ACCEPT_ENCODING,
+            "gzip, deflate, br".parse().unwrap(),
+        );
+
+        let base_path = PathBuf::from(".");
+
+        let (_resp, _) = static_files::handle(&HandleOpts {
+            method: &Method::GET,
+            headers: &headers,
+            base_path: &base_path,
+            uri_path: "/",
+            uri_query: None,
+            dir_listing: true,
+            dir_listing_order: 6,
+            dir_listing_format: &DirListFmt::Html,
+            redirect_trailing_slash: true,
+            compression_static: true,
+            ignore_hidden_files: false,
+        })
+        .await
+        .expect("unexpected error response on `handle` function");
+    }
 }

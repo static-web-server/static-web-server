@@ -31,20 +31,22 @@ pub async fn precompressed_variant(
     // Try to find the pre-compressed metadata variant for the given file path
     if let Some(ext) = precomp_ext {
         let mut filepath_precomp = file_path;
-        let filename = filepath_precomp.file_name().unwrap().to_str().unwrap();
-        let precomp_file_name = [filename, ".", ext].concat();
-        filepath_precomp.set_file_name(precomp_file_name);
+        if let Some(filename) = filepath_precomp.file_name() {
+            let filename = filename.to_str().unwrap();
+            let precomp_file_name = [filename, ".", ext].concat();
+            filepath_precomp.set_file_name(precomp_file_name);
 
-        tracing::trace!(
-            "getting metadata for pre-compressed file variant {}",
-            filepath_precomp.display()
-        );
+            tracing::trace!(
+                "getting metadata for pre-compressed file variant {}",
+                filepath_precomp.display()
+            );
 
-        if let Ok((meta, _)) = file_metadata(&filepath_precomp) {
-            tracing::trace!("pre-compressed file variant found, serving it directly");
+            if let Ok((meta, _)) = file_metadata(&filepath_precomp) {
+                tracing::trace!("pre-compressed file variant found, serving it directly");
 
-            let encoding = if ext == "gz" { "gzip" } else { ext };
-            precompressed = Some((filepath_precomp, meta, encoding));
+                let encoding = if ext == "gz" { "gzip" } else { ext };
+                precompressed = Some((filepath_precomp, meta, encoding));
+            }
         }
 
         // Note: In error case like "no such file or dir" the workflow just continues
