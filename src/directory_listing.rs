@@ -458,10 +458,8 @@ fn parse_last_modified(modified: SystemTime) -> Result<DateTime<Local>> {
     // precision appears to be something that only is possible to
     // do on Linux.
 
-    let utc_dt = NaiveDateTime::from_timestamp_opt(
-        since_epoch.as_secs() as i64,
-        since_epoch.subsec_nanos() as u32,
-    );
+    let utc_dt =
+        NaiveDateTime::from_timestamp_opt(since_epoch.as_secs() as i64, since_epoch.subsec_nanos());
 
     match utc_dt {
         Some(utc_dt) => Ok(DateTime::<Utc>::from_utc(utc_dt, Utc).with_timezone(&Local)),
