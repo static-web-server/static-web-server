@@ -96,7 +96,7 @@ impl StaticFiles {
         }
 
         chain.link_after(ModifyWith::new(Cache::new(one_day)));
-        chain.link_after(Prefix::new(&[assets_dirname], Cache::new(one_year)));
+        chain.link_after(Prefix::new([assets_dirname], Cache::new(one_year)));
         chain.link_after(GuessContentType::new(default_content_type));
         chain.link_after(GzipMiddleware);
         chain.link_after(Logger);
