@@ -480,7 +480,7 @@ dependencies = [
  "httpdate",
  "itoa",
  "pin-project-lite",
- "socket2 0.4.7",
+ "socket2",
  "tokio",
  "tower-service",
  "tracing",
@@ -928,21 +928,11 @@ checksum = "a507befe795404456341dfab10cef66ead4c041f62b8b11bbb92bffe5d0953e0"
 
 [[package]]
 name = "socket2"
-version = "0.4.5"
-source = "git+https://github.com/john-sharratt/socket2.git?branch=wasix#fd02a2be762197ddb4ae65d51985f01cefff8713"
+version = "0.4.7"
+source = "git+https://github.com/john-sharratt/socket2.git?branch=v0.4.7#b9c1ef25a97f4d2f2351320bff05355a0ece81f7"
 dependencies = [
  "libc",
  "windows-sys 0.36.1",
-]
-
-[[package]]
-name = "socket2"
-version = "0.4.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "02e2d2db9033d13a1567121ddd7a095ee144db4e1ca1b1bda3419bc0da294ebd"
-dependencies = [
- "libc",
- "winapi",
 ]
 
 [[package]]
@@ -1089,8 +1079,8 @@ dependencies = [
 
 [[package]]
 name = "tokio"
-version = "1.21.2"
-source = "git+https://github.com/john-sharratt/tokio.git?branch=wasix-1.21.2#852f29edb347241af130bb340bda82fc3b707015"
+version = "1.24.1"
+source = "git+https://github.com/john-sharratt/tokio.git?branch=wasix-1.24.1#397fbd1b91e47cb33a724bf4390447a8091f30eb"
 dependencies = [
  "autocfg",
  "bytes",
@@ -1101,7 +1091,7 @@ dependencies = [
  "once_cell",
  "pin-project-lite",
  "signal-hook-registry",
- "socket2 0.4.5",
+ "socket2",
  "tokio-macros",
  "winapi",
 ]
@@ -1109,7 +1099,7 @@ dependencies = [
 [[package]]
 name = "tokio-macros"
 version = "1.8.0"
-source = "git+https://github.com/john-sharratt/tokio.git?branch=wasix-1.21.2#852f29edb347241af130bb340bda82fc3b707015"
+source = "git+https://github.com/john-sharratt/tokio.git?branch=wasix-1.24.1#397fbd1b91e47cb33a724bf4390447a8091f30eb"
 dependencies = [
  "proc-macro2",
  "quote",
