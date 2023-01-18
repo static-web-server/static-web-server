@@ -39,6 +39,9 @@ HTML file path that is used for `GET` requests when the requested path doesn't e
 ### SERVER_THREADS_MULTIPLIER
 Number of worker threads multiplier that'll be multiplied by the number of system CPUs using the formula: `worker threads = number of CPUs * n` where `n` is the value that changes here. When multiplier value is 0 or 1 then the `number of CPUs` is used. Number of worker threads result should be a number between 1 and 32,768 though it is advised to keep this value on the smaller side. Default one thread per core.
 
+### SERVER_MAX_BLOCKING_THREADS
+Maximum number of blocking threads.
+
 ### SERVER_HTTP2_TLS
 Enable HTTP/2 with TLS support. Make sure also to adjust current server port. Default `false` (disabled).
 

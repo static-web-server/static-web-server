@@ -98,7 +98,10 @@ OPTIONS:
             `worker threads = number of CPUs * n` where `n` is the value that changes here. When multiplier value is 0
             or 1 then one thread per core is used. Number of worker threads result should be a number between 1 and
             32,768 though it is advised to keep this value on the smaller side [env: SERVER_THREADS_MULTIPLIER=]
-            [default: 1]
+            [default: 4]
+    -b, --max_blocking_threads <max-blocking-threads>
+            Maximum number of blocking threads 
+            [default: 20]
 ```
 
 ## Windows

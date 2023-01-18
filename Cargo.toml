@@ -49,7 +49,7 @@ percent-encoding = "2.1"
 pin-project = "1.0"
 structopt = { version = "0.3", default-features = false }
 time = { version = "0.1", default-features = false }
-tokio = { git = "https://github.com/john-sharratt/tokio.git", branch = "wasix-1.24.1", default-features = false, features = ["rt-multi-thread", "macros", "fs", "io-util", "signal"] }
+tokio = { git = "https://github.com/john-sharratt/tokio.git", branch = "wasix-1.24.2", default-features = false, features = ["rt-multi-thread", "macros", "fs", "io-util", "signal"] }
 #tokio = { path = "../tokio/tokio", default-features = false, features = ["rt-multi-thread", "macros", "fs", "io-util", "signal"]  }
 tokio-rustls = { version = "0.23", optional = true }
 rustls-pemfile = "0.2"
@@ -66,7 +66,7 @@ globset = { version = "0.4", features = ["serde1"] }
 [patch.crates-io]
 socket2 = { git = "https://github.com/john-sharratt/socket2.git", branch = "v0.4.7" }
 libc = { git = "https://github.com/john-sharratt/libc.git" }
-tokio = { git = "https://github.com/john-sharratt/tokio.git", branch = "wasix-1.24.1" }
+tokio = { git = "https://github.com/john-sharratt/tokio.git", branch = "wasix-1.24.2" }
 #tokio = { path = "../tokio/tokio" }
 mio = { git = "https://github.com/john-sharratt/mio.git", branch = "wasix" }
 #mio = { path = "../mio" }
