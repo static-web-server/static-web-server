@@ -83,6 +83,7 @@ impl Settings {
         let mut basic_auth = opts.basic_auth;
         let mut fd = opts.fd;
         let mut threads_multiplier = opts.threads_multiplier;
+        let mut max_blocking_threads = opts.max_blocking_threads;
         let mut grace_period = opts.grace_period;
         let mut page_fallback = opts.page_fallback;
         let mut log_remote_address = opts.log_remote_address;
@@ -178,6 +179,9 @@ impl Settings {
                     }
                     if let Some(v) = general.threads_multiplier {
                         threads_multiplier = v
+                    }
+                    if let Some(v) = general.max_blocking_threads {
+                        max_blocking_threads = v
                     }
                     if let Some(v) = general.grace_period {
                         grace_period = v
@@ -320,6 +324,7 @@ impl Settings {
                 basic_auth,
                 fd,
                 threads_multiplier,
+                max_blocking_threads,
                 grace_period,
                 page_fallback,
                 log_remote_address,

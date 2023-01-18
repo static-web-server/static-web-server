@@ -128,6 +128,8 @@ pub struct General {
     // Worker threads
     pub threads_multiplier: Option<usize>,
 
+    pub max_blocking_threads: Option<usize>,
+
     pub grace_period: Option<u8>,
 
     pub page_fallback: Option<PathBuf>,
