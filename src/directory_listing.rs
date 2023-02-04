@@ -285,7 +285,7 @@ fn json_auto_index(entries: &mut [FileEntry], order_code: u8) -> Result<String> 
 
         json.push('{');
         json.push_str(format!("\"name\":{},", json_quote_str(file_name.as_str())).as_str());
-        json.push_str(format!("\"type\":\"{}\",", file_type).as_str());
+        json.push_str(format!("\"type\":\"{file_type}\",").as_str());
 
         let file_modified_str = file_modified.map_or("".to_owned(), |local_dt| {
             local_dt
@@ -293,10 +293,10 @@ fn json_auto_index(entries: &mut [FileEntry], order_code: u8) -> Result<String> 
                 .format(DATETIME_FORMAT_UTC)
                 .to_string()
         });
-        json.push_str(format!("\"mtime\":\"{}\"", file_modified_str).as_str());
+        json.push_str(format!("\"mtime\":\"{file_modified_str}\"").as_str());
 
         if !is_empty {
-            json.push_str(format!(",\"size\":{}", file_size).as_str());
+            json.push_str(format!(",\"size\":{file_size}").as_str());
         }
         json.push_str("},");
     }
@@ -372,8 +372,7 @@ fn html_auto_index<'a>(
         });
 
         table_row = format!(
-            "{}<tr><td><a href=\"{}\">{}</a></td><td>{}</td><td align=\"right\">{}</td></tr>",
-            table_row, file_uri, file_name_decoded, file_modified_str, filesize
+            "{table_row}<tr><td><a href=\"{file_uri}\">{file_name_decoded}</a></td><td>{file_modified_str}</td><td align=\"right\">{filesize}</td></tr>"
         );
     }
 
@@ -389,8 +388,7 @@ fn html_auto_index<'a>(
     );
 
     let html_page = format!(
-        "<!DOCTYPE html><html><head><meta charset=\"utf-8\"><title>Index of {}</title>{}</head><body><h1>Index of {}</h1>{}<hr><table>{}{}</table><hr>{}</body></html>",
-        current_path, STYLE, current_path, summary, table_header, table_row, FOOTER
+        "<!DOCTYPE html><html><head><meta charset=\"utf-8\"><title>Index of {current_path}</title>{STYLE}</head><body><h1>Index of {current_path}</h1>{summary}<hr><table>{table_header}{table_row}</table><hr>{FOOTER}</body></html>"
     );
 
     Ok(html_page)

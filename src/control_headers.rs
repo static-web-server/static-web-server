@@ -65,7 +65,7 @@ mod tests {
             assert_eq!(resp.status(), StatusCode::OK);
             assert_eq!(
                 cache_control.to_str().unwrap(),
-                format!("public, max-age={}", MAX_AGE_ONE_HOUR)
+                format!("public, max-age={MAX_AGE_ONE_HOUR}")
             );
         }
     }
@@ -81,7 +81,7 @@ mod tests {
         assert_eq!(resp.status(), StatusCode::OK);
         assert_eq!(
             cache_control.to_str().unwrap(),
-            format!("public, max-age={}", MAX_AGE_ONE_DAY)
+            format!("public, max-age={MAX_AGE_ONE_DAY}")
         );
     }
 
@@ -97,7 +97,7 @@ mod tests {
             assert_eq!(resp.status(), StatusCode::OK);
             assert_eq!(
                 cache_control.to_str().unwrap(),
-                format!("public, max-age={}", MAX_AGE_ONE_YEAR)
+                format!("public, max-age={MAX_AGE_ONE_YEAR}")
             );
         }
     }

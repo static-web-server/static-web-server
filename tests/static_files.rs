@@ -50,11 +50,7 @@ mod tests {
 
         let ctype = &res.headers()["content-type"];
 
-        assert!(
-            ctype == "text/html",
-            "content-type is not html: {:?}",
-            ctype,
-        );
+        assert!(ctype == "text/html", "content-type is not html: {ctype:?}",);
 
         let body = hyper::body::to_bytes(res.body_mut())
             .await
@@ -92,11 +88,7 @@ mod tests {
 
         let ctype = &res.headers()["content-type"];
 
-        assert!(
-            ctype == "text/html",
-            "content-type is not html: {:?}",
-            ctype,
-        );
+        assert!(ctype == "text/html", "content-type is not html: {ctype:?}",);
 
         let body = hyper::body::to_bytes(res.body_mut())
             .await
@@ -183,7 +175,7 @@ mod tests {
                 assert_eq!(res.headers()["location"], "assets/");
             }
             Err(status) => {
-                panic!("expected a status 308 but not a status {}", status)
+                panic!("expected a status 308 but not a status {status}")
             }
         }
     }
@@ -209,7 +201,7 @@ mod tests {
                 assert_eq!(res.status(), 200);
             }
             Err(status) => {
-                panic!("expected a status 200 but not a status {}", status)
+                panic!("expected a status 200 but not a status {status}")
             }
         }
     }
@@ -564,11 +556,7 @@ mod tests {
 
                         let ctype = &res.headers()["content-type"];
 
-                        assert!(
-                            ctype == "text/html",
-                            "content-type is not html: {:?}",
-                            ctype,
-                        );
+                        assert!(ctype == "text/html", "content-type is not html: {ctype:?}",);
 
                         let body = hyper::body::to_bytes(res.body_mut())
                             .await
@@ -637,11 +625,7 @@ mod tests {
 
                     let ctype = &res.headers()["content-type"];
 
-                    assert!(
-                        ctype == "text/html",
-                        "content-type is not html: {:?}",
-                        ctype,
-                    );
+                    assert!(ctype == "text/html", "content-type is not html: {ctype:?}",);
                 }
                 Err(_) => {
                     panic!("unexpected status error")

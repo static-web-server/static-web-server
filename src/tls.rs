@@ -44,7 +44,7 @@ impl std::fmt::Display for TlsConfigError {
             TlsConfigError::Pkcs8ParseError => write!(f, "pkcs8 parse error"),
             TlsConfigError::RsaParseError => write!(f, "rsa parse error"),
             TlsConfigError::EmptyKey => write!(f, "key contains no private key"),
-            TlsConfigError::InvalidKey(err) => write!(f, "key contains an invalid key, {}", err),
+            TlsConfigError::InvalidKey(err) => write!(f, "key contains an invalid key, {err}"),
         }
     }
 }

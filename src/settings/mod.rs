@@ -277,7 +277,7 @@ impl Settings {
                                     source,
                                     destination: redirects_entry.destination.to_owned(),
                                     kind: StatusCode::from_u16(status_code).with_context(|| {
-                                        format!("invalid redirect status code: {}", status_code)
+                                        format!("invalid redirect status code: {status_code}")
                                     })?,
                                 });
                             }

@@ -171,10 +171,7 @@ impl Settings {
         .with_context(|| "error during toml configuration file deserialization")?;
 
         for key in unused {
-            println!(
-                "Warning: unused configuration manifest key \"{}\" or unsupported",
-                key
-            );
+            println!("Warning: unused configuration manifest key \"{key}\" or unsupported");
         }
 
         Ok(manifest)

@@ -258,13 +258,13 @@ mod tests {
                         let first_entry = entries.first().unwrap();
                         assert_eq!(first_entry.name, "spécial directöry");
                         assert_eq!(first_entry.typed, "directory");
-                        assert_eq!(first_entry.mtime.is_empty(), false);
+                        assert!(!first_entry.mtime.is_empty());
                         assert!(first_entry.size.is_none());
 
                         let last_entry = entries.last().unwrap();
                         assert_eq!(last_entry.name, "index.html.gz");
                         assert_eq!(last_entry.typed, "file");
-                        assert_eq!(last_entry.mtime.is_empty(), false);
+                        assert!(!last_entry.mtime.is_empty());
                         assert!(last_entry.size.unwrap() > 300);
                     } else {
                         assert!(body_str.is_empty());

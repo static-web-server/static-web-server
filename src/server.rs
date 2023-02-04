@@ -93,7 +93,7 @@ impl Server {
         let (tcp_listener, addr_str);
         match general.fd {
             Some(fd) => {
-                addr_str = format!("@FD({})", fd);
+                addr_str = format!("@FD({fd})");
                 tcp_listener = ListenFd::from_env()
                     .take_tcp_listener(fd)?
                     .with_context(|| "failed to convert inherited 'fd' into a 'tcp' listener")?;
@@ -109,7 +109,7 @@ impl Server {
                     .with_context(|| format!("failed to parse {} address", general.host))?;
                 let addr = SocketAddr::from((ip, general.port));
                 tcp_listener = TcpListener::bind(addr)
-                    .with_context(|| format!("failed to bind to {} address", addr))?;
+                    .with_context(|| format!("failed to bind to {addr} address"))?;
                 addr_str = addr.to_string();
                 tracing::info!("server bound to tcp socket {}", addr_str);
             }
