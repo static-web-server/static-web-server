@@ -57,8 +57,7 @@ It's cross-platform and available for `Linux`, `macOS`, `Windows` and `FreeBSD` 
 - Run the server as a [Windows Service](https://docs.microsoft.com/en-us/previous-versions/windows/it-pro/windows-server-2003/cc783643(v=ws.10)).
 - Configurable using CLI arguments, environment variables or a TOML file.
 - Default and custom error pages.
-- Custom URL rewrites via glob patterns.
-- Custom URL redirects via glob patterns.
+- Custom URL rewrites and redirects via glob patterns.
 - Support for serving pre-compressed (Gzip/Brotli) files.
 - First-class [Docker](https://docs.docker.com/get-started/overview/) support. [Scratch](https://hub.docker.com/_/scratch) and latest [Alpine Linux](https://hub.docker.com/_/alpine) Docker images.
 - Ability to accept a socket listener as a file descriptor for use in sandboxing and on-demand applications (E.g [systemd](http://0pointer.de/blog/projects/socket-activation.html)).
