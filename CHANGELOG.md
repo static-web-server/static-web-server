@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _**Note:** See changelog for v1 under the [1.x](https://github.com/static-web-server/static-web-server/blob/1.x/CHANGELOG.md) branch._
 
+## v2.14.2 - 2022-02-15
+
+__Fixes__
+
+- [495f3ae](https://github.com/static-web-server/static-web-server/commit/495f3ae) Bugfix/security dependency updates including hyper, tokio, tikv-jemallocator, futures, rustls, toml, serde, parking_lot and other crates. Also ([41a9b0b](https://github.com/static-web-server/static-web-server/commit/41a9b0b)).
+- [7b81f0c](https://github.com/static-web-server/static-web-server/commit/7b81f0c) Explicit Alpine 3.16.4 Docker images update.
+- [e81b277](https://github.com/static-web-server/static-web-server/commit/e81b277) Unnecessary u32 cast on directory listing last modified function.
+
+__Refactorings__
+
+- [2cf9008](https://github.com/static-web-server/static-web-server/commit/2cf9008) Remove TOML incompatibility hacks.
+- [d9f9204](https://github.com/static-web-server/static-web-server/commit/d9f9204) Minor clippy syntax and format improvements.
+- [190db74](https://github.com/static-web-server/static-web-server/commit/190db74) Project Minimum Supported Rust Version (MSRV) is now 1.66.0.
+
 ## v2.14.1 - 2022-12-02
 
 __Fixes__
