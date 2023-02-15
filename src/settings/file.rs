@@ -159,6 +159,7 @@ fn read_toml_file(path: &Path) -> Result<toml::Value> {
     };
 
     let mut second_parser = toml::de::Deserializer::new(&toml_str);
+    #[allow(deprecated)]
     second_parser.set_require_newline_after_table(false);
     if let Ok(res) = toml::Value::deserialize(&mut second_parser) {
         let msg = format!(
