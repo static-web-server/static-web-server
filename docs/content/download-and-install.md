@@ -22,6 +22,14 @@ Via [Yay](https://github.com/Jguer/yay) or your favorite AUR Helper.
 yay -S static-web-server-bin
 ```
 
+### NixOS
+
+Via [Nix](https://github.com/NixOS/nix) (Linux/MacOS)
+
+```sh
+nix-env -iA nixpkgs.static-web-server
+```
+
 ### MacOS
 
 Via [Homebrew](https://brew.sh/) (also Linux)
