@@ -1081,6 +1081,7 @@ dependencies = [
 [[package]]
 name = "tokio"
 version = "1.24.2"
+source = "git+https://github.com/john-sharratt/tokio.git?branch=wasix-1.24.2#b4ceb8d718d3e4109439726f968593269a8f15ab"
 dependencies = [
  "autocfg",
  "bytes",
@@ -1093,13 +1094,13 @@ dependencies = [
  "signal-hook-registry",
  "socket2",
  "tokio-macros",
- "tracing",
  "winapi",
 ]
 
 [[package]]
 name = "tokio-macros"
 version = "1.8.0"
+source = "git+https://github.com/john-sharratt/tokio.git?branch=wasix-1.24.2#b4ceb8d718d3e4109439726f968593269a8f15ab"
 dependencies = [
  "proc-macro2",
  "quote",
