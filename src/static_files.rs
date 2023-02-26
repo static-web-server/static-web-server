@@ -151,7 +151,7 @@ async fn composed_file_metadata<'a>(
     if compression_static {
         tried_precompressed = true;
         if let Some((path, meta, ext)) =
-            compression_static::precompressed_variant(file_path.clone(), headers).await
+            compression_static::precompressed_variant(file_path, headers).await
         {
             return Ok((file_path, meta, false, Some((path, ext))));
         }
@@ -179,7 +179,7 @@ async fn composed_file_metadata<'a>(
             // Second pre-compressed variant check for the given file path
             if compression_static && !tried_precompressed {
                 if let Some((path, meta, ext)) =
-                    compression_static::precompressed_variant(file_path.clone(), headers).await
+                    compression_static::precompressed_variant(file_path, headers).await
                 {
                     return Ok((file_path, meta, false, Some((path, ext))));
                 }
@@ -219,7 +219,7 @@ fn file_reply<'a>(
 ) -> impl Future<Output = Result<Response<Body>, StatusCode>> + Send + 'a {
     let conditionals = get_conditional_headers(headers);
 
-    let file_path = path_precompressed.unwrap_or_else(|| path.clone());
+    let file_path = path_precompressed.as_ref().unwrap_or(path);
 
     match File::open(file_path) {
         Ok(file) => Either::Left(response_body(file, path, meta, conditionals)),
