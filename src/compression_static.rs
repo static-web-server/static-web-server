@@ -1,13 +1,17 @@
 use headers::{ContentCoding, HeaderMap, HeaderValue};
-use std::{fs::Metadata, path::PathBuf};
+use std::{
+    ffi::OsStr,
+    fs::Metadata,
+    path::{Path, PathBuf},
+};
 
 use crate::{compression, static_files::file_metadata};
 
 /// Search for the pre-compressed variant of the given file path.
-pub async fn precompressed_variant(
-    file_path: PathBuf,
-    headers: &HeaderMap<HeaderValue>,
-) -> Option<(PathBuf, Metadata, &str)> {
+pub async fn precompressed_variant<'a>(
+    file_path: &Path,
+    headers: &'a HeaderMap<HeaderValue>,
+) -> Option<(PathBuf, Metadata, &'a str)> {
     let mut precompressed = None;
 
     tracing::trace!(
@@ -30,11 +34,10 @@ pub async fn precompressed_variant(
 
     // Try to find the pre-compressed metadata variant for the given file path
     if let Some(ext) = precomp_ext {
-        let mut filepath_precomp = file_path;
-        if let Some(filename) = filepath_precomp.file_name() {
-            let filename = filename.to_str().unwrap();
+        let filename = file_path.file_name().and_then(OsStr::to_str);
+        if let Some(filename) = filename {
             let precomp_file_name = [filename, ".", ext].concat();
-            filepath_precomp.set_file_name(precomp_file_name);
+            let filepath_precomp = file_path.with_file_name(precomp_file_name);
 
             tracing::trace!(
                 "getting metadata for pre-compressed file variant {}",

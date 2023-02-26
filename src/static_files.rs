@@ -18,7 +18,6 @@ use std::io::{self, BufReader, Read, Seek, SeekFrom};
 use std::ops::Bound;
 use std::path::{Component, Path, PathBuf};
 use std::pin::Pin;
-use std::sync::Mutex;
 use std::task::{Context, Poll};
 
 use crate::directory_listing::DirListFmt;
@@ -152,7 +151,7 @@ async fn composed_file_metadata<'a>(
     if compression_static {
         tried_precompressed = true;
         if let Some((path, meta, ext)) =
-            compression_static::precompressed_variant(file_path.clone(), headers).await
+            compression_static::precompressed_variant(file_path, headers).await
         {
             return Ok((file_path, meta, false, Some((path, ext))));
         }
@@ -180,7 +179,7 @@ async fn composed_file_metadata<'a>(
             // Second pre-compressed variant check for the given file path
             if compression_static && !tried_precompressed {
                 if let Some((path, meta, ext)) =
-                    compression_static::precompressed_variant(file_path.clone(), headers).await
+                    compression_static::precompressed_variant(file_path, headers).await
                 {
                     return Ok((file_path, meta, false, Some((path, ext))));
                 }
@@ -220,7 +219,7 @@ fn file_reply<'a>(
 ) -> impl Future<Output = Result<Response<Body>, StatusCode>> + Send + 'a {
     let conditionals = get_conditional_headers(headers);
 
-    let file_path = path_precompressed.unwrap_or_else(|| path.clone());
+    let file_path = path_precompressed.as_ref().unwrap_or(path);
 
     match File::open(file_path) {
         Ok(file) => Either::Left(response_body(file, path, meta, conditionals)),
@@ -367,23 +366,15 @@ const READ_BUF_SIZE: usize = 8_192;
 
 #[derive(Debug)]
 pub struct FileStream<T> {
-    reader: Mutex<T>,
+    reader: T,
 }
 
-impl<T: Read> Stream for FileStream<T> {
+impl<T: Read + Unpin> Stream for FileStream<T> {
     type Item = Result<Bytes>;
 
     fn poll_next(self: Pin<&mut Self>, _: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        let mut reader = match self.reader.lock() {
-            Ok(reader) => reader,
-            Err(err) => {
-                tracing::error!("file stream error: {:?}", err);
-                return Poll::Ready(Some(Err(anyhow::anyhow!("failed to read stream file"))));
-            }
-        };
-
         let mut buf = BytesMut::zeroed(READ_BUF_SIZE);
-        match reader.read(&mut buf[..]) {
+        match Pin::into_inner(self).reader.read(&mut buf[..]) {
             Ok(n) => {
                 if n == 0 {
                     Poll::Ready(None)
@@ -420,7 +411,7 @@ async fn response_body(
                     };
 
                     let sub_len = end - start;
-                    let reader = Mutex::new(BufReader::new(file).take(sub_len));
+                    let reader = BufReader::new(file).take(sub_len);
                     let stream = FileStream { reader };
 
                     let body = Body::wrap_stream(stream);

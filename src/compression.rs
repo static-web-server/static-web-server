@@ -9,6 +9,7 @@ use hyper::{
     header::{HeaderValue, CONTENT_ENCODING, CONTENT_LENGTH},
     Body, Method, Response,
 };
+use mime_guess::Mime;
 use pin_project::pin_project;
 use std::pin::Pin;
 use std::task::{Context, Poll};
@@ -70,8 +71,8 @@ pub fn auto(
     if let Some(encoding) = get_prefered_encoding(headers) {
         // Skip compression for non-text-based MIME types
         if let Some(content_type) = resp.headers().typed_get::<ContentType>() {
-            let content_type = &content_type.to_string();
-            if !TEXT_MIME_TYPES.iter().any(|h| *h == content_type) {
+            let mime = Mime::from(content_type);
+            if !TEXT_MIME_TYPES.iter().any(|h| *h == mime) {
                 return Ok(resp);
             }
         }
