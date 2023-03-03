@@ -138,6 +138,28 @@ pub async fn handle<'a>(opts: &HandleOpts<'a>) -> Result<(Response<Body>, bool),
     Ok((resp, is_precompressed))
 }
 
+/// Returns the result of trying to append `.html` to the file path
+/// If it doesn't file that file, it rolls back the file path.
+fn try_file_html_metadata<'a>(
+    file_path: &'a mut PathBuf,
+) -> Option<(&'a PathBuf, Metadata, bool, Option<(PathBuf, &'a str)>)> {
+    tracing::debug!("file: appending .html to the path");
+    if let Some(filename) = file_path.file_name() {
+        let owned_filename = filename.to_os_string();
+        let mut owned_filename_with_html = owned_filename.clone();
+        owned_filename_with_html.push(".html");
+        file_path.set_file_name(owned_filename_with_html);
+        if let Ok(meta_res) = file_metadata(file_path.as_ref()) {
+            let (meta, _) = meta_res;
+            return Some((file_path, meta, false, None));
+        } else {
+            // We roll-back to the previous filename
+            file_path.set_file_name(owned_filename);
+        }
+    }
+    None
+}
+
 /// Returns the final composed metadata information (tuple) containing
 /// the Arc `PathBuf` reference wrapper for the current `file_path` with its file metadata
 /// as well as its optional pre-compressed variant.
@@ -170,12 +192,26 @@ async fn composed_file_metadata<'a>(
                 // Also noting that it's still a directory request
                 if let Ok(meta_res) = file_metadata(file_path.as_ref()) {
                     (meta, _) = meta_res
+                } else {
+                    // We remove the appended index.html
+                    file_path.pop();
+                    if let Some(data) = try_file_html_metadata(file_path) {
+                        return Ok(data);
+                    }
                 }
             }
 
             Ok((file_path, meta, is_dir, None))
         }
         Err(err) => {
+            if err == StatusCode::NOT_FOUND {
+                // If the file path doesn't exist, we try to find the path suffixed with `.html`.
+                // For example: `/posts/article` will fallback to `/posts/article.html`
+                if let Some(data) = try_file_html_metadata(file_path) {
+                    return Ok(data);
+                }
+            }
+
             // Second pre-compressed variant check for the given file path
             if compression_static && !tried_precompressed {
                 if let Some((path, meta, ext)) =
