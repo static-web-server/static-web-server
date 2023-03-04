@@ -201,6 +201,9 @@ async fn composed_file_metadata<'a>(
                     if let Some(new_meta) = new_meta {
                         meta = new_meta;
                         is_dir = false;
+                    } else {
+                        // We do it to preserve previous behavior
+                        file_path.push("index.html");
                     }
                 }
             }
