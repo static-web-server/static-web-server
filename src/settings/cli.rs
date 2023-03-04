@@ -105,14 +105,17 @@ pub struct General {
         default_value = "false",
         env = "SERVER_HTTP2_TLS"
     )]
+    #[cfg(feature = "http2")]
     /// Enable HTTP/2 with TLS support.
     pub http2: bool,
 
     #[structopt(long, required_if("http2", "true"), env = "SERVER_HTTP2_TLS_CERT")]
+    #[cfg(feature = "http2")]
     /// Specify the file path to read the certificate.
     pub http2_tls_cert: Option<PathBuf>,
 
     #[structopt(long, required_if("http2", "true"), env = "SERVER_HTTP2_TLS_KEY")]
+    #[cfg(feature = "http2")]
     /// Specify the file path to read the private key.
     pub http2_tls_key: Option<PathBuf>,
 

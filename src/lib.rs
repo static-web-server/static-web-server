@@ -31,6 +31,7 @@ pub mod settings;
 #[cfg(any(unix, windows))]
 pub mod signals;
 pub mod static_files;
+#[cfg(feature = "tls")]
 pub mod tls;
 pub mod transport;
 

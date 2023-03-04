@@ -102,8 +102,11 @@ pub struct General {
     pub page50x: Option<PathBuf>,
 
     // HTTP/2 + TLS
+    #[cfg(feature = "http2")]
     pub http2: Option<bool>,
+    #[cfg(feature = "http2")]
     pub http2_tls_cert: Option<PathBuf>,
+    #[cfg(feature = "http2")]
     pub http2_tls_key: Option<PathBuf>,
 
     // Security headers

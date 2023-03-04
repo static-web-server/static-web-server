@@ -27,6 +27,11 @@ include = ["src/**/*", "Cargo.toml", "Cargo.lock"]
 name = "static-web-server"
 path = "src/bin/server.rs"
 
+[features]
+default = ["http2"]
+tls = ["tokio-rustls"]
+http2 = ["tls"]
+
 [dependencies]
 anyhow = "1.0"
 async-compression = { version = "0.3", default-features = false, features = ["brotli", "deflate", "gzip", "tokio"] }
@@ -52,7 +57,7 @@ serde_repr = "0.1"
 structopt = { version = "0.3", default-features = false }
 chrono = { version = "0.4", default-features = false, features = ["std", "clock"] }
 tokio = { version = "1", default-features = false, features = ["rt-multi-thread", "macros", "fs", "io-util", "signal"] }
-tokio-rustls = { version = "0.23" }
+tokio-rustls = { version = "0.23", optional = true }
 tokio-util = { version = "0.7", default-features = false, features = ["io"] }
 toml = "0.5"
 tracing = { version = "0.1", default-features = false, features = ["std"] }
