@@ -1,3 +1,4 @@
+use std::path::PathBuf;
 use globset::{Glob, GlobMatcher};
 use headers::HeaderMap;
 use hyper::StatusCode;
@@ -12,6 +13,8 @@ pub mod file;
 pub use cli::Commands;
 
 use cli::General;
+
+pub const DEFAULT_CONFIG_PATH: &'static str = "./cfg/config.toml";
 
 /// The `headers` file options.
 pub struct Headers {
@@ -57,7 +60,15 @@ pub struct Settings {
 impl Settings {
     /// Handles CLI and config file options and converging them into one.
     pub fn get() -> Result<Settings> {
-        let opts = General::from_args();
+        let mut opts = General::from_args();
+
+        // If no config file was supplied then attempt to use the default path
+        if opts.config_file.is_none() {
+            let default_config_file: PathBuf = DEFAULT_CONFIG_PATH.into();
+            if default_config_file.exists() {
+                opts.config_file = Some(default_config_file);
+            }
+        }
 
         // Define the general CLI/file options
         let mut host = opts.host;
@@ -104,6 +115,11 @@ impl Settings {
         // NOTE: All config file based options shouldn't be mandatory, therefore `Some()` wrapped
         if let Some(ref p) = opts.config_file {
             if p.is_file() {
+                #[cfg(target_family = "wasm")]
+                let path_resolved = p
+                    .canonicalize()
+                    .unwrap_or(p.clone());
+                #[cfg(not(target_family = "wasm"))]
                 let path_resolved = p
                     .canonicalize()
                     .with_context(|| "error resolving toml config file path")?;

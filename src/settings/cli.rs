@@ -211,6 +211,7 @@ pub struct General {
 
     #[structopt(long, short = "w", env = "SERVER_CONFIG_FILE")]
     /// Server TOML configuration file path.
+    /// default = "./cfg/config.toml"
     pub config_file: Option<PathBuf>,
 
     #[structopt(
