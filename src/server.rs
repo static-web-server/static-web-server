@@ -18,7 +18,8 @@ use crate::{service::RouterService, Context, Result};
 /// Define a multi-thread HTTP or HTTP/2 web server.
 pub struct Server {
     opts: Settings,
-    threads: usize,
+    worker_threads: usize,
+    max_blocking_threads: usize,
 }
 
 impl Server {
@@ -29,12 +30,13 @@ impl Server {
 
         // Configure number of worker threads
         let cpus = num_cpus::get();
-        let threads = match opts.general.threads_multiplier {
+        let worker_threads = match opts.general.threads_multiplier {
             0 | 1 => cpus,
             n => cpus * n,
         };
+        let max_blocking_threads = opts.general.max_blocking_threads;
 
-        Ok(Server { opts, threads })
+        Ok(Server { opts, worker_threads, max_blocking_threads })
     }
 
     /// Build and run the multi-thread `Server` as standalone.
@@ -59,10 +61,11 @@ impl Server {
     where
         F: FnOnce(),
     {
-        tracing::debug!("initializing tokio runtime with multi thread scheduler");
-
+        tracing::debug!(%self.worker_threads, "initializing tokio runtime with multi thread scheduler");
+        
         tokio::runtime::Builder::new_multi_thread()
-            .worker_threads(self.threads)
+            .worker_threads(self.worker_threads)
+            .max_blocking_threads(self.max_blocking_threads)
             .thread_name("static-web-server")
             .enable_all()
             .build()?
@@ -135,8 +138,11 @@ impl Server {
         let page_fallback = helpers::read_bytes_default(&general.page_fallback.unwrap_or_default());
 
         // Number of worker threads option
-        let threads = self.threads;
+        let threads = self.worker_threads;
         tracing::info!("runtime worker threads: {}", threads);
+
+        // Maximum number of blocking threads
+        tracing::info!("runtime max blocking threads: {}", general.max_blocking_threads);
 
         // Security Headers option
         let security_headers = general.security_headers;

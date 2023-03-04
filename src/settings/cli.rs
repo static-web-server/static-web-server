@@ -35,7 +35,7 @@ pub struct General {
     #[structopt(
         long,
         short = "n",
-        default_value = "1",
+        default_value = "4",
         env = "SERVER_THREADS_MULTIPLIER"
     )]
     /// Number of worker threads multiplier that'll be multiplied by the number of system CPUs
@@ -43,6 +43,15 @@ pub struct General {
     /// When multiplier value is 0 or 1 then one thread per core is used.
     /// Number of worker threads result should be a number between 1 and 32,768 though it is advised to keep this value on the smaller side.
     pub threads_multiplier: usize,
+
+    #[structopt(
+        long,
+        short = "b",
+        default_value = "20",
+        env = "SERVER_MAX_BLOCKING_THREADS"
+    )]
+    /// Maximum number of blocking threads 
+    pub max_blocking_threads: usize,
 
     #[structopt(long, short = "d", default_value = "./public", env = "SERVER_ROOT")]
     /// Root directory path of static files.
