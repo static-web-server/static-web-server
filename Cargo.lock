@@ -709,14 +709,14 @@ dependencies = [
 
 [[package]]
 name = "mio"
-version = "0.8.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5b9d9a46eff5b4ff64b45a9e316a6d1e0bc719ef429cbec4dc630684212bfdf9"
+version = "0.8.3"
+source = "git+https://github.com/john-sharratt/mio.git?branch=wasix#4a17130bc88b7e95fdbdec9d749f156910def13a"
 dependencies = [
  "libc",
  "log",
  "wasi",
- "windows-sys 0.45.0",
+ "wasix",
+ "windows-sys 0.36.1",
 ]
 
 [[package]]
@@ -1245,9 +1245,8 @@ dependencies = [
 
 [[package]]
 name = "tokio"
-version = "1.25.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c8e00990ebabbe4c14c08aca901caed183ecd5c09562a12c824bb53d3c3fd3af"
+version = "1.24.2"
+source = "git+https://github.com/john-sharratt/tokio.git?branch=wasix-1.24.2#b4ceb8d718d3e4109439726f968593269a8f15ab"
 dependencies = [
  "autocfg",
  "bytes",
@@ -1255,18 +1254,18 @@ dependencies = [
  "memchr",
  "mio",
  "num_cpus",
+ "once_cell",
  "pin-project-lite",
  "signal-hook-registry",
  "socket2",
  "tokio-macros",
- "windows-sys 0.42.0",
+ "winapi",
 ]
 
 [[package]]
 name = "tokio-macros"
-version = "1.8.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d266c00fde287f55d3f1c3e96c500c362a2b8c695076ec180f27918820bc6df8"
+version = "1.8.0"
+source = "git+https://github.com/john-sharratt/tokio.git?branch=wasix-1.24.2#b4ceb8d718d3e4109439726f968593269a8f15ab"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1446,6 +1445,11 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9c8d87e72b64a3b4db28d11ce29237c246188f4f51057d65a7eab63b7987e423"
 
 [[package]]
+name = "wasix"
+version = "0.11.64"
+source = "git+https://github.com/john-sharratt/wasix.git#a4a47b91096b4cec131ed3f6697d232d2c7fbdbb"
+
+[[package]]
 name = "wasm-bindgen"
 version = "0.2.84"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1583,21 +1587,6 @@ dependencies = [
 
 [[package]]
 name = "windows-sys"
-version = "0.42.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5a3e1820f08b8513f676f7ab6c1f99ff312fb97b553d30ff4dd86f9f15728aa7"
-dependencies = [
- "windows_aarch64_gnullvm",
- "windows_aarch64_msvc 0.42.1",
- "windows_i686_gnu 0.42.1",
- "windows_i686_msvc 0.42.1",
- "windows_x86_64_gnu 0.42.1",
- "windows_x86_64_gnullvm",
- "windows_x86_64_msvc 0.42.1",
-]
-
-[[package]]
-name = "windows-sys"
 version = "0.45.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "75283be5efb2831d37ea142365f009c02ec203cd29a3ebecbc093d52315b66d0"
@@ -1691,8 +1680,3 @@ name = "windows_x86_64_msvc"
 version = "0.42.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "447660ad36a13288b1db4d4248e857b510e8c3a225c822ba4fb748c0aafecffd"
-
-[[patch.unused]]
-name = "tokio"
-version = "1.24.2"
-source = "git+https://github.com/john-sharratt/tokio.git?branch=wasix-1.24.2#b4ceb8d718d3e4109439726f968593269a8f15ab"
