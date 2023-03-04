@@ -183,7 +183,7 @@ async fn composed_file_metadata<'a>(
     tracing::trace!("getting metadata for file {}", file_path.display());
 
     match file_metadata(file_path.as_ref()) {
-        Ok((mut meta, mut is_dir)) => {
+        Ok((mut meta, is_dir)) => {
             if is_dir {
                 // Append a HTML index page by default if it's a directory path (`autoindex`)
                 tracing::debug!("dir: appending an index.html to the directory path");
@@ -200,9 +200,8 @@ async fn composed_file_metadata<'a>(
                     (file_path, new_meta) = prefix_file_html_metadata(file_path);
                     if let Some(new_meta) = new_meta {
                         meta = new_meta;
-                        is_dir = false;
                     } else {
-                        // We do it to preserve previous behavior
+                        // We append the index.html to preserve previous behavior
                         file_path.push("index.html");
                     }
                 }
