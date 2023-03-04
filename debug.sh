@@ -1,5 +1,5 @@
 #!/bin/bash -e
-cargo wasix build
+cargo wasix build --no-default-features
 wasm-opt -O1 --strip-debug target/wasm32-wasmer-wasi/debug/static-web-server.wasi.wasm -o target/web-server-debug.wasm
 
 if [[ -d /prog/deploy/wasmer-web/wapm ]]; then

@@ -45,7 +45,7 @@ http = "0.2"
 http-serde = "1.1"
 humansize = "1.1"
 hyper = { version = "0.14", features = ["stream", "http1", "http2", "tcp", "server"] }
-listenfd = "1.0"
+listenfd = "0.5"
 mime_guess = "2.0"
 num_cpus = { version = "1.14" }
 percent-encoding = "2.1"

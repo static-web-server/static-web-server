@@ -1,5 +1,5 @@
 #!/bin/bash -e
-cargo wasix build --release
+cargo wasix build --release --no-default-features
 
 if [[ -d /prog/deploy/wasmer-web/wapm ]]; then
   cp -f target/wasm32-wasmer-wasi/release/static-web-server.rustc.wasm \
