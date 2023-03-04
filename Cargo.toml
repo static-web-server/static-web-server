@@ -77,6 +77,11 @@ windows-service = "0.5"
 bytes = "1.1"
 serde_json = "1.0"
 
+[patch.crates-io]
+socket2 = { git = "https://github.com/john-sharratt/socket2.git", branch = "v0.4.7" }
+libc = { git = "https://github.com/john-sharratt/libc.git" }
+tokio = { git = "https://github.com/john-sharratt/tokio.git", branch = "wasix-1.24.2" }
+
 [profile.release]
 codegen-units = 1
 debug = false

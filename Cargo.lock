@@ -635,8 +635,7 @@ checksum = "e2abad23fbc42b3700f2f279844dc832adb2b2eb069b2df918f455c4e18cc646"
 [[package]]
 name = "libc"
 version = "0.2.139"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "201de327520df007757c1f0adce6e827fe8562fbc28bfd9c15571c66ca1f5f79"
+source = "git+https://github.com/john-sharratt/libc.git#25a254ef438c7562a6215d9955b358ca605e201e"
 
 [[package]]
 name = "link-cplusplus"
@@ -1097,11 +1096,10 @@ checksum = "a507befe795404456341dfab10cef66ead4c041f62b8b11bbb92bffe5d0953e0"
 [[package]]
 name = "socket2"
 version = "0.4.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "02e2d2db9033d13a1567121ddd7a095ee144db4e1ca1b1bda3419bc0da294ebd"
+source = "git+https://github.com/john-sharratt/socket2.git?branch=v0.4.7#b9c1ef25a97f4d2f2351320bff05355a0ece81f7"
 dependencies = [
  "libc",
- "winapi",
+ "windows-sys 0.36.1",
 ]
 
 [[package]]
@@ -1693,3 +1691,8 @@ name = "windows_x86_64_msvc"
 version = "0.42.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "447660ad36a13288b1db4d4248e857b510e8c3a225c822ba4fb748c0aafecffd"
+
+[[patch.unused]]
+name = "tokio"
+version = "1.24.2"
+source = "git+https://github.com/john-sharratt/tokio.git?branch=wasix-1.24.2#b4ceb8d718d3e4109439726f968593269a8f15ab"
