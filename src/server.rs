@@ -1,4 +1,6 @@
+#[allow(unused_imports)]
 use hyper::server::conn::AddrIncoming;
+#[allow(unused_imports)]
 use hyper::server::Server as HyperServer;
 use listenfd::ListenFd;
 use std::net::{IpAddr, SocketAddr, TcpListener};
@@ -8,6 +10,7 @@ use tokio::sync::oneshot::Receiver;
 use crate::handler::{RequestHandler, RequestHandlerOpts};
 #[cfg(any(unix, windows))]
 use crate::signals;
+#[cfg(feature = "tls")]
 use crate::tls::{TlsAcceptor, TlsConfigBuilder};
 use crate::{cors, helpers, logger, Settings};
 use crate::{service::RouterService, Context, Result};
@@ -64,11 +67,14 @@ impl Server {
             .enable_all()
             .build()?
             .block_on(async {
+                tracing::trace!("starting web server");
                 if let Err(err) = self.start_server(cancel_recv, cancel_fn).await {
                     tracing::error!("server failed to start up: {:?}", err);
                     std::process::exit(1)
                 }
             });
+
+        tracing::trace!("runtime initialized");
 
         Ok(())
     }
@@ -217,7 +223,7 @@ impl Server {
         });
 
         // Run the corresponding HTTP Server asynchronously with its given options
-
+        #[cfg(feature = "http2")]
         if general.http2 {
             // HTTP/2 + TLS
 
@@ -279,50 +285,52 @@ impl Server {
 
             #[cfg(unix)]
             handle.close();
-        } else {
-            // HTTP/1
 
-            #[cfg(unix)]
-            let signals = signals::create_signals()
-                .with_context(|| "failed to register termination signals")?;
-            #[cfg(unix)]
-            let handle = signals.handle();
-
-            tcp_listener
-                .set_nonblocking(true)
-                .with_context(|| "failed to set TCP non-blocking mode")?;
-
-            let server = HyperServer::from_tcp(tcp_listener)
-                .unwrap()
-                .tcp_nodelay(true)
-                .serve(router_service);
-
-            #[cfg(unix)]
-            let server =
-                server.with_graceful_shutdown(signals::wait_for_signals(signals, grace_period));
-            #[cfg(windows)]
-            let server = server.with_graceful_shutdown(signals::wait_for_ctrl_c(
-                _cancel_recv,
-                _cancel_fn,
-                grace_period,
-            ));
-
-            tracing::info!(
-                parent: tracing::info_span!("Server::start_server", ?addr_str, ?threads),
-                "listening on http://{}",
-                addr_str
-            );
-
-            tracing::info!("press ctrl+c to shut down the server");
-
-            server.await?;
-
-            #[cfg(unix)]
-            handle.close();
+            tracing::warn!("termination signal caught, shutting down the server execution");
+            return Ok(());
         }
 
-        tracing::warn!("termination signal caught, shutting down the server execution");
+        // HTTP/1
 
+        #[cfg(unix)]
+        let signals =
+            signals::create_signals().with_context(|| "failed to register termination signals")?;
+        #[cfg(unix)]
+        let handle = signals.handle();
+
+        tcp_listener
+            .set_nonblocking(true)
+            .with_context(|| "failed to set TCP non-blocking mode")?;
+
+        let server = HyperServer::from_tcp(tcp_listener)
+            .unwrap()
+            .tcp_nodelay(true)
+            .serve(router_service);
+
+        #[cfg(unix)]
+        let server =
+            server.with_graceful_shutdown(signals::wait_for_signals(signals, grace_period));
+        #[cfg(windows)]
+        let server = server.with_graceful_shutdown(signals::wait_for_ctrl_c(
+            _cancel_recv,
+            _cancel_fn,
+            grace_period,
+        ));
+
+        tracing::info!(
+            parent: tracing::info_span!("Server::start_server", ?addr_str, ?threads),
+            "listening on http://{}",
+            addr_str
+        );
+
+        tracing::info!("press ctrl+c to shut down the server");
+
+        server.await?;
+
+        #[cfg(unix)]
+        handle.close();
+
+        tracing::warn!("termination signal caught, shutting down the server execution");
         Ok(())
     }
 }
