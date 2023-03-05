@@ -167,17 +167,6 @@ async fn composed_file_metadata<'a>(
     headers: &'a HeaderMap<HeaderValue>,
     compression_static: bool,
 ) -> Result<(&'a PathBuf, Metadata, bool, Option<(PathBuf, &'a str)>), StatusCode> {
-    // First pre-compressed variant check for the given file path
-    let mut tried_precompressed = false;
-    if compression_static {
-        tried_precompressed = true;
-        if let Some((path, meta, ext)) =
-            compression_static::precompressed_variant(file_path, headers).await
-        {
-            return Ok((file_path, meta, false, Some((path, ext))));
-        }
-    }
-
     tracing::trace!("getting metadata for file {}", file_path.display());
 
     match file_metadata(file_path.as_ref()) {
@@ -187,7 +176,17 @@ async fn composed_file_metadata<'a>(
                 tracing::debug!("dir: appending an index.html to the directory path");
                 file_path.push("index.html");
 
-                // If file exists then overwrite the `meta`
+                // Pre-compressed variant check for the autoindex
+                if compression_static {
+                    if let Some((path, meta, ext)) =
+                        compression_static::precompressed_variant(file_path, headers).await
+                    {
+                        return Ok((file_path, meta, false, Some((path, ext))));
+                    }
+                }
+
+                // Otherwise, just fallback to finding the index.html
+                // and overwrite the current `meta`
                 // Also noting that it's still a directory request
                 if let Ok(meta_res) = file_metadata(file_path.as_ref()) {
                     (meta, _) = meta_res
@@ -203,27 +202,45 @@ async fn composed_file_metadata<'a>(
                         file_path.push("index.html");
                     }
                 }
+            } else {
+                // Fallback pre-compressed variant check for the specific file
+                if compression_static {
+                    if let Some((path, meta, ext)) =
+                        compression_static::precompressed_variant(file_path, headers).await
+                    {
+                        return Ok((file_path, meta, false, Some((path, ext))));
+                    }
+                }
             }
 
             Ok((file_path, meta, is_dir, None))
         }
         Err(err) => {
-            if err == StatusCode::NOT_FOUND {
-                // If the file path doesn't exist, we try to find the path suffixed with `.html`.
-                // For example: `/posts/article` will fallback to `/posts/article.html`
-                let new_meta: Option<Metadata>;
-                (file_path, new_meta) = prefix_file_html_metadata(file_path);
-                if let Some(new_meta) = new_meta {
-                    return Ok((file_path, new_meta, false, None));
-                }
-            }
-
-            // Second pre-compressed variant check for the given file path
-            if compression_static && !tried_precompressed {
+            // Pre-compressed variant check for the file not found
+            if compression_static {
                 if let Some((path, meta, ext)) =
                     compression_static::precompressed_variant(file_path, headers).await
                 {
                     return Ok((file_path, meta, false, Some((path, ext))));
+                }
+            }
+
+            // Otherwise, if the file path doesn't exist then
+            // we try to find the path suffixed with `.html`.
+            // For example: `/posts/article` will fallback to `/posts/article.html`
+            let new_meta: Option<Metadata>;
+            (file_path, new_meta) = prefix_file_html_metadata(file_path);
+            match new_meta {
+                Some(new_meta) => return Ok((file_path, new_meta, false, None)),
+                _ => {
+                    // Last pre-compressed variant check or the prefixed file not found
+                    if compression_static {
+                        if let Some((path, meta, ext)) =
+                            compression_static::precompressed_variant(file_path, headers).await
+                        {
+                            return Ok((file_path, meta, false, Some((path, ext))));
+                        }
+                    }
                 }
             }
 
@@ -232,7 +249,7 @@ async fn composed_file_metadata<'a>(
     }
 }
 
-/// Try to find the file system metadata for the given file path.
+/// Try to find the file system metadata for the given file path or returns an `Not Found` error.
 pub fn file_metadata(file_path: &Path) -> Result<(Metadata, bool), StatusCode> {
     match std::fs::metadata(file_path) {
         Ok(meta) => {
