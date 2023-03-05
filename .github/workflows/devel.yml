@@ -178,7 +178,5 @@ jobs:
         cargo fmt --all -- --check
 
     - name: Check via Clippy
-      uses: actions-rs/clippy-check@v1
-      with:
-        token: ${{ secrets.GITHUB_TOKEN }}
-        args: --all-features -- -D warnings
+      run: |
+        cargo clippy --all-features -- -D warnings
