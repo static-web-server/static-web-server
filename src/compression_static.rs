@@ -44,7 +44,14 @@ pub async fn precompressed_variant<'a>(
                 filepath_precomp.display()
             );
 
-            if let Ok((meta, _)) = file_metadata(&filepath_precomp) {
+            if let Ok((meta, is_dir)) = file_metadata(&filepath_precomp) {
+                if is_dir {
+                    tracing::trace!(
+                        "pre-compressed file variant found but it's a directory, skipping"
+                    );
+                    return None;
+                }
+
                 tracing::trace!("pre-compressed file variant found, serving it directly");
 
                 let encoding = if ext == "gz" { "gzip" } else { ext };
