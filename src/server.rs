@@ -8,9 +8,11 @@ use std::sync::Arc;
 use tokio::sync::oneshot::Receiver;
 
 use crate::handler::{RequestHandler, RequestHandlerOpts};
+#[cfg(any(unix, windows))]
+use crate::signals;
 #[cfg(feature = "tls")]
 use crate::tls::{TlsAcceptor, TlsConfigBuilder};
-use crate::{cors, helpers, logger, signals, Settings};
+use crate::{cors, helpers, logger, Settings};
 use crate::{service::RouterService, Context, Result};
 
 /// Define a multi-thread HTTP or HTTP/2 web server.
