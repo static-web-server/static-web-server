@@ -32,25 +32,37 @@ pub struct General {
     /// static-web-server to be sandboxed more completely.
     pub fd: Option<usize>,
 
-    #[structopt(
+    #[cfg_attr(not(wasm), structopt(
         long,
         short = "n",
-        default_value = "4",
+        default_value = "1",
         env = "SERVER_THREADS_MULTIPLIER"
-    )]
+    ))]
+    #[cfg_attr(wasm, structopt(
+        long,
+        short = "n",
+        default_value = "2",
+        env = "SERVER_THREADS_MULTIPLIER"
+    ))] // We use 2 as the threads multiplier in Wasm, 1 in Native
     /// Number of worker threads multiplier that'll be multiplied by the number of system CPUs
     /// using the formula: `worker threads = number of CPUs * n` where `n` is the value that changes here.
     /// When multiplier value is 0 or 1 then one thread per core is used.
     /// Number of worker threads result should be a number between 1 and 32,768 though it is advised to keep this value on the smaller side.
     pub threads_multiplier: usize,
 
-    #[structopt(
+    #[cfg_attr(not(wasm), structopt(
+        long,
+        short = "b",
+        default_value = "512",
+        env = "SERVER_MAX_BLOCKING_THREADS"
+    ))]
+    #[cfg_attr(wasm, structopt(
         long,
         short = "b",
         default_value = "20",
         env = "SERVER_MAX_BLOCKING_THREADS"
-    )]
-    /// Maximum number of blocking threads 
+    ))] // We use 20 in Wasm, 512 in Native (default for tokio)
+    /// Maximum number of blocking threads
     pub max_blocking_threads: usize,
 
     #[structopt(long, short = "d", default_value = "./public", env = "SERVER_ROOT")]

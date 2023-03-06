@@ -31,7 +31,11 @@ impl Server {
         };
         let max_blocking_threads = opts.general.max_blocking_threads;
 
-        Ok(Server { opts, worker_threads, max_blocking_threads })
+        Ok(Server {
+            opts,
+            worker_threads,
+            max_blocking_threads,
+        })
     }
 
     /// Build and run the multi-thread `Server` as standalone.
@@ -57,7 +61,7 @@ impl Server {
         F: FnOnce(),
     {
         tracing::debug!(%self.worker_threads, "initializing tokio runtime with multi thread scheduler");
-        
+
         tokio::runtime::Builder::new_multi_thread()
             .worker_threads(self.worker_threads)
             .max_blocking_threads(self.max_blocking_threads)
@@ -134,7 +138,10 @@ impl Server {
         tracing::info!("runtime worker threads: {}", threads);
 
         // Maximum number of blocking threads
-        tracing::info!("runtime max blocking threads: {}", general.max_blocking_threads);
+        tracing::info!(
+            "runtime max blocking threads: {}",
+            general.max_blocking_threads
+        );
 
         // Security Headers option
         let security_headers = general.security_headers;
