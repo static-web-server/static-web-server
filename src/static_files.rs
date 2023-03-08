@@ -178,10 +178,15 @@ async fn composed_file_metadata<'a>(
 
                 // Pre-compressed variant check for the autoindex
                 if compression_static {
-                    if let Some((path, meta, ext)) =
+                    if let Some(p) =
                         compression_static::precompressed_variant(file_path, headers).await
                     {
-                        return Ok((file_path, meta, false, Some((path, ext))));
+                        return Ok((
+                            file_path,
+                            p.metadata,
+                            false,
+                            Some((p.file_path, p.extension)),
+                        ));
                     }
                 }
 
@@ -205,10 +210,15 @@ async fn composed_file_metadata<'a>(
             } else {
                 // Fallback pre-compressed variant check for the specific file
                 if compression_static {
-                    if let Some((path, meta, ext)) =
+                    if let Some(p) =
                         compression_static::precompressed_variant(file_path, headers).await
                     {
-                        return Ok((file_path, meta, false, Some((path, ext))));
+                        return Ok((
+                            file_path,
+                            p.metadata,
+                            false,
+                            Some((p.file_path, p.extension)),
+                        ));
                     }
                 }
             }
@@ -218,10 +228,14 @@ async fn composed_file_metadata<'a>(
         Err(err) => {
             // Pre-compressed variant check for the file not found
             if compression_static {
-                if let Some((path, meta, ext)) =
-                    compression_static::precompressed_variant(file_path, headers).await
+                if let Some(p) = compression_static::precompressed_variant(file_path, headers).await
                 {
-                    return Ok((file_path, meta, false, Some((path, ext))));
+                    return Ok((
+                        file_path,
+                        p.metadata,
+                        false,
+                        Some((p.file_path, p.extension)),
+                    ));
                 }
             }
 
@@ -235,10 +249,15 @@ async fn composed_file_metadata<'a>(
                 _ => {
                     // Last pre-compressed variant check or the prefixed file not found
                     if compression_static {
-                        if let Some((path, meta, ext)) =
+                        if let Some(p) =
                             compression_static::precompressed_variant(file_path, headers).await
                         {
-                            return Ok((file_path, meta, false, Some((path, ext))));
+                            return Ok((
+                                file_path,
+                                p.metadata,
+                                false,
+                                Some((p.file_path, p.extension)),
+                            ));
                         }
                     }
                 }
