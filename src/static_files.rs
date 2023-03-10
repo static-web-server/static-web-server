@@ -53,11 +53,14 @@ pub async fn handle<'a>(opts: &HandleOpts<'a>) -> Result<(Response<Body>, bool),
 
     let headers_opt = opts.headers;
     let compression_static_opt = opts.compression_static;
-
     let mut file_path = sanitize_path(opts.base_path, uri_path)?;
 
-    let (file_path, meta, is_dir, precompressed_variant) =
-        composed_file_metadata(&mut file_path, headers_opt, compression_static_opt).await?;
+    let FileMetadata {
+        file_path,
+        metadata,
+        is_dir,
+        precompressed_variant,
+    } = composed_file_metadata(&mut file_path, headers_opt, compression_static_opt).await?;
 
     // Check for a hidden file/directory (dotfile) and ignore it if feature enabled
     if opts.ignore_hidden_files && file_path.is_hidden() {
@@ -108,7 +111,7 @@ pub async fn handle<'a>(opts: &HandleOpts<'a>) -> Result<(Response<Body>, bool),
                 method,
                 uri_path,
                 opts.uri_query,
-                file_path.as_ref(),
+                file_path,
                 opts.dir_listing_order,
                 opts.dir_listing_format,
                 opts.ignore_hidden_files,
@@ -120,10 +123,9 @@ pub async fn handle<'a>(opts: &HandleOpts<'a>) -> Result<(Response<Body>, bool),
     }
 
     // Check for a pre-compressed file variant if present under the `opts.compression_static` context
-    if let Some(meta_precompressed) = precompressed_variant {
-        let (path_precomp, precomp_ext) = meta_precompressed;
-
-        let mut resp = file_reply(headers_opt, file_path, &meta, Some(path_precomp)).await?;
+    if let Some(precompressed_meta) = precompressed_variant {
+        let (precomp_path, precomp_ext) = precompressed_meta;
+        let mut resp = file_reply(headers_opt, file_path, &metadata, Some(precomp_path)).await?;
 
         // Prepare corresponding headers to let know how to decode the payload
         resp.headers_mut().remove(CONTENT_LENGTH);
@@ -133,9 +135,24 @@ pub async fn handle<'a>(opts: &HandleOpts<'a>) -> Result<(Response<Body>, bool),
         return Ok((resp, is_precompressed));
     }
 
-    let resp = file_reply(headers_opt, file_path, &meta, None).await?;
+    let resp = file_reply(headers_opt, file_path, &metadata, None).await?;
 
     Ok((resp, is_precompressed))
+}
+
+/// It defines a composed file metadata structure containing the current file
+/// and its optional compressed variant.
+struct FileMetadata<'a> {
+    /// The current file path reference.
+    pub file_path: &'a PathBuf,
+    /// The metadata of current `file_path` by default.
+    /// Note that if `precompressed_variant` has some value
+    /// then the `metadata` value will correspond to the `precompressed_variant`.
+    pub metadata: Metadata,
+    // If either `file_path` or `precompressed_variant` is a directory.
+    pub is_dir: bool,
+    // The precompressed file variant for the current `file_path`.
+    pub precompressed_variant: Option<(PathBuf, &'a str)>,
 }
 
 /// Returns the result of trying to append `.html` to the file path.
@@ -159,18 +176,18 @@ fn prefix_file_html_metadata(file_path: &mut PathBuf) -> (&mut PathBuf, Option<M
     (file_path, None)
 }
 
-/// Returns the final composed metadata information (tuple) containing
-/// the Arc `PathBuf` reference wrapper for the current `file_path` with its file metadata
+/// Returns the final composed metadata containing
+/// the current `file_path` with its file metadata
 /// as well as its optional pre-compressed variant.
 async fn composed_file_metadata<'a>(
     mut file_path: &'a mut PathBuf,
     headers: &'a HeaderMap<HeaderValue>,
     compression_static: bool,
-) -> Result<(&'a PathBuf, Metadata, bool, Option<(PathBuf, &'a str)>), StatusCode> {
+) -> Result<FileMetadata<'a>, StatusCode> {
     tracing::trace!("getting metadata for file {}", file_path.display());
 
     match file_metadata(file_path.as_ref()) {
-        Ok((mut meta, is_dir)) => {
+        Ok((mut metadata, is_dir)) => {
             if is_dir {
                 // Append a HTML index page by default if it's a directory path (`autoindex`)
                 tracing::debug!("dir: appending an index.html to the directory path");
@@ -181,12 +198,12 @@ async fn composed_file_metadata<'a>(
                     if let Some(p) =
                         compression_static::precompressed_variant(file_path, headers).await
                     {
-                        return Ok((
+                        return Ok(FileMetadata {
                             file_path,
-                            p.metadata,
-                            false,
-                            Some((p.file_path, p.extension)),
-                        ));
+                            metadata: p.metadata,
+                            is_dir: false,
+                            precompressed_variant: Some((p.file_path, p.extension)),
+                        });
                     }
                 }
 
@@ -194,14 +211,14 @@ async fn composed_file_metadata<'a>(
                 // and overwrite the current `meta`
                 // Also noting that it's still a directory request
                 if let Ok(meta_res) = file_metadata(file_path.as_ref()) {
-                    (meta, _) = meta_res
+                    (metadata, _) = meta_res
                 } else {
                     // We remove the appended index.html
                     file_path.pop();
                     let new_meta: Option<Metadata>;
                     (file_path, new_meta) = prefix_file_html_metadata(file_path);
                     if let Some(new_meta) = new_meta {
-                        meta = new_meta;
+                        metadata = new_meta;
                     } else {
                         // We append the index.html to preserve previous behavior
                         file_path.push("index.html");
@@ -213,29 +230,34 @@ async fn composed_file_metadata<'a>(
                     if let Some(p) =
                         compression_static::precompressed_variant(file_path, headers).await
                     {
-                        return Ok((
+                        return Ok(FileMetadata {
                             file_path,
-                            p.metadata,
-                            false,
-                            Some((p.file_path, p.extension)),
-                        ));
+                            metadata: p.metadata,
+                            is_dir: false,
+                            precompressed_variant: Some((p.file_path, p.extension)),
+                        });
                     }
                 }
             }
 
-            Ok((file_path, meta, is_dir, None))
+            Ok(FileMetadata {
+                file_path,
+                metadata,
+                is_dir,
+                precompressed_variant: None,
+            })
         }
         Err(err) => {
             // Pre-compressed variant check for the file not found
             if compression_static {
                 if let Some(p) = compression_static::precompressed_variant(file_path, headers).await
                 {
-                    return Ok((
+                    return Ok(FileMetadata {
                         file_path,
-                        p.metadata,
-                        false,
-                        Some((p.file_path, p.extension)),
-                    ));
+                        metadata: p.metadata,
+                        is_dir: false,
+                        precompressed_variant: Some((p.file_path, p.extension)),
+                    });
                 }
             }
 
@@ -245,19 +267,26 @@ async fn composed_file_metadata<'a>(
             let new_meta: Option<Metadata>;
             (file_path, new_meta) = prefix_file_html_metadata(file_path);
             match new_meta {
-                Some(new_meta) => return Ok((file_path, new_meta, false, None)),
+                Some(new_meta) => {
+                    return Ok(FileMetadata {
+                        file_path,
+                        metadata: new_meta,
+                        is_dir: false,
+                        precompressed_variant: None,
+                    })
+                }
                 _ => {
                     // Last pre-compressed variant check or the prefixed file not found
                     if compression_static {
                         if let Some(p) =
                             compression_static::precompressed_variant(file_path, headers).await
                         {
-                            return Ok((
+                            return Ok(FileMetadata {
                                 file_path,
-                                p.metadata,
-                                false,
-                                Some((p.file_path, p.extension)),
-                            ));
+                                metadata: p.metadata,
+                                is_dir: false,
+                                precompressed_variant: Some((p.file_path, p.extension)),
+                            });
                         }
                     }
                 }
