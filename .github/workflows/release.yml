@@ -37,6 +37,8 @@ jobs:
     needs: ['create-release']
     runs-on: ${{ matrix.os }}
     env:
+      # Cargo's sparse protocol from 1.68.0 onwards
+      CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
       # For some builds, we use cross to test on 32-bit and big-endian
       # systems.
       CARGO_BIN: cargo

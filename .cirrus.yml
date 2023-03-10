@@ -9,6 +9,8 @@ task:
   only_if: $CIRRUS_TAG == ''
   env:
     RUSTFLAGS: -Dwarnings
+    # Cargo's sparse protocol from 1.68.0 onwards
+    CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
   matrix:
     - name: freebsd-amd64-test
       env:
@@ -41,6 +43,8 @@ task:
   only_if: $CIRRUS_TAG != ''
   env:
     RUSTFLAGS: -Dwarnings
+    # Cargo's sparse protocol from 1.68.0 onwards
+    CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
     GITHUB_TOKEN: ENCRYPTED[d1766ef328d83729917d2ffb875d64c35d1c0177edf8f32e66ec464daf5c1b7b145d65fc6c044a73fffe2235d3b38349]
   matrix:
     - name: freebsd-amd64-release

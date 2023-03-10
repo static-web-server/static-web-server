@@ -14,6 +14,8 @@ jobs:
     name: test
     runs-on: ${{ matrix.os }}
     env:
+      # Cargo's sparse protocol from 1.68.0 onwards
+      CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
       CARGO_BIN: cargo
       # When CARGO_BIN is set to CROSS, this is set to `--target matrix.target`
       TARGET_FLAGS: ""
@@ -148,11 +150,17 @@ jobs:
         echo "SKIP_TESTS=yes" >> $GITHUB_ENV
 
     - name: Run tests
+      shell: bash
       if: env.SKIP_TESTS == ''
-      run: ${{ env.CARGO_BIN }} test --verbose ${{ env.TARGET_FLAGS }}
+      run: |
+        if [[ "${{ matrix.build }}" == "pinned" ]]; then unset CARGO_REGISTRIES_CRATES_IO_PROTOCOL; fi
+        ${{ env.CARGO_BIN }} test --verbose ${{ env.TARGET_FLAGS }}
 
     - name: Run build
-      run: ${{ env.CARGO_BIN }} build --verbose ${{ env.TARGET_FLAGS }}
+      shell: bash
+      run: |
+        if [[ "${{ matrix.build }}" == "pinned" ]]; then unset CARGO_REGISTRIES_CRATES_IO_PROTOCOL; fi
+        ${{ env.CARGO_BIN }} build --verbose ${{ env.TARGET_FLAGS }}
 
   checks:
     name: checks
