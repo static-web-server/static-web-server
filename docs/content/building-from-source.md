@@ -27,6 +27,17 @@ All HTML documentation is located in the `docs/` project's directory and is buil
 
 It's only necessary to have [Docker](https://www.docker.com/get-started/) installed.
 
+## Cargo features
+
+Some features are optional when running or building from the source.
+For example, if you want to run without the default features like `http2` just try.
+
+```sh
+cargo run --no-default-features -- -h
+```
+
+For more optional features take a look a the `[features]` section of the `cargo.toml` file adjusting them on demand.
+
 ### Building documentation
 
 By default the docs will be built in the `/tmp/docs` directory, to do so follow these steps.
