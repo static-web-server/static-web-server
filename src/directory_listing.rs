@@ -2,7 +2,7 @@ use chrono::{DateTime, Local, NaiveDateTime, Utc};
 use futures_util::future::Either;
 use futures_util::{future, FutureExt};
 use headers::{ContentLength, ContentType, HeaderMapExt};
-use humansize::{file_size_opts, FileSize};
+use humansize::FormatSize;
 use hyper::{Body, Method, Response, StatusCode};
 use mime_guess::mime;
 use percent_encoding::{percent_decode_str, utf8_percent_encode, NON_ALPHANUMERIC};
@@ -358,13 +358,10 @@ fn html_auto_index<'a>(
         let file_modified = &entry.modified;
         let file_uri = &entry.uri.clone().unwrap_or_else(|| file_name.to_owned());
         let file_name_decoded = percent_decode_str(file_name).decode_utf8()?.to_string();
-        let mut filesize = entry
-            .filesize
-            .file_size(file_size_opts::DECIMAL)
-            .map_err(anyhow::Error::msg)?;
+        let mut filesize_str = entry.filesize.format_size(humansize::DECIMAL);
 
-        if entry.filesize == 0_u64 {
-            filesize = String::from("-");
+        if entry.filesize == 0 {
+            filesize_str = String::from("-");
         }
 
         let file_modified_str = file_modified.map_or("-".to_owned(), |local_dt| {
@@ -372,7 +369,7 @@ fn html_auto_index<'a>(
         });
 
         table_row = format!(
-            "{table_row}<tr><td><a href=\"{file_uri}\">{file_name_decoded}</a></td><td>{file_modified_str}</td><td align=\"right\">{filesize}</td></tr>"
+            "{table_row}<tr><td><a href=\"{file_uri}\">{file_name_decoded}</a></td><td>{file_modified_str}</td><td align=\"right\">{filesize_str}</td></tr>"
         );
     }
 
