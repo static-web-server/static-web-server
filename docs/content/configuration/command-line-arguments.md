@@ -10,7 +10,7 @@ The server can be configured via the following command-line arguments.
 ```
 $ static-web-server -h
 
-static-web-server 2.14.2
+static-web-server 2.15.0
 Jose Quintana <https://joseluisq.net>
 A cross-platform, blazing fast and asynchronous web server for static files-serving.
 
@@ -91,6 +91,9 @@ OPTIONS:
         --log-remote-address <log-remote-address>
             Log incoming requests information along with its remote address if available using the `info` log level
             [env: SERVER_LOG_REMOTE_ADDRESS=]  [default: false]
+    -b, --max-blocking-threads <max-blocking-threads>
+            Maximum number of blocking threads [env: SERVER_MAX_BLOCKING_THREADS=]  [default: 512]
+
         --page-fallback <page-fallback>
             HTML file path that is used for GET requests when the requested path doesn't exist. The fallback page is
             served with a 200 status code, useful when using client routers. If the path is not specified or simply
@@ -119,9 +122,6 @@ OPTIONS:
             or 1 then one thread per core is used. Number of worker threads result should be a number between 1 and
             32,768 though it is advised to keep this value on the smaller side [env: SERVER_THREADS_MULTIPLIER=]
             [default: 1]
-    -b, --max_blocking_threads <max-blocking-threads>
-            Maximum number of blocking threads 
-            [default: 512]
 ```
 
 ## Windows
