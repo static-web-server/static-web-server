@@ -7,7 +7,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _**Note:** See changelog for v1 under the [1.x](https://github.com/static-web-server/static-web-server/blob/1.x/CHANGELOG.md) branch._
 
-## v2.14.2 - 2022-02-15
+## v2.15.0 - 2023-03-13
+
+This new `v2.15.0` release brings several dependency updates, one bug fix for the `compression-static`, new features like  Tokio's `--max-blocking-threads` or `.html` prefixing for directory requests, the possibity to build SWS on non-Unix/Windows platforms and performance optimizations and improvements across several modules including `static_file` which [speeds up](https://gist.github.com/joseluisq/cb0962474210e56e768ff5671b3ddd11) SWS around `~4.37%` (req/sec) for almost the same computing.
+
+__Fixes__
+
+- [5d49c09](https://github.com/static-web-server/static-web-server/commit/5d49c09) Bugfix/security dependency updates including hyper, tokio, futures, serde, h2, listenfd, windows-service, bcrypt, chrono and other crates.
+- [06cba46](https://github.com/static-web-server/static-web-server/commit/06cba46) Compression static auto `index.html` check missing. PR [#186](https://github.com/static-web-server/static-web-server/pull/186) resolves [#178](https://github.com/static-web-server/static-web-server/issues/178) reported by [@glehmann](https://github.com/glehmann).
+
+__Features__
+
+- [40a532e](https://github.com/static-web-server/static-web-server/commit/40a532e) Nix installation support. See [docs](https://sws.joseluisq.net/download-and-install/#nixos).
+- [b9fa2bf](https://github.com/static-web-server/static-web-server/commit/b9fa2bf) Support for Tokio's `--max-blocking-threads` via new option. PR [#181](https://github.com/static-web-server/static-web-server/pull/181) by [@syrusakbary](https://github.com/syrusakbary), [@john-sharratt](https://github.com/john-sharratt).
+- [7ed7b03](https://github.com/static-web-server/static-web-server/commit/7ed7b03) Support for `.html` prefixing when a request path doesn't exist. PR [#180](https://github.com/static-web-server/static-web-server/pull/180) by [@syrusakbary](https://github.com/syrusakbary).
+- [87a0896](https://github.com/static-web-server/static-web-server/commit/87a0896) Optional `http2` Cargo feature. PR [#183](https://github.com/static-web-server/static-web-server/pull/183) by [@syrusakbary](https://github.com/syrusakbary), [@john-sharratt](https://github.com/john-sharratt).
+
+__Refactorings__
+
+- [b2cff1b](https://github.com/static-web-server/static-web-server/commit/b2cff1b) Optimize cache control headers file type detection. PR [#175](https://github.com/static-web-server/static-web-server/pull/175) by [@mfontanini](https://github.com/mfontanini).
+- [9796d35](https://github.com/static-web-server/static-web-server/commit/9796d35) Several performance optimizations and code improvements. PR [#177](https://github.com/static-web-server/static-web-server/pull/177) by [@mfontanini](https://github.com/mfontanini).
+- [22123c1](https://github.com/static-web-server/static-web-server/commit/22123c1) Make signals support optional for non-Unix/Windows targets. PR [#185](https://github.com/static-web-server/static-web-server/pull/185) by [@syrusakbary](https://github.com/syrusakbary), [@john-sharratt](https://github.com/john-sharratt).
+- [7490697](https://github.com/static-web-server/static-web-server/commit/7490697) Improve `compression_static` module's result type.
+- [7c68b8c](https://github.com/static-web-server/static-web-server/commit/7c68b8c) Improve `static_file` module's composed file metadata.
+- [200fce0](https://github.com/static-web-server/static-web-server/commit/200fce0) Enable new Cargo's `sparse` protocol on CI for devel/prod pipelines.
+- [db063e4](https://github.com/static-web-server/static-web-server/commit/db063e4) Replace unmaintained `actions-rs/clippy-check` on CI.
+
+__Docs__
+
+- [a4250fd](https://github.com/static-web-server/static-web-server/commit/a4250fd) Mention Cargo features when running or building from source.
+
+__Acknowledgments__
+
+Thanks to our new donnors [@marcusbuffett](https://github.com/marcusbuffett) and [@scottsweb](https://github.com/scottsweb) for support the project.
+
+## v2.14.2 - 2023-02-15
 
 __Fixes__
 
