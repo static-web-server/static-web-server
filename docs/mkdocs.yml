@@ -1,6 +1,6 @@
 # Project information
 site_name: Static Web Server
-site_description: 'A cross-platform, blazing fast and asynchronous web server for static files-serving ⚡'
+site_description: 'A cross-platform, high-performance and asynchronous web server for static files-serving ⚡'
 site_author: 'Jose Quintana'
 site_url: https://sws.joseluisq.net
 dev_addr: 0.0.0.0:8000
@@ -16,12 +16,12 @@ extra_css:
   - 'assets/style.css'
 
 # Copyright
-copyright: Copyright &copy; 2019-2022 Jose Quintana
+copyright: Copyright &copy; 2019-2023 Jose Quintana
 
 # Theme
 theme:
   name: 'material'
-  logo: assets/rust_logo.svg
+  logo: assets/sws_white.svg
   language: en
   include_sidebar: true
   features:

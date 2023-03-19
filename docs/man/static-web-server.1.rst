@@ -4,7 +4,7 @@ static-web-server(1)
 Name
 ----
 
-static-web-server - a blazing fast and asynchronous web server for static files-serving.
+static-web-server - About A cross-platform, high-performance and asynchronous web server for static files-serving.
 
 SYNOPSIS
 --------

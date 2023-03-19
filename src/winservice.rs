@@ -21,7 +21,8 @@ use crate::{helpers, logger, Context, Result, Server, Settings};
 const SERVICE_NAME: &str = "static-web-server";
 const SERVICE_TYPE: ServiceType = ServiceType::OWN_PROCESS;
 const SERVICE_EXE: &str = "static-web-server.exe";
-const SERVICE_DESC: &str = "A blazing fast and asynchronous web server for static files-serving";
+const SERVICE_DESC: &str =
+    "A cross-platform, high-performance and asynchronous web server for static files-serving";
 const SERVICE_DISPLAY_NAME: &str = "Static Web Server";
 
 // Generate the Windows Service boilerplate.
