@@ -155,10 +155,10 @@ struct FileMetadata<'a> {
     pub precompressed_variant: Option<(PathBuf, &'a str)>,
 }
 
-/// Returns the result of trying to append `.html` to the file path.
-/// * If the prefixed html path exists, it mutates the path to the prefixed one and returns the Metadata
-/// * If the prefixed html path doesn't exist, it reverts the path to it's original value
-fn prefix_file_html_metadata(file_path: &mut PathBuf) -> (&mut PathBuf, Option<Metadata>) {
+/// Returns the result of trying to append a `.html` to the file path.
+/// * If the suffixed html path exists, it mutates the path to the suffixed one and returns the `Metadata`
+/// * If the suffixed html path doesn't exist, it reverts the path to it's original value
+fn suffix_file_html_metadata(file_path: &mut PathBuf) -> (&mut PathBuf, Option<Metadata>) {
     tracing::debug!("file: appending .html to the path");
     if let Some(filename) = file_path.file_name() {
         let owned_filename = filename.to_os_string();
@@ -216,7 +216,7 @@ async fn composed_file_metadata<'a>(
                     // We remove the appended index.html
                     file_path.pop();
                     let new_meta: Option<Metadata>;
-                    (file_path, new_meta) = prefix_file_html_metadata(file_path);
+                    (file_path, new_meta) = suffix_file_html_metadata(file_path);
                     if let Some(new_meta) = new_meta {
                         metadata = new_meta;
                     } else {
@@ -265,7 +265,7 @@ async fn composed_file_metadata<'a>(
             // we try to find the path suffixed with `.html`.
             // For example: `/posts/article` will fallback to `/posts/article.html`
             let new_meta: Option<Metadata>;
-            (file_path, new_meta) = prefix_file_html_metadata(file_path);
+            (file_path, new_meta) = suffix_file_html_metadata(file_path);
             match new_meta {
                 Some(new_meta) => {
                     return Ok(FileMetadata {
@@ -276,7 +276,7 @@ async fn composed_file_metadata<'a>(
                     })
                 }
                 _ => {
-                    // Last pre-compressed variant check or the prefixed file not found
+                    // Last pre-compressed variant check or the suffixed file not found
                     if compression_static {
                         if let Some(p) =
                             compression_static::precompressed_variant(file_path, headers).await
