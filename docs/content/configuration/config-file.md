@@ -85,7 +85,7 @@ ignore-hidden-files = false
 #### instead, it just tells SWS to run in a Windows Service context,
 #### so it's necessary to install the SWS Windows Service first
 #### using the `static-web-server.exe -w config.toml install` command.
-#### More details on https://sws.joseluisq.net/features/windows-service/
+#### More details on https://static-web-server.net/features/windows-service/
 # windows-service = false
 
 

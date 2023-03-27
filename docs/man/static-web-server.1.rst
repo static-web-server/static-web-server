@@ -106,7 +106,7 @@ VERSION
 
 HOMEPAGE
 --------
-https://sws.joseluisq.net
+https://static-web-server.net
 
 
 REPORTING BUGS

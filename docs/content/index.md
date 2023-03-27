@@ -14,7 +14,7 @@
 <a href="https://hub.docker.com/r/joseluisq/static-web-server/" title="Docker Image Version (tag latest semver)"><img src="https://img.shields.io/docker/v/joseluisq/static-web-server/2"></a> 
 <a href="https://hub.docker.com/r/joseluisq/static-web-server/tags" title="Docker Image Size (tag)"><img src="https://img.shields.io/docker/image-size/joseluisq/static-web-server/2"></a> 
 <a href="https://hub.docker.com/r/joseluisq/static-web-server/" title="Docker Image"><img src="https://img.shields.io/docker/pulls/joseluisq/static-web-server.svg"></a> 
-<a href="https://sws.joseluisq.net" title="Documentation"><img src="https://img.shields.io/badge/docs-latest-green"></a>
+<a href="https://static-web-server.net" title="Documentation"><img src="https://img.shields.io/badge/docs-latest-green"></a>
 </div>
 </div>
 

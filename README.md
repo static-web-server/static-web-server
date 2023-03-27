@@ -1,7 +1,7 @@
 <div>
   <div align="center">
     <img
-      src="https://sws.joseluisq.net/assets/sws.svg" height="100" width="100"
+      src="https://static-web-server.net/assets/sws.svg" height="100" width="100"
     />
   </div>
 
@@ -16,7 +16,7 @@
 <a href="https://hub.docker.com/r/joseluisq/static-web-server/" title="Docker Image Version (tag latest semver)"><img src="https://img.shields.io/docker/v/joseluisq/static-web-server/2"></a> 
 <a href="https://hub.docker.com/r/joseluisq/static-web-server/tags" title="Docker Image Size (tag)"><img src="https://img.shields.io/docker/image-size/joseluisq/static-web-server/2"></a> 
 <a href="https://hub.docker.com/r/joseluisq/static-web-server/" title="Docker Image"><img src="https://img.shields.io/docker/pulls/joseluisq/static-web-server.svg"></a> 
-<a href="https://sws.joseluisq.net" title="Documentation"><img src="https://img.shields.io/badge/docs-latest-green"></a>
+<a href="https://static-web-server.net" title="Documentation"><img src="https://img.shields.io/badge/docs-latest-green"></a>
 </div>
 </div>
 
@@ -64,13 +64,13 @@ It's cross-platform and available for `Linux`, `macOS`, `Windows` and `FreeBSD` 
 
 ## Documentation
 
-For more details about the API, usage and examples please have a look at [The Documentation Website](https://sws.joseluisq.net/).
+For more details about the API, usage and examples please have a look at [The Documentation Website](https://static-web-server.net/).
 
 ## Releases
 
 - [Docker Images](https://hub.docker.com/r/joseluisq/static-web-server/)
 - [Release Binaries](https://github.com/static-web-server/static-web-server/releases)
-- [Platforms/Architectures Supported](https://sws.joseluisq.net/platforms-architectures/)
+- [Platforms/Architectures Supported](https://static-web-server.net/platforms-architectures/)
 
 ## Benchmarks
 
@@ -81,7 +81,7 @@ See more details on [benchmark/BENCHMARKS.md](benchmark/BENCHMARKS.md)
 ## Notes
 
 - If you're looking for `v1` please go to [1.x](https://github.com/static-web-server/static-web-server/tree/1.x) branch.
-- If you want to migrate from `v1` to `v2` please take a look at [Migrating from `v1` to `v2`](https://sws.joseluisq.net/migration/) release.
+- If you want to migrate from `v1` to `v2` please take a look at [Migrating from `v1` to `v2`](https://static-web-server.net/migration/) release.
 
 ## Contributions
 

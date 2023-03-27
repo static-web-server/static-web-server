@@ -2,7 +2,7 @@
 site_name: Static Web Server
 site_description: 'A cross-platform, high-performance and asynchronous web server for static files-serving ⚡'
 site_author: 'Jose Quintana'
-site_url: https://sws.joseluisq.net
+site_url: https://static-web-server.net
 dev_addr: 0.0.0.0:8000
 
 # Repository

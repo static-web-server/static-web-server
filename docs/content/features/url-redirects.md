@@ -47,6 +47,6 @@ kind = 301
 
 [[advanced.redirects]]
 source = "/index.html"
-destination = "https://sws.joseluisq.net"
+destination = "https://static-web-server.net"
 kind = 302
 ```
