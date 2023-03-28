@@ -1,5 +1,7 @@
-// CORS handler for incoming requests.
-// -> Part of the file is borrowed from https://github.com/seanmonstar/warp/blob/master/src/filters/cors.rs
+//! CORS module to handle incoming requests.
+//!
+
+// Part of the file is borrowed from https://github.com/seanmonstar/warp/blob/master/src/filters/cors.rs
 
 use headers::{
     AccessControlAllowHeaders, AccessControlAllowMethods, AccessControlExposeHeaders, HeaderMapExt,
@@ -136,13 +138,6 @@ impl Cors {
             });
 
         self.origins.get_or_insert_with(HashSet::new).extend(iter);
-        self
-    }
-
-    /// Sets the `Access-Control-Max-Age` header.
-    /// TODO: we could enable this in the future.
-    pub fn max_age(mut self, seconds: impl Seconds) -> Self {
-        self.max_age = Some(seconds.seconds());
         self
     }
 
@@ -327,22 +322,6 @@ impl Configured {
         if let Some(max_age) = self.cors.max_age {
             headers.insert(header::ACCESS_CONTROL_MAX_AGE, max_age.into());
         }
-    }
-}
-
-pub trait Seconds {
-    fn seconds(self) -> u64;
-}
-
-impl Seconds for u32 {
-    fn seconds(self) -> u64 {
-        self.into()
-    }
-}
-
-impl Seconds for ::std::time::Duration {
-    fn seconds(self) -> u64 {
-        self.as_secs()
     }
 }
 

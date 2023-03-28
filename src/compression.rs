@@ -1,5 +1,7 @@
-// Compression handler that compress the body of a response.
-// -> Part of the file is borrowed from https://github.com/seanmonstar/warp/pull/513
+//! Auto-compression module to compress responses body.
+//!
+
+// Part of the file is borrowed from <https://github.com/seanmonstar/warp/pull/513>*
 
 use async_compression::tokio::bufread::{BrotliEncoder, DeflateEncoder, GzipEncoder};
 use bytes::Bytes;

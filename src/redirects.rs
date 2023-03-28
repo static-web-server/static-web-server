@@ -1,3 +1,6 @@
+//! Redirection module to handle config redirect URLs with pattern matching support.
+//!
+
 use hyper::StatusCode;
 
 use crate::settings::Redirects;

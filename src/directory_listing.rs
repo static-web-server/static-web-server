@@ -1,3 +1,6 @@
+//! It provides directory listig and auto-index support.
+//!
+
 use chrono::{DateTime, Local, NaiveDateTime, Utc};
 use futures_util::future::Either;
 use futures_util::{future, FutureExt};

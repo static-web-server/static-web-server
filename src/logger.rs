@@ -1,3 +1,6 @@
+//! Provides logging initialization for the web server.
+//!
+
 use tracing::Level;
 use tracing_subscriber::fmt::format::FmtSpan;
 

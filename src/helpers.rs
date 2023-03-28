@@ -15,21 +15,6 @@ where
     }
 }
 
-/// Get the directory name of a valid directory path.
-pub fn get_dirname<P: AsRef<Path>>(path: P) -> Result<String>
-where
-    PathBuf: From<P>,
-{
-    let path = get_valid_dirpath(path)?;
-    match path.iter().last() {
-        Some(v) => Ok(v.to_str().unwrap().to_owned()),
-        _ => bail!(
-            "directory name for path {} was not determined",
-            path.display()
-        ),
-    }
-}
-
 /// Read the entire contents of a file into a bytes vector.
 pub fn read_bytes(path: &Path) -> Result<Vec<u8>> {
     fs::read(path).with_context(|| format!("failed to read file `{}`", path.display()))

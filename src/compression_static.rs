@@ -1,3 +1,6 @@
+//! Compression static module to serve compressed files directly from the file system.
+//!
+
 use headers::{ContentCoding, HeaderMap, HeaderValue};
 use std::{
     ffi::OsStr,

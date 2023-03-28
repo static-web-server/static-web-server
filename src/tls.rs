@@ -1,5 +1,7 @@
-// Handles requests over TLS
-// -> Most of the file is borrowed from https://github.com/seanmonstar/warp/blob/master/src/tls.rs
+//! The module handles requests over TLS via [Rustls](tokio_rustls::rustls).
+//!
+
+// Most of the file is borrowed from https://github.com/seanmonstar/warp/blob/master/src/tls.rs
 
 use futures_util::ready;
 use hyper::server::accept::Accept;

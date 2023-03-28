@@ -1,3 +1,6 @@
+//! Basic HTTP Authorization Schema module.
+//!
+
 use bcrypt::verify as bcrypt_verify;
 use headers::{authorization::Basic, Authorization, HeaderMapExt};
 use hyper::StatusCode;

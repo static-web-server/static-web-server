@@ -1,3 +1,6 @@
+//! Request handler module intended to manage incoming HTTP requests.
+//!
+
 use headers::HeaderValue;
 use hyper::{header::WWW_AUTHENTICATE, Body, Request, Response, StatusCode};
 use std::{future::Future, net::IpAddr, net::SocketAddr, path::PathBuf, sync::Arc};

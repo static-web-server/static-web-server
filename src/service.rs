@@ -1,3 +1,6 @@
+//! The module provides a custom [Hyper service](hyper::service::Service).
+//!
+
 use hyper::{service::Service, Body, Request, Response};
 use std::convert::Infallible;
 use std::future::{ready, Future, Ready};

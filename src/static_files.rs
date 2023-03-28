@@ -1,7 +1,8 @@
-//! Static File handler
+//! The static file module which powers the web server.
 //!
-//! Part of the file is borrowed and adapted at a convenience from
-//! <https://github.com/seanmonstar/warp/blob/master/src/filters/fs.rs>
+
+// Part of the file is borrowed and adapted at a convenience from
+// https://github.com/seanmonstar/warp/blob/master/src/filters/fs.rs
 
 use bytes::{Bytes, BytesMut};
 use futures_util::future::{Either, Future};

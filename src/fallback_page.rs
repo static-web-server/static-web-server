@@ -1,3 +1,6 @@
+//! Fallback page module useful for a custom page default.
+//!
+
 use headers::{AcceptRanges, ContentLength, ContentType, HeaderMapExt};
 use hyper::{Body, Response, StatusCode};
 use mime_guess::mime;

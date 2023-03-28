@@ -55,12 +55,13 @@
 #![deny(rust_2018_idioms)]
 #![deny(dead_code)]
 
+// Extern crates
 #[macro_use]
 extern crate anyhow;
-
 #[macro_use]
 extern crate serde;
 
+// Public modules
 pub mod basic_auth;
 pub mod compression;
 pub mod compression_static;
@@ -72,7 +73,6 @@ pub mod error_page;
 pub mod exts;
 pub mod fallback_page;
 pub mod handler;
-pub mod helpers;
 pub mod logger;
 pub mod redirects;
 pub mod rewrites;
@@ -86,13 +86,15 @@ pub mod static_files;
 #[cfg(feature = "tls")]
 pub mod tls;
 pub mod transport;
-
 #[cfg(windows)]
 pub mod winservice;
-
 #[macro_use]
 pub mod error;
 
+// Private modules
+mod helpers;
+
+// Re-exports
 pub use error::*;
 pub use server::Server;
 pub use settings::Settings;

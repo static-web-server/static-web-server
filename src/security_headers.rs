@@ -1,3 +1,6 @@
+//! The module provides several HTTP security headers support.
+//!
+
 use http::header::{
     CONTENT_SECURITY_POLICY, STRICT_TRANSPORT_SECURITY, X_CONTENT_TYPE_OPTIONS, X_FRAME_OPTIONS,
     X_XSS_PROTECTION,

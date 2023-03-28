@@ -1,3 +1,6 @@
+//! Useful error type re-exports based on [anyhow][mod@anyhow].
+//!
+
 /// Just a `anyhow::Result` type alias.
 pub type Result<T = (), E = anyhow::Error> = anyhow::Result<T, E>;
 

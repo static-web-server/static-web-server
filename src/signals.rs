@@ -1,3 +1,6 @@
+//! The module provides signals support like `SIGTERM`, `SIGINT` and `SIGQUIT`.
+//!
+
 use tokio::time::{sleep, Duration};
 
 #[cfg(unix)]

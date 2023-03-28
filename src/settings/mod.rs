@@ -1,3 +1,6 @@
+//! Module that provides all settings of SWS.
+//!
+
 use globset::{Glob, GlobMatcher};
 use headers::HeaderMap;
 use hyper::StatusCode;

@@ -1,5 +1,7 @@
-// Handles requests over TLS
-// -> Most of the file is borrowed from https://github.com/seanmonstar/warp/blob/master/src/transport.rs
+//! Async transport module.
+//!
+
+// Most of the file is borrowed from https://github.com/seanmonstar/warp/blob/master/src/transport.rs
 
 use std::io;
 use std::net::SocketAddr;

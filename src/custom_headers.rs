@@ -1,3 +1,6 @@
+//! Module to append custom HTTP headers via TOML config file.
+//!
+
 use hyper::{Body, Response};
 
 use crate::settings::Headers;
