@@ -6,26 +6,44 @@ license = "MIT OR Apache-2.0"
 description = "A cross-platform, high-performance and asynchronous web server for static files-serving."
 repository = "https://github.com/static-web-server/static-web-server"
 readme = "README.md"
+homepage = "https://static-web-server.net"
 keywords = [
     "static-web-server",
     "file-server",
     "http-server",
-    "docker-image",
     "musl-libc",
     "x86",
     "x86-64",
+    "arm",
     "arm64",
     "linux",
     "darwin",
+    "freebsd",
     "windows",
 ]
 categories = ["network-programming", "web-programming::http-server"]
 edition = "2021"
-include = ["src/**/*", "Cargo.toml", "Cargo.lock"]
+include = [
+    "src/**/*.rs",
+    "Cargo.toml",
+    "README.md",
+    "LICENSE-MIT",
+    "LICENSE-APACHE"
+]
+autotests = true
+autoexamples = true
+
+[package.metadata.docs.rs]
+all-features = true
+
+[lib]
+name = "static_web_server"
+path = "src/lib.rs"
 
 [[bin]]
 name = "static-web-server"
 path = "src/bin/server.rs"
+doc = false
 
 [features]
 default = ["http2"]

@@ -1,7 +1,7 @@
 //! Static File handler
 //!
 //! Part of the file is borrowed and adapted at a convenience from
-//! https://github.com/seanmonstar/warp/blob/master/src/filters/fs.rs
+//! <https://github.com/seanmonstar/warp/blob/master/src/filters/fs.rs>
 
 use bytes::{Bytes, BytesMut};
 use futures_util::future::{Either, Future};

@@ -1,3 +1,55 @@
+//! # Static Web Server
+//!
+//! A cross-platform, high-performance and asynchronous web server for static files-serving.
+//!
+//! **Pre-compile binaries:**
+//! > This is the official SWS library version published as a crate. <br/>
+//! > If you're looking for platform pre-compile binaries then take a look at [static-web-server.net/download-and-install](https://static-web-server.net/download-and-install).
+//!
+//! ## Overview
+//!
+//! **Static Web Server** (or **`SWS`** abbreviated) is a very small and fast production-ready web server suitable to serve static web files or assets.
+//!
+//! It is focused on **lightness and easy-to-use** principles while keeping [high performance and safety](https://blog.rust-lang.org/2015/04/10/Fearless-Concurrency.html) powered by [The Rust Programming Language](https://rust-lang.org).
+//!
+//! Written on top of [Hyper](https://github.com/hyperium/hyper) and [Tokio](https://github.com/tokio-rs/tokio) runtime. It provides [concurrent and asynchronous networking abilities](https://rust-lang.github.io/async-book/01_getting_started/02_why_async.html) as well as the latest HTTP/1 - HTTP/2 implementations.
+//!
+//! It's cross-platform and available for `Linux`, `macOS`, `Windows` and `FreeBSD` (`x86`/`x86_64`,  `ARM`/`ARM64`) as well as `Docker`.
+//!
+//! ![static-web-server](https://user-images.githubusercontent.com/1700322/152613820-658f025c-d0a4-46b3-aa6d-bdc7f638ce77.png)
+//!
+//! ## Features
+//!
+//! - Built with [Rust](https://rust-lang.org) which is focused on [safety, speed and concurrency](https://kornel.ski/rust-c-speed).
+//! - Memory safe and very reduced CPU and RAM overhead.
+//! - Blazing fast static files-serving and asynchronous powered by latest [Hyper](https://github.com/hyperium/hyper/), [Tokio](https://github.com/tokio-rs/tokio) and a set of [awesome crates](https://github.com/static-web-server/static-web-server/blob/master/Cargo.toml).
+//! - Single __4MB__ (uncompressed) and fully static binary with no dependencies ([Musl libc](https://doc.rust-lang.org/edition-guide/rust-2018/platform-and-target-support/musl-support-for-fully-static-binaries.html)). Suitable for running on [any Linux distro](https://en.wikipedia.org/wiki/Linux_distribution) or [Docker container](https://hub.docker.com/r/joseluisq/static-web-server/tags).
+//! - Optional GZip, Deflate or Brotli compression for text-based web files only.
+//! - Compression on-demand via [Accept-Encoding](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Accept-Encoding) header.
+//! - [Partial Content Delivery](https://en.wikipedia.org/wiki/Byte_serving) support for byte-serving of large files.
+//! - Optional [Cache-Control](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Cache-Control) headers for assets.
+//! - [Termination signal](https://www.gnu.org/software/libc/manual/html_node/Termination-Signals.html) handling with [graceful shutdown](https://cloud.google.com/blog/products/containers-kubernetes/kubernetes-best-practices-terminating-with-grace) ability and grace period.
+//! - [HTTP/2](https://tools.ietf.org/html/rfc7540) and TLS support.
+//! - [Security headers](https://web.dev/security-headers/) for HTTP/2 by default.
+//! - [HEAD](https://tools.ietf.org/html/rfc7231#section-4.3.2) responses.
+//! - Lightweight and configurable logging via [tracing](https://github.com/tokio-rs/tracing) crate.
+//! - Customizable number of worker threads.
+//! - Optional directory listing.
+//! - [CORS](https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS) support.
+//! - Basic HTTP Authentication.
+//! - Customizable HTTP response headers for specific file requests via glob patterns.
+//! - Fallback pages for 404 errors, useful for Single-page applications.
+//! - Run the server as a [Windows Service](https://docs.microsoft.com/en-us/previous-versions/windows/it-pro/windows-server-2003/cc783643(v=ws.10)).
+//! - Configurable using CLI arguments, environment variables or a TOML file.
+//! - Default and custom error pages.
+//! - Custom URL rewrites and redirects via glob patterns.
+//! - Support for serving pre-compressed (Gzip/Brotli) files.
+//! - First-class [Docker](https://docs.docker.com/get-started/overview/) support. [Scratch](https://hub.docker.com/_/scratch) and latest [Alpine Linux](https://hub.docker.com/_/alpine) Docker images.
+//! - Ability to accept a socket listener as a file descriptor for use in sandboxing and on-demand applications (E.g [systemd](http://0pointer.de/blog/projects/socket-activation.html)).
+//! - Cross-platform. Pre-compiled binaries for Linux, macOS, Windows and FreeBSD (`x86`,`x86_64`,`ARM`,`ARM64`).
+//!
+
+// #![deny(missing_docs)]
 #![forbid(unsafe_code)]
 #![deny(warnings)]
 #![deny(rust_2018_idioms)]

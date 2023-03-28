@@ -158,8 +158,8 @@ pub fn create_encoding_header(existing: Option<HeaderValue>, coding: ContentCodi
     coding.into()
 }
 
-/// A wrapper around any type that implements [`Stream`](futures::Stream) to be
-/// compatible with async_compression's Stream based encoders.
+/// A wrapper around any type that implements [`Stream`](futures_util::Stream) to be
+/// compatible with async_compression's `Stream` based encoders.
 #[pin_project]
 #[derive(Debug)]
 pub struct CompressableBody<S, E>

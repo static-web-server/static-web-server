@@ -9,7 +9,7 @@ on:
 jobs:
   check-secret:
     runs-on: ubuntu-latest
-    environment: crates-io-libsws
+    environment: crates-io-static-web-server
     outputs:
       publish: ${{ steps.check.outputs.publish }}
     steps:
@@ -205,7 +205,7 @@ jobs:
     needs: test
     if: needs.check-secret.outputs.publish == 'true'
     runs-on: ubuntu-latest
-    environment: crates-io-libsws
+    environment: crates-io-static-web-server
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -217,6 +217,6 @@ jobs:
 
       - name: Publish workspace packages
         run: |
-          cargo publish -p libsws
+          cargo publish -p static-web-server
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_TOKEN }}
