@@ -12,8 +12,11 @@ use crate::{compression, static_files::file_metadata};
 
 /// It defines the pre-compressed file variant metadata of a particular file path.
 pub struct CompressedFileVariant<'a> {
+    /// Current file path.
     pub file_path: PathBuf,
+    /// The metadata of the current file.
     pub metadata: Metadata,
+    /// The file extension.
     pub extension: &'a str,
 }
 

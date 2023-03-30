@@ -206,6 +206,7 @@ impl Default for Cors {
 }
 
 #[derive(Clone, Debug)]
+/// CORS is configurated.
 pub struct Configured {
     cors: Cors,
     allowed_headers: AccessControlAllowHeaders,
@@ -214,16 +215,24 @@ pub struct Configured {
 }
 
 #[derive(Debug)]
+/// Validated CORS request.
 pub enum Validated {
+    /// Validated as preflight.
     Preflight(HeaderValue),
+    /// Validated as simple.
     Simple(HeaderValue),
+    /// Validated as not cors.
     NotCors,
 }
 
 #[derive(Debug)]
+/// Forbidden errors.
 pub enum Forbidden {
+    /// Forbidden error origin.
     Origin,
+    /// Forbidden error method.
     Method,
+    /// Forbidden error header.
     Header,
 }
 
@@ -234,6 +243,7 @@ impl Default for Forbidden {
 }
 
 impl Configured {
+    /// Check for the incoming CORS request.
     pub fn check_request(
         &self,
         method: &http::Method,
@@ -294,19 +304,19 @@ impl Configured {
         }
     }
 
-    pub fn is_method_allowed(&self, header: &HeaderValue) -> bool {
+    fn is_method_allowed(&self, header: &HeaderValue) -> bool {
         http::Method::from_bytes(header.as_bytes())
             .map(|method| self.cors.allowed_methods.contains(&method))
             .unwrap_or(false)
     }
 
-    pub fn is_header_allowed(&self, header: &str) -> bool {
+    fn is_header_allowed(&self, header: &str) -> bool {
         HeaderName::from_bytes(header.as_bytes())
             .map(|header| self.cors.allowed_headers.contains(&header))
             .unwrap_or(false)
     }
 
-    pub fn is_origin_allowed(&self, origin: &HeaderValue) -> bool {
+    fn is_origin_allowed(&self, origin: &HeaderValue) -> bool {
         if let Some(ref allowed) = self.cors.origins {
             allowed.contains(origin)
         } else {
@@ -325,7 +335,9 @@ impl Configured {
     }
 }
 
+/// Cast values into the origin header.
 pub trait IntoOrigin {
+    /// Cast actual value into an origin header.
     fn into_origin(self) -> Origin;
 }
 

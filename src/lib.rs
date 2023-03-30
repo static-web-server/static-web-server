@@ -1,10 +1,24 @@
-//! # Static Web Server
+//! # Static Web Server (SWS)
 //!
-//! A cross-platform, high-performance and asynchronous web server for static files-serving.
+//! SWS is a cross-platform, high-performance and asynchronous web server for static files-serving.
+//!
+//! **Considerations:**
+//!
+//! This crate was published to make it possible for users to embed SWS with ease instead of working around it via forks.
+//! For example, allowing users to turn off default features like `tls` and so on.
+//!
+//! **However**, because the library is highly coupled with the SWS binary project at this point,
+//! users might be limited by the exposed APIs, implementations, missing functionality, or dependencies.
+//!
+//! In the future, we will eventually plan to make SWS library independent from the binary project.
+//!
+//! That said, if fine-grained control and flexibility are needed then you could want to look at other alternatives like HTTP libraries or frameworks.
 //!
 //! **Pre-compile binaries:**
-//! > This is the official SWS library version published as a crate. <br/>
-//! > If you're looking for platform pre-compile binaries then take a look at [static-web-server.net/download-and-install](https://static-web-server.net/download-and-install).
+//!
+//! This is the official SWS crate.
+//! If you are looking for platform pre-compile binaries then
+//! take a look at [static-web-server.net/download-and-install](https://static-web-server.net/download-and-install).
 //!
 //! ## Overview
 //!
@@ -49,7 +63,7 @@
 //! - Cross-platform. Pre-compiled binaries for Linux, macOS, Windows and FreeBSD (`x86`,`x86_64`,`ARM`,`ARM64`).
 //!
 
-// #![deny(missing_docs)]
+#![deny(missing_docs)]
 #![forbid(unsafe_code)]
 #![deny(warnings)]
 #![deny(rust_2018_idioms)]

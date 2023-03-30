@@ -105,7 +105,7 @@ impl Server {
 
         // Config file option
         if let Some(config_file) = general.config_file {
-            let config_file = helpers::adjust_canonicalization(config_file);
+            let config_file = helpers::adjust_canonicalization(&config_file);
             tracing::info!("config file: {}", config_file);
         }
 

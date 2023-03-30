@@ -25,6 +25,7 @@ use crate::transport::Transport;
 /// Represents errors that can occur building the TlsConfig
 #[derive(Debug)]
 pub enum TlsConfigError {
+    /// Error type for I/O operations
     Io(io::Error),
     /// An Error parsing the Certificate
     CertParseError,
@@ -170,6 +171,7 @@ impl TlsConfigBuilder {
         self
     }
 
+    /// Builds TLS configuration.
     pub fn build(mut self) -> Result<ServerConfig, TlsConfigError> {
         let mut cert_rdr = BufReader::new(self.cert);
         let cert = rustls_pemfile::certs(&mut cert_rdr)
@@ -286,9 +288,10 @@ enum State {
     Streaming(tokio_rustls::server::TlsStream<AddrStream>),
 }
 
-// tokio_rustls::server::TlsStream doesn't expose constructor methods,
-// so we have to TlsAcceptor::accept and handshake to have access to it
-// TlsStream implements AsyncRead/AsyncWrite handshaking tokio_rustls::Accept first
+/// TlsStream implements AsyncRead/AsyncWrite handshaking tokio_rustls::Accept first.
+///
+/// tokio_rustls::server::TlsStream doesn't expose constructor methods,
+/// so we have to TlsAcceptor::accept and handshake to have access to it.
 pub struct TlsStream {
     state: State,
     remote_addr: SocketAddr,
@@ -361,12 +364,14 @@ impl AsyncWrite for TlsStream {
     }
 }
 
+/// Type to intercept Tls incoming connections.
 pub struct TlsAcceptor {
     config: Arc<ServerConfig>,
     incoming: AddrIncoming,
 }
 
 impl TlsAcceptor {
+    /// Creates a new Tls interceptor.
     pub fn new(config: ServerConfig, incoming: AddrIncoming) -> TlsAcceptor {
         TlsAcceptor {
             config: Arc::new(config),
