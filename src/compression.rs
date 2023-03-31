@@ -1,5 +1,7 @@
-// Compression handler that compress the body of a response.
-// -> Part of the file is borrowed from https://github.com/seanmonstar/warp/pull/513
+//! Auto-compression module to compress responses body.
+//!
+
+// Part of the file is borrowed from <https://github.com/seanmonstar/warp/pull/513>*
 
 use async_compression::tokio::bufread::{BrotliEncoder, DeflateEncoder, GzipEncoder};
 use bytes::Bytes;
@@ -158,8 +160,8 @@ pub fn create_encoding_header(existing: Option<HeaderValue>, coding: ContentCodi
     coding.into()
 }
 
-/// A wrapper around any type that implements [`Stream`](futures::Stream) to be
-/// compatible with async_compression's Stream based encoders.
+/// A wrapper around any type that implements [`Stream`](futures_util::Stream) to be
+/// compatible with async_compression's `Stream` based encoders.
 #[pin_project]
 #[derive(Debug)]
 pub struct CompressableBody<S, E>

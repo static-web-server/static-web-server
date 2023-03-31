@@ -4,6 +4,7 @@ use std::path::{Component, Path};
 
 /// SWS Path extensions trait.
 pub trait PathExt {
+    /// If file path is hidden.
     fn is_hidden(&self) -> bool;
 }
 

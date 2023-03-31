@@ -1,4 +1,5 @@
 //! Module that lets SWS to run in a "Windows Service" context
+//!
 
 use std::ffi::OsString;
 use std::thread;
@@ -181,7 +182,7 @@ pub fn install_service(config_file: Option<PathBuf>) -> Result {
 
     // Append a `--config-file` path to the binary arguments if present
     if let Some(f) = config_file {
-        let f = helpers::adjust_canonicalization(f);
+        let f = helpers::adjust_canonicalization(&f);
         if !f.is_empty() {
             service_binary_arguments.push(OsString::from(["--config-file=", &f].concat()));
         }

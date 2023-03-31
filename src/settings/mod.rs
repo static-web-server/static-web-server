@@ -1,3 +1,6 @@
+//! Module that provides all settings of SWS.
+//!
+
 use globset::{Glob, GlobMatcher};
 use headers::HeaderMap;
 use hyper::StatusCode;
@@ -41,8 +44,11 @@ pub struct Redirects {
 
 /// The `advanced` file options.
 pub struct Advanced {
+    /// Headers list.
     pub headers: Option<Vec<Headers>>,
+    /// Rewrites list.
     pub rewrites: Option<Vec<Rewrites>>,
+    /// Redirects list.
     pub redirects: Option<Vec<Redirects>>,
 }
 

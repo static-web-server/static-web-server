@@ -11,15 +11,22 @@ use crate::{helpers, Context, Result};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "kebab-case")]
+/// Log level variants.
 pub enum LogLevel {
+    /// Error log level.
     Error,
+    /// Warn log level.
     Warn,
+    /// Info log level.
     Info,
+    /// Debug log level.
     Debug,
+    /// Trace log level.
     Trace,
 }
 
 impl LogLevel {
+    /// Get log level name.
     pub fn name(&self) -> &'static str {
         match self {
             LogLevel::Error => "error",
@@ -33,14 +40,18 @@ impl LogLevel {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "kebab-case")]
+/// Represents an HTTP headers map.
 pub struct Headers {
+    /// Header source.
     pub source: String,
     #[serde(rename(deserialize = "headers"), with = "http_serde::header_map")]
+    /// headers list.
     pub headers: HeaderMap,
 }
 
 #[derive(Debug, Serialize_repr, Deserialize_repr, Clone)]
 #[repr(u16)]
+/// Represents redirects types.
 pub enum RedirectsKind {
     /// Moved Permanently
     Permanent = 301,
@@ -50,16 +61,23 @@ pub enum RedirectsKind {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "kebab-case")]
+/// Represents redirects types.
 pub struct Redirects {
+    /// Source of the redirect.
     pub source: String,
+    /// Redirect destination.
     pub destination: String,
+    /// Redirect type.
     pub kind: RedirectsKind,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "kebab-case")]
+/// Represents rewrites types.
 pub struct Rewrites {
+    /// Source of the rewrite.
     pub source: String,
+    /// Rewrite destination.
     pub destination: String,
 }
 
@@ -67,11 +85,11 @@ pub struct Rewrites {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "kebab-case")]
 pub struct Advanced {
-    // Headers
+    /// Headers
     pub headers: Option<Vec<Headers>>,
-    // Rewrites
+    /// Rewrites
     pub rewrites: Option<Vec<Rewrites>>,
-    // Redirects
+    /// Redirects
     pub redirects: Option<Vec<Redirects>>,
 }
 
@@ -80,70 +98,86 @@ pub struct Advanced {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "kebab-case")]
 pub struct General {
-    // Address & Root dir
+    /// Server address.
     pub host: Option<String>,
+    /// Server port.
     pub port: Option<u16>,
+    /// Root directory path.
     pub root: Option<PathBuf>,
 
-    // Logging
+    /// Logging.
     pub log_level: Option<LogLevel>,
 
-    // Cache Control headers
+    /// Cache Control headers.
     pub cache_control_headers: Option<bool>,
 
-    // Compression
+    /// Compression.
     pub compression: Option<bool>,
 
-    // Check for a pre-compressed file on disk
+    /// Check for a pre-compressed file on disk.
     pub compression_static: Option<bool>,
 
-    // Error pages
+    /// Error 404 pages.
     pub page404: Option<PathBuf>,
+    /// Error 50x pages.
     pub page50x: Option<PathBuf>,
 
-    // HTTP/2 + TLS
+    /// HTTP/2 + TLS.
     #[cfg(feature = "http2")]
     pub http2: Option<bool>,
+    /// Http2 tls certificate feature.
     #[cfg(feature = "http2")]
     pub http2_tls_cert: Option<PathBuf>,
+    /// Http2 tls key feature.
     #[cfg(feature = "http2")]
     pub http2_tls_key: Option<PathBuf>,
 
-    // Security headers
+    /// Security headers.
     pub security_headers: Option<bool>,
 
-    // CORS
+    /// Cors allow origins feature.
     pub cors_allow_origins: Option<String>,
+    /// Cors allow headers feature.
     pub cors_allow_headers: Option<String>,
+    /// Cors expose headers feature.
     pub cors_expose_headers: Option<String>,
 
-    // Directory listing
+    /// Directory listing feature.
     pub directory_listing: Option<bool>,
+    /// Directory listing order feature.
     pub directory_listing_order: Option<u8>,
+    /// Directory listing format feature.
     pub directory_listing_format: Option<DirListFmt>,
 
-    // Basich Authentication
+    /// Basich Authentication feature.
     pub basic_auth: Option<String>,
 
-    // File descriptor binding
+    /// File descriptor binding feature.
     pub fd: Option<usize>,
 
-    // Worker threads
+    /// Worker threads.
     pub threads_multiplier: Option<usize>,
 
+    /// Max blocking threads feature.
     pub max_blocking_threads: Option<usize>,
 
+    /// Grace period feature.
     pub grace_period: Option<u8>,
 
+    /// Page fallback feature.
     pub page_fallback: Option<PathBuf>,
 
+    /// Log remote address feature.
     pub log_remote_address: Option<bool>,
 
+    /// Redirect trailing slash feature.
     pub redirect_trailing_slash: Option<bool>,
 
+    /// Ignore hidden files feature.
     pub ignore_hidden_files: Option<bool>,
 
     #[cfg(windows)]
+    /// windows service feature.
     pub windows_service: Option<bool>,
 }
 
@@ -151,7 +185,9 @@ pub struct General {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "kebab-case")]
 pub struct Settings {
+    /// General settings.
     pub general: Option<General>,
+    /// Advanced settings.
     pub advanced: Option<Advanced>,
 }
 

@@ -1,3 +1,6 @@
+//! Module that allows to rewrite request URLs with pattern matching support.
+//!
+
 use crate::settings::Rewrites;
 
 /// It returns a rewrite's destination path if the current request uri

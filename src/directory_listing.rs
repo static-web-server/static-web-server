@@ -1,3 +1,8 @@
+//! It provides directory listig and auto-index support.
+//!
+
+#![allow(missing_docs)]
+
 use chrono::{DateTime, Local, NaiveDateTime, Utc};
 use futures_util::future::Either;
 use futures_util::{future, FutureExt};

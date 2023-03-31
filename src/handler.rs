@@ -1,3 +1,6 @@
+//! Request handler module intended to manage incoming HTTP requests.
+//!
+
 use headers::HeaderValue;
 use hyper::{header::WWW_AUTHENTICATE, Body, Request, Response, StatusCode};
 use std::{future::Future, net::IpAddr, net::SocketAddr, path::PathBuf, sync::Arc};
@@ -16,29 +19,46 @@ use crate::{
 /// It defines options for a request handler.
 pub struct RequestHandlerOpts {
     // General options
+    /// Root directory of static files.
     pub root_dir: PathBuf,
+    /// Compression feature.
     pub compression: bool,
+    /// Compression static feature.
     pub compression_static: bool,
+    /// Directory listing feature.
     pub dir_listing: bool,
+    /// Directory listing order feature.
     pub dir_listing_order: u8,
+    /// Directory listing format feature.
     pub dir_listing_format: DirListFmt,
+    /// CORS feature.
     pub cors: Option<cors::Configured>,
+    /// Security headers feature.
     pub security_headers: bool,
+    /// Cache control headers feature.
     pub cache_control_headers: bool,
+    /// Page for 404 errors.
     pub page404: Vec<u8>,
+    /// Page for 50x errors.
     pub page50x: Vec<u8>,
+    /// Page fallback feature.
     pub page_fallback: Vec<u8>,
+    /// Basic auth feature.
     pub basic_auth: String,
+    /// Log remote address feature.
     pub log_remote_address: bool,
+    /// Redirect trailing slash feature.
     pub redirect_trailing_slash: bool,
+    /// Ignore hidden files feature.
     pub ignore_hidden_files: bool,
 
-    // Advanced options
+    /// Advanced options from the config file.
     pub advanced_opts: Option<Advanced>,
 }
 
 /// It defines the main request handler used by the Hyper service request.
 pub struct RequestHandler {
+    /// Request handler options.
     pub opts: Arc<RequestHandlerOpts>,
 }
 

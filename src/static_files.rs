@@ -1,7 +1,8 @@
-//! Static File handler
+//! The static file module which powers the web server.
 //!
-//! Part of the file is borrowed and adapted at a convenience from
-//! https://github.com/seanmonstar/warp/blob/master/src/filters/fs.rs
+
+// Part of the file is borrowed and adapted at a convenience from
+// https://github.com/seanmonstar/warp/blob/master/src/filters/fs.rs
 
 use bytes::{Bytes, BytesMut};
 use futures_util::future::{Either, Future};
@@ -27,20 +28,31 @@ use crate::{compression_static, directory_listing, Result};
 
 /// Defines all options needed by the static-files handler.
 pub struct HandleOpts<'a> {
+    /// Request method.
     pub method: &'a Method,
+    /// Request headers.
     pub headers: &'a HeaderMap<HeaderValue>,
+    /// Request base path.
     pub base_path: &'a PathBuf,
+    /// Request base path.
     pub uri_path: &'a str,
+    /// Request URI query.
     pub uri_query: Option<&'a str>,
+    /// Directory listing feature.
     pub dir_listing: bool,
+    /// Directory listing order feature.
     pub dir_listing_order: u8,
+    /// Directory listing format feature.
     pub dir_listing_format: &'a DirListFmt,
+    /// Redirect trailing slash feature.
     pub redirect_trailing_slash: bool,
+    /// Compression static feature.
     pub compression_static: bool,
+    /// Ignore hidden files feature.
     pub ignore_hidden_files: bool,
 }
 
-/// Entry point to handle incoming requests which map to specific files
+/// The server entry point to handle incoming requests which map to specific files
 /// on file system and return a file response.
 pub async fn handle<'a>(opts: &HandleOpts<'a>) -> Result<(Response<Body>, bool), StatusCode> {
     let method = opts.method;
@@ -472,7 +484,7 @@ const READ_BUF_SIZE: usize = 4_096;
 const READ_BUF_SIZE: usize = 8_192;
 
 #[derive(Debug)]
-pub struct FileStream<T> {
+struct FileStream<T> {
     reader: T,
 }
 

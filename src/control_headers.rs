@@ -1,4 +1,6 @@
-// An arbitrary `Cache-Control` headers functionality for incoming requests based on a set of file types.
+//! It provides an arbitrary `Cache-Control` headers functionality
+//! for incoming requests based on a set of file types.
+//!
 
 use headers::{CacheControl, HeaderMapExt};
 use hyper::{Body, Response};

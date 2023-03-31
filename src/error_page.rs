@@ -1,3 +1,6 @@
+//! Error page module to compose an HTML page response.
+//!
+
 use headers::{AcceptRanges, ContentLength, ContentType, HeaderMapExt};
 use hyper::{Body, Method, Response, StatusCode, Uri};
 use mime_guess::mime;

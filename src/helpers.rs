@@ -15,21 +15,6 @@ where
     }
 }
 
-/// Get the directory name of a valid directory path.
-pub fn get_dirname<P: AsRef<Path>>(path: P) -> Result<String>
-where
-    PathBuf: From<P>,
-{
-    let path = get_valid_dirpath(path)?;
-    match path.iter().last() {
-        Some(v) => Ok(v.to_str().unwrap().to_owned()),
-        _ => bail!(
-            "directory name for path {} was not determined",
-            path.display()
-        ),
-    }
-}
-
 /// Read the entire contents of a file into a bytes vector.
 pub fn read_bytes(path: &Path) -> Result<Vec<u8>> {
     fs::read(path).with_context(|| format!("failed to read file `{}`", path.display()))
@@ -75,13 +60,13 @@ pub fn stringify(dst: &mut String, path: &serde_ignored::Path<'_>) {
 
 #[cfg(unix)]
 /// In Unix-like systems it just casts the `PathBuf` into an string.
-pub fn adjust_canonicalization(p: PathBuf) -> String {
+pub fn adjust_canonicalization(p: &Path) -> String {
     p.display().to_string()
 }
 
 #[cfg(windows)]
 /// In Windows systems it adjusts the `PathBuf` stripping its `\\?\` prefix.
-pub fn adjust_canonicalization(p: PathBuf) -> String {
+pub fn adjust_canonicalization(p: &Path) -> String {
     const VERBATIM_PREFIX: &str = r#"\\?\"#;
     let p = p.to_str().unwrap_or_default();
     let p = if p.starts_with(VERBATIM_PREFIX) {

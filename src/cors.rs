@@ -1,5 +1,7 @@
-// CORS handler for incoming requests.
-// -> Part of the file is borrowed from https://github.com/seanmonstar/warp/blob/master/src/filters/cors.rs
+//! CORS module to handle incoming requests.
+//!
+
+// Part of the file is borrowed from https://github.com/seanmonstar/warp/blob/master/src/filters/cors.rs
 
 use headers::{
     AccessControlAllowHeaders, AccessControlAllowMethods, AccessControlExposeHeaders, HeaderMapExt,
@@ -139,13 +141,6 @@ impl Cors {
         self
     }
 
-    /// Sets the `Access-Control-Max-Age` header.
-    /// TODO: we could enable this in the future.
-    pub fn max_age(mut self, seconds: impl Seconds) -> Self {
-        self.max_age = Some(seconds.seconds());
-        self
-    }
-
     /// Adds multiple headers to the list of allowed request headers.
     ///
     /// **Note**: These should match the values the browser sends via `Access-Control-Request-Headers`, e.g.`content-type`.
@@ -211,6 +206,7 @@ impl Default for Cors {
 }
 
 #[derive(Clone, Debug)]
+/// CORS is configurated.
 pub struct Configured {
     cors: Cors,
     allowed_headers: AccessControlAllowHeaders,
@@ -219,16 +215,24 @@ pub struct Configured {
 }
 
 #[derive(Debug)]
+/// Validated CORS request.
 pub enum Validated {
+    /// Validated as preflight.
     Preflight(HeaderValue),
+    /// Validated as simple.
     Simple(HeaderValue),
+    /// Validated as not cors.
     NotCors,
 }
 
 #[derive(Debug)]
+/// Forbidden errors.
 pub enum Forbidden {
+    /// Forbidden error origin.
     Origin,
+    /// Forbidden error method.
     Method,
+    /// Forbidden error header.
     Header,
 }
 
@@ -239,6 +243,7 @@ impl Default for Forbidden {
 }
 
 impl Configured {
+    /// Check for the incoming CORS request.
     pub fn check_request(
         &self,
         method: &http::Method,
@@ -299,19 +304,19 @@ impl Configured {
         }
     }
 
-    pub fn is_method_allowed(&self, header: &HeaderValue) -> bool {
+    fn is_method_allowed(&self, header: &HeaderValue) -> bool {
         http::Method::from_bytes(header.as_bytes())
             .map(|method| self.cors.allowed_methods.contains(&method))
             .unwrap_or(false)
     }
 
-    pub fn is_header_allowed(&self, header: &str) -> bool {
+    fn is_header_allowed(&self, header: &str) -> bool {
         HeaderName::from_bytes(header.as_bytes())
             .map(|header| self.cors.allowed_headers.contains(&header))
             .unwrap_or(false)
     }
 
-    pub fn is_origin_allowed(&self, origin: &HeaderValue) -> bool {
+    fn is_origin_allowed(&self, origin: &HeaderValue) -> bool {
         if let Some(ref allowed) = self.cors.origins {
             allowed.contains(origin)
         } else {
@@ -330,23 +335,9 @@ impl Configured {
     }
 }
 
-pub trait Seconds {
-    fn seconds(self) -> u64;
-}
-
-impl Seconds for u32 {
-    fn seconds(self) -> u64 {
-        self.into()
-    }
-}
-
-impl Seconds for ::std::time::Duration {
-    fn seconds(self) -> u64 {
-        self.as_secs()
-    }
-}
-
+/// Cast values into the origin header.
 pub trait IntoOrigin {
+    /// Cast actual value into an origin header.
     fn into_origin(self) -> Origin;
 }
 

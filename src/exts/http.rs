@@ -7,9 +7,13 @@ pub const HTTP_SUPPORTED_METHODS: &[Method; 3] = &[Method::OPTIONS, Method::HEAD
 
 /// SWS HTTP Method extensions trait.
 pub trait MethodExt {
+    /// If method is allowed.
     fn is_allowed(&self) -> bool;
+    /// If method is `GET`.
     fn is_get(&self) -> bool;
+    /// If method is `HEAD`.
     fn is_head(&self) -> bool;
+    /// If method is `OPTIONS`.
     fn is_options(&self) -> bool;
 }
 

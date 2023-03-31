@@ -1,3 +1,6 @@
+//! The module provides a custom [Hyper service](hyper::service::Service).
+//!
+
 use hyper::{service::Service, Body, Request, Response};
 use std::convert::Infallible;
 use std::future::{ready, Future, Ready};
@@ -14,6 +17,7 @@ pub struct RouterService {
 }
 
 impl RouterService {
+    /// Creates a new router service.
     pub fn new(handler: RequestHandler) -> Self {
         Self {
             builder: RequestServiceBuilder::new(handler),
@@ -63,12 +67,14 @@ pub struct RequestServiceBuilder {
 }
 
 impl RequestServiceBuilder {
+    /// Initializes a new request service buider.
     pub fn new(handler: RequestHandler) -> Self {
         Self {
             handler: Arc::new(handler),
         }
     }
 
+    /// Build a new request service.
     pub fn build(&self, remote_addr: Option<SocketAddr>) -> RequestService {
         RequestService {
             handler: self.handler.clone(),

@@ -281,11 +281,13 @@ pub struct General {
     // Windows commands
     #[cfg(windows)]
     #[structopt(subcommand)]
+    /// Subcommands to install or uninstall the SWS Windows Service.
     pub commands: Option<Commands>,
 }
 
 #[cfg(windows)]
 #[derive(Debug, StructOpt)]
+/// Subcommands to install or uninstall the SWS Windows Service.
 pub enum Commands {
     /// Install a Windows Service for the web server.
     #[structopt(name = "install")]

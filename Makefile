@@ -247,6 +247,17 @@ docs-dev:
 	@docker-compose -f docs/docker-compose.yml up --build
 .PHONY: docs-dev
 
+crate-docs:
+	@cargo doc --no-deps
+.PHONY: crate-docs
+
+crate-docs-dev:
+	@cargo doc --no-deps
+	@echo "Crate documentation: http://localhost:8787/static_web_server"
+	@static-web-server -p 8787 -d target/doc/ \
+		& watchman-make -p 'src/**/*.rs' --run 'cargo doc'
+.PHONY: crate-docs-dev
+
 docs-deploy:
 	@git stash
 	@rm -rf /tmp/docs

@@ -1,3 +1,6 @@
+//! Server module intended to construct a multi-thread HTTP or HTTP/2 web server.
+//!
+
 #[allow(unused_imports)]
 use hyper::server::conn::AddrIncoming;
 #[allow(unused_imports)]
@@ -43,7 +46,8 @@ impl Server {
         })
     }
 
-    /// Build and run the multi-thread `Server` as standalone.
+    /// Run the multi-thread `Server` as standalone.
+    /// It is a top-level function of [run_server_on_rt](#method.run_server_on_rt).
     pub fn run_standalone(self) -> Result {
         // Logging system initialization
         logger::init(&self.opts.general.log_level)?;
@@ -51,7 +55,8 @@ impl Server {
         self.run_server_on_rt(None, || {})
     }
 
-    /// Build and run the multi-thread `Server` which will be used by a Windows service.
+    /// Run the multi-thread `Server` which will be used by a Windows service.
+    /// It is a top-level function of [run_server_on_rt](#method.run_server_on_rt).
     #[cfg(windows)]
     pub fn run_as_service<F>(self, cancel: Option<Receiver<()>>, cancel_fn: F) -> Result
     where
@@ -60,8 +65,8 @@ impl Server {
         self.run_server_on_rt(cancel, cancel_fn)
     }
 
-    /// Build and run the multi-thread `Server` on Tokio runtime.
-    fn run_server_on_rt<F>(self, cancel_recv: Option<Receiver<()>>, cancel_fn: F) -> Result
+    /// Build and run the multi-thread `Server` on the Tokio runtime.
+    pub fn run_server_on_rt<F>(self, cancel_recv: Option<Receiver<()>>, cancel_fn: F) -> Result
     where
         F: FnOnce(),
     {
@@ -100,7 +105,7 @@ impl Server {
 
         // Config file option
         if let Some(config_file) = general.config_file {
-            let config_file = helpers::adjust_canonicalization(config_file);
+            let config_file = helpers::adjust_canonicalization(&config_file);
             tracing::info!("config file: {}", config_file);
         }
 
