@@ -177,7 +177,7 @@ fn suffix_file_html_metadata(file_path: &mut PathBuf) -> (&mut PathBuf, Option<M
         let mut owned_filename_with_html = owned_filename.clone();
         owned_filename_with_html.push(".html");
         file_path.set_file_name(owned_filename_with_html);
-        if let Ok(meta_res) = file_metadata(file_path.as_ref()) {
+        if let Ok(meta_res) = file_metadata(file_path) {
             let (meta, _) = meta_res;
             return (file_path, Some(meta));
         } else {
@@ -198,7 +198,7 @@ async fn composed_file_metadata<'a>(
 ) -> Result<FileMetadata<'a>, StatusCode> {
     tracing::trace!("getting metadata for file {}", file_path.display());
 
-    match file_metadata(file_path.as_ref()) {
+    match file_metadata(file_path) {
         Ok((mut metadata, is_dir)) => {
             if is_dir {
                 // Append a HTML index page by default if it's a directory path (`autoindex`)
@@ -222,7 +222,7 @@ async fn composed_file_metadata<'a>(
                 // Otherwise, just fallback to finding the index.html
                 // and overwrite the current `meta`
                 // Also noting that it's still a directory request
-                if let Ok(meta_res) = file_metadata(file_path.as_ref()) {
+                if let Ok(meta_res) = file_metadata(file_path) {
                     (metadata, _) = meta_res
                 } else {
                     // We remove the appended index.html
@@ -377,7 +377,7 @@ fn get_conditional_headers(header_list: &HeaderMap<HeaderValue>) -> Conditionals
 }
 
 /// Sanitizes a base/tail paths and then it returns an unified one.
-fn sanitize_path(base: impl AsRef<Path>, tail: &str) -> Result<PathBuf, StatusCode> {
+fn sanitize_path(base: &Path, tail: &str) -> Result<PathBuf, StatusCode> {
     let path_decoded = match percent_decode_str(tail.trim_start_matches('/')).decode_utf8() {
         Ok(p) => p,
         Err(err) => {
@@ -387,7 +387,7 @@ fn sanitize_path(base: impl AsRef<Path>, tail: &str) -> Result<PathBuf, StatusCo
     };
 
     let path_decoded = Path::new(&*path_decoded);
-    let mut full_path = base.as_ref().to_path_buf();
+    let mut full_path = base.to_path_buf();
     tracing::trace!("dir: base={:?}, route={:?}", full_path, path_decoded);
 
     for component in path_decoded.components() {
@@ -620,16 +620,16 @@ mod tests {
 
     #[test]
     fn test_sanitize_path() {
-        const BASE_DIR: &str = "docker/public";
+        let base_dir = &PathBuf::from("docker/public");
 
         assert_eq!(
-            sanitize_path(BASE_DIR, "/index.html").unwrap(),
+            sanitize_path(base_dir, "/index.html").unwrap(),
             root_dir().join("index.html")
         );
 
         // bad paths
         assert_eq!(
-            sanitize_path(BASE_DIR, "/../foo.html").unwrap(),
+            sanitize_path(base_dir, "/../foo.html").unwrap(),
             root_dir().join("foo.html"),
         );
 
@@ -638,7 +638,7 @@ mod tests {
         #[cfg(windows)]
         let expected_path = PathBuf::from("docker/public/\\foo.html");
         assert_eq!(
-            sanitize_path(BASE_DIR, "/C:\\/foo.html").unwrap(),
+            sanitize_path(base_dir, "/C:\\/foo.html").unwrap(),
             expected_path
         );
     }
