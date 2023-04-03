@@ -85,7 +85,7 @@ main() {
     fi
 
     local sws=$(static-web-server --version)
-    echo  "$sws was installed sucessfuly!" 1>&2
+    echo  "$sws was installed successfully!" 1>&2
     echo "If you want to uninstall SWS then just remote it from its location." 1>&2
 
     return "$_status"
