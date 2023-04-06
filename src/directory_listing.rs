@@ -18,7 +18,7 @@ use std::path::Path;
 use std::time::{SystemTime, UNIX_EPOCH};
 use structopt::clap::arg_enum;
 
-use crate::{exts::http::MethodExt, Result};
+use crate::{exts::http::MethodExt, Context, Result};
 
 arg_enum! {
     #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -65,11 +65,7 @@ pub fn auto_index<'a>(
             {
                 Ok(resp) => Ok(resp),
                 Err(err) => {
-                    tracing::error!(
-                        "error during directory entries reading (path={:?}): {} ",
-                        parent.display(),
-                        err
-                    );
+                    tracing::error!("error after try to read directory entries: {:?}", err);
                     Err(StatusCode::INTERNAL_SERVER_ERROR)
                 }
             }
@@ -77,17 +73,25 @@ pub fn auto_index<'a>(
         Err(err) => {
             let status = match err.kind() {
                 io::ErrorKind::NotFound => {
-                    tracing::debug!("entry file not found: {:?}", filepath.display());
+                    tracing::debug!(
+                        "entry file not found (path: {}): {:?}",
+                        filepath.display(),
+                        err
+                    );
                     StatusCode::NOT_FOUND
                 }
                 io::ErrorKind::PermissionDenied => {
-                    tracing::warn!("entry file permission denied: {:?}", filepath.display());
+                    tracing::error!(
+                        "entry file permission denied (path: {}): {:?}",
+                        filepath.display(),
+                        err
+                    );
                     StatusCode::FORBIDDEN
                 }
                 _ => {
                     tracing::error!(
-                        "directory entries error (filepath={:?}): {} ",
-                        filepath.display(),
+                        "unable to read parent directory (parent={}): {:?}",
+                        parent.display(),
                         err
                     );
                     StatusCode::INTERNAL_SERVER_ERROR
@@ -135,13 +139,36 @@ async fn read_dir_entries(
     let mut files_count: usize = 0;
     let mut file_entries: Vec<FileEntry> = vec![];
 
-    while let Some(dir_entry) = dir_reader.next_entry().await? {
-        let meta = dir_entry.metadata().await?;
+    while let Some(dir_entry) = dir_reader
+        .next_entry()
+        .await
+        .with_context(|| "unable to read directory entry")?
+    {
+        let meta = match dir_entry.metadata().await {
+            Ok(m) => m,
+            Err(err) => {
+                tracing::error!(
+                    "unable to resolve metadata for file or directory entry (skipped): {:?}",
+                    err
+                );
+                continue;
+            }
+        };
 
-        let name = dir_entry
+        let name = match dir_entry
             .file_name()
             .into_string()
-            .map_err(|err| anyhow::anyhow!(err.into_string().unwrap_or_default()))?;
+            .map_err(|err| anyhow::anyhow!(err.into_string().unwrap_or_default()))
+        {
+            Ok(s) => s,
+            Err(err) => {
+                tracing::error!(
+                    "unable to resolve name for file or directory entry (skipped): {:?}",
+                    err
+                );
+                continue;
+            }
+        };
 
         // Check and ignore the current hidden file/directory (dotfile) if feature enabled
         if ignore_hidden_files && name.starts_with('.') {
@@ -152,15 +179,41 @@ async fn read_dir_entries(
         let mut filesize = 0_u64;
 
         if meta.is_dir() {
-            name_encoded += "/";
+            name_encoded.push('/');
             dirs_count += 1;
         } else if meta.is_file() {
             filesize = meta.len();
             files_count += 1;
         } else if meta.file_type().is_symlink() {
-            let m = tokio::fs::symlink_metadata(dir_entry.path().canonicalize()?).await?;
-            if m.is_dir() {
-                name_encoded += "/";
+            // NOTE: we resolve the symlink path below to just know if is a directory or not.
+            // Hwever, we are still showing the symlink name but not the resolved name.
+
+            let symlink = dir_entry.path();
+            let symlink = match symlink.canonicalize() {
+                Ok(v) => v,
+                Err(err) => {
+                    tracing::error!(
+                        "unable to resolve `{}` symlink path (skipped): {:?}",
+                        symlink.display(),
+                        err
+                    );
+                    continue;
+                }
+            };
+
+            let symlink_meta = match tokio::fs::symlink_metadata(&symlink).await {
+                Ok(v) => v,
+                Err(err) => {
+                    tracing::error!(
+                        "unable to resolve metadata for `{}` symlink (skipped): {:?}",
+                        symlink.display(),
+                        err
+                    );
+                    continue;
+                }
+            };
+            if symlink_meta.is_dir() {
+                name_encoded.push('/');
                 dirs_count += 1;
             } else {
                 filesize = meta.len();
@@ -183,7 +236,17 @@ async fn read_dir_entries(
             let parent_dir = base_path.parent().unwrap_or(base_path);
             let mut base_dir = base_path;
             if base_path != parent_dir {
-                base_dir = base_path.strip_prefix(parent_dir)?;
+                base_dir = match base_path.strip_prefix(parent_dir) {
+                    Ok(v) => v,
+                    Err(err) => {
+                        tracing::error!(
+                            "unable to strip parent path prefix for `{}` (skipped): {:?}",
+                            base_path.display(),
+                            err
+                        );
+                        continue;
+                    }
+                };
             }
 
             let mut base_str = String::new();
@@ -202,7 +265,7 @@ async fn read_dir_entries(
         let modified = match parse_last_modified(meta.modified()?) {
             Ok(local_dt) => Some(local_dt),
             Err(err) => {
-                tracing::error!("error determining file last modified: {:?}", err);
+                tracing::error!("error determining the file's last modified: {:?}", err);
                 None
             }
         };
@@ -225,7 +288,7 @@ async fn read_dir_entries(
                     match sort.1.parse::<u8>() {
                         Ok(code) => order_code = code,
                         Err(err) => {
-                            tracing::debug!(
+                            tracing::error!(
                                 "sorting: query value error when converting to u8: {:?}",
                                 err
                             );
