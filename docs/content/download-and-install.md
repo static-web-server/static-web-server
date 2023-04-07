@@ -10,9 +10,22 @@ Latest **v2.15.0** release `2023-03-13` ([changelog](https://github.com/static-w
 
 </div>
 
-See also all [available releases](https://github.com/static-web-server/static-web-server/releases) on GitHub.
+See also [the release history](https://github.com/static-web-server/static-web-server/releases) on GitHub.
+
+!!! info "Docker"
+    If you are working with Docker containers then check out [the Docker page](https://static-web-server.net/features/docker/).
 
 ## Installation methods
+
+### Binary installer (Linux/BSDs)
+
+Use our binary installer if your package manager is not supported.
+
+```sh
+curl --proto '=https' --tlsv1.2 -sSfL https://get.static-web-server.net | sh
+```
+
+`static-web-server` should be installed under the `/usr/local/bin` directory.
 
 ### Arch Linux
 

@@ -16,7 +16,7 @@ View all images on [Docker Hub](https://hub.docker.com/r/joseluisq/static-web-se
 
 ## Run a container
 
-To give the server a quick try just run the following commands.
+To give the server a quick try then just run the following commands.
 
 !!! tip "Tips"
     - [The SWS CLI arguments](/configuration/command-line-arguments/) can be provided directly to the container or omitted as shown below.

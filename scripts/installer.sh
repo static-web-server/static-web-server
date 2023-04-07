@@ -4,7 +4,7 @@
 # downloads the corresponding pre-compiled binary and runs it.
 # 
 # Usage:
-# curl --proto '=https' --tlsv1.2 -sSf https://static-web-server.net/installer.sh | sh
+# curl --proto '=https' --tlsv1.2 -sSfL https://get.static-web-server.net | sh
 # 
 # Script adapted from https://github.com/rust-lang/rustup/blob/master/rustup-init.sh
 # 
@@ -56,10 +56,12 @@ main() {
 
     if $_ansi_escapes_are_valid; then
         printf "\33[1minfo:\33[0m platform '$_arch' supported\n" 1>&2
-        printf "\33[1minfo:\33[0m downloading the 'static-web-server' pre-compiled binary...\n" 1>&2
+        printf "\33[1minfo:\33[0m downloading the 'static-web-server v$version' pre-compiled binary...\n" 1>&2
+        printf "\33[1minfo:\33[0m installing pre-compiled binary in $local_bin...\n" 1>&2
     else
         printf '%s\n' 'info: platform '$_arch' supported' 1>&2
         printf '%s\n' 'info: downloading the 'static-web-server' pre-compiled binary...' 1>&2
+        printf '%s\n' 'info: installing pre-compiled binary in '$local_bin'...' 1>&2
     fi
 
     local _filename="static-web-server-v$version-$_arch"
@@ -86,7 +88,7 @@ main() {
 
     local sws=$(static-web-server --version)
     echo  "$sws was installed successfully!" 1>&2
-    echo "If you want to uninstall SWS then just remote it from its location." 1>&2
+    echo "If you want to uninstall SWS then just remove it from its location." 1>&2
 
     return "$_status"
 }
@@ -354,13 +356,6 @@ assert_nz() {
 # command.
 ensure() {
     if ! "$@"; then err "command failed: $*"; fi
-}
-
-# This is just for indicating that commands' results are being
-# intentionally ignored. Usually, because it's being executed
-# as part of error handling.
-ignore() {
-    "$@"
 }
 
 main "$@" || exit 1

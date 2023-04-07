@@ -39,6 +39,7 @@ theme:
     - search.highlight
     - search.share
     - search.suggest
+    - content.code.copy
     # - toc.integrate
   palette:
     - scheme: default
