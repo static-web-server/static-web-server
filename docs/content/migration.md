@@ -9,7 +9,6 @@ However, it still tries to keep the same principles of its `v1`: lightness and e
 
 This major `v2` has few breaking changes. However, migration should not represent a problem.
 
-
 !!! tip "Tip"
     It is always worth recommending that you test a major server version upgrade like this first with your application(s) in a development environment or similar.
 

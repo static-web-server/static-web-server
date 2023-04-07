@@ -18,6 +18,11 @@
 </div>
 </div>
 
+!!! warning "v1.x End of Life (2023-01-06)"
+    The [`v1.19.4`](https://github.com/static-web-server/static-web-server/releases/tag/v1.19.4) was the last version of the 1.x series and will be no longer supported.<br>
+    So we encourage users to migrate to v2 which has similar and additional features as well as significant performance and security improvements. Follow [the v2 migration steps](./migration.md).
+
+
 ## Overview
 
 **Static Web Server** (or **`SWS`** abbreviated) is a very small and fast production-ready web server suitable to serve static web files or assets.
@@ -29,10 +34,6 @@ Written on top of [Hyper](https://github.com/hyperium/hyper) and [Tokio](https:/
 It's cross-platform and available for Linux, macOS, Windows and FreeBSD (`x86`,`x86_64`,`ARM`,`ARM64`) as well as Docker.
 
 ![static-web-server](https://user-images.githubusercontent.com/1700322/152613820-658f025c-d0a4-46b3-aa6d-bdc7f638ce77.png)
-
-!!! tip "Tips"
-    - If you're looking for `v1` please go to [1.x branch](https://github.com/static-web-server/static-web-server/tree/1.x).
-    - If you want to migrate from `v1` to `v2` please take a look at [v2.0.0](https://github.com/static-web-server/static-web-server/releases/tag/v2.0.0) release notes.
 
 ## Features
 
