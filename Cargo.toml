@@ -1,6 +1,6 @@
 [package]
 name = "static-web-server"
-version = "2.15.0"
+version = "2.15.1-beta.0"
 authors = ["Jose Quintana <https://joseluisq.net>"]
 license = "MIT OR Apache-2.0"
 description = "A cross-platform, high-performance and asynchronous web server for static files-serving."
@@ -10,16 +10,7 @@ homepage = "https://static-web-server.net"
 keywords = [
     "static-web-server",
     "file-server",
-    "http-server",
-    "musl-libc",
-    "x86",
-    "x86-64",
-    "arm",
-    "arm64",
-    "linux",
-    "darwin",
-    "freebsd",
-    "windows",
+    "http-server"
 ]
 categories = ["network-programming", "web-programming::http-server"]
 edition = "2021"
@@ -58,7 +49,7 @@ bytes = "1.4"
 form_urlencoded = "1.1"
 futures-util = { version = "0.3", default-features = false, features = ["sink"] }
 globset = { version = "0.4", features = ["serde1"] }
-headers = { git = "https://github.com/static-web-server/hyper-headers.git", branch = "headers_encoding" }
+headers = { package = "headers-accept-encoding", version = "0.3" }
 http = "0.2"
 http-serde = "1.1"
 humansize = { version = "2.1", features = ["impl_style"] }
