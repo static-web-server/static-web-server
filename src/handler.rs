@@ -235,6 +235,14 @@ impl RequestHandler {
                         }
                     }
 
+                    // Compression content encoding varies so use a `Vary` header
+                    if self.opts.compression || compression_static {
+                        resp.headers_mut().append(
+                            hyper::header::VARY,
+                            hyper::header::HeaderValue::from_name(hyper::header::ACCEPT_ENCODING),
+                        );
+                    }
+
                     // Auto compression based on the `Accept-Encoding` header
                     if self.opts.compression && !is_precompressed {
                         resp = match compression::auto(method, headers, resp) {
