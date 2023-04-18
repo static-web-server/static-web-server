@@ -43,13 +43,13 @@ http2 = ["tls"]
 
 [dependencies]
 anyhow = "1.0"
-async-compression = { version = "0.3", default-features = false, features = ["brotli", "deflate", "gzip", "tokio"] }
+async-compression = { version = "0.3", default-features = false, features = ["brotli", "deflate", "gzip", "zstd", "tokio"] }
 bcrypt = "0.14"
 bytes = "1.4"
 form_urlencoded = "1.1"
 futures-util = { version = "0.3", default-features = false, features = ["sink"] }
 globset = { version = "0.4", features = ["serde1"] }
-headers = { package = "headers-accept-encoding", version = "0.3" }
+headers = { package = "headers-accept-encoding", version = "0.3", git = "https://github.com/static-web-server/headers-accept-encoding.git", branch = "headers_encoding" }
 http = "0.2"
 http-serde = "1.1"
 humansize = { version = "2.1", features = ["impl_style"] }
