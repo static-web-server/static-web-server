@@ -1,7 +1,8 @@
 name: release-docker
 on:
   release:
-    types: published
+    types:
+      - published
 
 jobs:
   docker-image-alpine:

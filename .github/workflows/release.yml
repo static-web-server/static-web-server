@@ -60,6 +60,8 @@ jobs:
           - linux-arm-gnueabihf
           - linux-musl-armv6
           - linux-musl-armv7
+          - linux-android-armv7
+          - linux-android-arm64
           - macos
           - macos-arm64
           - windows-msvc
@@ -103,6 +105,14 @@ jobs:
           os: ubuntu-20.04
           rust: stable
           target: armv7-unknown-linux-musleabihf
+        - build: linux-android-armv7
+          os: ubuntu-20.04
+          rust: stable
+          target: armv7-linux-androideabi
+        - build: linux-android-arm64
+          os: ubuntu-20.04
+          rust: stable
+          target: aarch64-linux-android
         - build: macos
           os: macos-11
           rust: stable
