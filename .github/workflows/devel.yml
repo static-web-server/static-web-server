@@ -148,14 +148,13 @@ jobs:
     - name: Set up Cross
       if: ${{ !contains(matrix.os, 'windows') && matrix.target != '' }}
       run: |
-        cargo install cross@^0.2
-        
         # Use 'cargo.sh' script for Android targets only
         if [[ "${{ matrix.build }}" == "linux-android-armv7" ]] || [[ "${{ matrix.build }}" == "linux-android-arm64" ]]; then
           echo "CARGO_BIN=ci/cargo.sh" >> $GITHUB_ENV
         else
+          cargo install cross@^0.2
           echo "CARGO_BIN=cross" >> $GITHUB_ENV
-        fi;
+        fi
 
         echo "TARGET_FLAGS=--target=${{ matrix.target }}" >> $GITHUB_ENV
         echo "TARGET_DIR=./target/${{ matrix.target }}" >> $GITHUB_ENV
@@ -176,7 +175,13 @@ jobs:
       shell: bash
       run: |
         if [[ "${{ matrix.build }}" == "pinned" ]]; then unset CARGO_REGISTRIES_CRATES_IO_PROTOCOL; fi
-        ${{ env.CARGO_BIN }} test --verbose --release ${{ env.TARGET_FLAGS }} ${{ env.SKIP_TESTS }}
+        ${{ env.CARGO_BIN }} test --verbose ${{ env.TARGET_FLAGS }} ${{ env.SKIP_TESTS }}
+
+    - name: Run build
+      shell: bash
+      run: |
+        if [[ "${{ matrix.build }}" == "pinned" ]]; then unset CARGO_REGISTRIES_CRATES_IO_PROTOCOL; fi
+        ${{ env.CARGO_BIN }} build --verbose ${{ env.TARGET_FLAGS }}
 
   checks:
     name: checks
