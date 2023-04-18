@@ -40,6 +40,9 @@ jobs:
           - linux-arm-gnueabihf
           - linux-musl-armv6
           - linux-musl-armv7
+          # NOTE: looks like not supported by `listenfd` crate
+          # - linux-android-armv7
+          - linux-android-arm64
           - macos
           - macos-arm64
           - windows-msvc
@@ -95,6 +98,15 @@ jobs:
             os: ubuntu-20.04
             rust: stable
             target: armv7-unknown-linux-musleabihf
+          #  NOTE: looks like not supported by `listenfd` crate
+          # - build: linux-android-armv7
+          #   os: ubuntu-22.04
+          #   rust: stable
+          #   target: armv7-linux-androideabi
+          - build: linux-android-arm64
+            os: ubuntu-22.04
+            rust: stable
+            target: aarch64-linux-android
           - build: macos
             os: macos-11
             rust: stable
@@ -123,18 +135,28 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v3
 
+    - name: Install Linux/BSD tools
+      if: ${{ !contains(matrix.os, 'windows') }}
+      run: ci/install-tools.sh --target=${{ matrix.target }}
+
     - name: Install Rust
       uses: dtolnay/rust-toolchain@stable
       with:
         toolchain: ${{ matrix.rust }}
         target: ${{ matrix.target }}
 
-    - name: Use Cross
-      if: matrix.target != ''
+    - name: Set up Cross
+      if: ${{ !contains(matrix.os, 'windows') && matrix.target != '' }}
       run: |
-        cargo install cross@^0.2
-        echo "CARGO_BIN=cross" >> $GITHUB_ENV
-        echo "TARGET_FLAGS=--target ${{ matrix.target }}" >> $GITHUB_ENV
+        # Use 'cargo.sh' script for Android targets only
+        if [[ "${{ matrix.build }}" == "linux-android-armv7" ]] || [[ "${{ matrix.build }}" == "linux-android-arm64" ]]; then
+          echo "CARGO_BIN=ci/cargo.sh" >> $GITHUB_ENV
+        else
+          cargo install cross@^0.2
+          echo "CARGO_BIN=cross" >> $GITHUB_ENV
+        fi
+
+        echo "TARGET_FLAGS=--target=${{ matrix.target }}" >> $GITHUB_ENV
         echo "TARGET_DIR=./target/${{ matrix.target }}" >> $GITHUB_ENV
 
     - name: Show command used for Cargo
@@ -143,18 +165,17 @@ jobs:
         echo "target flag is: ${{ env.TARGET_FLAGS }}"
         echo "target dir is: ${{ env.TARGET_DIR }}"
 
-    - name: aarch64 specific items
-      if: matrix.build == 'macos-arm64'
+    - name: Skip tests
+      if: ${{ contains(fromJSON('["macos-arm64", "linux-android-arm64", "linux-android-armv7"]'), matrix.build) }}
       run: |
         # Can't run tests: cross-compiling
-        echo "SKIP_TESTS=yes" >> $GITHUB_ENV
+        echo "SKIP_TESTS=--no-run" >> $GITHUB_ENV
 
     - name: Run tests
       shell: bash
-      if: env.SKIP_TESTS == ''
       run: |
         if [[ "${{ matrix.build }}" == "pinned" ]]; then unset CARGO_REGISTRIES_CRATES_IO_PROTOCOL; fi
-        ${{ env.CARGO_BIN }} test --verbose ${{ env.TARGET_FLAGS }}
+        ${{ env.CARGO_BIN }} test --verbose ${{ env.TARGET_FLAGS }} ${{ env.SKIP_TESTS }}
 
     - name: Run build
       shell: bash
