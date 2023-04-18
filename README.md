@@ -1,8 +1,8 @@
 <div>
   <div align="center">
-    <img
-      src="https://static-web-server.net/assets/sws.svg" height="100" width="100"
-    />
+    <a href="https://static-web-server.net" title="static-web-server website">
+      <img src="https://static-web-server.net/assets/sws.svg" height="100" width="100"
+    /></a>
   </div>
 
   <h1 align="center">Static Web Server</h1>
@@ -11,13 +11,17 @@
     A cross-platform, high-performance and asynchronous web server for static files-serving ⚡
   </h4>
 
-<div align="center">
-<a href="https://github.com/static-web-server/static-web-server/actions/workflows/devel.yml" title="devel ci"><img src="https://github.com/static-web-server/static-web-server/actions/workflows/devel.yml/badge.svg?branch=master"></a> 
-<a href="https://hub.docker.com/r/joseluisq/static-web-server/" title="Docker Image Version (tag latest semver)"><img src="https://img.shields.io/docker/v/joseluisq/static-web-server/2"></a> 
-<a href="https://hub.docker.com/r/joseluisq/static-web-server/tags" title="Docker Image Size (tag)"><img src="https://img.shields.io/docker/image-size/joseluisq/static-web-server/2"></a> 
-<a href="https://hub.docker.com/r/joseluisq/static-web-server/" title="Docker Image"><img src="https://img.shields.io/docker/pulls/joseluisq/static-web-server.svg"></a> 
-<a href="https://static-web-server.net" title="Documentation"><img src="https://img.shields.io/badge/docs-latest-green"></a>
-</div>
+  <div align="center">
+    <a href="https://github.com/static-web-server/static-web-server/actions/workflows/devel.yml" title="devel ci"><img src="https://github.com/static-web-server/static-web-server/actions/workflows/devel.yml/badge.svg?branch=master"></a> 
+    <a href="https://hub.docker.com/r/joseluisq/static-web-server/" title="Docker Image Version (tag latest semver)"><img src="https://img.shields.io/docker/v/joseluisq/static-web-server/2"></a> 
+    <a href="https://hub.docker.com/r/joseluisq/static-web-server/tags" title="Docker Image Size (tag)"><img src="https://img.shields.io/docker/image-size/joseluisq/static-web-server/2"></a> 
+    <a href="https://hub.docker.com/r/joseluisq/static-web-server/" title="Docker Image"><img src="https://img.shields.io/docker/pulls/joseluisq/static-web-server.svg"></a> 
+    <a href="https://crates.io/crates/static-web-server" title="static-web-server crate"><img src="https://img.shields.io/crates/v/static-web-server.svg"></a> 
+    <a href="https://docs.rs/static-web-server" title="static-web-server crate docs"><img src="https://img.shields.io/docsrs/static-web-server/latest?label=docs.rs"></a> 
+    <a href="https://github.com/static-web-server/static-web-server/blob/master/LICENSE-APACHE" title="static-web-server license">
+      <img src="https://img.shields.io/crates/l/static-web-server">
+    </a>
+  </div>
 </div>
 
 ## Overview

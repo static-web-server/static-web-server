@@ -23,6 +23,7 @@ Currently, only the following platforms/architectures are supported.
 #### ARM64
   - `aarch64-unknown-linux-musl`
   - `aarch64-unknown-linux-gnu`
+  - `aarch64-linux-android`
 
 ## macOS
 
