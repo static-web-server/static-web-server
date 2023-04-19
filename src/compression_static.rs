@@ -36,6 +36,8 @@ pub async fn precompressed_variant<'a>(
         Some(ContentCoding::GZIP | ContentCoding::DEFLATE) => "gz",
         // https://peazip.github.io/brotli-compressed-file-format.html
         Some(ContentCoding::BROTLI) => "br",
+        // https://datatracker.ietf.org/doc/html/rfc8878
+        Some(ContentCoding::ZSTD) => "zst",
         _ => {
             tracing::trace!(
                 "preferred encoding based on the file extension was not determined, skipping"

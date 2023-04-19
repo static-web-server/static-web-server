@@ -3,7 +3,7 @@
 
 // Part of the file is borrowed from <https://github.com/seanmonstar/warp/pull/513>*
 
-use async_compression::tokio::bufread::{BrotliEncoder, DeflateEncoder, GzipEncoder};
+use async_compression::tokio::bufread::{BrotliEncoder, DeflateEncoder, GzipEncoder, ZstdEncoder};
 use bytes::Bytes;
 use futures_util::Stream;
 use headers::{AcceptEncoding, ContentCoding, ContentType, HeaderMap, HeaderMapExt};
@@ -91,6 +91,10 @@ pub fn auto(
             let (head, body) = resp.into_parts();
             return Ok(brotli(head, body.into()));
         }
+        if encoding == ContentCoding::ZSTD {
+            let (head, body) = resp.into_parts();
+            return Ok(zstd(head, body.into()));
+        }
     }
 
     Ok(resp)
@@ -144,6 +148,21 @@ pub fn brotli(
     ))));
     let header =
         create_encoding_header(head.headers.remove(CONTENT_ENCODING), ContentCoding::BROTLI);
+    head.headers.remove(CONTENT_LENGTH);
+    head.headers.append(CONTENT_ENCODING, header);
+    Response::from_parts(head, body)
+}
+
+/// Create a wrapping handler that compresses the Body of a [`Response`](hyper::Response)
+/// using zstd, adding `content-encoding: zstd` to the Response's [`HeaderMap`](hyper::HeaderMap)
+pub fn zstd(
+    mut head: http::response::Parts,
+    body: CompressableBody<Body, hyper::Error>,
+) -> Response<Body> {
+    tracing::trace!("compressing response body on the fly using zstd");
+
+    let body = Body::wrap_stream(ReaderStream::new(ZstdEncoder::new(StreamReader::new(body))));
+    let header = create_encoding_header(head.headers.remove(CONTENT_ENCODING), ContentCoding::ZSTD);
     head.headers.remove(CONTENT_LENGTH);
     head.headers.append(CONTENT_ENCODING, header);
     Response::from_parts(head, body)
