@@ -447,8 +447,9 @@ checksum = "8a9ee70c43aaf417c914396645a0fa852624801b24ebb7ae78fe8272889ac888"
 
 [[package]]
 name = "headers-accept-encoding"
-version = "0.3.8"
-source = "git+https://github.com/static-web-server/headers-accept-encoding.git?branch=headers_encoding#8c9e99e0ac5640507071cb51e4a94a0cb7e8a04d"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f31dd148a6d59ca552b4b30a018188701f588c0d398da9e280a455775e450d69"
 dependencies = [
  "base64 0.13.1",
  "bitflags",
