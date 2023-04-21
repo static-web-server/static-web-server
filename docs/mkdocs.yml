@@ -1,13 +1,13 @@
 # Project information
 site_name: Static Web Server
-site_description: 'A blazing fast and asynchronous web server for static files-serving ⚡'
+site_description: 'A cross-platform, blazing fast and asynchronous web server for static files-serving ⚡'
 site_author: 'Jose Quintana'
 site_url: https://sws.joseluisq.net
 dev_addr: 0.0.0.0:8000
 
 # Repository
-repo_name: joseluisq/static-web-server
-repo_url: https://github.com/joseluisq/static-web-server/
+repo_name: static-web-server/static-web-server
+repo_url: https://github.com/static-web-server/static-web-server/
 edit_uri: edit/master/docs/content/
 
 docs_dir: 'content'
@@ -128,6 +128,7 @@ nav:
     - 'HTTP/2 and TLS': 'features/http2-tls.md'
     - 'Logging': 'features/logging.md'
     - 'Compression': 'features/compression.md'
+    - 'Pre-compressed files serving': 'features/compression-static.md'
     - 'Cache Control Headers': 'features/cache-control-headers.md'
     - 'CORS': 'features/cors.md'
     - 'Security Headers': 'features/security-headers.md'
@@ -139,11 +140,15 @@ nav:
     - 'Worker Threads Customization': 'features/worker-threads.md'
     - 'Error Pages': 'features/error-pages.md'
     - 'Custom HTTP Headers': 'features/custom-http-headers.md'
+    - 'URL Rewrites': 'features/url-rewrites.md'
+    - 'URL Redirects': 'features/url-redirects.md'
     - 'Windows Service': 'features/windows-service.md'
+    - 'Trailing Slash Redirect': 'features/trailing-slash-redirect.md'
+    - 'Ignore Files': 'features/ignore-files.md'
   - 'Platforms & Architectures': 'platforms-architectures.md'
   - 'Migration from v1 to v2': 'migration.md'
-  - 'Changelog v2 (latest stable)': 'https://github.com/joseluisq/static-web-server/blob/master/CHANGELOG.md'
-  - 'Changelog v1 (stable)': 'https://github.com/joseluisq/static-web-server/blob/1.x/CHANGELOG.md'
+  - 'Changelog v2 (latest stable)': 'https://github.com/static-web-server/static-web-server/blob/master/CHANGELOG.md'
+  - 'Changelog v1 (stable)': 'https://github.com/static-web-server/static-web-server/blob/1.x/CHANGELOG.md'
   - 'Semantic Versioning': 'semantic-versioning.md'
   - 'Contributions': 'contributions.md'
   - 'License': 'license.md'

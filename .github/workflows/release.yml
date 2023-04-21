@@ -39,10 +39,10 @@ jobs:
     env:
       # For some builds, we use cross to test on 32-bit and big-endian
       # systems.
-      CARGO: cargo
-      # When CARGO is set to CROSS, this is set to `--target matrix.target`.
+      CARGO_BIN: cargo
+      # When CARGO_BIN is set to CROSS, this is set to `--target matrix.target`.
       TARGET_FLAGS: ""
-      # When CARGO is set to CROSS, TARGET_DIR includes matrix.target.
+      # When CARGO_BIN is set to CROSS, TARGET_DIR includes matrix.target.
       TARGET_DIR: ./target
       # Emit backtraces on panics.
       RUST_BACKTRACE: 1
@@ -133,75 +133,29 @@ jobs:
         fetch-depth: 1
 
     - name: Install Rust
-      uses: actions-rs/toolchain@v1
+      uses: dtolnay/rust-toolchain@stable
       with:
         toolchain: ${{ matrix.rust }}
-        profile: minimal
-        override: true
         target: ${{ matrix.target }}
 
     - name: Use Cross
       shell: bash
       run: |
-        cargo install cross
-        echo "CARGO=cross" >> $GITHUB_ENV
+        if [ "${{ matrix.os }}" = "ubuntu-20.04" ]; then
+          cargo install cross@^0.2
+          echo "CARGO_BIN=cross" >> $GITHUB_ENV
+        fi
         echo "TARGET_FLAGS=--target ${{ matrix.target }}" >> $GITHUB_ENV
         echo "TARGET_DIR=./target/${{ matrix.target }}" >> $GITHUB_ENV
 
     - name: Show command used for Cargo
       run: |
-        echo "cargo command is: ${{ env.CARGO }}"
+        echo "cargo command is: ${{ env.CARGO_BIN }}"
         echo "target flag is: ${{ env.TARGET_FLAGS }}"
         echo "target dir is: ${{ env.TARGET_DIR }}"
 
     - name: Build release binary
-      run: ${{ env.CARGO }} build --verbose --release ${{ env.TARGET_FLAGS }}
-
-    - name: Strip release binary (linux and macos)
-      if: matrix.os != 'windows-2019' && matrix.build != 'linux-arm-gnueabihf' && matrix.build != 'linux-musl-armv7' && matrix.build != 'linux-musl-armv6' && matrix.build != 'linux-gnu-arm64' && matrix.build != 'linux-musl-arm64' && matrix.build != 'linux-musl-i686'
-      run: strip "target/${{ matrix.target }}/release/static-web-server"
-
-    - name: Strip release binary (linux-arm-gnueabihf)
-      if: matrix.build == 'linux-arm-gnueabihf'
-      run: |
-        docker run --rm -v "$PWD/target:/target:Z" \
-          rustembedded/cross:arm-unknown-linux-gnueabihf \
-          arm-linux-gnueabihf-strip /target/arm-unknown-linux-gnueabihf/release/static-web-server
-
-    - name: Strip release binary (linux-musl-armv7)
-      if: matrix.build == 'linux-musl-armv7'
-      run: |
-        docker run --rm -v "$PWD/target:/target:Z" \
-          rustembedded/cross:armv7-unknown-linux-musleabihf \
-          arm-linux-musleabihf-strip /target/armv7-unknown-linux-musleabihf/release/static-web-server
-
-    - name: Strip release binary (linux-musl-armv6)
-      if: matrix.build == 'linux-musl-armv6'
-      run: |
-        docker run --rm -v "$PWD/target:/target:Z" \
-          rustembedded/cross:arm-unknown-linux-musleabihf \
-          arm-linux-musleabihf-strip /target/arm-unknown-linux-musleabihf/release/static-web-server
-
-    - name: Strip release binary (linux-gnu-arm64)
-      if: matrix.build == 'linux-gnu-arm64'
-      run: |
-        docker run --rm -v "$PWD/target:/target:Z" \
-          rustembedded/cross:aarch64-unknown-linux-gnu \
-          aarch64-linux-gnu-strip /target/aarch64-unknown-linux-gnu/release/static-web-server
-
-    - name: Strip release binary (linux-musl-arm64)
-      if: matrix.build == 'linux-musl-arm64'
-      run: |
-        docker run --rm -v "$PWD/target:/target:Z" \
-          rustembedded/cross:aarch64-unknown-linux-musl \
-          aarch64-linux-musl-strip /target/aarch64-unknown-linux-musl/release/static-web-server
-
-    - name: Strip release binary (linux-musl-i686)
-      if: matrix.build == 'linux-musl-i686'
-      run: |
-        docker run --rm -v "$PWD/target:/target:Z" \
-          rustembedded/cross:i686-unknown-linux-musl \
-          i686-linux-musl-strip /target/i686-unknown-linux-musl/release/static-web-server
+      run: ${{ env.CARGO_BIN }} build --verbose --release ${{ env.TARGET_FLAGS }}
 
     - name: Build archive
       shell: bash

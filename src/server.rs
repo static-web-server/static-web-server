@@ -94,16 +94,17 @@ impl Server {
         // Config-file "advanced" options
         let advanced_opts = self.opts.advanced;
 
-        // Config file
-        if general.config_file.is_some() && general.config_file.is_some() {
-            tracing::info!("config file: {}", general.config_file.unwrap().display());
+        // Config file option
+        if let Some(config_file) = general.config_file {
+            let config_file = helpers::adjust_canonicalization(config_file);
+            tracing::info!("config file: {}", config_file);
         }
 
         // Determine TCP listener either file descriptor or TCP socket
         let (tcp_listener, addr_str);
         match general.fd {
             Some(fd) => {
-                addr_str = format!("@FD({})", fd);
+                addr_str = format!("@FD({fd})");
                 tcp_listener = ListenFd::from_env()
                     .take_tcp_listener(fd)?
                     .with_context(|| "failed to convert inherited 'fd' into a 'tcp' listener")?;
@@ -119,7 +120,7 @@ impl Server {
                     .with_context(|| format!("failed to parse {} address", general.host))?;
                 let addr = SocketAddr::from((ip, general.port));
                 tcp_listener = TcpListener::bind(addr)
-                    .with_context(|| format!("failed to bind to {} address", addr))?;
+                    .with_context(|| format!("failed to bind to {addr} address"))?;
                 addr_str = addr.to_string();
                 tracing::info!("server bound to tcp socket {}", addr_str);
             }
@@ -151,6 +152,10 @@ impl Server {
         let compression = general.compression;
         tracing::info!("auto compression: enabled={}", compression);
 
+        // Check pre-compressed files based on the `Accept-Encoding` header
+        let compression_static = general.compression_static;
+        tracing::info!("compression static: enabled={}", compression_static);
+
         // Directory listing option
         let dir_listing = general.directory_listing;
         tracing::info!("directory listing: enabled={}", dir_listing);
@@ -158,6 +163,10 @@ impl Server {
         // Directory listing order number
         let dir_listing_order = general.directory_listing_order;
         tracing::info!("directory listing order code: {}", dir_listing_order);
+
+        // Directory listing format
+        let dir_listing_format = general.directory_listing_format;
+        tracing::info!("directory listing format: {}", dir_listing_format);
 
         // Cache control headers option
         let cache_control_headers = general.cache_control_headers;
@@ -167,6 +176,7 @@ impl Server {
         let cors = cors::new(
             general.cors_allow_origins.trim(),
             general.cors_allow_headers.trim(),
+            general.cors_expose_headers.trim(),
         );
 
         // `Basic` HTTP Authentication Schema option
@@ -180,6 +190,17 @@ impl Server {
         let log_remote_address = general.log_remote_address;
         tracing::info!("log remote address: enabled={}", log_remote_address);
 
+        // Log redirect trailing slash option
+        let redirect_trailing_slash = general.redirect_trailing_slash;
+        tracing::info!(
+            "redirect trailing slash: enabled={}",
+            redirect_trailing_slash
+        );
+
+        // Ignore hidden files option
+        let ignore_hidden_files = general.ignore_hidden_files;
+        tracing::info!("ignore hidden files: enabled={}", ignore_hidden_files);
+
         // Grace period option
         let grace_period = general.grace_period;
         tracing::info!("grace period before graceful shutdown: {}s", grace_period);
@@ -189,8 +210,10 @@ impl Server {
             opts: Arc::from(RequestHandlerOpts {
                 root_dir,
                 compression,
+                compression_static,
                 dir_listing,
                 dir_listing_order,
+                dir_listing_format,
                 cors,
                 security_headers,
                 cache_control_headers,
@@ -199,6 +222,8 @@ impl Server {
                 page_fallback,
                 basic_auth,
                 log_remote_address,
+                redirect_trailing_slash,
+                ignore_hidden_files,
                 advanced_opts,
             }),
         });

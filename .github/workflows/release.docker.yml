@@ -10,10 +10,10 @@ jobs:
     steps:
       -
         name: Checkout repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       -
         name: Set up QEMU
-        uses: docker/setup-qemu-action@v1
+        uses: docker/setup-qemu-action@v2
       -
         name: Docker meta alpine
         id: meta_alpine
@@ -29,10 +29,10 @@ jobs:
             type=semver,pattern={{major}}
       -
         name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v1
+        uses: docker/setup-buildx-action@v2
       -
         name: Login to DockerHub
-        uses: docker/login-action@v1 
+        uses: docker/login-action@v2
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
@@ -44,7 +44,7 @@ jobs:
           echo "SERVER_DOCKERFILE=./docker/alpine/Dockerfile" >> $GITHUB_ENV
       -
         name: Build and push (alpine)
-        uses: docker/build-push-action@v2
+        uses: docker/build-push-action@v3
         with:
           push: true
           context: .
@@ -60,10 +60,10 @@ jobs:
     steps:
       -
         name: Checkout repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       -
         name: Set up QEMU
-        uses: docker/setup-qemu-action@v1
+        uses: docker/setup-qemu-action@v2
       -
         name: Docker meta scratch
         id: meta_scratch
@@ -76,10 +76,10 @@ jobs:
             type=semver,pattern={{major}}
       -
         name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v1
+        uses: docker/setup-buildx-action@v2
       -
         name: Login to DockerHub
-        uses: docker/login-action@v1 
+        uses: docker/login-action@v2
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
@@ -91,7 +91,7 @@ jobs:
           echo "SERVER_DOCKERFILE=./docker/scratch/Dockerfile" >> $GITHUB_ENV
       -
         name: Build and push (scratch)
-        uses: docker/build-push-action@v2
+        uses: docker/build-push-action@v3
         with:
           push: true
           context: .

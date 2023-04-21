@@ -2,6 +2,7 @@ use std::path::PathBuf;
 
 use globset::{Glob, GlobMatcher};
 use headers::HeaderMap;
+use hyper::StatusCode;
 use structopt::StructOpt;
 
 use crate::{Context, Result};
@@ -22,9 +23,29 @@ pub struct Headers {
     pub headers: HeaderMap,
 }
 
+/// The `Rewrites` file options.
+pub struct Rewrites {
+    /// Source pattern glob matcher
+    pub source: GlobMatcher,
+    /// A local file that must exist
+    pub destination: String,
+}
+
+/// The `Redirects` file options.
+pub struct Redirects {
+    /// Source pattern glob matcher
+    pub source: GlobMatcher,
+    /// A local file that must exist
+    pub destination: String,
+    /// Redirection type either 301 (Moved Permanently) or 302 (Found)
+    pub kind: StatusCode,
+}
+
 /// The `advanced` file options.
 pub struct Advanced {
     pub headers: Option<Vec<Headers>>,
+    pub rewrites: Option<Vec<Rewrites>>,
+    pub redirects: Option<Vec<Redirects>>,
 }
 
 /// The full server CLI and File options.
@@ -56,6 +77,7 @@ impl Settings {
         let mut config_file = opts.config_file.clone();
         let mut cache_control_headers = opts.cache_control_headers;
         let mut compression = opts.compression;
+        let mut compression_static = opts.compression_static;
         let mut page404 = opts.page404;
         let mut page50x = opts.page50x;
         #[cfg(feature = "http2")]
@@ -67,8 +89,10 @@ impl Settings {
         let mut security_headers = opts.security_headers;
         let mut cors_allow_origins = opts.cors_allow_origins;
         let mut cors_allow_headers = opts.cors_allow_headers;
+        let mut cors_expose_headers = opts.cors_expose_headers;
         let mut directory_listing = opts.directory_listing;
         let mut directory_listing_order = opts.directory_listing_order;
+        let mut directory_listing_format = opts.directory_listing_format;
         let mut basic_auth = opts.basic_auth;
         let mut fd = opts.fd;
         let mut threads_multiplier = opts.threads_multiplier;
@@ -76,6 +100,12 @@ impl Settings {
         let mut grace_period = opts.grace_period;
         let mut page_fallback = opts.page_fallback;
         let mut log_remote_address = opts.log_remote_address;
+        let mut redirect_trailing_slash = opts.redirect_trailing_slash;
+        let mut ignore_hidden_files = opts.ignore_hidden_files;
+
+        // Windows-only options
+        #[cfg(windows)]
+        let mut windows_service = opts.windows_service;
 
         // Define the advanced file options
         let mut settings_advanced: Option<Advanced> = None;
@@ -95,7 +125,7 @@ impl Settings {
 
                 config_file = Some(path_resolved);
 
-                // Assign the corresponding file option values
+                // File-based "general" options
                 if let Some(general) = settings.general {
                     if let Some(v) = general.host {
                         host = v
@@ -114,6 +144,9 @@ impl Settings {
                     }
                     if let Some(v) = general.compression {
                         compression = v
+                    }
+                    if let Some(v) = general.compression_static {
+                        compression_static = v
                     }
                     if let Some(v) = general.page404 {
                         page404 = v
@@ -142,11 +175,17 @@ impl Settings {
                     if let Some(ref v) = general.cors_allow_headers {
                         cors_allow_headers = v.to_owned()
                     }
+                    if let Some(ref v) = general.cors_expose_headers {
+                        cors_expose_headers = v.to_owned()
+                    }
                     if let Some(v) = general.directory_listing {
                         directory_listing = v
                     }
                     if let Some(v) = general.directory_listing_order {
                         directory_listing_order = v
+                    }
+                    if let Some(v) = general.directory_listing_format {
+                        directory_listing_format = v
                     }
                     if let Some(ref v) = general.basic_auth {
                         basic_auth = v.to_owned()
@@ -169,9 +208,21 @@ impl Settings {
                     if let Some(v) = general.log_remote_address {
                         log_remote_address = v
                     }
+                    if let Some(v) = general.redirect_trailing_slash {
+                        redirect_trailing_slash = v
+                    }
+                    if let Some(v) = general.ignore_hidden_files {
+                        ignore_hidden_files = v
+                    }
+
+                    // Windows-only options
+                    #[cfg(windows)]
+                    if let Some(v) = general.windows_service {
+                        windows_service = v
+                    }
                 }
 
-                // Prepare the "advanced" options
+                // File-based "advanced" options
                 if let Some(advanced) = settings.advanced {
                     // 1. Custom HTTP headers assignment
                     let headers_entries = match advanced.headers {
@@ -199,8 +250,66 @@ impl Settings {
                         _ => None,
                     };
 
+                    // 2. Rewrites assignment
+                    let rewrites_entries = match advanced.rewrites {
+                        Some(rewrites_entries) => {
+                            let mut rewrites_vec: Vec<Rewrites> = Vec::new();
+
+                            // Compile a glob pattern for each rewrite sources entry
+                            for rewrites_entry in rewrites_entries.iter() {
+                                let source = Glob::new(&rewrites_entry.source)
+                                    .with_context(|| {
+                                        format!(
+                                            "can not compile glob pattern for rewrite source: {}",
+                                            &rewrites_entry.source
+                                        )
+                                    })?
+                                    .compile_matcher();
+
+                                rewrites_vec.push(Rewrites {
+                                    source,
+                                    destination: rewrites_entry.destination.to_owned(),
+                                });
+                            }
+                            Some(rewrites_vec)
+                        }
+                        _ => None,
+                    };
+
+                    // 3. Redirects assignment
+                    let redirects_entries = match advanced.redirects {
+                        Some(redirects_entries) => {
+                            let mut redirects_vec: Vec<Redirects> = Vec::new();
+
+                            // Compile a glob pattern for each redirect sources entry
+                            for redirects_entry in redirects_entries.iter() {
+                                let source = Glob::new(&redirects_entry.source)
+                                    .with_context(|| {
+                                        format!(
+                                            "can not compile glob pattern for redirect source: {}",
+                                            &redirects_entry.source
+                                        )
+                                    })?
+                                    .compile_matcher();
+
+                                let status_code = redirects_entry.kind.to_owned() as u16;
+                                redirects_vec.push(Redirects {
+                                    source,
+                                    destination: redirects_entry.destination.to_owned(),
+                                    kind: StatusCode::from_u16(status_code).with_context(|| {
+                                        format!("invalid redirect status code: {status_code}")
+                                    })?,
+                                });
+                            }
+                            Some(redirects_vec)
+                        }
+                        _ => None,
+                    };
+
                     settings_advanced = Some(Advanced {
                         headers: headers_entries,
+                        rewrites: rewrites_entries,
+                        redirects: redirects_entries,
                     });
                 }
             }
@@ -215,6 +324,7 @@ impl Settings {
                 config_file,
                 cache_control_headers,
                 compression,
+                compression_static,
                 page404,
                 page50x,
                 #[cfg(feature = "http2")]
@@ -226,8 +336,10 @@ impl Settings {
                 security_headers,
                 cors_allow_origins,
                 cors_allow_headers,
+                cors_expose_headers,
                 directory_listing,
                 directory_listing_order,
+                directory_listing_format,
                 basic_auth,
                 fd,
                 threads_multiplier,
@@ -235,11 +347,12 @@ impl Settings {
                 grace_period,
                 page_fallback,
                 log_remote_address,
+                redirect_trailing_slash,
+                ignore_hidden_files,
 
-                // NOTE:
                 // Windows-only options and commands
                 #[cfg(windows)]
-                windows_service: opts.windows_service,
+                windows_service,
                 #[cfg(windows)]
                 commands: opts.commands,
             },

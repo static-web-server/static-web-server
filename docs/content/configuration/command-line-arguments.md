@@ -10,9 +10,9 @@ The server can be configured via the following command-line arguments.
 ```
 $ static-web-server -h
 
-static-web-server 2.8.0
+static-web-server 2.14.2
 Jose Quintana <https://joseluisq.net>
-A blazing fast and asynchronous web server for static files-serving.
+A cross-platform, blazing fast and asynchronous web server for static files-serving.
 
 USAGE:
     static-web-server [OPTIONS]
@@ -31,19 +31,30 @@ OPTIONS:
     -x, --compression <compression>
             Gzip, Deflate or Brotli compression on demand determined by the Accept-Encoding header and applied to text-
             based web file types only [env: SERVER_COMPRESSION=]  [default: true]
+        --compression-static <compression-static>
+            Look up the pre-compressed file variant (`.gz` or `.br`) on disk of a requested file and serves it directly
+            if available. The compression type is determined by the `Accept-Encoding` header [env:
+            SERVER_COMPRESSION_STATIC=]  [default: false]
     -w, --config-file <config-file>
             Server TOML configuration file path [env: SERVER_CONFIG_FILE=]
 
     -j, --cors-allow-headers <cors-allow-headers>
-            Specify an optional CORS list of allowed headers separated by comas. Default "origin, content-type". It
+            Specify an optional CORS list of allowed headers separated by commas. Default "origin, content-type". It
             requires `--cors-allow-origins` to be used along with [env: SERVER_CORS_ALLOW_HEADERS=]  [default: origin,
             content-type]
     -c, --cors-allow-origins <cors-allow-origins>
-            Specify an optional CORS list of allowed origin hosts separated by comas. Host ports or protocols aren't
+            Specify an optional CORS list of allowed origin hosts separated by commas. Host ports or protocols aren't
             being checked. Use an asterisk (*) to allow any host [env: SERVER_CORS_ALLOW_ORIGINS=]  [default: ]
+        --cors-expose-headers <cors-expose-headers>
+            Specify an optional CORS list of exposed headers separated by commas. Default "origin, content-type". It
+            requires `--cors-expose-origins` to be used along with [env: SERVER_CORS_EXPOSE_HEADERS=]  [default: origin,
+            content-type]
     -z, --directory-listing <directory-listing>
             Enable directory listing for all requests ending with the slash character (‘/’) [env:
             SERVER_DIRECTORY_LISTING=]  [default: false]
+        --directory-listing-format <directory-listing-format>
+            Specify a content format for directory listing entries. Formats supported: "html" or "json". Default "html"
+            [env: SERVER_DIRECTORY_LISTING_FORMAT=]  [default: html]  [possible values: Html, Json]
         --directory-listing-order <directory-listing-order>
             Specify a default code number to order directory listing entries per `Name`, `Last modified` or `Size`
             attributes (columns). Code numbers supported: 0 (Name asc), 1 (Name desc), 2 (Last modified asc), 3 (Last
@@ -66,25 +77,34 @@ OPTIONS:
             Enable HTTP/2 with TLS support [env: SERVER_HTTP2_TLS=]  [default: false]
 
         --http2-tls-cert <http2-tls-cert>
-            Specify the file path to read the certificate [env: SERVER_HTTP2_TLS_CERT=]  [default: ]
+            Specify the file path to read the certificate [env: SERVER_HTTP2_TLS_CERT=]
 
         --http2-tls-key <http2-tls-key>
-            Specify the file path to read the private key [env: SERVER_HTTP2_TLS_KEY=]  [default: ]
+            Specify the file path to read the private key [env: SERVER_HTTP2_TLS_KEY=]
 
+        --ignore-hidden-files <ignore-hidden-files>
+            Ignore hidden files/directories (dotfiles), preventing them to be served and being included in auto HTML
+            index pages (directory listing) [env: SERVER_IGNORE_HIDDEN_FILES=]  [default: false]
     -g, --log-level <log-level>
             Specify a logging level in lower case. Values: error, warn, info, debug or trace [env: SERVER_LOG_LEVEL=]
             [default: error]
+        --log-remote-address <log-remote-address>
+            Log incoming requests information along with its remote address if available using the `info` log level
+            [env: SERVER_LOG_REMOTE_ADDRESS=]  [default: false]
         --page-fallback <page-fallback>
             HTML file path that is used for GET requests when the requested path doesn't exist. The fallback page is
             served with a 200 status code, useful when using client routers. If the path is not specified or simply
-            doesn't exist then this feature will not be active [env: SERVER_FALLBACK_PAGE=]  [default: ]
+            doesn't exist then this feature will not be active [env: SERVER_FALLBACK_PAGE=]
         --page404 <page404>
             HTML file path for 404 errors. If the path is not specified or simply doesn't exist then the server will use
             a generic HTML error message [env: SERVER_ERROR_PAGE_404=]  [default: ./public/404.html]
         --page50x <page50x>
             HTML file path for 50x errors. If the path is not specified or simply doesn't exist then the server will use
             a generic HTML error message [env: SERVER_ERROR_PAGE_50X=]  [default: ./public/50x.html]
-    -p, --port <port>                                          Host port [env: SERVER_PORT=]  [default: 80]
+    -p, --port <port>                                            Host port [env: SERVER_PORT=]  [default: 80]
+        --redirect-trailing-slash <redirect-trailing-slash>
+            Check for a trailing slash in the requested directory URI and redirect permanently (308) to the same path
+            with a trailing slash suffix if it is missing [env: SERVER_REDIRECT_TRAILING_SLASH=]  [default: true]
     -d, --root <root>
             Root directory path of static files [env: SERVER_ROOT=]  [default: ./public]
 
@@ -106,7 +126,7 @@ OPTIONS:
 
 ## Windows
 
-Following options and commands are Windows platform specific.
+The following options and commands are Windows platform specific.
 
 ```
  -s, --windows-service <windows-service>

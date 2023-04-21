@@ -72,3 +72,22 @@ pub fn stringify(dst: &mut String, path: &serde_ignored::Path<'_>) {
         | Path::NewtypeStruct { parent } => stringify(dst, parent),
     }
 }
+
+#[cfg(unix)]
+/// In Unix-like systems it just casts the `PathBuf` into an string.
+pub fn adjust_canonicalization(p: PathBuf) -> String {
+    p.display().to_string()
+}
+
+#[cfg(windows)]
+/// In Windows systems it adjusts the `PathBuf` stripping its `\\?\` prefix.
+pub fn adjust_canonicalization(p: PathBuf) -> String {
+    const VERBATIM_PREFIX: &str = r#"\\?\"#;
+    let p = p.to_str().unwrap_or_default();
+    let p = if p.starts_with(VERBATIM_PREFIX) {
+        p.strip_prefix(VERBATIM_PREFIX).unwrap_or_default()
+    } else {
+        p
+    };
+    p.to_owned()
+}

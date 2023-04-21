@@ -1,427 +1,246 @@
-// Static File handler
-// -> Most of the file is borrowed from https://github.com/seanmonstar/warp/blob/master/src/filters/fs.rs
+//! Static File handler
+//!
+//! Part of the file is borrowed and adapted at a convenience from
+//! https://github.com/seanmonstar/warp/blob/master/src/filters/fs.rs
 
 use bytes::{Bytes, BytesMut};
-use futures_util::future::Either;
-use futures_util::{future, ready, stream, FutureExt, Stream, StreamExt, TryFutureExt};
+use futures_util::future::{Either, Future};
+use futures_util::{future, Stream};
 use headers::{
     AcceptRanges, ContentLength, ContentRange, ContentType, HeaderMap, HeaderMapExt, HeaderValue,
     IfModifiedSince, IfRange, IfUnmodifiedSince, LastModified, Range,
 };
-use humansize::{file_size_opts, FileSize};
-use hyper::{Body, Method, Response, StatusCode};
-use mime_guess::mime;
+use http::header::CONTENT_LENGTH;
+use hyper::{header::CONTENT_ENCODING, Body, Method, Response, StatusCode};
 use percent_encoding::percent_decode_str;
-use std::cmp::Ordering;
-use std::fs::Metadata;
-use std::future::Future;
-use std::io;
+use std::fs::{File, Metadata};
+use std::io::{self, BufReader, Read, Seek, SeekFrom};
 use std::ops::Bound;
-use std::path::{Component, PathBuf};
+use std::path::{Component, Path, PathBuf};
 use std::pin::Pin;
-use std::sync::Arc;
-use std::task::Poll;
-use std::time::{SystemTime, UNIX_EPOCH};
-use std::{cmp, path::Path};
-use tokio::fs::File as TkFile;
-use tokio::io::AsyncSeekExt;
-use tokio_util::io::poll_read_buf;
+use std::task::{Context, Poll};
 
-use crate::Result;
+use crate::directory_listing::DirListFmt;
+use crate::exts::http::{MethodExt, HTTP_SUPPORTED_METHODS};
+use crate::exts::path::PathExt;
+use crate::{compression_static, directory_listing, Result};
 
-/// Arc `PathBuf` reference wrapper since Arc<PathBuf> doesn't implement AsRef<Path>.
-#[derive(Clone, Debug)]
-pub struct ArcPath(pub Arc<PathBuf>);
-
-impl AsRef<Path> for ArcPath {
-    fn as_ref(&self) -> &Path {
-        (*self.0).as_ref()
-    }
+/// Defines all options needed by the static-files handler.
+pub struct HandleOpts<'a> {
+    pub method: &'a Method,
+    pub headers: &'a HeaderMap<HeaderValue>,
+    pub base_path: &'a PathBuf,
+    pub uri_path: &'a str,
+    pub uri_query: Option<&'a str>,
+    pub dir_listing: bool,
+    pub dir_listing_order: u8,
+    pub dir_listing_format: &'a DirListFmt,
+    pub redirect_trailing_slash: bool,
+    pub compression_static: bool,
+    pub ignore_hidden_files: bool,
 }
 
 /// Entry point to handle incoming requests which map to specific files
 /// on file system and return a file response.
-pub async fn handle(
-    method: &Method,
-    headers: &HeaderMap<HeaderValue>,
-    base_path: impl Into<PathBuf>,
-    uri_path: &str,
-    uri_query: Option<&str>,
-    dir_listing: bool,
-    dir_listing_order: u8,
-) -> Result<Response<Body>, StatusCode> {
-    // Check for disallowed HTTP methods and reject request accordently
-    if !(method == Method::GET || method == Method::HEAD || method == Method::OPTIONS) {
+pub async fn handle<'a>(opts: &HandleOpts<'a>) -> Result<(Response<Body>, bool), StatusCode> {
+    let method = opts.method;
+    let uri_path = opts.uri_path;
+
+    // Check if current HTTP method for incoming request is supported
+    if !method.is_allowed() {
         return Err(StatusCode::METHOD_NOT_ALLOWED);
     }
 
-    let base = Arc::new(base_path.into());
-    let (filepath, meta, auto_index) = path_from_tail(base, uri_path).await?;
+    let headers_opt = opts.headers;
+    let compression_static_opt = opts.compression_static;
 
-    // NOTE: `auto_index` appends an `index.html` to an `uri_path` of kind directory only.
+    let mut file_path = sanitize_path(opts.base_path, uri_path)?;
 
-    // Check for a trailing slash on the current directory path
-    // and redirect if that path doesn't end with the slash char
-    if auto_index && !uri_path.ends_with('/') {
-        let uri = [uri_path, "/"].concat();
-        let loc = match HeaderValue::from_str(uri.as_str()) {
-            Ok(val) => val,
-            Err(err) => {
-                tracing::error!("invalid header value from current uri: {:?}", err);
-                return Err(StatusCode::INTERNAL_SERVER_ERROR);
-            }
-        };
+    let (file_path, meta, is_dir, precompressed_variant) =
+        composed_file_metadata(&mut file_path, headers_opt, compression_static_opt).await?;
 
-        let mut resp = Response::new(Body::empty());
-        resp.headers_mut().insert(hyper::header::LOCATION, loc);
-        *resp.status_mut() = StatusCode::PERMANENT_REDIRECT;
-        tracing::trace!("uri doesn't end with a slash so redirecting permanently");
-        return Ok(resp);
+    // Check for a hidden file/directory (dotfile) and ignore it if feature enabled
+    if opts.ignore_hidden_files && file_path.is_hidden() {
+        return Err(StatusCode::NOT_FOUND);
     }
 
-    // Respond the permitted communication options
-    if method == Method::OPTIONS {
-        let mut resp = Response::new(Body::empty());
-        *resp.status_mut() = StatusCode::NO_CONTENT;
-        resp.headers_mut()
-            .typed_insert(headers::Allow::from_iter(vec![
-                Method::OPTIONS,
-                Method::HEAD,
-                Method::GET,
-            ]));
-        resp.headers_mut().typed_insert(AcceptRanges::bytes());
-        return Ok(resp);
-    }
+    // `is_precompressed` relates to `opts.compression_static` value
+    let is_precompressed = precompressed_variant.is_some();
 
-    // Directory listing
-    // 1. Check if "directory listing" feature is enabled
-    // if current path is a valid directory and
-    // if it does not contain an `index.html` file (if a proper auto index is generated)
-    if dir_listing && auto_index && !filepath.as_ref().exists() {
-        return directory_listing(
-            method,
-            uri_path,
-            uri_query,
-            filepath.as_ref(),
-            dir_listing_order,
-        )
-        .await;
-    }
-
-    file_reply(headers, (filepath, &meta, auto_index)).await
-}
-
-/// Convert an incoming uri into a valid and sanitized path then returns a tuple
-// with the path as well as its file metadata and an auto index check if it's a directory.
-fn path_from_tail(
-    base: Arc<PathBuf>,
-    tail: &str,
-) -> impl Future<Output = Result<(ArcPath, Metadata, bool), StatusCode>> + Send {
-    future::ready(sanitize_path(base.as_ref(), tail)).and_then(|mut buf| async {
-        match tokio::fs::metadata(&buf).await {
-            Ok(meta) => {
-                let mut auto_index = false;
-                if meta.is_dir() {
-                    tracing::debug!("dir: appending index.html to directory path");
-                    buf.push("index.html");
-                    auto_index = true;
-                }
-                tracing::trace!("dir: {:?}", buf);
-                Ok((ArcPath(Arc::new(buf)), meta, auto_index))
-            }
-            Err(err) => {
-                tracing::debug!("file not found: {} {:?}", buf.display(), err);
-                Err(StatusCode::NOT_FOUND)
-            }
-        }
-    })
-}
-
-/// Provides directory listing support for the current request.
-/// Note that this function is a highly dependent on `path_from_tail()`
-// function which must be called first. See `handle()` more for details.
-fn directory_listing<'a>(
-    method: &'a Method,
-    current_path: &'a str,
-    uri_query: Option<&'a str>,
-    filepath: &'a Path,
-    dir_listing_order: u8,
-) -> impl Future<Output = Result<Response<Body>, StatusCode>> + Send + 'a {
-    let is_head = method == Method::HEAD;
-
-    // Note: it's safe to call `parent()` here since `filepath`
-    // value always refer to a path with file ending and under
-    // a root directory boundary.
-    // See `path_from_tail()` function which sanitizes the requested
-    // path before to be delegated here.
-    let parent = filepath.parent().unwrap_or(filepath);
-
-    tokio::fs::read_dir(parent).then(move |res| match res {
-        Ok(entries) => Either::Left(async move {
-            match read_directory_entries(
-                entries,
-                current_path,
-                uri_query,
-                is_head,
-                dir_listing_order,
-            )
-            .await
-            {
-                Ok(resp) => Ok(resp),
+    if is_dir {
+        // Check for a trailing slash on the current directory path
+        // and redirect if that path doesn't end with the slash char
+        if opts.redirect_trailing_slash && !uri_path.ends_with('/') {
+            let uri = [uri_path, "/"].concat();
+            let loc = match HeaderValue::from_str(uri.as_str()) {
+                Ok(val) => val,
                 Err(err) => {
-                    tracing::error!(
-                        "error during directory entries reading (path={:?}): {} ",
-                        parent.display(),
-                        err
-                    );
-                    Err(StatusCode::INTERNAL_SERVER_ERROR)
-                }
-            }
-        }),
-        Err(err) => {
-            let status = match err.kind() {
-                io::ErrorKind::NotFound => {
-                    tracing::debug!("entry file not found: {:?}", filepath.display());
-                    StatusCode::NOT_FOUND
-                }
-                io::ErrorKind::PermissionDenied => {
-                    tracing::warn!("entry file permission denied: {:?}", filepath.display());
-                    StatusCode::FORBIDDEN
-                }
-                _ => {
-                    tracing::error!(
-                        "directory entries error (filepath={:?}): {} ",
-                        filepath.display(),
-                        err
-                    );
-                    StatusCode::INTERNAL_SERVER_ERROR
+                    tracing::error!("invalid header value from current uri: {:?}", err);
+                    return Err(StatusCode::INTERNAL_SERVER_ERROR);
                 }
             };
-            Either::Right(future::err(status))
-        }
-    })
-}
 
-// It reads current directory entries and create the index page content. Otherwise returns a status error.
-async fn read_directory_entries(
-    mut entries: tokio::fs::ReadDir,
-    base_path: &str,
-    uri_query: Option<&str>,
-    is_head: bool,
-    mut dir_listing_order: u8,
-) -> Result<Response<Body>> {
-    let mut dirs_count: usize = 0;
-    let mut files_count: usize = 0;
-    let mut files_found: Vec<(String, String, u64, String)> = Vec::new();
+            let mut resp = Response::new(Body::empty());
+            resp.headers_mut().insert(hyper::header::LOCATION, loc);
+            *resp.status_mut() = StatusCode::PERMANENT_REDIRECT;
 
-    while let Some(entry) = entries.next_entry().await? {
-        let meta = entry.metadata().await?;
-
-        let mut name = entry
-            .file_name()
-            .into_string()
-            .map_err(|err| anyhow::anyhow!(err.into_string().unwrap_or_default()))?;
-
-        let mut filesize = 0_u64;
-
-        if meta.is_dir() {
-            name += "/";
-            dirs_count += 1;
-        } else if meta.is_file() {
-            filesize = meta.len();
-            files_count += 1;
-        } else if meta.file_type().is_symlink() {
-            let m = tokio::fs::symlink_metadata(entry.path().canonicalize()?).await?;
-            if m.is_dir() {
-                name += "/";
-                dirs_count += 1;
-            } else {
-                filesize = meta.len();
-                files_count += 1;
-            }
-        } else {
-            continue;
+            tracing::trace!("uri doesn't end with a slash so redirecting permanently");
+            return Ok((resp, is_precompressed));
         }
 
-        let uri = [base_path, &name].concat();
-        let modified = match parse_last_modified(meta.modified()?) {
-            Ok(tm) => tm.to_local().strftime("%F %T")?.to_string(),
-            Err(err) => {
-                tracing::error!("error determining file last modified: {:?}", err);
-                String::from("-")
-            }
-        };
-        files_found.push((name, modified, filesize, uri));
+        // Respond with the permitted communication options
+        if method.is_options() {
+            let mut resp = Response::new(Body::empty());
+            *resp.status_mut() = StatusCode::NO_CONTENT;
+            resp.headers_mut()
+                .typed_insert(headers::Allow::from_iter(HTTP_SUPPORTED_METHODS.clone()));
+            resp.headers_mut().typed_insert(AcceptRanges::bytes());
+
+            return Ok((resp, is_precompressed));
+        }
+
+        // Directory listing
+        // Check if "directory listing" feature is enabled,
+        // if current path is a valid directory and
+        // if it does not contain an `index.html` file (if a proper auto index is generated)
+        if opts.dir_listing && !file_path.exists() {
+            let resp = directory_listing::auto_index(
+                method,
+                uri_path,
+                opts.uri_query,
+                file_path.as_ref(),
+                opts.dir_listing_order,
+                opts.dir_listing_format,
+                opts.ignore_hidden_files,
+            )
+            .await?;
+
+            return Ok((resp, is_precompressed));
+        }
     }
 
-    // Check the query uri for a sorting type. E.g https://blah/?sort=5
-    if let Some(q) = uri_query {
-        let mut parts = form_urlencoded::parse(q.as_bytes());
-        if parts.count() > 0 {
-            // NOTE: we just pick up the first value (pairs)
-            if let Some(sort) = parts.next() {
-                if sort.0 == "sort" && !sort.1.trim().is_empty() {
-                    match sort.1.parse::<u8>() {
-                        Ok(n) => dir_listing_order = n,
-                        Err(e) => {
-                            tracing::debug!("sorting: query value to u8 error: {:?}", e);
-                        }
-                    }
+    // Check for a pre-compressed file variant if present under the `opts.compression_static` context
+    if let Some(meta_precompressed) = precompressed_variant {
+        let (path_precomp, precomp_ext) = meta_precompressed;
+
+        let mut resp = file_reply(headers_opt, file_path, &meta, Some(path_precomp)).await?;
+
+        // Prepare corresponding headers to let know how to decode the payload
+        resp.headers_mut().remove(CONTENT_LENGTH);
+        resp.headers_mut()
+            .insert(CONTENT_ENCODING, precomp_ext.parse().unwrap());
+
+        return Ok((resp, is_precompressed));
+    }
+
+    let resp = file_reply(headers_opt, file_path, &meta, None).await?;
+
+    Ok((resp, is_precompressed))
+}
+
+/// Returns the final composed metadata information (tuple) containing
+/// the Arc `PathBuf` reference wrapper for the current `file_path` with its file metadata
+/// as well as its optional pre-compressed variant.
+async fn composed_file_metadata<'a>(
+    file_path: &'a mut PathBuf,
+    headers: &'a HeaderMap<HeaderValue>,
+    compression_static: bool,
+) -> Result<(&'a PathBuf, Metadata, bool, Option<(PathBuf, &'a str)>), StatusCode> {
+    // First pre-compressed variant check for the given file path
+    let mut tried_precompressed = false;
+    if compression_static {
+        tried_precompressed = true;
+        if let Some((path, meta, ext)) =
+            compression_static::precompressed_variant(file_path, headers).await
+        {
+            return Ok((file_path, meta, false, Some((path, ext))));
+        }
+    }
+
+    tracing::trace!("getting metadata for file {}", file_path.display());
+
+    match file_metadata(file_path.as_ref()) {
+        Ok((mut meta, is_dir)) => {
+            if is_dir {
+                // Append a HTML index page by default if it's a directory path (`autoindex`)
+                tracing::debug!("dir: appending an index.html to the directory path");
+                file_path.push("index.html");
+
+                // If file exists then overwrite the `meta`
+                // Also noting that it's still a directory request
+                if let Ok(meta_res) = file_metadata(file_path.as_ref()) {
+                    (meta, _) = meta_res
                 }
             }
+
+            Ok((file_path, meta, is_dir, None))
+        }
+        Err(err) => {
+            // Second pre-compressed variant check for the given file path
+            if compression_static && !tried_precompressed {
+                if let Some((path, meta, ext)) =
+                    compression_static::precompressed_variant(file_path, headers).await
+                {
+                    return Ok((file_path, meta, false, Some((path, ext))));
+                }
+            }
+
+            Err(err)
         }
     }
-
-    // Default sorting type values
-    let mut sort_name = "0".to_owned();
-    let mut sort_last_modified = "2".to_owned();
-    let mut sort_size = "4".to_owned();
-
-    files_found.sort_by(|a, b| match dir_listing_order {
-        // Name (asc, desc)
-        0 => {
-            sort_name = "1".to_owned();
-            a.0.to_lowercase().cmp(&b.0.to_lowercase())
-        }
-        1 => {
-            sort_name = "0".to_owned();
-            b.0.to_lowercase().cmp(&a.0.to_lowercase())
-        }
-
-        // Modified (asc, desc)
-        2 => {
-            sort_last_modified = "3".to_owned();
-            a.1.cmp(&b.1)
-        }
-        3 => {
-            sort_last_modified = "2".to_owned();
-            b.1.cmp(&a.1)
-        }
-
-        // File size (asc, desc)
-        4 => {
-            sort_size = "5".to_owned();
-            a.2.cmp(&b.2)
-        }
-        5 => {
-            sort_size = "4".to_owned();
-            b.2.cmp(&a.2)
-        }
-
-        // Unordered
-        _ => Ordering::Equal,
-    });
-
-    // Prepare table header with sorting support
-    let table_header = format!(
-        r#"<thead><tr><th><a href="?sort={}">Name</a></th><th style="width:160px;"><a href="?sort={}">Last modified</a></th><th style="width:120px;text-align:right;"><a href="?sort={}">Size</a></th></tr></thead>"#,
-        sort_name, sort_last_modified, sort_size,
-    );
-
-    let mut entries_str = String::new();
-    if base_path != "/" {
-        entries_str = String::from(r#"<tr><td colspan="3"><a href="../">../</a></td></tr>"#);
-    }
-
-    for f in files_found {
-        let (name, modified, filesize, uri) = f;
-        let mut filesize_str = filesize
-            .file_size(file_size_opts::DECIMAL)
-            .map_err(anyhow::Error::msg)?;
-
-        if filesize == 0 {
-            filesize_str = String::from("-");
-        }
-
-        entries_str = format!(
-            "{}<tr><td><a href=\"{}\" title=\"{}\">{}</a></td><td>{}</td><td align=\"right\">{}</td></tr>",
-            entries_str,
-            uri,
-            name,
-            name,
-            modified,
-            filesize_str
-        );
-    }
-
-    let current_path = percent_decode_str(base_path).decode_utf8()?.to_owned();
-    let dirs_str = if dirs_count == 1 {
-        "directory"
-    } else {
-        "directories"
-    };
-    let summary_str = format!(
-        "<div>{} {}, {} {}</div>",
-        dirs_count, dirs_str, files_count, "file(s)"
-    );
-    let style_str = r#"<style>html{background-color:#fff;-moz-osx-font-smoothing:grayscale;-webkit-font-smoothing:antialiased;min-width:20rem;text-rendering:optimizeLegibility;-webkit-text-size-adjust:100%;-moz-text-size-adjust:100%;text-size-adjust:100%}body{padding:1rem;font-family:Consolas,'Liberation Mono',Menlo,monospace;font-size:.875rem;max-width:70rem;margin:0 auto;color:#4a4a4a;font-weight:400;line-height:1.5}h1{margin:0;padding:0;font-size:1.375rem;line-height:1.25;margin-bottom:0.5rem;}table{width:100%;border-spacing: 0;}table th,table td{padding:.2rem .5rem;white-space:nowrap;vertical-align:top}table th a,table td a{display:inline-block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:95%;vertical-align:top}table tr:hover td{background-color:#f5f5f5}footer{padding-top:0.5rem}table tr th{text-align:left;}</style>"#;
-    let footer_str = r#"<footer>Powered by <a target="_blank" href="https://github.com/joseluisq/static-web-server">static-web-server</a> | MIT &amp; Apache 2.0</footer>"#;
-    let page_str = format!(
-        "<!DOCTYPE html><html><head><meta charset=\"utf-8\"><title>Index of {}</title>{}</head><body><h1>Index of {}</h1>{}<hr><table>{}{}</table><hr>{}</body></html>", current_path, style_str, current_path, summary_str, table_header, entries_str, footer_str
-    );
-
-    let mut resp = Response::new(Body::empty());
-    resp.headers_mut()
-        .typed_insert(ContentType::from(mime::TEXT_HTML_UTF_8));
-    resp.headers_mut()
-        .typed_insert(ContentLength(page_str.len() as u64));
-
-    // We skip the body for HEAD requests
-    if is_head {
-        return Ok(resp);
-    }
-
-    *resp.body_mut() = Body::from(page_str);
-
-    Ok(resp)
 }
 
-fn parse_last_modified(modified: SystemTime) -> Result<time::Tm, Box<dyn std::error::Error>> {
-    let since_epoch = modified.duration_since(UNIX_EPOCH)?;
-    // HTTP times don't have nanosecond precision, so we truncate
-    // the modification time.
-    // Converting to i64 should be safe until we get beyond the
-    // planned lifetime of the universe
-    //
-    // TODO: Investigate how to write a test for this. Changing
-    // the modification time of a file with greater than second
-    // precision appears to be something that only is possible to
-    // do on Linux.
-    let ts = time::Timespec::new(since_epoch.as_secs() as i64, 0);
-    Ok(time::at_utc(ts))
+/// Try to find the file system metadata for the given file path.
+pub fn file_metadata(file_path: &Path) -> Result<(Metadata, bool), StatusCode> {
+    match std::fs::metadata(file_path) {
+        Ok(meta) => {
+            let is_dir = meta.is_dir();
+            tracing::trace!("file found: {:?}", file_path);
+            Ok((meta, is_dir))
+        }
+        Err(err) => {
+            tracing::debug!("file not found: {:?} {:?}", file_path, err);
+            Err(StatusCode::NOT_FOUND)
+        }
+    }
 }
 
-/// Reply with a file content.
+/// Reply with the corresponding file content taking into account
+/// its precompressed variant if any.
+/// The `path` param should contains always the original requested file path and
+/// the `meta` param value should corresponds to it.
+/// However, if `path_precompressed` contains some value then
+/// the `meta` param  value will belong to the `path_precompressed` (precompressed file variant).
 fn file_reply<'a>(
     headers: &'a HeaderMap<HeaderValue>,
-    res: (ArcPath, &'a Metadata, bool),
+    path: &'a PathBuf,
+    meta: &'a Metadata,
+    path_precompressed: Option<PathBuf>,
 ) -> impl Future<Output = Result<Response<Body>, StatusCode>> + Send + 'a {
-    let (path, meta, auto_index) = res;
     let conditionals = get_conditional_headers(headers);
-    TkFile::open(path.clone()).then(move |res| match res {
-        Ok(file) => Either::Left(file_conditional(file, path, meta, auto_index, conditionals)),
+
+    let file_path = path_precompressed.as_ref().unwrap_or(path);
+
+    match File::open(file_path) {
+        Ok(file) => Either::Left(response_body(file, path, meta, conditionals)),
         Err(err) => {
             let status = match err.kind() {
                 io::ErrorKind::NotFound => {
-                    tracing::debug!("file not found: {:?}", path.as_ref().display());
+                    tracing::debug!("file can't be opened or not found: {:?}", path.display());
                     StatusCode::NOT_FOUND
                 }
                 io::ErrorKind::PermissionDenied => {
-                    tracing::warn!("file permission denied: {:?}", path.as_ref().display());
+                    tracing::warn!("file permission denied: {:?}", path.display());
                     StatusCode::FORBIDDEN
                 }
                 _ => {
-                    tracing::error!(
-                        "file open error (path={:?}): {} ",
-                        path.as_ref().display(),
-                        err
-                    );
+                    tracing::error!("file open error (path={:?}): {} ", path.display(), err);
                     StatusCode::INTERNAL_SERVER_ERROR
                 }
             };
             Either::Right(future::err(status))
         }
-    })
+    }
 }
 
 fn get_conditional_headers(header_list: &HeaderMap<HeaderValue>) -> Conditionals {
@@ -438,6 +257,7 @@ fn get_conditional_headers(header_list: &HeaderMap<HeaderValue>) -> Conditionals
     }
 }
 
+/// Sanitizes a base/tail paths and then it returns an unified one.
 fn sanitize_path(base: impl AsRef<Path>, tail: &str) -> Result<PathBuf, StatusCode> {
     let path_decoded = match percent_decode_str(tail.trim_start_matches('/')).decode_utf8() {
         Ok(p) => p,
@@ -449,7 +269,7 @@ fn sanitize_path(base: impl AsRef<Path>, tail: &str) -> Result<PathBuf, StatusCo
 
     let path_decoded = Path::new(&*path_decoded);
     let mut full_path = base.as_ref().to_path_buf();
-    tracing::trace!("dir? base={:?}, route={:?}", full_path, path_decoded);
+    tracing::trace!("dir: base={:?}, route={:?}", full_path, path_decoded);
 
     for component in path_decoded.components() {
         match component {
@@ -538,44 +358,63 @@ impl Conditionals {
     }
 }
 
-async fn file_conditional(
-    file: TkFile,
-    path: ArcPath,
-    meta: &Metadata,
-    auto_index: bool,
-    conditionals: Conditionals,
-) -> Result<Response<Body>, StatusCode> {
-    if auto_index {
-        match file.metadata().await {
-            Ok(meta) => Ok(response_body(file, &meta, path, conditionals)),
-            Err(err) => {
-                tracing::debug!("file metadata error: {}", err);
-                Err(StatusCode::INTERNAL_SERVER_ERROR)
+#[cfg(unix)]
+const READ_BUF_SIZE: usize = 4_096;
+
+#[cfg(not(unix))]
+const READ_BUF_SIZE: usize = 8_192;
+
+#[derive(Debug)]
+pub struct FileStream<T> {
+    reader: T,
+}
+
+impl<T: Read + Unpin> Stream for FileStream<T> {
+    type Item = Result<Bytes>;
+
+    fn poll_next(self: Pin<&mut Self>, _: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        let mut buf = BytesMut::zeroed(READ_BUF_SIZE);
+        match Pin::into_inner(self).reader.read(&mut buf[..]) {
+            Ok(n) => {
+                if n == 0 {
+                    Poll::Ready(None)
+                } else {
+                    buf.truncate(n);
+                    Poll::Ready(Some(Ok(buf.freeze())))
+                }
             }
+            Err(err) => Poll::Ready(Some(Err(anyhow::Error::from(err)))),
         }
-    } else {
-        Ok(response_body(file, meta, path, conditionals))
     }
 }
 
-fn response_body(
-    file: TkFile,
+async fn response_body(
+    mut file: File,
+    path: &PathBuf,
     meta: &Metadata,
-    path: ArcPath,
     conditionals: Conditionals,
-) -> Response<Body> {
+) -> Result<Response<Body>, StatusCode> {
     let mut len = meta.len();
     let modified = meta.modified().ok().map(LastModified::from);
+
     match conditionals.check(modified) {
-        Cond::NoBody(resp) => resp,
+        Cond::NoBody(resp) => Ok(resp),
         Cond::WithBody(range) => {
             bytes_range(range, len)
                 .map(|(start, end)| {
-                    let sub_len = end - start;
-                    let buf_size = optimal_buf_size(meta);
-                    let stream = file_stream(file, buf_size, (start, end));
-                    let body = Body::wrap_stream(stream);
+                    match file.seek(SeekFrom::Start(start)) {
+                        Ok(_) => (),
+                        Err(err) => {
+                            tracing::error!("seek file from start error: {:?}", err);
+                            return Err(StatusCode::INTERNAL_SERVER_ERROR);
+                        }
+                    };
 
+                    let sub_len = end - start;
+                    let reader = BufReader::new(file).take(sub_len);
+                    let stream = FileStream { reader };
+
+                    let body = Body::wrap_stream(stream);
                     let mut resp = Response::new(body);
 
                     if sub_len != len {
@@ -597,7 +436,7 @@ fn response_body(
                         resp.headers_mut().typed_insert(last_modified);
                     }
 
-                    resp
+                    Ok(resp)
                 })
                 .unwrap_or_else(|BadRange| {
                     // bad byte range
@@ -605,7 +444,7 @@ fn response_body(
                     *resp.status_mut() = StatusCode::RANGE_NOT_SATISFIABLE;
                     resp.headers_mut()
                         .typed_insert(ContentRange::unsatisfied_bytes(len));
-                    resp
+                    Ok(resp)
                 })
         }
     }
@@ -651,95 +490,9 @@ fn bytes_range(range: Option<Range>, max_len: u64) -> Result<(u64, u64), BadRang
     res
 }
 
-fn file_stream(
-    mut file: TkFile,
-    buf_size: usize,
-    (start, end): (u64, u64),
-) -> impl Stream<Item = Result<Bytes, io::Error>> + Send {
-    let seek = async move {
-        if start != 0 {
-            file.seek(io::SeekFrom::Start(start)).await?;
-        }
-        Ok(file)
-    };
-
-    seek.into_stream()
-        .map(move |result| {
-            let mut buf = BytesMut::new();
-            let mut len = end - start;
-            let mut f = match result {
-                Ok(f) => f,
-                Err(f) => return Either::Left(stream::once(future::err(f))),
-            };
-
-            Either::Right(stream::poll_fn(move |cx| {
-                if len == 0 {
-                    return Poll::Ready(None);
-                }
-                reserve_at_least(&mut buf, buf_size);
-
-                let n = match ready!(poll_read_buf(Pin::new(&mut f), cx, &mut buf)) {
-                    Ok(n) => n as u64,
-                    Err(err) => {
-                        tracing::debug!("file read error: {}", err);
-                        return Poll::Ready(Some(Err(err)));
-                    }
-                };
-
-                if n == 0 {
-                    tracing::debug!("file read found EOF before expected length");
-                    return Poll::Ready(None);
-                }
-
-                let mut chunk = buf.split().freeze();
-                if n > len {
-                    chunk = chunk.split_to(len as usize);
-                    len = 0;
-                } else {
-                    len -= n;
-                }
-
-                Poll::Ready(Some(Ok(chunk)))
-            }))
-        })
-        .flatten()
-}
-
-fn reserve_at_least(buf: &mut BytesMut, cap: usize) {
-    if buf.capacity() - buf.len() < cap {
-        buf.reserve(cap);
-    }
-}
-
-const DEFAULT_READ_BUF_SIZE: usize = 8_192;
-
-fn optimal_buf_size(metadata: &Metadata) -> usize {
-    let block_size = get_block_size(metadata);
-
-    // If file length is smaller than block size, don't waste space
-    // reserving a bigger-than-needed buffer.
-    cmp::min(block_size as u64, metadata.len()) as usize
-}
-
-#[cfg(unix)]
-fn get_block_size(metadata: &Metadata) -> usize {
-    use std::os::unix::fs::MetadataExt;
-    //TODO: blksize() returns u64, should handle bad cast...
-    //(really, a block size bigger than 4gb?)
-
-    // Use device blocksize unless it's really small.
-    cmp::max(metadata.blksize() as usize, DEFAULT_READ_BUF_SIZE)
-}
-
-#[cfg(not(unix))]
-fn get_block_size(_metadata: &Metadata) -> usize {
-    DEFAULT_READ_BUF_SIZE
-}
-
 #[cfg(test)]
 mod tests {
     use super::sanitize_path;
-    use bytes::BytesMut;
     use std::path::PathBuf;
 
     fn root_dir() -> PathBuf {
@@ -769,18 +522,5 @@ mod tests {
             sanitize_path(BASE_DIR, "/C:\\/foo.html").unwrap(),
             expected_path
         );
-    }
-
-    #[test]
-    fn test_reserve_at_least() {
-        let mut buf = BytesMut::new();
-        let cap = 8_192;
-
-        assert_eq!(buf.len(), 0);
-        assert_eq!(buf.capacity(), 0);
-
-        super::reserve_at_least(&mut buf, cap);
-        assert_eq!(buf.len(), 0);
-        assert_eq!(buf.capacity(), cap);
     }
 }

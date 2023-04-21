@@ -2,12 +2,14 @@
 
 use headers::HeaderMap;
 use serde::Deserialize;
+use serde_repr::{Deserialize_repr, Serialize_repr};
 use std::path::Path;
 use std::{collections::BTreeSet, path::PathBuf};
 
+use crate::directory_listing::DirListFmt;
 use crate::{helpers, Context, Result};
 
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "kebab-case")]
 pub enum LogLevel {
     Error,
@@ -37,12 +39,40 @@ pub struct Headers {
     pub headers: HeaderMap,
 }
 
+#[derive(Debug, Serialize_repr, Deserialize_repr, Clone)]
+#[repr(u16)]
+pub enum RedirectsKind {
+    /// Moved Permanently
+    Permanent = 301,
+    /// Found
+    Temporary = 302,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "kebab-case")]
+pub struct Redirects {
+    pub source: String,
+    pub destination: String,
+    pub kind: RedirectsKind,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "kebab-case")]
+pub struct Rewrites {
+    pub source: String,
+    pub destination: String,
+}
+
 /// Advanced server options only available in configuration file mode.
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "kebab-case")]
 pub struct Advanced {
     // Headers
     pub headers: Option<Vec<Headers>>,
+    // Rewrites
+    pub rewrites: Option<Vec<Rewrites>>,
+    // Redirects
+    pub redirects: Option<Vec<Redirects>>,
 }
 
 /// General server options available in configuration file mode.
@@ -64,6 +94,9 @@ pub struct General {
     // Compression
     pub compression: Option<bool>,
 
+    // Check for a pre-compressed file on disk
+    pub compression_static: Option<bool>,
+
     // Error pages
     pub page404: Option<PathBuf>,
     pub page50x: Option<PathBuf>,
@@ -82,10 +115,12 @@ pub struct General {
     // CORS
     pub cors_allow_origins: Option<String>,
     pub cors_allow_headers: Option<String>,
+    pub cors_expose_headers: Option<String>,
 
-    // Directoy listing
+    // Directory listing
     pub directory_listing: Option<bool>,
     pub directory_listing_order: Option<u8>,
+    pub directory_listing_format: Option<DirListFmt>,
 
     // Basich Authentication
     pub basic_auth: Option<String>,
@@ -103,6 +138,13 @@ pub struct General {
     pub page_fallback: Option<PathBuf>,
 
     pub log_remote_address: Option<bool>,
+
+    pub redirect_trailing_slash: Option<bool>,
+
+    pub ignore_hidden_files: Option<bool>,
+
+    #[cfg(windows)]
+    pub windows_service: Option<bool>,
 }
 
 /// Full server configuration
@@ -134,10 +176,7 @@ impl Settings {
         .with_context(|| "error during toml configuration file deserialization")?;
 
         for key in unused {
-            println!(
-                "Warning: unused configuration manifest key \"{}\" or unsuported",
-                key
-            );
+            println!("Warning: unused configuration manifest key \"{key}\" or unsupported");
         }
 
         Ok(manifest)

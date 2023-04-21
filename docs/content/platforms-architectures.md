@@ -1,8 +1,8 @@
 # Platforms & Architectures
 
-Currently only the following platforms/architectures are supported.
+Currently, only the following platforms/architectures are supported.
 
-!!! info "Docker"
+!!! tip "Docker tip"
     For Docker images supported list see [Docker OS/Arch](/features/docker/#osarch).
 
 ## Linux

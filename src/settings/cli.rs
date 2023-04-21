@@ -3,6 +3,8 @@
 use std::path::PathBuf;
 use structopt::StructOpt;
 
+use crate::directory_listing::DirListFmt;
+
 /// General server configuration available in CLI and config file options.
 #[derive(Debug, StructOpt)]
 #[structopt(about, author)]
@@ -85,7 +87,7 @@ pub struct General {
         default_value = "",
         env = "SERVER_CORS_ALLOW_ORIGINS"
     )]
-    /// Specify an optional CORS list of allowed origin hosts separated by comas. Host ports or protocols aren't being checked. Use an asterisk (*) to allow any host.
+    /// Specify an optional CORS list of allowed origin hosts separated by commas. Host ports or protocols aren't being checked. Use an asterisk (*) to allow any host.
     pub cors_allow_origins: String,
 
     #[structopt(
@@ -94,8 +96,16 @@ pub struct General {
         default_value = "origin, content-type",
         env = "SERVER_CORS_ALLOW_HEADERS"
     )]
-    /// Specify an optional CORS list of allowed headers separated by comas. Default "origin, content-type". It requires `--cors-allow-origins` to be used along with.
+    /// Specify an optional CORS list of allowed headers separated by commas. Default "origin, content-type". It requires `--cors-allow-origins` to be used along with.
     pub cors_allow_headers: String,
+
+    #[structopt(
+        long,
+        default_value = "origin, content-type",
+        env = "SERVER_CORS_EXPOSE_HEADERS"
+    )]
+    /// Specify an optional CORS list of exposed headers separated by commas. Default "origin, content-type". It requires `--cors-expose-origins` to be used along with.
+    pub cors_expose_headers: String,
 
     #[structopt(
         long,
@@ -130,6 +140,16 @@ pub struct General {
 
     #[structopt(
         long,
+        parse(try_from_str),
+        default_value = "false",
+        env = "SERVER_COMPRESSION_STATIC"
+    )]
+    /// Look up the pre-compressed file variant (`.gz` or `.br`) on disk of a requested file and serves it directly if available.
+    /// The compression type is determined by the `Accept-Encoding` header.
+    pub compression_static: bool,
+
+    #[structopt(
+        long,
         short = "z",
         parse(try_from_str),
         default_value = "false",
@@ -146,6 +166,17 @@ pub struct General {
     )]
     /// Specify a default code number to order directory listing entries per `Name`, `Last modified` or `Size` attributes (columns). Code numbers supported: 0 (Name asc), 1 (Name desc), 2 (Last modified asc), 3 (Last modified desc), 4 (Size asc), 5 (Size desc). Default 6 (unordered)
     pub directory_listing_order: u8,
+
+    #[structopt(
+        long,
+        required_if("directory_listing", "true"),
+        possible_values = &DirListFmt::variants(),
+        default_value = "html",
+        env = "SERVER_DIRECTORY_LISTING_FORMAT",
+        case_insensitive = true
+    )]
+    /// Specify a content format for directory listing entries. Formats supported: "html" or "json". Default "html".
+    pub directory_listing_format: DirListFmt,
 
     #[structopt(
         long,
@@ -192,6 +223,24 @@ pub struct General {
     /// Log incoming requests information along with its remote address if available using the `info` log level.
     pub log_remote_address: bool,
 
+    #[structopt(
+        long,
+        parse(try_from_str),
+        default_value = "true",
+        env = "SERVER_REDIRECT_TRAILING_SLASH"
+    )]
+    /// Check for a trailing slash in the requested directory URI and redirect permanently (308) to the same path with a trailing slash suffix if it is missing.
+    pub redirect_trailing_slash: bool,
+
+    #[structopt(
+        long,
+        parse(try_from_str),
+        default_value = "false",
+        env = "SERVER_IGNORE_HIDDEN_FILES"
+    )]
+    /// Ignore hidden files/directories (dotfiles), preventing them to be served and being included in auto HTML index pages (directory listing).
+    pub ignore_hidden_files: bool,
+
     //
     // Windows specific arguments and commands
     //
@@ -203,7 +252,7 @@ pub struct General {
         default_value = "false",
         env = "SERVER_WINDOWS_SERVICE"
     )]
-    /// Run the web server as a Windows Service.
+    /// Tell the web server to run in a Windows Service context. Note that the `install` subcommand will enable this option automatically.
     pub windows_service: bool,
 
     // Windows commands

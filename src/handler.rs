@@ -1,9 +1,16 @@
-use hyper::{header::WWW_AUTHENTICATE, Body, Method, Request, Response, StatusCode};
-use std::{future::Future, net::SocketAddr, path::PathBuf, sync::Arc};
+use headers::HeaderValue;
+use hyper::{header::WWW_AUTHENTICATE, Body, Request, Response, StatusCode};
+use std::{future::Future, net::IpAddr, net::SocketAddr, path::PathBuf, sync::Arc};
 
 use crate::{
-    basic_auth, compression, control_headers, cors, custom_headers, error_page, fallback_page,
-    security_headers, settings::Advanced, static_files, Error, Result,
+    basic_auth, compression, control_headers, cors, custom_headers,
+    directory_listing::DirListFmt,
+    error_page,
+    exts::http::MethodExt,
+    fallback_page, redirects, rewrites, security_headers,
+    settings::Advanced,
+    static_files::{self, HandleOpts},
+    Error, Result,
 };
 
 /// It defines options for a request handler.
@@ -11,8 +18,10 @@ pub struct RequestHandlerOpts {
     // General options
     pub root_dir: PathBuf,
     pub compression: bool,
+    pub compression_static: bool,
     pub dir_listing: bool,
     pub dir_listing_order: u8,
+    pub dir_listing_format: DirListFmt,
     pub cors: Option<cors::Configured>,
     pub security_headers: bool,
     pub cache_control_headers: bool,
@@ -21,6 +30,8 @@ pub struct RequestHandlerOpts {
     pub page_fallback: Vec<u8>,
     pub basic_auth: String,
     pub log_remote_address: bool,
+    pub redirect_trailing_slash: bool,
+    pub ignore_hidden_files: bool,
 
     // Advanced options
     pub advanced_opts: Option<Advanced>,
@@ -42,12 +53,16 @@ impl RequestHandler {
         let headers = req.headers();
         let uri = req.uri();
 
-        let root_dir = &self.opts.root_dir;
-        let uri_path = uri.path();
+        let base_path = &self.opts.root_dir;
+        let mut uri_path = uri.path();
         let uri_query = uri.query();
         let dir_listing = self.opts.dir_listing;
         let dir_listing_order = self.opts.dir_listing_order;
+        let dir_listing_format = &self.opts.dir_listing_format;
         let log_remote_addr = self.opts.log_remote_address;
+        let redirect_trailing_slash = self.opts.redirect_trailing_slash;
+        let compression_static = self.opts.compression_static;
+        let ignore_hidden_files = self.opts.ignore_hidden_files;
 
         let mut cors_headers: Option<http::HeaderMap> = None;
 
@@ -56,6 +71,16 @@ impl RequestHandler {
         if log_remote_addr {
             remote_addr_str.push_str(" remote_addr=");
             remote_addr_str.push_str(&remote_addr.map_or("".to_owned(), |v| v.to_string()));
+
+            if let Some(client_ip_address) = headers
+                .get("X-Forwarded-For")
+                .and_then(|v| v.to_str().ok())
+                .and_then(|s| s.split(',').next())
+                .and_then(|s| s.trim().parse::<IpAddr>().ok())
+            {
+                remote_addr_str.push_str(" real_remote_ip=");
+                remote_addr_str.push_str(&client_ip_address.to_string())
+            }
         }
         tracing::info!(
             "incoming request: method={} uri={}{}",
@@ -65,8 +90,8 @@ impl RequestHandler {
         );
 
         async move {
-            // Check for disallowed HTTP methods and reject request accordently
-            if !(method == Method::GET || method == Method::HEAD || method == Method::OPTIONS) {
+            // Reject in case of incoming HTTP request method is not allowed
+            if !method.is_allowed() {
                 return error_page::error_response(
                     uri,
                     method,
@@ -128,19 +153,58 @@ impl RequestHandler {
                 }
             }
 
+            // Advanced options
+            if let Some(advanced) = &self.opts.advanced_opts {
+                // Redirects
+                if let Some(parts) = redirects::get_redirection(uri_path, &advanced.redirects) {
+                    let (uri_dest, status) = parts;
+                    match HeaderValue::from_str(uri_dest) {
+                        Ok(loc) => {
+                            let mut resp = Response::new(Body::empty());
+                            resp.headers_mut().insert(hyper::header::LOCATION, loc);
+                            *resp.status_mut() = *status;
+                            tracing::trace!(
+                                "uri matches redirect pattern, redirecting with status {}",
+                                status.canonical_reason().unwrap_or_default()
+                            );
+                            return Ok(resp);
+                        }
+                        Err(err) => {
+                            tracing::error!("invalid header value from current uri: {:?}", err);
+                            return error_page::error_response(
+                                uri,
+                                method,
+                                &StatusCode::INTERNAL_SERVER_ERROR,
+                                &self.opts.page404,
+                                &self.opts.page50x,
+                            );
+                        }
+                    };
+                }
+
+                // Rewrites
+                if let Some(uri) = rewrites::rewrite_uri_path(uri_path, &advanced.rewrites) {
+                    uri_path = uri
+                }
+            }
+
             // Static files
-            match static_files::handle(
+            match static_files::handle(&HandleOpts {
                 method,
                 headers,
-                root_dir,
+                base_path,
                 uri_path,
                 uri_query,
                 dir_listing,
                 dir_listing_order,
-            )
+                dir_listing_format,
+                redirect_trailing_slash,
+                compression_static,
+                ignore_hidden_files,
+            })
             .await
             {
-                Ok(mut resp) => {
+                Ok((mut resp, is_precompressed)) => {
                     // Append CORS headers if they are present
                     if let Some(cors_headers) = cors_headers {
                         if !cors_headers.is_empty() {
@@ -152,7 +216,7 @@ impl RequestHandler {
                     }
 
                     // Auto compression based on the `Accept-Encoding` header
-                    if self.opts.compression {
+                    if self.opts.compression && !is_precompressed {
                         resp = match compression::auto(method, headers, resp) {
                             Ok(res) => res,
                             Err(err) => {
@@ -187,7 +251,7 @@ impl RequestHandler {
                 }
                 Err(status) => {
                     // Check for a fallback response
-                    if method == Method::GET
+                    if method.is_get()
                         && status == StatusCode::NOT_FOUND
                         && !self.opts.page_fallback.is_empty()
                     {

@@ -1,6 +1,9 @@
 // Handles requests over TLS
 // -> Most of the file is borrowed from https://github.com/seanmonstar/warp/blob/master/src/tls.rs
 
+use futures_util::ready;
+use hyper::server::accept::Accept;
+use hyper::server::conn::{AddrIncoming, AddrStream};
 use std::fs::File;
 use std::future::Future;
 use std::io::{self, BufReader, Cursor, Read};
@@ -10,16 +13,12 @@ use std::pin::Pin;
 use std::sync::Arc;
 use std::task::{Context, Poll};
 use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
-
-use futures_util::ready;
-use hyper::server::accept::Accept;
-use hyper::server::conn::{AddrIncoming, AddrStream};
-
-use crate::transport::Transport;
 use tokio_rustls::rustls::{
     server::{AllowAnyAnonymousOrAuthenticatedClient, AllowAnyAuthenticatedClient, NoClientAuth},
     Certificate, Error as TlsError, PrivateKey, RootCertStore, ServerConfig,
 };
+
+use crate::transport::Transport;
 
 /// Represents errors that can occur building the TlsConfig
 #[derive(Debug)]
@@ -45,7 +44,7 @@ impl std::fmt::Display for TlsConfigError {
             TlsConfigError::Pkcs8ParseError => write!(f, "pkcs8 parse error"),
             TlsConfigError::RsaParseError => write!(f, "rsa parse error"),
             TlsConfigError::EmptyKey => write!(f, "key contains no private key"),
-            TlsConfigError::InvalidKey(err) => write!(f, "key contains an invalid key, {}", err),
+            TlsConfigError::InvalidKey(err) => write!(f, "key contains an invalid key, {err}"),
         }
     }
 }

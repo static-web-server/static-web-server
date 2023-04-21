@@ -2,8 +2,8 @@
 // -> Part of the file is borrowed from https://github.com/seanmonstar/warp/blob/master/src/filters/cors.rs
 
 use headers::{
-    AccessControlAllowHeaders, AccessControlAllowMethods, HeaderMapExt, HeaderName, HeaderValue,
-    Origin,
+    AccessControlAllowHeaders, AccessControlAllowMethods, AccessControlExposeHeaders, HeaderMapExt,
+    HeaderName, HeaderValue, Origin,
 };
 use http::header;
 use std::{collections::HashSet, convert::TryFrom};
@@ -12,28 +12,38 @@ use std::{collections::HashSet, convert::TryFrom};
 #[derive(Clone, Debug)]
 pub struct Cors {
     allowed_headers: HashSet<HeaderName>,
+    exposed_headers: HashSet<HeaderName>,
     max_age: Option<u64>,
     allowed_methods: HashSet<http::Method>,
     origins: Option<HashSet<HeaderValue>>,
 }
 
 /// It builds a new CORS instance.
-pub fn new(origins_str: &str, headers_str: &str) -> Option<Configured> {
+pub fn new(
+    origins_str: &str,
+    allow_headers_str: &str,
+    expose_headers_str: &str,
+) -> Option<Configured> {
     let cors = Cors::new();
     let cors = if origins_str.is_empty() {
         None
     } else {
-        let headers_vec = if headers_str.is_empty() {
-            vec!["origin", "content-type"]
-        } else {
-            headers_str.split(',').map(|s| s.trim()).collect::<Vec<_>>()
-        };
-        let headers_str = headers_vec.join(",");
+        let [allow_headers_vec, expose_headers_vec] =
+            [allow_headers_str, expose_headers_str].map(|s| {
+                if s.is_empty() {
+                    vec!["origin", "content-type"]
+                } else {
+                    s.split(',').map(|s| s.trim()).collect::<Vec<_>>()
+                }
+            });
+        let [allow_headers_str, expose_headers_str] =
+            [&allow_headers_vec, &expose_headers_vec].map(|v| v.join(","));
 
         let cors_res = if origins_str == "*" {
             Some(
                 cors.allow_any_origin()
-                    .allow_headers(headers_vec)
+                    .allow_headers(allow_headers_vec)
+                    .expose_headers(expose_headers_vec)
                     .allow_methods(vec!["GET", "HEAD", "OPTIONS"]),
             )
         } else {
@@ -43,7 +53,8 @@ pub fn new(origins_str: &str, headers_str: &str) -> Option<Configured> {
             } else {
                 Some(
                     cors.allow_origins(hosts)
-                        .allow_headers(headers_vec)
+                        .allow_headers(allow_headers_vec)
+                        .expose_headers(expose_headers_vec)
                         .allow_methods(vec!["GET", "HEAD", "OPTIONS"]),
                 )
             }
@@ -51,9 +62,10 @@ pub fn new(origins_str: &str, headers_str: &str) -> Option<Configured> {
 
         if cors_res.is_some() {
             tracing::info!(
-                    "enabled=true, allow_methods=[GET,HEAD,OPTIONS], allow_origins={}, allow_headers=[{}]",
+                    "enabled=true, allow_methods=[GET,HEAD,OPTIONS], allow_origins={}, allow_headers=[{}], expose_headers=[{}]",
                     origins_str,
-                    headers_str
+                    allow_headers_str,
+                    expose_headers_str,
                 );
         }
         cors_res
@@ -68,6 +80,7 @@ impl Cors {
         Self {
             origins: None,
             allowed_headers: HashSet::new(),
+            exposed_headers: HashSet::new(),
             allowed_methods: HashSet::new(),
             max_age: None,
         }
@@ -153,17 +166,39 @@ impl Cors {
         self
     }
 
+    /// Adds multiple headers to the list of exposed request headers.
+    ///
+    /// **Note**: These should match the values the browser sends via `Access-Control-Request-Headers`, e.g.`content-type`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if any of the headers are not a valid `http::header::HeaderName`.
+    pub fn expose_headers<I>(mut self, headers: I) -> Self
+    where
+        I: IntoIterator,
+        HeaderName: TryFrom<I::Item>,
+    {
+        let iter = headers.into_iter().map(|h| match TryFrom::try_from(h) {
+            Ok(h) => h,
+            Err(_) => panic!("cors: illegal Header"),
+        });
+        self.exposed_headers.extend(iter);
+        self
+    }
+
     /// Builds the `Cors` wrapper from the configured settings.
     pub fn build(cors: Option<Cors>) -> Option<Configured> {
         cors.as_ref()?;
         let cors = cors?;
 
         let allowed_headers = cors.allowed_headers.iter().cloned().collect();
+        let exposed_headers = cors.exposed_headers.iter().cloned().collect();
         let methods_header = cors.allowed_methods.iter().cloned().collect();
 
         Some(Configured {
             cors,
             allowed_headers,
+            exposed_headers,
             methods_header,
         })
     }
@@ -179,6 +214,7 @@ impl Default for Cors {
 pub struct Configured {
     cors: Cors,
     allowed_headers: AccessControlAllowHeaders,
+    exposed_headers: AccessControlExposeHeaders,
     methods_header: AccessControlAllowMethods,
 }
 
@@ -285,6 +321,7 @@ impl Configured {
 
     fn append_preflight_headers(&self, headers: &mut http::HeaderMap) {
         headers.typed_insert(self.allowed_headers.clone());
+        headers.typed_insert(self.exposed_headers.clone());
         headers.typed_insert(self.methods_header.clone());
 
         if let Some(max_age) = self.cors.max_age {

@@ -4,7 +4,7 @@ The server can be configured via the following environment variables.
 
 !!! tip "Remember"
     - Environment variables are equivalent to their command-line arguments.
-    - [Command line arguments](./command-line-arguments.md) take precedence over their equivalent environment variables.
+    - [Command-line arguments](./command-line-arguments.md) take precedence over their equivalent environment variables.
 
 ### SERVER_HOST
 The address of the host (E.g 127.0.0.1). Default `[::]`.
@@ -19,31 +19,34 @@ Optional file descriptor number (e.g. `0`) to inherit an already-opened TCP list
 Relative or absolute root directory path of static files. Default `./public`.
 
 ### SERVER_CONFIG_FILE
-The Server configuration file path in TOML format. See [The TOML Configuration File](../configuration/config-file.md).
+The Server configuration file path is in TOML format. See [The TOML Configuration File](../configuration/config-file.md).
 
 ### SERVER_GRACE_PERIOD
-Defines a grace period in seconds after a `SIGTERM` signal is caught which will delay the server before to shut it down gracefully. The maximum value is `255` seconds. Default value is `0` (no delay).
+Defines a grace period in seconds after a `SIGTERM` signal is caught which will delay the server before shutting it down gracefully. The maximum value is `255` seconds. The default value is `0` (no delay).
 
 ### SERVER_LOG_LEVEL
 Specify a logging level in lower case. Possible values are `error`, `warn`, `info`, `debug` or `trace`. Default `error`.
 
+### SERVER_LOG_REMOTE_ADDRESS
+Log incoming requests information along with its Remote Address (IP) if available using the `info` log level. Default `false`.
+
 ### SERVER_ERROR_PAGE_404
-HTML file path for 404 errors. If path is not specified or simply don't exists then server will use a generic HTML error message. Default `./public/404.html`.
+HTML file path for 404 errors. If the path is not specified or simply doesn't exist then the server will use a generic HTML error message. Default `./public/404.html`.
 
 ### SERVER_ERROR_PAGE_50X
-HTML file path for 50x errors. If path is not specified or simply don't exists then server will use a generic HTML error message. Default `./public/50x.html`
+HTML file path for 50x errors. If the path is not specified or simply doesn't exist then the server will use a generic HTML error message. Default `./public/50x.html`
 
 ### SERVER_FALLBACK_PAGE
 HTML file path that is used for `GET` requests when the requested path doesn't exist. The fallback page is served with a `200` status code, useful when using client routers (E.g `React Router`). If the path is not specified or simply doesn't exist then this feature will not be active.
 
 ### SERVER_THREADS_MULTIPLIER
-Number of worker threads multiplier that'll be multiplied by the number of system CPUs using the formula: `worker threads = number of CPUs * n` where `n` is the value that changes here. When multiplier value is 0 or 1 then the `number of CPUs` is used. Number of worker threads result should be a number between 1 and 32,768 though it is advised to keep this value on the smaller side. Default one thread per core.
+The number of worker threads multiplier that'll be multiplied by the number of system CPUs using the formula: `worker threads = number of CPUs * n` where `n` is the value that changes here. When the multiplier value is 0 or 1 then the `number of CPUs` is used. The number of worker threads result should be a number between 1 and 32,768 though it is advised to keep this value on the smaller side. Default one thread per core.
 
 ### SERVER_MAX_BLOCKING_THREADS
 Maximum number of blocking threads.
 
 ### SERVER_HTTP2_TLS
-Enable HTTP/2 with TLS support. Make sure also to adjust current server port. Default `false` (disabled).
+Enable HTTP/2 with TLS support. Make sure also to adjust the current server port. Default `false` (disabled).
 
 ### SERVER_HTTP2_TLS_CERT
 Specify the file path to read the certificate. Default empty (disabled).
@@ -52,13 +55,19 @@ Specify the file path to read the certificate. Default empty (disabled).
 Specify the file path to read the private key. Default empty (disabled).
 
 ### SERVER_CORS_ALLOW_ORIGINS
-Specify a optional CORS list of allowed origin hosts separated by comas. Host ports or protocols aren't being checked. Use an asterisk (*) to allow any host. Default empty (disabled).
+Specify an optional CORS list of allowed origin hosts separated by commas. Host ports or protocols aren't being checked. Use an asterisk (*) to allow any host. Default empty (disabled).
 
 ### SERVER_CORS_ALLOW_HEADERS
-Specify an optional CORS list of allowed HTTP headers separated by comas. It requires `SERVER_CORS_ALLOW_ORIGINS` to be used along with. Default `origin, content-type`.
+Specify an optional CORS list of allowed HTTP headers separated by commas. It requires `SERVER_CORS_ALLOW_ORIGINS` to be used along with. Default `origin, content-type`.
+
+### SERVER_CORS_EXPOSE_HEADERS
+Specify an optional CORS list of exposed HTTP headers separated by commas. It requires `SERVER_CORS_ALLOW_ORIGINS` to be used along with. Default `origin, content-type`.
 
 ### SERVER_COMPRESSION
-`Gzip`, `Deflate` or `Brotli` compression on demand determined by the `Accept-Encoding` header and applied to text-based web file types only. See [ad-hoc mime-type list](https://github.com/joseluisq/static-web-server/blob/master/src/compression.rs#L20). Default `true` (enabled).
+`Gzip`, `Deflate` or `Brotli` compression on demand determined by the `Accept-Encoding` header and applied to text-based web file types only. See [ad-hoc mime-type list](https://github.com/static-web-server/static-web-server/blob/master/src/compression.rs#L20). Default `true` (enabled).
+
+### SERVER_COMPRESSION_STATIC
+Look up the pre-compressed file variant (`.gz` or `.br`) on disk of a requested file and serves it directly if available. Default `false` (disabled). The compression type is determined by the `Accept-Encoding` header.
 
 ### SERVER_DIRECTORY_LISTING
 Enable directory listing for all requests ending with the slash character (‘/’). Default `false` (disabled).
@@ -66,18 +75,26 @@ Enable directory listing for all requests ending with the slash character (‘/�
 ### SERVER_DIRECTORY_LISTING_ORDER
 Specify a default code number to order directory listing entries per `Name`, `Last modified` or `Size` attributes (columns). Code numbers supported: `0` (Name asc), `1` (Name desc), `2` (Last modified asc), `3` (Last modified desc), `4` (Size asc), `5` (Size desc). Default `6` (unordered).
 
+### SERVER_DIRECTORY_LISTING_FORMAT
+Specify a content format for the directory listing entries. Formats supported: `html` or `json`. Default `html`.
+
 ### SERVER_SECURITY_HEADERS
 Enable security headers by default when HTTP/2 feature is activated. Headers included: `Strict-Transport-Security: max-age=63072000; includeSubDomains; preload` (2 years max-age), `X-Frame-Options: DENY`, `X-XSS-Protection: 1; mode=block` and `Content-Security-Policy: frame-ancestors 'self'`. Default `false` (disabled).
 
 ### SERVER_CACHE_CONTROL_HEADERS
-Enable cache control headers for incoming requests based on a set of file types. The file type list can be found on [`src/control_headers.rs`](https://github.com/joseluisq/static-web-server/blob/master//src/control_headers.rs) file. Default `true` (enabled).
+Enable cache control headers for incoming requests based on a set of file types. The file type list can be found on [`src/control_headers.rs`](https://github.com/static-web-server/static-web-server/blob/master//src/control_headers.rs) file. Default `true` (enabled).
 
 ### SERVER_BASIC_AUTH
 It provides [The "Basic" HTTP Authentication Scheme](https://datatracker.ietf.org/doc/html/rfc7617) using credentials as `user-id:password` pairs, encoded using `Base64`. Password must be encoded using the [BCrypt](https://en.wikipedia.org/wiki/Bcrypt) password-hashing function. Default empty (disabled).
 
-## Windows
+### SERVER_REDIRECT_TRAILING_SLASH
+Check for a trailing slash in the requested directory URI and redirect permanent (308) to the same path with a trailing slash suffix if it is missing. Default `true` (enabled).
 
-Following options and commands are Windows platform specific.
+### SERVER_IGNORE_HIDDEN_FILES
+Ignore hidden files/directories (dotfiles), preventing them to be served and being included in auto HTML index pages (directory listing).
+
+## Windows
+The following options and commands are Windows platform-specific.
 
 ### SERVER_WINDOWS_SERVICE
-Run the web server as a Windows Service. See [more details](../features/windows-service.md).
+Run the web server in a Windows Service context. See [more details](../features/windows-service.md).

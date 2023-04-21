@@ -1,4 +1,4 @@
-// Module that lets SWS to run as a "Windows Service"
+//! Module that lets SWS to run in a "Windows Service" context
 
 use std::ffi::OsString;
 use std::thread;
@@ -16,7 +16,7 @@ use windows_service::{
     service_manager::{ServiceManager, ServiceManagerAccess},
 };
 
-use crate::{logger, Context, Result, Server, Settings};
+use crate::{helpers, logger, Context, Result, Server, Settings};
 
 const SERVICE_NAME: &str = "static-web-server";
 const SERVICE_TYPE: ServiceType = ServiceType::OWN_PROCESS;
@@ -167,17 +167,6 @@ pub fn run_server_as_service() -> Result {
     Ok(())
 }
 
-fn adjust_canonicalization(p: PathBuf) -> String {
-    const VERBATIM_PREFIX: &str = r#"\\?\"#;
-    let p = p.to_str().unwrap_or_default();
-    let p = if p.starts_with(VERBATIM_PREFIX) {
-        p.strip_prefix(VERBATIM_PREFIX).unwrap_or_default()
-    } else {
-        p
-    };
-    p.to_owned()
-}
-
 /// Install a Windows Service for SWS.
 pub fn install_service(config_file: Option<PathBuf>) -> Result {
     let manager_access = ServiceManagerAccess::CONNECT | ServiceManagerAccess::CREATE_SERVICE;
@@ -191,7 +180,7 @@ pub fn install_service(config_file: Option<PathBuf>) -> Result {
 
     // Append a `--config-file` path to the binary arguments if present
     if let Some(f) = config_file {
-        let f = adjust_canonicalization(f);
+        let f = helpers::adjust_canonicalization(f);
         if !f.is_empty() {
             service_binary_arguments.push(OsString::from(["--config-file=", &f].concat()));
         }

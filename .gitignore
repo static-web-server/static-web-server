@@ -8,8 +8,7 @@
 **/.idea
 **/*.txt
 **/*.zip
-**/*.tar.gz
-**/*.tar
+**/*.tar*
 **/*.gz
 **/.DS_Store
 **/*.env
@@ -17,11 +16,16 @@
 **/*.zst
 **/*.out*
 **/*.perf*
+**/*empty*
+**/*.json
+**/*.csv
 release
 .vscode
 TODO
 docs/site
-static-web-server
+docs/*/**.html
+*/**/*.1
 
-!sample.env
 !/docs
+!/tests/fixtures/**/*
+!benchmark/sws_benchmarks*.csv
