@@ -33,6 +33,7 @@ pub struct Rewrites {
 }
 
 /// The `Redirects` file options.
+#[derive(Debug)]
 pub struct Redirects {
     /// Source pattern glob matcher
     pub source: GlobMatcher,
