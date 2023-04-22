@@ -52,8 +52,8 @@ percent-encoding = "2.1"
 pin-project = "1.0"
 structopt = { version = "0.3", default-features = false }
 time = { version = "0.1", default-features = false }
-# tokio = { git = "https://github.com/john-sharratt/tokio.git", branch = "wasix-1.24.2", default-features = false, features = ["rt-multi-thread", "macros", "fs", "io-util", "signal"] }
-tokio = { version = "1", default-features = false, features = ["rt-multi-thread", "macros", "fs", "io-util", "signal"] }
+tokio = { git = "https://github.com/john-sharratt/tokio.git", branch = "wasix-1.24.2", default-features = false, features = ["rt-multi-thread", "macros", "fs", "io-util", "signal", "time", "sync"] }
+# tokio = { version = "1", default-features = false, features = ["rt-multi-thread", "macros", "fs", "io-util", "signal"] }
 tokio-rustls = { version = "0.23", optional = true }
 rustls-pemfile = "1.0"
 tokio-util = { version = "0.7", default-features = false, features = ["io"] }
@@ -65,10 +65,10 @@ serde_repr = "0.1"
 chrono = { version = "0.4", default-features = false, features = ["std", "clock"] }
 toml = "0.5"
 
-# [patch.crates-io]
-# socket2 = { git = "https://github.com/john-sharratt/socket2.git", branch = "v0.4.7" }
-# libc = { git = "https://github.com/john-sharratt/libc.git" }
-# tokio = { git = "https://github.com/john-sharratt/tokio.git", branch = "wasix-1.24.2" }
+[patch.crates-io]
+socket2 = { git = "https://github.com/john-sharratt/socket2.git", branch = "v0.4.7" }
+libc = { git = "https://github.com/john-sharratt/libc.git" }
+tokio = { git = "https://github.com/john-sharratt/tokio.git", branch = "wasix-1.24.2" }
 #tokio = { path = "../tokio/tokio" }
 #ring = { git = "https://github.com/john-sharratt/ring.git", branch = "v0.16.20" }
 #ring = { path = "../ring" }
