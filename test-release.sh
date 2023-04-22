@@ -1,5 +1,5 @@
 #!/bin/bash -e
-cargo wasix build --no-default-features --release
+cargo wasix build --release --no-default-features
 
 PWD=$(pwd)
 cd /prog/wasmer/lib/cli
