@@ -21,7 +21,7 @@ jobs:
           - linux/arm64
           - linux/arm/v7
           - linux/arm/v6
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     services:
       registry:
         image: registry:2
@@ -39,7 +39,7 @@ jobs:
           fetch-depth: 1
       -
         name: Cache Docker layers
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: /tmp/.buildx-cache
           key: static-web-server-${{ matrix.arch }}-buildx-${{ github.sha }}
@@ -51,7 +51,7 @@ jobs:
       -
         name: Docker meta alpine
         id: meta_alpine
-        uses: docker/metadata-action@v3
+        uses: docker/metadata-action@v4
         with:
           images: ${{ env.DOCKER_IMAGE }}
           flavor: |
@@ -82,7 +82,7 @@ jobs:
           echo "SERVER_DOCKERFILE=./docker/alpine/Dockerfile" >> $GITHUB_ENV
       -
         name: Build and export to Docker client
-        uses: docker/build-push-action@v3
+        uses: docker/build-push-action@v4
         with:
           context: .
           platforms: ${{ matrix.arch }}
@@ -94,7 +94,7 @@ jobs:
             SERVER_VERSION=${{ env.SERVER_VERSION }}
       -
         name: Build and push to local registry
-        uses: docker/build-push-action@v3
+        uses: docker/build-push-action@v4
         with:
           context: .
           platforms: ${{ matrix.arch }}

@@ -8,7 +8,7 @@ on:
 jobs:
   create-release:
     name: create-release
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     outputs:
       upload_url: ${{ steps.release.outputs.upload_url }}
       sws_version: ${{ env.SWS_VERSION }}
@@ -70,39 +70,39 @@ jobs:
           # - windows-msvc-arm64
         include:
         - build: linux-musl
-          os: ubuntu-20.04
+          os: ubuntu-22.04
           rust: stable
           target: x86_64-unknown-linux-musl
         - build: linux-musl-i686
-          os: ubuntu-20.04
+          os: ubuntu-22.04
           rust: stable
           target: i686-unknown-linux-musl
         - build: linux-musl-arm64
-          os: ubuntu-20.04
+          os: ubuntu-22.04
           rust: stable
           target: aarch64-unknown-linux-musl
         - build: linux-gnu
-          os: ubuntu-20.04
+          os: ubuntu-22.04
           rust: stable
           target: x86_64-unknown-linux-gnu
         - build: linux-gnu-i686
-          os: ubuntu-20.04
+          os: ubuntu-22.04
           rust: stable
           target: i686-unknown-linux-gnu
         - build: linux-gnu-arm64
-          os: ubuntu-20.04
+          os: ubuntu-22.04
           rust: stable
           target: aarch64-unknown-linux-gnu
         - build: linux-arm-gnueabihf
-          os: ubuntu-20.04
+          os: ubuntu-22.04
           rust: stable
           target: arm-unknown-linux-gnueabihf
         - build: linux-musl-armv6
-          os: ubuntu-20.04
+          os: ubuntu-22.04
           rust: stable
           target: arm-unknown-linux-musleabihf
         - build: linux-musl-armv7
-          os: ubuntu-20.04
+          os: ubuntu-22.04
           rust: stable
           target: armv7-unknown-linux-musleabihf
         # - build: linux-android-armv7
@@ -114,33 +114,33 @@ jobs:
           rust: stable
           target: aarch64-linux-android
         - build: macos
-          os: macos-11
+          os: macos-12
           rust: stable
           target: x86_64-apple-darwin
         - build: macos-arm64
-          os: macos-11
+          os: macos-12
           rust: stable
           target: aarch64-apple-darwin
         - build: windows-msvc
-          os: windows-2019
+          os: windows-2022
           rust: stable
           target: x86_64-pc-windows-msvc
         - build: windows-msvc-i686
-          os: windows-2019
+          os: windows-2022
           rust: stable
           target: i686-pc-windows-msvc
         - build: windows-pc-gnu
-          os: windows-2019
+          os: windows-2022
           rust: stable-x86_64-gnu
           target: x86_64-pc-windows-gnu
         # - build: windows-msvc-arm64
-        #   os: windows-2019
+        #   os: windows-2022
         #   rust: stable
         #   target: aarch64-pc-windows-msvc
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
       with:
         fetch-depth: 1
 
@@ -157,7 +157,7 @@ jobs:
     - name: Set up Cross
       shell: bash
       run: |
-        if [ "${{ matrix.os }}" = "ubuntu-20.04" ]; then
+        if [ "${{ matrix.os }}" = "ubuntu-22.04" ]; then
           # Use 'cargo.sh' script for Android targets only
           if [[ "${{ matrix.build }}" == "linux-android-armv7" ]] || [[ "${{ matrix.build }}" == "linux-android-arm64" ]]; then
             echo "CARGO_BIN=ci/cargo.sh" >> $GITHUB_ENV
@@ -187,7 +187,7 @@ jobs:
 
         cp {README.md,LICENSE-APACHE,LICENSE-MIT} "$staging/"
 
-        if [ "${{ matrix.os }}" = "windows-2019" ]; then
+        if [ "${{ matrix.os }}" = "windows-2022" ]; then
           cp "target/${{ matrix.target }}/release/static-web-server.exe" "$staging/"
           7z a "$staging.zip" "$staging"
           echo "ASSET=$staging.zip" >> $GITHUB_ENV

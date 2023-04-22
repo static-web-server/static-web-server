@@ -6,7 +6,7 @@ on:
 
 jobs:
   docker-image-alpine:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     if: contains(github.ref, 'v2.')
     steps:
       -
@@ -18,7 +18,7 @@ jobs:
       -
         name: Docker meta alpine
         id: meta_alpine
-        uses: docker/metadata-action@v3
+        uses: docker/metadata-action@v4
         with:
           images: joseluisq/static-web-server
           flavor: |
@@ -45,7 +45,7 @@ jobs:
           echo "SERVER_DOCKERFILE=./docker/alpine/Dockerfile" >> $GITHUB_ENV
       -
         name: Build and push (alpine)
-        uses: docker/build-push-action@v3
+        uses: docker/build-push-action@v4
         with:
           push: true
           context: .
@@ -57,7 +57,7 @@ jobs:
 
   docker-image-scratch:
     needs: ['docker-image-alpine']
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
       -
         name: Checkout repository
@@ -68,7 +68,7 @@ jobs:
       -
         name: Docker meta scratch
         id: meta_scratch
-        uses: docker/metadata-action@v3
+        uses: docker/metadata-action@v4
         with:
           images: joseluisq/static-web-server
           tags: |
@@ -92,7 +92,7 @@ jobs:
           echo "SERVER_DOCKERFILE=./docker/scratch/Dockerfile" >> $GITHUB_ENV
       -
         name: Build and push (scratch)
-        uses: docker/build-push-action@v3
+        uses: docker/build-push-action@v4
         with:
           push: true
           context: .
