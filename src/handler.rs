@@ -88,6 +88,11 @@ impl RequestHandler {
             uri,
             remote_addr_str,
         );
+        let host = req
+            .headers()
+            .get("Host")
+            .and_then(|v| v.to_str().ok())
+            .unwrap_or("");
 
         async move {
             // Reject in case of incoming HTTP request method is not allowed
@@ -156,7 +161,13 @@ impl RequestHandler {
             // Advanced options
             if let Some(advanced) = &self.opts.advanced_opts {
                 // Redirects
-                if let Some(parts) = redirects::get_redirection(uri_path, &advanced.redirects) {
+                let mut url_host = uri.host().unwrap_or(host).to_string();
+                if let Some(url_port) = uri.port_u16() {
+                    url_host.push_str(&format!(":{}", url_port));
+                }
+                if let Some(parts) =
+                    redirects::get_redirection(&url_host, uri_path, &advanced.redirects)
+                {
                     let (uri_dest, status) = parts;
                     match HeaderValue::from_str(uri_dest) {
                         Ok(loc) => {

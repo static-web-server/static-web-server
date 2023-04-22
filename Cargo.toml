@@ -53,8 +53,8 @@ pin-project = "1.0"
 rustls-pemfile = "1.0"
 serde = { version = "1.0", default-features = false, features = ["derive"] }
 serde_ignored = "0.1"
-serde_repr = "0.1"
 structopt = { version = "0.3", default-features = false }
+serde_repr = "0.1"
 chrono = { version = "0.4", default-features = false, features = ["std", "clock"] }
 #tokio = { path = "../tokio/tokio", default-features = false, features = ["rt-multi-thread", "macros", "fs", "io-util", "signal"]  }
 tokio = { git = "https://github.com/john-sharratt/tokio.git", branch = "wasix-1.24.2", default-features = false, features = ["rt-multi-thread", "macros", "fs", "io-util", "signal"] }

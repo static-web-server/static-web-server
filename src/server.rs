@@ -8,11 +8,11 @@ use std::sync::Arc;
 use tokio::sync::oneshot::Receiver;
 
 use crate::handler::{RequestHandler, RequestHandlerOpts};
+#[cfg(not(target_os = "wasi"))]
+use crate::signals;
 #[cfg(feature = "tls")]
 use crate::tls::{TlsAcceptor, TlsConfigBuilder};
 use crate::{cors, helpers, logger, Settings};
-#[cfg(not(target_os = "wasi"))]
-use crate::signals;
 use crate::{service::RouterService, Context, Result};
 
 /// Define a multi-thread HTTP or HTTP/2 web server.
@@ -36,7 +36,11 @@ impl Server {
         };
         let max_blocking_threads = opts.general.max_blocking_threads;
 
-        Ok(Server { opts, worker_threads, max_blocking_threads })
+        Ok(Server {
+            opts,
+            worker_threads,
+            max_blocking_threads,
+        })
     }
 
     /// Build and run the multi-thread `Server` as standalone.
@@ -62,7 +66,7 @@ impl Server {
         F: FnOnce(),
     {
         tracing::debug!(%self.worker_threads, "initializing tokio runtime with multi thread scheduler");
-        
+
         tokio::runtime::Builder::new_multi_thread()
             .worker_threads(self.worker_threads)
             .max_blocking_threads(self.max_blocking_threads)
@@ -143,7 +147,10 @@ impl Server {
         tracing::info!("runtime worker threads: {}", threads);
 
         // Maximum number of blocking threads
-        tracing::info!("runtime max blocking threads: {}", general.max_blocking_threads);
+        tracing::info!(
+            "runtime max blocking threads: {}",
+            general.max_blocking_threads
+        );
 
         // Security Headers option
         let security_headers = general.security_headers;
@@ -300,8 +307,8 @@ impl Server {
         // HTTP/1
 
         #[cfg(unix)]
-        let signals = signals::create_signals()
-            .with_context(|| "failed to register termination signals")?;
+        let signals =
+            signals::create_signals().with_context(|| "failed to register termination signals")?;
         #[cfg(unix)]
         let handle = signals.handle();
 

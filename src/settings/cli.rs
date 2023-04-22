@@ -50,7 +50,7 @@ pub struct General {
         default_value = "20",
         env = "SERVER_MAX_BLOCKING_THREADS"
     )]
-    /// Maximum number of blocking threads 
+    /// Maximum number of blocking threads
     pub max_blocking_threads: usize,
 
     #[structopt(long, short = "d", default_value = "./public", env = "SERVER_ROOT")]
