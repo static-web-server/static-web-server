@@ -1,5 +1,4 @@
 use std::path::PathBuf;
-
 use globset::{Glob, GlobMatcher};
 use headers::HeaderMap;
 use http::Uri;
@@ -15,6 +14,8 @@ pub mod file;
 pub use cli::Commands;
 
 use cli::General;
+
+pub const DEFAULT_CONFIG_PATH: &'static str = "./cfg/config.toml";
 
 /// The `headers` file options.
 pub struct Headers {
@@ -33,6 +34,7 @@ pub struct Rewrites {
 }
 
 /// The `Redirects` file options.
+#[derive(Debug)]
 pub struct Redirects {
     /// Source host
     pub host: Option<String>,
@@ -66,7 +68,7 @@ impl Settings {
 
         // If no config file was supplied then attempt to use the default path
         if opts.config_file.is_none() {
-            let default_config_file: PathBuf = "./cfg/config.toml".into();
+            let default_config_file: PathBuf = DEFAULT_CONFIG_PATH.into();
             if default_config_file.exists() {
                 opts.config_file = Some(default_config_file);
             }
@@ -117,7 +119,14 @@ impl Settings {
         // NOTE: All config file based options shouldn't be mandatory, therefore `Some()` wrapped
         if let Some(ref p) = opts.config_file {
             if p.is_file() {
-                let path_resolved = p.canonicalize().unwrap_or(p.clone());
+                #[cfg(target_family = "wasm")]
+                let path_resolved = p
+                    .canonicalize()
+                    .unwrap_or(p.clone());
+                #[cfg(not(target_family = "wasm"))]
+                let path_resolved = p
+                    .canonicalize()
+                    .unwrap_or(p.clone());
 
                 let settings = file::Settings::read(&path_resolved)
                     .with_context(|| {

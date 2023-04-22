@@ -100,8 +100,9 @@ impl Server {
 
         // Config file option
         if let Some(config_file) = general.config_file {
+            #[cfg(not(target_family = "wasm"))]
             let config_file = helpers::adjust_canonicalization(config_file);
-            tracing::info!("config file: {}", config_file);
+            tracing::info!("config file: {:?}", config_file);
         }
 
         // Determine TCP listener either file descriptor or TCP socket

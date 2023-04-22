@@ -45,6 +45,9 @@ The number of worker threads multiplier that'll be multiplied by the number of s
 ### SERVER_MAX_BLOCKING_THREADS
 Maximum number of blocking threads.
 
+### SERVER_MAX_BLOCKING_THREADS
+Maximum number of blocking threads.
+
 ### SERVER_HTTP2_TLS
 Enable HTTP/2 with TLS support. Make sure also to adjust the current server port. Default `false` (disabled).
 
