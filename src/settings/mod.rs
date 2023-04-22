@@ -2,6 +2,7 @@ use std::path::PathBuf;
 
 use globset::{Glob, GlobMatcher};
 use headers::HeaderMap;
+use http::Uri;
 use hyper::StatusCode;
 use structopt::StructOpt;
 
@@ -33,6 +34,8 @@ pub struct Rewrites {
 
 /// The `Redirects` file options.
 pub struct Redirects {
+    /// Source host
+    pub host: Option<String>,
     /// Source pattern glob matcher
     pub source: GlobMatcher,
     /// A local file that must exist
@@ -114,9 +117,7 @@ impl Settings {
         // NOTE: All config file based options shouldn't be mandatory, therefore `Some()` wrapped
         if let Some(ref p) = opts.config_file {
             if p.is_file() {
-                let path_resolved = p
-                    .canonicalize()
-                    .unwrap_or(p.clone());
+                let path_resolved = p.canonicalize().unwrap_or(p.clone());
 
                 let settings = file::Settings::read(&path_resolved)
                     .with_context(|| {
@@ -283,7 +284,25 @@ impl Settings {
 
                             // Compile a glob pattern for each redirect sources entry
                             for redirects_entry in redirects_entries.iter() {
-                                let source = Glob::new(&redirects_entry.source)
+                                let (host, source) =
+                                    if redirects_entry.source.starts_with("http://")
+                                        || redirects_entry.source.starts_with("https://")
+                                    {
+                                        // We get the host from the source URL
+                                        let source_uri: Uri =
+                                            redirects_entry.source.to_string().try_into()?;
+
+                                        let mut source_host =
+                                            source_uri.host().map(|host| host.to_string());
+                                        if let Some(port) = source_uri.port_u16() {
+                                            source_host =
+                                                Some(format!("{}:{}", source_host.unwrap(), port));
+                                        }
+                                        (source_host, source_uri.path().to_owned())
+                                    } else {
+                                        (None, redirects_entry.source.to_owned())
+                                    };
+                                let source = Glob::new(&source)
                                     .with_context(|| {
                                         format!(
                                             "can not compile glob pattern for redirect source: {}",
@@ -294,6 +313,7 @@ impl Settings {
 
                                 let status_code = redirects_entry.kind.to_owned() as u16;
                                 redirects_vec.push(Redirects {
+                                    host,
                                     source,
                                     destination: redirects_entry.destination.to_owned(),
                                     kind: StatusCode::from_u16(status_code).with_context(|| {
