@@ -38,7 +38,7 @@ version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "819e7219dbd41043ac279b19830f2efc897156490d7fd6ea916720117ee66311"
 dependencies = [
- "libc",
+ "libc 0.2.142",
 ]
 
 [[package]]
@@ -58,7 +58,7 @@ dependencies = [
  "futures-core",
  "memchr",
  "pin-project-lite",
- "tokio",
+ "tokio 1.25.0",
 ]
 
 [[package]]
@@ -231,7 +231,7 @@ version = "0.2.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "28d997bd5e24a5928dd43e46dc529867e207907fe0b239c3477d924f7f2ca320"
 dependencies = [
- "libc",
+ "libc 0.2.142",
 ]
 
 [[package]]
@@ -409,7 +409,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c05aeb6a22b8f62540c194aac980f2115af067bfe15a0734d7277a768d396b31"
 dependencies = [
  "cfg-if",
- "libc",
+ "libc 0.2.142",
  "wasi 0.11.0+wasi-snapshot-preview1",
 ]
 
@@ -441,7 +441,7 @@ dependencies = [
  "http",
  "indexmap",
  "slab",
- "tokio",
+ "tokio 1.25.0",
  "tokio-util",
  "tracing",
 ]
@@ -491,7 +491,7 @@ version = "0.2.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ee512640fe35acbfb4bb779db6f0d80704c2cacfa2e39b601ef3e3f47d1ae4c7"
 dependencies = [
- "libc",
+ "libc 0.2.142",
 ]
 
 [[package]]
@@ -562,7 +562,7 @@ dependencies = [
  "itoa",
  "pin-project-lite",
  "socket2",
- "tokio",
+ "tokio 1.25.0",
  "tower-service",
  "tracing",
  "want",
@@ -634,6 +634,11 @@ checksum = "e2abad23fbc42b3700f2f279844dc832adb2b2eb069b2df918f455c4e18cc646"
 
 [[package]]
 name = "libc"
+version = "0.2.139"
+source = "git+https://github.com/john-sharratt/libc.git#682f9e91246c73b5b5c2beb09594ca2f74ca77d3"
+
+[[package]]
+name = "libc"
 version = "0.2.142"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6a987beff54b60ffa6d51982e1aa1146bc42f19bd26be28b0586f252fccf5317"
@@ -653,7 +658,7 @@ version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "14e4fcc00ff6731d94b70e16e71f43bda62883461f31230742e3bc6dddf12988"
 dependencies = [
- "libc",
+ "libc 0.2.142",
  "uuid",
  "winapi",
 ]
@@ -710,11 +715,23 @@ dependencies = [
 
 [[package]]
 name = "mio"
+version = "0.8.3"
+source = "git+https://github.com/john-sharratt/mio.git?branch=wasix#ec970219b180cf7a9f1d080d9c73f32a5997c447"
+dependencies = [
+ "libc 0.2.139",
+ "log",
+ "wasi 0.11.0+wasi-snapshot-preview1",
+ "wasix",
+ "windows-sys 0.36.1",
+]
+
+[[package]]
+name = "mio"
 version = "0.8.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5b9d9a46eff5b4ff64b45a9e316a6d1e0bc719ef429cbec4dc630684212bfdf9"
 dependencies = [
- "libc",
+ "libc 0.2.142",
  "log",
  "wasi 0.11.0+wasi-snapshot-preview1",
  "windows-sys 0.45.0",
@@ -756,7 +773,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0fac9e2da13b5eb447a6ce3d392f23a29d8694bff781bf03a16cd9ac8697593b"
 dependencies = [
  "hermit-abi",
- "libc",
+ "libc 0.2.142",
 ]
 
 [[package]]
@@ -794,7 +811,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9069cbb9f99e3a5083476ccb29ceb1de18b9118cafa53e90c9551235de2b9521"
 dependencies = [
  "cfg-if",
- "libc",
+ "libc 0.2.142",
  "redox_syscall",
  "smallvec",
  "windows-sys 0.45.0",
@@ -913,7 +930,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3053cf52e236a3ed746dfc745aa9cacf1b791d846bdaf412f60a8d7d6e17c8fc"
 dependencies = [
  "cc",
- "libc",
+ "libc 0.2.142",
  "once_cell",
  "spin",
  "untrusted",
@@ -1054,7 +1071,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "732768f1176d21d09e076c23a93123d40bba92d50c4058da34d45c8de8e682b9"
 dependencies = [
  "cc",
- "libc",
+ "libc 0.2.142",
  "signal-hook-registry",
 ]
 
@@ -1064,7 +1081,7 @@ version = "1.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d8229b473baa5980ac72ef434c4415e70c4b5e71b423043adb4ba059f89c99a1"
 dependencies = [
- "libc",
+ "libc 0.2.142",
 ]
 
 [[package]]
@@ -1074,9 +1091,9 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "213241f76fb1e37e27de3b6aa1b068a2c333233b59cca6634f634b80a27ecf1e"
 dependencies = [
  "futures-core",
- "libc",
+ "libc 0.2.142",
  "signal-hook",
- "tokio",
+ "tokio 1.25.0",
 ]
 
 [[package]]
@@ -1100,7 +1117,7 @@ version = "0.4.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "64a4a911eed85daf18834cfaa86a79b7d266ff93ff5ba14005426219480ed662"
 dependencies = [
- "libc",
+ "libc 0.2.142",
  "winapi",
 ]
 
@@ -1142,7 +1159,7 @@ dependencies = [
  "structopt",
  "tikv-jemallocator",
  "time",
- "tokio",
+ "tokio 1.24.2",
  "tokio-rustls",
  "tokio-util",
  "toml",
@@ -1233,7 +1250,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a678df20055b43e57ef8cddde41cdfda9a3c1a060b67f4c5836dfb1d78543ba8"
 dependencies = [
  "cc",
- "libc",
+ "libc 0.2.142",
 ]
 
 [[package]]
@@ -1242,7 +1259,7 @@ version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "20612db8a13a6c06d57ec83953694185a367e16945f66565e8028d2c0bd76979"
 dependencies = [
- "libc",
+ "libc 0.2.142",
  "tikv-jemalloc-sys",
 ]
 
@@ -1252,8 +1269,26 @@ version = "0.1.45"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1b797afad3f312d1c66a56d11d0316f916356d11bd158fbc6ca6389ff6bf805a"
 dependencies = [
- "libc",
+ "libc 0.2.142",
  "wasi 0.10.0+wasi-snapshot-preview1",
+ "winapi",
+]
+
+[[package]]
+name = "tokio"
+version = "1.24.2"
+source = "git+https://github.com/john-sharratt/tokio.git?branch=wasix-1.24.2#8ba16a724bc320f6918368fe973c69765f5b92ea"
+dependencies = [
+ "autocfg",
+ "bytes",
+ "libc 0.2.139",
+ "memchr",
+ "mio 0.8.3",
+ "num_cpus",
+ "once_cell",
+ "pin-project-lite",
+ "signal-hook-registry",
+ "tokio-macros",
  "winapi",
 ]
 
@@ -1265,22 +1300,18 @@ checksum = "c8e00990ebabbe4c14c08aca901caed183ecd5c09562a12c824bb53d3c3fd3af"
 dependencies = [
  "autocfg",
  "bytes",
- "libc",
+ "libc 0.2.142",
  "memchr",
- "mio",
- "num_cpus",
+ "mio 0.8.6",
  "pin-project-lite",
- "signal-hook-registry",
  "socket2",
- "tokio-macros",
  "windows-sys 0.42.0",
 ]
 
 [[package]]
 name = "tokio-macros"
-version = "1.8.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d266c00fde287f55d3f1c3e96c500c362a2b8c695076ec180f27918820bc6df8"
+version = "1.8.0"
+source = "git+https://github.com/john-sharratt/tokio.git?branch=wasix-1.24.2#8ba16a724bc320f6918368fe973c69765f5b92ea"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1294,7 +1325,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c43ee83903113e03984cb9e5cebe6c04a5116269e900e3ddba8f068a62adda59"
 dependencies = [
  "rustls",
- "tokio",
+ "tokio 1.25.0",
  "webpki",
 ]
 
@@ -1308,7 +1339,7 @@ dependencies = [
  "futures-core",
  "futures-sink",
  "pin-project-lite",
- "tokio",
+ "tokio 1.25.0",
  "tracing",
 ]
 
@@ -1464,6 +1495,11 @@ name = "wasi"
 version = "0.11.0+wasi-snapshot-preview1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9c8d87e72b64a3b4db28d11ce29237c246188f4f51057d65a7eab63b7987e423"
+
+[[package]]
+name = "wasix"
+version = "0.11.65"
+source = "git+https://github.com/john-sharratt/wasix.git#329f83f56b3a6529f629eb4698ce2f1e7169cd92"
 
 [[package]]
 name = "wasm-bindgen"
@@ -1711,3 +1747,8 @@ name = "windows_x86_64_msvc"
 version = "0.42.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "447660ad36a13288b1db4d4248e857b510e8c3a225c822ba4fb748c0aafecffd"
+
+[[patch.unused]]
+name = "socket2"
+version = "0.4.7"
+source = "git+https://github.com/john-sharratt/socket2.git?branch=v0.4.7#b9c1ef25a97f4d2f2351320bff05355a0ece81f7"
