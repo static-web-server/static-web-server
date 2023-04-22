@@ -191,7 +191,30 @@ fn read_toml_file(path: &Path) -> Result<toml::Value> {
             path.display()
         )
     })?;
-    toml_str
-        .parse()
-        .map_err(|e| anyhow::Error::from(e).context("could not parse input as TOML"))
+
+    let first_error = match toml_str.parse() {
+        Ok(res) => return Ok(res),
+        Err(err) => err,
+    };
+
+    let mut second_parser = toml::de::Deserializer::new(&toml_str);
+    #[allow(deprecated)]
+    second_parser.set_require_newline_after_table(false);
+    if let Ok(res) = toml::Value::deserialize(&mut second_parser) {
+        let msg = format!(
+            "\
+TOML file found which contains invalid syntax and will soon not parse
+at `{}`.
+The TOML spec requires newlines after table definitions (e.g., `[a] b = 1` is
+invalid), but this file has a table header which does not have a newline after
+it. A newline needs to be added and this warning will soon become a hard error
+in the future.",
+            path.display()
+        );
+        println!("{}", &msg);
+        return Ok(res);
+    }
+
+    let first_error = anyhow::Error::from(first_error);
+    Err(first_error.context("could not parse data input as toml format"))
 }

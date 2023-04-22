@@ -410,7 +410,7 @@ checksum = "c05aeb6a22b8f62540c194aac980f2115af067bfe15a0734d7277a768d396b31"
 dependencies = [
  "cfg-if",
  "libc",
- "wasi",
+ "wasi 0.11.0+wasi-snapshot-preview1",
 ]
 
 [[package]]
@@ -710,11 +710,11 @@ dependencies = [
 [[package]]
 name = "mio"
 version = "0.8.3"
-source = "git+https://github.com/john-sharratt/mio.git?branch=wasix#ec013282906189a28ea0f209dc2aae230e59302c"
+source = "git+https://github.com/john-sharratt/mio.git?branch=wasix#ec970219b180cf7a9f1d080d9c73f32a5997c447"
 dependencies = [
  "libc",
  "log",
- "wasi",
+ "wasi 0.11.0+wasi-snapshot-preview1",
  "wasix",
  "windows-sys 0.36.1",
 ]
@@ -1139,6 +1139,7 @@ dependencies = [
  "signal-hook-tokio",
  "structopt",
  "tikv-jemallocator",
+ "time",
  "tokio",
  "tokio-rustls",
  "tokio-util",
@@ -1255,9 +1256,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "time"
+version = "0.1.45"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1b797afad3f312d1c66a56d11d0316f916356d11bd158fbc6ca6389ff6bf805a"
+dependencies = [
+ "libc",
+ "wasi 0.10.0+wasi-snapshot-preview1",
+ "winapi",
+]
+
+[[package]]
 name = "tokio"
 version = "1.24.2"
-source = "git+https://github.com/john-sharratt/tokio.git?branch=wasix-1.24.2#b4ceb8d718d3e4109439726f968593269a8f15ab"
+source = "git+https://github.com/john-sharratt/tokio.git?branch=wasix-1.24.2#8ba16a724bc320f6918368fe973c69765f5b92ea"
 dependencies = [
  "autocfg",
  "bytes",
@@ -1276,7 +1288,7 @@ dependencies = [
 [[package]]
 name = "tokio-macros"
 version = "1.8.0"
-source = "git+https://github.com/john-sharratt/tokio.git?branch=wasix-1.24.2#b4ceb8d718d3e4109439726f968593269a8f15ab"
+source = "git+https://github.com/john-sharratt/tokio.git?branch=wasix-1.24.2#8ba16a724bc320f6918368fe973c69765f5b92ea"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1448,6 +1460,12 @@ dependencies = [
  "log",
  "try-lock",
 ]
+
+[[package]]
+name = "wasi"
+version = "0.10.0+wasi-snapshot-preview1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1a143597ca7c7793eff794def352d41792a93c481eb1042423ff7ff72ba2c31f"
 
 [[package]]
 name = "wasi"

@@ -8,11 +8,11 @@ use std::sync::Arc;
 use tokio::sync::oneshot::Receiver;
 
 use crate::handler::{RequestHandler, RequestHandlerOpts};
-#[cfg(any(unix, windows))]
-use crate::signals;
 #[cfg(feature = "tls")]
 use crate::tls::{TlsAcceptor, TlsConfigBuilder};
 use crate::{cors, helpers, logger, Settings};
+#[cfg(not(target_os = "wasi"))]
+use crate::signals;
 use crate::{service::RouterService, Context, Result};
 
 /// Define a multi-thread HTTP or HTTP/2 web server.
@@ -300,8 +300,8 @@ impl Server {
         // HTTP/1
 
         #[cfg(unix)]
-        let signals =
-            signals::create_signals().with_context(|| "failed to register termination signals")?;
+        let signals = signals::create_signals()
+            .with_context(|| "failed to register termination signals")?;
         #[cfg(unix)]
         let handle = signals.handle();
 

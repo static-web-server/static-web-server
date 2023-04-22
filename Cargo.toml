@@ -28,9 +28,9 @@ name = "static-web-server"
 path = "src/bin/server.rs"
 
 [features]
-default = ["http2"]
-tls = ["tokio-rustls"]
-http2 = ["tls"]
+default = [ ]
+tls = [ "tokio-rustls" ]
+http2 = [ "tls" ]
 
 [dependencies]
 anyhow = "1.0"
@@ -56,12 +56,14 @@ serde_ignored = "0.1"
 serde_repr = "0.1"
 structopt = { version = "0.3", default-features = false }
 chrono = { version = "0.4", default-features = false, features = ["std", "clock"] }
-tokio = { version = "=1.24.2", default-features = false, features = ["rt-multi-thread", "macros", "fs", "io-util", "signal"] }
+#tokio = { path = "../tokio/tokio", default-features = false, features = ["rt-multi-thread", "macros", "fs", "io-util", "signal"]  }
+tokio = { git = "https://github.com/john-sharratt/tokio.git", branch = "wasix-1.24.2", default-features = false, features = ["rt-multi-thread", "macros", "fs", "io-util", "signal"] }
 tokio-rustls = { version = "0.23", optional = true }
 tokio-util = { version = "0.7", default-features = false, features = ["io"] }
 toml = "0.5"
 tracing = { version = "0.1", default-features = false, features = ["std"] }
 tracing-subscriber = { version = "0.3", default-features = false, features = ["smallvec", "parking_lot", "fmt", "ansi", "tracing-log"] }
+time = { version = "0.1", default-features = false }
 
 [target.'cfg(all(target_env = "musl", target_pointer_width = "64"))'.dependencies.tikv-jemallocator]
 version = "0.5"

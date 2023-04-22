@@ -1,3 +1,4 @@
+#[cfg(not(target_os = "wasi"))]
 use tokio::time::{sleep, Duration};
 
 #[cfg(unix)]
@@ -38,6 +39,7 @@ pub async fn wait_for_signals(signals: Signals, grace_period_secs: u8) {
 }
 
 /// Function intended to delay the server's graceful shutdown providing a grace period in seconds.
+#[cfg(not(target_os = "wasi"))]
 async fn delay_graceful_shutdown(grace_period_secs: u8) {
     if grace_period_secs > 0 {
         tracing::info!(

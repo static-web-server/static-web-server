@@ -122,7 +122,7 @@ impl Settings {
                 #[cfg(not(target_family = "wasm"))]
                 let path_resolved = p
                     .canonicalize()
-                    .with_context(|| "error resolving toml config file path")?;
+                    .unwrap_or(p.clone());
 
                 let settings = file::Settings::read(&path_resolved)
                     .with_context(|| {
