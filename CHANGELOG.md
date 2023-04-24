@@ -7,6 +7,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _**Note:** See changelog for v1 under the [1.x](https://github.com/static-web-server/static-web-server/blob/1.x/CHANGELOG.md) branch._
 
+## v2.16.0 - 2023-04-25
+
+This new `v2.16.0` release brings several dependency updates/bug fixes including the Alpine Docker image, a new Android ARM64 target, Zstandard (zstd) auto-compression and pre-compressed files support, `static-web-server` available as a crate, as well as other additions and improvements.
+
+__Fixes__
+
+- [44daf6b](https://github.com/static-web-server/static-web-server/commit/44daf6b) Bugfix/security dependency updates including hyper, tokio, futures, serde, h2, libc, windows and other crates. Also ([be8ba9b](https://github.com/static-web-server/static-web-server/commit/be8ba9b), [fff3d4e](https://github.com/static-web-server/static-web-server/commit/fff3d4e)).
+- [39cfbab](https://github.com/static-web-server/static-web-server/commit/39cfbab) Improve error handling when reading file entries on the directory listing module. PR [#192](https://github.com/static-web-server/static-web-server/pull/192) fixes [#191](https://github.com/static-web-server/static-web-server/issues/191) reported by [@PlkMarudny](https://github.com/PlkMarudny).
+- [e36a522](https://github.com/static-web-server/static-web-server/commit/e36a522) Docker: Update Alpine to 3.17.3. PR [#199](https://github.com/static-web-server/static-web-server/pull/199) by [@gaby](https://github.com/gaby).
+- [9d7de82](https://github.com/static-web-server/static-web-server/commit/9d7de82) CI: Error when installing the latest Rust on FreeBSD.
+
+__Features__
+
+- [70db3c9](https://github.com/static-web-server/static-web-server/commit/70db3c9) New [static-web-server](https://crates.io/crates/static-web-server) crate. PR [#190](https://github.com/static-web-server/static-web-server/pull/190) resolves [#188](https://github.com/static-web-server/static-web-server/issues/188) suggested by [@da2ce7](https://github.com/da2ce7).
+- [d7dd255](https://github.com/static-web-server/static-web-server/commit/d7dd255) New Android ARM64 target support (`aarch64-linux-android`). PR [#194](https://github.com/static-web-server/static-web-server/pull/194) resolves [#163](https://github.com/static-web-server/static-web-server/issues/163) suggested by [@denisidoro](https://github.com/denisidoro).
+- [2bebec7](https://github.com/static-web-server/static-web-server/commit/2bebec7) Zstandard (`zstd`) auto-compression and pre-compressed files support. PR [#197](https://github.com/static-web-server/static-web-server/pull/197) resolves [#193](https://github.com/static-web-server/static-web-server/issues/193) suggested by [@gaby](https://github.com/gaby).
+- [910eaae](https://github.com/static-web-server/static-web-server/commit/910eaae) Add `Vary` header for `Accept-Encoding` when `--compression` or `--compression-static` is enabled.
+- [ca5e7f5](https://github.com/static-web-server/static-web-server/commit/ca5e7f5) CI: Workflow for publishing the `static-web-server` crate. PR [#189](https://github.com/static-web-server/static-web-server/pull/189) by [@da2ce7](https://github.com/da2ce7).
+- [415465c](https://github.com/static-web-server/static-web-server/commit/415465c) Misc: Binary installer script for Linux/BSDs. See [docs](https://static-web-server.net/download-and-install/#binary-installer-linuxbsds).
+
+__Refactorings__
+
+- [e751bfb](https://github.com/static-web-server/static-web-server/commit/e751bfb) Remove needless `as_ref()` for several paths on static file module.
+- [cc1de08](https://github.com/static-web-server/static-web-server/commit/cc1de08) Rename `.html` auto-suffix files metadata function.
+- [981c388](https://github.com/static-web-server/static-web-server/commit/981c388) CI: Runner images and dependency updates.
+- [4a12898](https://github.com/static-web-server/static-web-server/commit/4a12898) CI: Improve devel/prod pipelines.
+- [cf0d618](https://github.com/static-web-server/static-web-server/commit/cf0d618) Misc: Logo and project description.
+- [90ec4b6](https://github.com/static-web-server/static-web-server/commit/90ec4b6) Misc: Move the website to [static-web-server.net](https://static-web-server.net/).
+
+__Docs__
+
+- [337f652](https://github.com/static-web-server/static-web-server/commit/337f652) Describe `v1.x` end of life (2023-01-06). See [static-web-server.net](https://static-web-server.net/).
+- [85851e9](https://github.com/static-web-server/static-web-server/commit/85851e9) Zstd compression feature description.
+- [29b3587](https://github.com/static-web-server/static-web-server/commit/29b3587) Minor README grammatical & readability updates. PR [#196](https://github.com/static-web-server/static-web-server/pull/196) by [@dabrd](https://github.com/dabrd).
+- [32398b4](https://github.com/static-web-server/static-web-server/commit/32398b4) Update README page links.
+
 ## v2.15.0 - 2023-03-13
 
 This new `v2.15.0` release brings several dependency updates, one bug fix for the `compression-static`, new features like  Tokio's `--max-blocking-threads` or `.html` prefixing for directory requests, the possibity to build SWS on non-Unix/Windows platforms and performance optimizations and improvements across several modules including `static_file` which [speeds up](https://gist.github.com/joseluisq/cb0962474210e56e768ff5671b3ddd11) SWS around `~4.37%` (req/sec) for almost the same computing.

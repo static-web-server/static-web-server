@@ -166,7 +166,7 @@ jobs:
             echo "CARGO_BIN=cross" >> $GITHUB_ENV
           fi
         fi
-        echo "TARGET_FLAGS=--target ${{ matrix.target }}" >> $GITHUB_ENV
+        echo "TARGET_FLAGS=--target=${{ matrix.target }}" >> $GITHUB_ENV
         echo "TARGET_DIR=./target/${{ matrix.target }}" >> $GITHUB_ENV
 
     - name: Show command used for Cargo
