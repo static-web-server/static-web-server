@@ -1,4 +1,4 @@
-FROM alpine:3.16.5
+FROM alpine:3.17.3
 
 ENV SERVER_VERSION=devel
 
