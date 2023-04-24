@@ -6,7 +6,9 @@ on:
     - master
     - staging
     - trying
-
+    paths:
+      - docker/**/Dockerfile
+      - ci/**/*.sh
 env:
   DOCKER_IMAGE: localhost:5000/github.com/static-web-server/static-web-server
 

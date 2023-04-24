@@ -2,6 +2,8 @@
 
 set -eux -o pipefail
 
+OS_NAME=$(uname -s | tr A-Z a-z)
+
 # Avoid putting the Android tools in `$PATH` because there are tools in this
 # directory like `clang` that would conflict with the same-named tools that may
 # be needed to compile the build script, or to compile for other targets.
@@ -11,7 +13,7 @@ if [ -n "${ANDROID_HOME-}" ]; then
   ANDROID_NDK_ROOT=${ANDROID_NDK_ROOT:-${ANDROID_HOME}/ndk/$ndk_version}
 fi
 if [ -n "${ANDROID_NDK_ROOT-}" ]; then
-  android_tools=${ANDROID_NDK_ROOT}/toolchains/llvm/prebuilt/linux-x86_64/bin
+  android_tools=${ANDROID_NDK_ROOT}/toolchains/llvm/prebuilt/${OS_NAME}-x86_64/bin
 fi
 
 for arg in $*; do
