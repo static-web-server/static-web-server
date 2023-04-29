@@ -78,9 +78,9 @@ Please refer to [The Documentation Website](https://static-web-server.net/) for 
 
 ## Benchmarks
 
-<img title="SWS - Benchmarks 2022" src="benchmark/sws_benchmarks.png" width="860">
+<img title="SWS - Benchmarks April 2023" src="https://raw.githubusercontent.com/static-web-server/benchmarks/master/data/2023-04/benchmark-2023-04.png" width="860">
 
-See more details on [benchmark/BENCHMARKS.md](benchmark/BENCHMARKS.md)
+For more details see [benchmarks repository](https://github.com/static-web-server/benchmarks)
 
 ## Notes
 

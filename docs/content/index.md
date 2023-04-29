@@ -73,6 +73,6 @@ It's cross-platform and available for `Linux`, `macOS`, `Windows` and `FreeBSD` 
 
 ## Benchmarks
 
-<img title="SWS - Benchmarks 2022" src="https://raw.githubusercontent.com/static-web-server/static-web-server/master/benchmark/sws_benchmarks.png" width="860">
+<img title="SWS - Benchmarks April 2023" src="https://raw.githubusercontent.com/static-web-server/benchmarks/master/data/2023-04/benchmark-2023-04.png" width="860">
 
-For more details see [benchmark/BENCHMARKS.md](https://github.com/static-web-server/static-web-server/blob/master/benchmark/BENCHMARKS.md).
+For more details see [benchmarks repository](https://github.com/static-web-server/benchmarks)
