@@ -139,6 +139,7 @@ nav:
     - 'Graceful Shutdown': 'features/graceful-shutdown.md'
     - 'File Descriptor Socket Passing': './features/file-descriptor-socket-passing.md'
     - 'Worker Threads Customization': 'features/worker-threads.md'
+    - 'Blocking Threads Customization': 'features/blocking-threads.md'
     - 'Error Pages': 'features/error-pages.md'
     - 'Custom HTTP Headers': 'features/custom-http-headers.md'
     - 'URL Rewrites': 'features/url-rewrites.md'
