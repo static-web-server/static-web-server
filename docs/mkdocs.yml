@@ -10,7 +10,7 @@ repo_name: static-web-server/static-web-server
 repo_url: https://github.com/static-web-server/static-web-server/
 edit_uri: edit/master/docs/content/
 
-docs_dir: 'content'
+docs_dir: 'docs/content'
 site_dir: '/tmp/docs'
 extra_css:
   - 'assets/style.css'
@@ -26,6 +26,8 @@ theme:
   include_sidebar: true
   features:
     - content.code.annotate
+    - content.action.edit
+    - content.action.view
     - content.tabs.link
     - header.autohide
     # - navigation.expand
@@ -112,6 +114,17 @@ plugins:
   - search
   - minify:
       minify_html: true
+  - git-revision-date-localized:
+      type: timeago
+      custom_format: "%d. %B %Y"
+      timezone: Europe/Berlin
+      locale: en
+      fallback_to_build_date: false
+      enable_creation_date: false
+      exclude:
+        - index.md
+      enabled: true
+      strict: true
 
 # Content Navigation
 nav:

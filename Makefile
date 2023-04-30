@@ -262,7 +262,13 @@ docs-deploy:
 	@git stash
 	@rm -rf /tmp/docs
 	@mkdir -p /tmp/docs
-	@docker run -it --rm -v $(PWD)/docs:/docs -v /tmp/docs:/tmp/docs squidfunk/mkdocs-material build
+	@docker-compose -f docs/docker-compose.yml build
+	@docker run -it --rm \
+		-v $(PWD)/.git:/docs/.git \
+		-v $(PWD)/docs/content:/docs/docs/content \
+		-v $(PWD)/docs/mkdocs.yml:/docs/mkdocs.yml \
+		-v /tmp/docs:/tmp/docs \
+			static-web-server-docs mkdocs build
 	@git checkout gh-pages
 	@git clean -fdx
 	@cp -rf docs/CNAME /tmp/docs/

@@ -25,6 +25,7 @@ TODO
 docs/site
 docs/*/**.html
 */**/*.1
+docs/docs
 
 !/docs
 !/tests/fixtures/**/*
