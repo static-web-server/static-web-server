@@ -82,7 +82,9 @@ extern crate serde;
 
 // Public modules
 pub mod basic_auth;
+#[cfg(feature = "compression")]
 pub mod compression;
+#[cfg(feature = "compression")]
 pub mod compression_static;
 pub mod control_headers;
 pub mod cors;

@@ -37,13 +37,20 @@ path = "src/bin/server.rs"
 doc = false
 
 [features]
-default = ["http2"]
+default = ["compression", "http2"]
+# HTTP2
 tls = ["tokio-rustls"]
 http2 = ["tls"]
+# Compression
+compression = ["compression-brotli", "compression-deflate", "compression-gzip", "compression-zstd"]
+compression-brotli = ["async-compression/brotli"]
+compression-deflate = ["async-compression/deflate"]
+compression-gzip = ["async-compression/deflate"]
+compression-zstd = ["async-compression/zstd"]
 
 [dependencies]
 anyhow = "1.0"
-async-compression = { version = "0.3", default-features = false, features = ["brotli", "deflate", "gzip", "zstd", "tokio"] }
+async-compression = { version = "0.3", default-features = false, optional = true, features = ["brotli", "deflate", "gzip", "zstd", "tokio"] }
 bcrypt = "0.14"
 bytes = "1.4"
 form_urlencoded = "1.1"

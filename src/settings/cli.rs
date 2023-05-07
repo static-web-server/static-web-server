@@ -157,6 +157,7 @@ pub struct General {
     /// Specify the file path to read the private key.
     pub http2_tls_key: Option<PathBuf>,
 
+    #[cfg(feature = "compression")]
     #[structopt(
         long,
         short = "x",
@@ -164,16 +165,17 @@ pub struct General {
         default_value = "true",
         env = "SERVER_COMPRESSION"
     )]
-    /// Gzip, Deflate or Brotli compression on demand determined by the Accept-Encoding header and applied to text-based web file types only.
+    /// Gzip, Deflate, Brotli or Zstd compression on demand determined by the Accept-Encoding header and applied to text-based web file types only.
     pub compression: bool,
 
+    #[cfg(feature = "compression")]
     #[structopt(
         long,
         parse(try_from_str),
         default_value = "false",
         env = "SERVER_COMPRESSION_STATIC"
     )]
-    /// Look up the pre-compressed file variant (`.gz` or `.br`) on disk of a requested file and serves it directly if available.
+    /// Look up the pre-compressed file variant (`.gz`, `.br` or `.zst`) on disk of a requested file and serves it directly if available.
     /// The compression type is determined by the `Accept-Encoding` header.
     pub compression_static: bool,
 

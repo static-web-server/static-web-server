@@ -3,6 +3,7 @@
 #![deny(rust_2018_idioms)]
 #![deny(dead_code)]
 
+#[cfg(feature = "compression")]
 #[cfg(test)]
 mod tests {
     use bytes::Bytes;
@@ -42,6 +43,7 @@ mod tests {
             dir_listing_order: 6,
             dir_listing_format: &DirListFmt::Html,
             redirect_trailing_slash: true,
+            #[cfg(feature = "compression")]
             compression_static: true,
             ignore_hidden_files: false,
         })
@@ -96,6 +98,7 @@ mod tests {
             dir_listing_order: 6,
             dir_listing_format: &DirListFmt::Html,
             redirect_trailing_slash: true,
+            #[cfg(feature = "compression")]
             compression_static: true,
             ignore_hidden_files: false,
         })
@@ -147,6 +150,7 @@ mod tests {
             dir_listing_order: 6,
             dir_listing_format: &DirListFmt::Html,
             redirect_trailing_slash: true,
+            #[cfg(feature = "compression")]
             compression_static: true,
             ignore_hidden_files: false,
         })

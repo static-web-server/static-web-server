@@ -21,22 +21,41 @@ Finally, the release binary should be available at `target/release/static-web-se
 !!! info "Don't use the project's `Makefile`"
     Please don't use the project's `Makefile` since it's only intended for development and some on-demand tasks.
 
+## Cargo features
+
+When building from the source, all features are enabled by default.
+However, you can disable just the ones you don't need from the lists below.
+
+Feature | Description
+---------|------
+**Deafult** |
+`default` | Activates all features by default.
+[**HTTP2/TLS**](./features/http2-tls.md) |
+`http2` | Activates the HTTP2 and TLS feature.
+`tls` | Activates only the TLS feature.
+[**Compression**](./features/compression.md) |
+`compression` | Activates auto-compression and compression static with all supported algorithms.
+`compression-brotli` | Activates auto-compression/compression static with only the `brotli` algorithm.
+`compression-deflate` | Activates auto-compression/compression static with only the `deflate` algorithm.
+`compression-gzip` | Activates auto-compression/compression static with only the `gzip` algorithm.
+`compression-zstd` | Activates auto-compression/compression static with only the `zstd` algorithm.
+
+### Disable all default features
+
+For example, if you want to run or build SWS without the default features like `compression`, `http2`, etc then just try:
+
+```sh
+# run
+cargo run --no-default-features -- -h
+# or build
+cargo build --release --no-default-features
+```
+
 ## Building documentation from source
 
 All HTML documentation is located in the `docs/` project's directory and is built using [Material for MkDocs](https://github.com/squidfunk/mkdocs-material).
 
 It's only necessary to have [Docker](https://www.docker.com/get-started/) installed.
-
-## Cargo features
-
-Some features are optional when running or building from the source.
-For example, if you want to run without the default features like `http2` just try.
-
-```sh
-cargo run --no-default-features -- -h
-```
-
-For more optional features take a look a the `[features]` section of the `cargo.toml` file adjusting them on demand.
 
 ### Building documentation
 

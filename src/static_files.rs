@@ -26,10 +26,12 @@ use std::path::{Component, Path, PathBuf};
 use std::pin::Pin;
 use std::task::{Context, Poll};
 
-use crate::directory_listing::DirListFmt;
+#[cfg(feature = "compression")]
+use crate::compression_static;
+
 use crate::exts::http::{MethodExt, HTTP_SUPPORTED_METHODS};
 use crate::exts::path::PathExt;
-use crate::{compression_static, directory_listing, Result};
+use crate::{directory_listing, directory_listing::DirListFmt, Result};
 
 /// Defines all options needed by the static-files handler.
 pub struct HandleOpts<'a> {
@@ -198,8 +200,8 @@ fn suffix_file_html_metadata(file_path: &mut PathBuf) -> (&mut PathBuf, Option<M
 /// as well as its optional pre-compressed variant.
 async fn composed_file_metadata<'a>(
     mut file_path: &'a mut PathBuf,
-    headers: &'a HeaderMap<HeaderValue>,
-    compression_static: bool,
+    _headers: &'a HeaderMap<HeaderValue>,
+    _compression_static: bool,
 ) -> Result<FileMetadata<'a>, StatusCode> {
     tracing::trace!("getting metadata for file {}", file_path.display());
 
@@ -211,9 +213,10 @@ async fn composed_file_metadata<'a>(
                 file_path.push("index.html");
 
                 // Pre-compressed variant check for the autoindex
-                if compression_static {
+                #[cfg(feature = "compression")]
+                if _compression_static {
                     if let Some(p) =
-                        compression_static::precompressed_variant(file_path, headers).await
+                        compression_static::precompressed_variant(file_path, _headers).await
                     {
                         return Ok(FileMetadata {
                             file_path,
@@ -243,9 +246,10 @@ async fn composed_file_metadata<'a>(
                 }
             } else {
                 // Fallback pre-compressed variant check for the specific file
-                if compression_static {
+                #[cfg(feature = "compression")]
+                if _compression_static {
                     if let Some(p) =
-                        compression_static::precompressed_variant(file_path, headers).await
+                        compression_static::precompressed_variant(file_path, _headers).await
                     {
                         return Ok(FileMetadata {
                             file_path,
@@ -266,8 +270,10 @@ async fn composed_file_metadata<'a>(
         }
         Err(err) => {
             // Pre-compressed variant check for the file not found
-            if compression_static {
-                if let Some(p) = compression_static::precompressed_variant(file_path, headers).await
+            #[cfg(feature = "compression")]
+            if _compression_static {
+                if let Some(p) =
+                    compression_static::precompressed_variant(file_path, _headers).await
                 {
                     return Ok(FileMetadata {
                         file_path,
@@ -283,6 +289,8 @@ async fn composed_file_metadata<'a>(
             // For example: `/posts/article` will fallback to `/posts/article.html`
             let new_meta: Option<Metadata>;
             (file_path, new_meta) = suffix_file_html_metadata(file_path);
+
+            #[cfg(feature = "compression")]
             match new_meta {
                 Some(new_meta) => {
                     return Ok(FileMetadata {
@@ -294,9 +302,9 @@ async fn composed_file_metadata<'a>(
                 }
                 _ => {
                     // Last pre-compressed variant check or the suffixed file not found
-                    if compression_static {
+                    if _compression_static {
                         if let Some(p) =
-                            compression_static::precompressed_variant(file_path, headers).await
+                            compression_static::precompressed_variant(file_path, _headers).await
                         {
                             return Ok(FileMetadata {
                                 file_path,
@@ -307,6 +315,15 @@ async fn composed_file_metadata<'a>(
                         }
                     }
                 }
+            }
+            #[cfg(not(feature = "compression"))]
+            if let Some(new_meta) = new_meta {
+                return Ok(FileMetadata {
+                    file_path,
+                    metadata: new_meta,
+                    is_dir: false,
+                    precompressed_variant: None,
+                });
             }
 
             Err(err)

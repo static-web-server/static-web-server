@@ -117,9 +117,11 @@ pub struct General {
     pub cache_control_headers: Option<bool>,
 
     /// Compression.
+    #[cfg(feature = "compression")]
     pub compression: Option<bool>,
 
     /// Check for a pre-compressed file on disk.
+    #[cfg(feature = "compression")]
     pub compression_static: Option<bool>,
 
     /// Error 404 pages.
