@@ -11,8 +11,10 @@ mod tests {
     use std::fs;
     use std::path::PathBuf;
 
+    #[cfg(feature = "compression")]
+    use static_web_server::compression;
+
     use static_web_server::{
-        compression,
         directory_listing::DirListFmt,
         static_files::{self, HandleOpts},
     };
@@ -575,9 +577,10 @@ mod tests {
         }
     }
 
+    #[cfg(feature = "compression")]
     #[tokio::test]
     async fn handle_file_compressions() {
-        let encodings = ["gzip", "deflate", "br", "xyz"];
+        let encodings = ["gzip", "deflate", "br", "zstd", "xyz"];
         let method = &Method::GET;
 
         for enc in encodings {
@@ -612,7 +615,7 @@ mod tests {
 
                     match enc {
                         // The handle only accepts `HEAD` or `GET` request methods
-                        "gzip" | "deflate" | "br" => {
+                        "gzip" | "deflate" | "br" | "zstd" => {
                             assert!(res.headers().get("content-length").is_none());
                             assert_eq!(res.headers()["content-encoding"], enc);
                         }

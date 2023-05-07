@@ -10,8 +10,11 @@ use headers::HeaderValue;
 use hyper::{header::WWW_AUTHENTICATE, Body, Request, Response, StatusCode};
 use std::{future::Future, net::IpAddr, net::SocketAddr, path::PathBuf, sync::Arc};
 
+#[cfg(feature = "compression")]
+use crate::compression;
+
 use crate::{
-    basic_auth, compression, control_headers, cors, custom_headers,
+    basic_auth, control_headers, cors, custom_headers,
     directory_listing::DirListFmt,
     error_page,
     exts::http::MethodExt,
@@ -229,7 +232,7 @@ impl RequestHandler {
             })
             .await
             {
-                Ok((mut resp, is_precompressed)) => {
+                Ok((mut resp, _is_precompressed)) => {
                     // Append CORS headers if they are present
                     if let Some(cors_headers) = cors_headers {
                         if !cors_headers.is_empty() {
@@ -241,6 +244,7 @@ impl RequestHandler {
                     }
 
                     // Compression content encoding varies so use a `Vary` header
+                    #[cfg(feature = "compression")]
                     if self.opts.compression || compression_static {
                         resp.headers_mut().append(
                             hyper::header::VARY,
@@ -249,7 +253,8 @@ impl RequestHandler {
                     }
 
                     // Auto compression based on the `Accept-Encoding` header
-                    if self.opts.compression && !is_precompressed {
+                    #[cfg(feature = "compression")]
+                    if self.opts.compression && !_is_precompressed {
                         resp = match compression::auto(method, headers, resp) {
                             Ok(res) => res,
                             Err(err) => {

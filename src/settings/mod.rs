@@ -77,8 +77,12 @@ impl Settings {
         let mut log_level = opts.log_level;
         let mut config_file = opts.config_file.clone();
         let mut cache_control_headers = opts.cache_control_headers;
+
+        #[cfg(feature = "compression")]
         let mut compression = opts.compression;
+        #[cfg(feature = "compression")]
         let mut compression_static = opts.compression_static;
+
         let mut page404 = opts.page404;
         let mut page50x = opts.page50x;
         #[cfg(feature = "http2")]
@@ -143,9 +147,11 @@ impl Settings {
                     if let Some(v) = general.cache_control_headers {
                         cache_control_headers = v
                     }
+                    #[cfg(feature = "compression")]
                     if let Some(v) = general.compression {
                         compression = v
                     }
+                    #[cfg(feature = "compression")]
                     if let Some(v) = general.compression_static {
                         compression_static = v
                     }
@@ -324,7 +330,9 @@ impl Settings {
                 log_level,
                 config_file,
                 cache_control_headers,
+                #[cfg(feature = "compression")]
                 compression,
+                #[cfg(feature = "compression")]
                 compression_static,
                 page404,
                 page50x,

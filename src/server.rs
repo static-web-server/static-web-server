@@ -166,11 +166,19 @@ impl Server {
         tracing::info!("security headers: enabled={}", security_headers);
 
         // Auto compression based on the `Accept-Encoding` header
+        #[cfg(not(feature = "compression"))]
+        let compression = false;
+        #[cfg(feature = "compression")]
         let compression = general.compression;
+        #[cfg(feature = "compression")]
         tracing::info!("auto compression: enabled={}", compression);
 
         // Check pre-compressed files based on the `Accept-Encoding` header
+        #[cfg(not(feature = "compression"))]
+        let compression_static = false;
+        #[cfg(feature = "compression")]
         let compression_static = general.compression_static;
+        #[cfg(feature = "compression")]
         tracing::info!("compression static: enabled={}", compression_static);
 
         // Directory listing option

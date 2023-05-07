@@ -8,7 +8,15 @@
 
 // Part of the file is borrowed from <https://github.com/seanmonstar/warp/pull/513>*
 
-use async_compression::tokio::bufread::{BrotliEncoder, DeflateEncoder, GzipEncoder, ZstdEncoder};
+#[cfg(feature = "compression-brotli")]
+use async_compression::tokio::bufread::BrotliEncoder;
+#[cfg(feature = "compression-deflate")]
+use async_compression::tokio::bufread::DeflateEncoder;
+#[cfg(feature = "compression-gzip")]
+use async_compression::tokio::bufread::GzipEncoder;
+#[cfg(feature = "compression-zstd")]
+use async_compression::tokio::bufread::ZstdEncoder;
+
 use bytes::Bytes;
 use futures_util::Stream;
 use headers::{AcceptEncoding, ContentCoding, ContentType, HeaderMap, HeaderMapExt};
@@ -52,16 +60,8 @@ pub const TEXT_MIME_TYPES: [&str; 24] = [
     "application/wasm",
 ];
 
-/// Try to get the prefered `content-encoding` via the `accept-encoding` header.
-pub fn get_prefered_encoding(headers: &HeaderMap<HeaderValue>) -> Option<ContentCoding> {
-    if let Some(ref accept_encoding) = headers.typed_get::<AcceptEncoding>() {
-        return accept_encoding.prefered_encoding();
-    }
-    None
-}
-
 /// Create a wrapping handler that compresses the Body of a [`Response`](hyper::Response)
-/// using `gzip`, `deflate` or `brotli` if is specified in the `Accept-Encoding` header, adding
+/// using `gzip`, `deflate`, `brotli` or `zstd` if is specified in the `Accept-Encoding` header, adding
 /// `content-encoding: <coding>` to the Response's [`HeaderMap`](hyper::HeaderMap)
 /// It also provides the ability to apply compression for text-based MIME types only.
 pub fn auto(
@@ -84,18 +84,25 @@ pub fn auto(
             }
         }
 
+        #[cfg(feature = "compression-gzip")]
         if encoding == ContentCoding::GZIP {
             let (head, body) = resp.into_parts();
             return Ok(gzip(head, body.into()));
         }
+
+        #[cfg(feature = "compression-deflate")]
         if encoding == ContentCoding::DEFLATE {
             let (head, body) = resp.into_parts();
             return Ok(deflate(head, body.into()));
         }
+
+        #[cfg(feature = "compression-brotli")]
         if encoding == ContentCoding::BROTLI {
             let (head, body) = resp.into_parts();
             return Ok(brotli(head, body.into()));
         }
+
+        #[cfg(feature = "compression-zstd")]
         if encoding == ContentCoding::ZSTD {
             let (head, body) = resp.into_parts();
             return Ok(zstd(head, body.into()));
@@ -107,6 +114,7 @@ pub fn auto(
 
 /// Create a wrapping handler that compresses the Body of a [`Response`](hyper::Response)
 /// using gzip, adding `content-encoding: gzip` to the Response's [`HeaderMap`](hyper::HeaderMap)
+#[cfg(feature = "compression-gzip")]
 pub fn gzip(
     mut head: http::response::Parts,
     body: CompressableBody<Body, hyper::Error>,
@@ -122,6 +130,7 @@ pub fn gzip(
 
 /// Create a wrapping handler that compresses the Body of a [`Response`](hyper::Response)
 /// using deflate, adding `content-encoding: deflate` to the Response's [`HeaderMap`](hyper::HeaderMap)
+#[cfg(feature = "compression-deflate")]
 pub fn deflate(
     mut head: http::response::Parts,
     body: CompressableBody<Body, hyper::Error>,
@@ -142,6 +151,7 @@ pub fn deflate(
 
 /// Create a wrapping handler that compresses the Body of a [`Response`](hyper::Response)
 /// using brotli, adding `content-encoding: br` to the Response's [`HeaderMap`](hyper::HeaderMap)
+#[cfg(feature = "compression-brotli")]
 pub fn brotli(
     mut head: http::response::Parts,
     body: CompressableBody<Body, hyper::Error>,
@@ -160,6 +170,7 @@ pub fn brotli(
 
 /// Create a wrapping handler that compresses the Body of a [`Response`](hyper::Response)
 /// using zstd, adding `content-encoding: zstd` to the Response's [`HeaderMap`](hyper::HeaderMap)
+#[cfg(feature = "compression-zstd")]
 pub fn zstd(
     mut head: http::response::Parts,
     body: CompressableBody<Body, hyper::Error>,
@@ -182,6 +193,14 @@ pub fn create_encoding_header(existing: Option<HeaderValue>, coding: ContentCodi
         }
     }
     coding.into()
+}
+
+/// Try to get the prefered `content-encoding` via the `accept-encoding` header.
+pub fn get_prefered_encoding(headers: &HeaderMap<HeaderValue>) -> Option<ContentCoding> {
+    if let Some(ref accept_encoding) = headers.typed_get::<AcceptEncoding>() {
+        return accept_encoding.prefered_encoding();
+    }
+    None
 }
 
 /// A wrapper around any type that implements [`Stream`](futures_util::Stream) to be
