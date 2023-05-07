@@ -28,7 +28,7 @@ However, you can disable just the ones you don't need from the lists below.
 
 Feature | Description
 ---------|------
-**Deafult** |
+**Default** |
 `default` | Activates all features by default.
 [**HTTP2/TLS**](./features/http2-tls.md) |
 `http2` | Activates the HTTP2 and TLS feature.

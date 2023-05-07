@@ -26,6 +26,7 @@ autoexamples = true
 
 [package.metadata.docs.rs]
 all-features = true
+rustc-args = ["--cfg", "docsrs"]
 
 [lib]
 name = "static_web_server"

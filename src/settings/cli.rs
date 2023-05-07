@@ -144,20 +144,24 @@ pub struct General {
         env = "SERVER_HTTP2_TLS"
     )]
     #[cfg(feature = "http2")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "http2")))]
     /// Enable HTTP/2 with TLS support.
     pub http2: bool,
 
     #[structopt(long, required_if("http2", "true"), env = "SERVER_HTTP2_TLS_CERT")]
     #[cfg(feature = "http2")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "http2")))]
     /// Specify the file path to read the certificate.
     pub http2_tls_cert: Option<PathBuf>,
 
     #[structopt(long, required_if("http2", "true"), env = "SERVER_HTTP2_TLS_KEY")]
     #[cfg(feature = "http2")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "http2")))]
     /// Specify the file path to read the private key.
     pub http2_tls_key: Option<PathBuf>,
 
     #[cfg(feature = "compression")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "compression")))]
     #[structopt(
         long,
         short = "x",
@@ -169,6 +173,7 @@ pub struct General {
     pub compression: bool,
 
     #[cfg(feature = "compression")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "compression")))]
     #[structopt(
         long,
         parse(try_from_str),

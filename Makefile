@@ -252,10 +252,17 @@ crate-docs:
 .PHONY: crate-docs
 
 crate-docs-dev:
-	@cargo doc --no-deps
+	@env \
+		RUSTFLAGS="--cfg docsrs" \
+		RUSTDOCFLAGS="--cfg docsrs" \
+			cargo doc --lib --no-deps --all-features --document-private-items
 	@echo "Crate documentation: http://localhost:8787/static_web_server"
 	@static-web-server -p 8787 -d target/doc/ \
-		& watchman-make -p 'src/**/*.rs' --run 'cargo doc'
+		& watchman-make -p 'src/**/*.rs' --run '\
+			env \
+				RUSTFLAGS="--cfg docsrs" \
+				RUSTDOCFLAGS="--cfg docsrs" \
+					cargo doc --lib --no-deps --all-features --document-private-items'
 .PHONY: crate-docs-dev
 
 docs-deploy:
@@ -283,6 +290,10 @@ docs-deploy:
 	@echo "Documentation built and published"
 	@git checkout master
 .PHONY: docs-deploy
+
+typos:
+	@typos . --config ./.github/workflows/config/typos.toml
+.PHONY: typos
 
 man:
 	@asciidoctor --doctype=manpage --backend=manpage docs/man/static-web-server.1.rst

@@ -67,12 +67,32 @@
 //! - Ability to accept a socket listener as a file descriptor for use in sandboxing and on-demand applications (E.g [systemd](http://0pointer.de/blog/projects/socket-activation.html)).
 //! - Cross-platform. Pre-compiled binaries for Linux, macOS, Windows and FreeBSD (`x86`,`x86_64`,`ARM`,`ARM64`).
 //!
+//! ## Cargo features
+//!
+//! When building from the source, all features are enabled by default.
+//! However, you can disable just the ones you don't need from the lists below.
+//!
+//! Feature | Description
+//! ---------|------
+//! **Default** |
+//! `default` | Activates all features by default.
+//! [**HTTP2/TLS**](https://static-web-server.net/features/http2-tls/) |
+//! `http2` | Activates the HTTP2 and TLS feature.
+//! `tls` | Activates only the TLS feature.
+//! [**Compression**](https://static-web-server.net/features/compression/) |
+//! `compression` | Activates auto-compression and compression static with all supported algorithms.
+//! `compression-brotli` | Activates auto-compression/compression static with only the `brotli` algorithm.
+//! `compression-deflate` | Activates auto-compression/compression static with only the `deflate` algorithm.
+//! `compression-gzip` | Activates auto-compression/compression static with only the `gzip` algorithm.
+//! `compression-zstd` | Activates auto-compression/compression static with only the `zstd` algorithm.
+//!
 
 #![deny(missing_docs)]
 #![forbid(unsafe_code)]
 #![deny(warnings)]
 #![deny(rust_2018_idioms)]
 #![deny(dead_code)]
+#![cfg_attr(docsrs, feature(doc_cfg))]
 
 // Extern crates
 #[macro_use]
@@ -83,8 +103,10 @@ extern crate serde;
 // Public modules
 pub mod basic_auth;
 #[cfg(feature = "compression")]
+#[cfg_attr(docsrs, doc(cfg(feature = "compression")))]
 pub mod compression;
 #[cfg(feature = "compression")]
+#[cfg_attr(docsrs, doc(cfg(feature = "compression")))]
 pub mod compression_static;
 pub mod control_headers;
 pub mod cors;
@@ -105,6 +127,7 @@ pub mod settings;
 pub mod signals;
 pub mod static_files;
 #[cfg(feature = "tls")]
+#[cfg_attr(docsrs, doc(cfg(feature = "tls")))]
 pub mod tls;
 pub mod transport;
 #[cfg(windows)]
@@ -113,6 +136,7 @@ pub mod winservice;
 pub mod error;
 
 // Private modules
+#[doc(hidden)]
 mod helpers;
 
 // Re-exports

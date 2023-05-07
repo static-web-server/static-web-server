@@ -13,7 +13,7 @@ use structopt::StructOpt;
 
 use crate::{Context, Result};
 
-mod cli;
+pub mod cli;
 pub mod file;
 
 #[cfg(windows)]

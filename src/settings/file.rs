@@ -118,10 +118,12 @@ pub struct General {
 
     /// Compression.
     #[cfg(feature = "compression")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "compression")))]
     pub compression: Option<bool>,
 
     /// Check for a pre-compressed file on disk.
     #[cfg(feature = "compression")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "compression")))]
     pub compression_static: Option<bool>,
 
     /// Error 404 pages.
