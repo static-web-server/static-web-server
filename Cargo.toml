@@ -40,8 +40,7 @@ doc = false
 [features]
 default = ["compression", "http2"]
 # HTTP2
-tls = ["tokio-rustls", "rustls-pemfile"]
-http2 = ["tls"]
+http2 = ["tokio-rustls", "rustls-pemfile"]
 # Compression
 compression = ["compression-brotli", "compression-deflate", "compression-gzip", "compression-zstd"]
 compression-brotli = ["async-compression/brotli"]

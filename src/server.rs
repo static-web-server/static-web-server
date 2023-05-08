@@ -6,9 +6,6 @@
 //! Server module intended to construct a multi-thread HTTP or HTTP/2 web server.
 //!
 
-#[allow(unused_imports)]
-use hyper::server::conn::AddrIncoming;
-#[allow(unused_imports)]
 use hyper::server::Server as HyperServer;
 use listenfd::ListenFd;
 use std::net::{IpAddr, SocketAddr, TcpListener};
@@ -18,8 +15,13 @@ use tokio::sync::oneshot::Receiver;
 use crate::handler::{RequestHandler, RequestHandlerOpts};
 #[cfg(any(unix, windows))]
 use crate::signals;
-#[cfg(feature = "tls")]
-use crate::tls::{TlsAcceptor, TlsConfigBuilder};
+
+#[cfg(feature = "http2")]
+use {
+    crate::tls::{TlsAcceptor, TlsConfigBuilder},
+    hyper::server::conn::AddrIncoming,
+};
+
 use crate::{cors, helpers, logger, Settings};
 use crate::{service::RouterService, Context, Result};
 

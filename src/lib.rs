@@ -78,7 +78,6 @@
 //! `default` | Activates all features by default.
 //! [**HTTP2/TLS**](https://static-web-server.net/features/http2-tls/) |
 //! `http2` | Activates the HTTP2 and TLS feature.
-//! `tls` | Activates only the TLS feature.
 //! [**Compression**](https://static-web-server.net/features/compression/) |
 //! `compression` | Activates auto-compression and compression static with all supported algorithms.
 //! `compression-brotli` | Activates auto-compression/compression static with only the `brotli` algorithm.
@@ -126,8 +125,8 @@ pub mod settings;
 #[cfg(any(unix, windows))]
 pub mod signals;
 pub mod static_files;
-#[cfg(feature = "tls")]
-#[cfg_attr(docsrs, doc(cfg(feature = "tls")))]
+#[cfg(feature = "http2")]
+#[cfg_attr(docsrs, doc(cfg(feature = "http2")))]
 pub mod tls;
 pub mod transport;
 #[cfg(windows)]

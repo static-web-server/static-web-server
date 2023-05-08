@@ -32,7 +32,6 @@ Feature | Description
 `default` | Activates all features by default.
 [**HTTP2/TLS**](./features/http2-tls.md) |
 `http2` | Activates the HTTP2 and TLS feature.
-`tls` | Activates only the TLS feature.
 [**Compression**](./features/compression.md) |
 `compression` | Activates auto-compression and compression static with all supported algorithms.
 `compression-brotli` | Activates auto-compression/compression static with only the `brotli` algorithm.
