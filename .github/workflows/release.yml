@@ -146,7 +146,7 @@ jobs:
 
     - name: Install Linux/BSD tools
       if: ${{ !contains(matrix.os, 'windows') }}
-      run: ci/install-tools.sh --target=${{ matrix.target }}
+      run: scripts/ci/install_tools.sh --target=${{ matrix.target }}
 
     - name: Install Rust
       uses: dtolnay/rust-toolchain@stable
@@ -160,7 +160,7 @@ jobs:
         if [ "${{ matrix.os }}" = "ubuntu-22.04" ]; then
           # Use 'cargo.sh' script for Android targets only
           if [[ "${{ matrix.build }}" == "linux-android-armv7" ]] || [[ "${{ matrix.build }}" == "linux-android-arm64" ]]; then
-            echo "CARGO_BIN=ci/cargo.sh" >> $GITHUB_ENV
+            echo "CARGO_BIN=scripts/ci/cargo.sh" >> $GITHUB_ENV
           else
             cargo install cross@^0.2
             echo "CARGO_BIN=cross" >> $GITHUB_ENV

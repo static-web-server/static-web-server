@@ -8,7 +8,7 @@ on:
     - trying
     paths:
       - docker/**/Dockerfile
-      - ci/**/*.sh
+      - scripts/ci/**/*.sh
 env:
   DOCKER_IMAGE: localhost:5000/github.com/static-web-server/static-web-server
 
@@ -78,7 +78,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          ci/get_latest_release.sh
+          scripts/ci/get_latest_release.sh
           cat /tmp/version >> $GITHUB_ENV
           cat /tmp/version
           echo "SERVER_DOCKERFILE=./docker/alpine/Dockerfile" >> $GITHUB_ENV

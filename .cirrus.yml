@@ -75,4 +75,4 @@ task:
     cp {README.md,LICENSE-APACHE,LICENSE-MIT} "$staging/"
     tar czf "$staging.tar.gz" "$staging"
   upload_script: |
-    ./ci/upload_release_file.sh
+    ./scripts/ci/upload_release_file.sh
