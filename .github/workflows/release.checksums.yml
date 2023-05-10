@@ -1,0 +1,27 @@
+name: release-checksums
+on:
+  release:
+    types:
+      - published
+
+jobs:
+  checksum_file:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 1
+
+      - name: Prepare
+        shell: bash
+        run: |
+          echo "SERVER_VERSION=${GITHUB_REF##*/v}" >> $GITHUB_ENV
+          echo "version is: ${{ env.SERVER_VERSION }}"
+
+      - name: Generate and upload
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          scripts/ci/generate_checksums.sh
