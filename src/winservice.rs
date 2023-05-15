@@ -169,7 +169,7 @@ pub fn run_server_as_service() -> Result {
 
     // Register generated `ffi_service_main` with the system and start the
     // service, blocking this thread until the service is stopped
-    service_dispatcher::start(&SERVICE_NAME, ffi_service_main)
+    service_dispatcher::start(SERVICE_NAME, ffi_service_main)
         .with_context(|| "error registering generated `ffi_service_main` with the system")?;
     Ok(())
 }

@@ -6,7 +6,9 @@
 //! Server module intended to construct a multi-thread HTTP or HTTP/2 web server.
 //!
 
+use hyper::server::conn::AddrStream;
 use hyper::server::Server as HyperServer;
+use hyper::service::{make_service_fn, service_fn};
 use listenfd::ListenFd;
 use std::net::{IpAddr, SocketAddr, TcpListener};
 use std::sync::Arc;
@@ -22,6 +24,7 @@ use {
     hyper::server::conn::AddrIncoming,
 };
 
+use crate::https_redirect::redirect_to_https;
 use crate::{cors, helpers, logger, Settings};
 use crate::{service::RouterService, Context, Result};
 
@@ -232,6 +235,10 @@ impl Server {
         let grace_period = general.grace_period;
         tracing::info!("grace period before graceful shutdown: {}s", grace_period);
 
+        // HTTP to HTTPS redirect option
+        let https_redirect = general.https_redirect;
+        tracing::info!("http to https redirect: {}", https_redirect);
+
         // Create a service router for Hyper
         let router_service = RouterService::new(RequestHandler {
             opts: Arc::from(RequestHandlerOpts {
@@ -293,28 +300,95 @@ impl Server {
             #[cfg(unix)]
             let handle = signals.handle();
 
-            let server =
+            let http2_server =
                 HyperServer::builder(TlsAcceptor::new(tls, incoming)).serve(router_service);
 
             #[cfg(unix)]
-            let server =
-                server.with_graceful_shutdown(signals::wait_for_signals(signals, grace_period));
-            #[cfg(windows)]
-            let server = server.with_graceful_shutdown(signals::wait_for_ctrl_c(
-                _cancel_recv,
-                _cancel_fn,
-                grace_period,
-            ));
+            let http2_server = http2_server
+                .with_graceful_shutdown(signals::wait_for_signals(signals, grace_period));
+            // TODO:
+            // #[cfg(windows)]
+            // let http2_server = http2_server.with_graceful_shutdown(signals::wait_for_ctrl_c(
+            //     _cancel_recv,
+            //     _cancel_fn,
+            //     grace_period,
+            // ));
 
             tracing::info!(
                 parent: tracing::info_span!("Server::start_server", ?addr_str, ?threads),
-                "listening on https://{}",
+                "http2 server is listening on https://{}",
                 addr_str
             );
 
-            tracing::info!("press ctrl+c to shut down the server");
+            // HTTP to HTTPS redirect server
+            if general.https_redirect {
+                let ip = general
+                    .host
+                    .parse::<IpAddr>()
+                    .with_context(|| format!("failed to parse {} address", general.host))?;
+                let addr = SocketAddr::from((ip, general.https_redirect_port));
+                let tcp_listener = TcpListener::bind(addr)
+                    .with_context(|| format!("failed to bind to {addr} address"))?;
+                tracing::info!(
+                    parent: tracing::info_span!("Server::start_server", ?addr, ?threads),
+                    "http1 redirect server is listening on http://{}",
+                    addr
+                );
+                tcp_listener
+                    .set_nonblocking(true)
+                    .with_context(|| "failed to set TCP non-blocking mode")?;
 
-            server.await?;
+                #[cfg(unix)]
+                let redirect_signals = signals::create_signals()
+                    .with_context(|| "failed to register termination signals")?;
+                #[cfg(unix)]
+                let redirect_handle = redirect_signals.handle();
+
+                let server_redirect = HyperServer::from_tcp(tcp_listener)
+                    .unwrap()
+                    .tcp_nodelay(true)
+                    .serve(make_service_fn(move |_: &AddrStream| async move {
+                        Ok::<_, hyper::Error>(service_fn(move |req| async move {
+                            redirect_to_https(req, general.port).await
+                        }))
+                    }));
+
+                #[cfg(unix)]
+                let server_redirect = server_redirect.with_graceful_shutdown(
+                    signals::wait_for_signals(redirect_signals, grace_period),
+                );
+                // TODO:
+                // #[cfg(windows)]
+                // let server_redirect = server_redirect.with_graceful_shutdown(
+                //     signals::wait_for_ctrl_c(_cancel_recv, _cancel_fn, grace_period),
+                // );
+
+                // HTTP/2 server task
+                let server_task = tokio::spawn(async move {
+                    if let Err(err) = http2_server.await {
+                        tracing::error!("http2 server failed to start up: {:?}", err);
+                        std::process::exit(1)
+                    }
+                });
+
+                // HTTP/1 redirect server task
+                let redirect_server_task = tokio::spawn(async move {
+                    if let Err(err) = server_redirect.await {
+                        tracing::error!("http1 redirect server failed to start up: {:?}", err);
+                        std::process::exit(1)
+                    }
+                });
+
+                tracing::info!("press ctrl+c to shut down the servers");
+
+                tokio::try_join!(server_task, redirect_server_task)?;
+
+                #[cfg(unix)]
+                redirect_handle.close();
+            } else {
+                tracing::info!("press ctrl+c to shut down the server");
+                http2_server.await?;
+            }
 
             #[cfg(unix)]
             handle.close();
@@ -335,16 +409,16 @@ impl Server {
             .set_nonblocking(true)
             .with_context(|| "failed to set TCP non-blocking mode")?;
 
-        let server = HyperServer::from_tcp(tcp_listener)
+        let http1_server = HyperServer::from_tcp(tcp_listener)
             .unwrap()
             .tcp_nodelay(true)
             .serve(router_service);
 
         #[cfg(unix)]
-        let server =
-            server.with_graceful_shutdown(signals::wait_for_signals(signals, grace_period));
+        let http1_server =
+            http1_server.with_graceful_shutdown(signals::wait_for_signals(signals, grace_period));
         #[cfg(windows)]
-        let server = server.with_graceful_shutdown(signals::wait_for_ctrl_c(
+        let http1_server = http1_server.with_graceful_shutdown(signals::wait_for_ctrl_c(
             _cancel_recv,
             _cancel_fn,
             grace_period,
@@ -352,13 +426,13 @@ impl Server {
 
         tracing::info!(
             parent: tracing::info_span!("Server::start_server", ?addr_str, ?threads),
-            "listening on http://{}",
+            "http1 server is listening on http://{}",
             addr_str
         );
 
         tracing::info!("press ctrl+c to shut down the server");
 
-        server.await?;
+        http1_server.await?;
 
         #[cfg(unix)]
         handle.close();

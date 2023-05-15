@@ -141,6 +141,13 @@ pub struct General {
     #[cfg(feature = "http2")]
     pub http2_tls_key: Option<PathBuf>,
 
+    /// Redirect all HTTP requests to HTTPS.
+    #[cfg(feature = "http2")]
+    pub https_redirect: Option<bool>,
+    /// Host port for redirecting HTTP requests to HTTPS.
+    #[cfg(feature = "http2")]
+    pub https_redirect_port: Option<u16>,
+
     /// Security headers.
     pub security_headers: Option<bool>,
 

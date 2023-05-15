@@ -91,6 +91,10 @@ impl Settings {
         let mut http2_tls_cert = opts.http2_tls_cert;
         #[cfg(feature = "http2")]
         let mut http2_tls_key = opts.http2_tls_key;
+        #[cfg(feature = "http2")]
+        let mut https_redirect = opts.https_redirect;
+        #[cfg(feature = "http2")]
+        let mut https_redirect_port = opts.https_redirect_port;
         let mut security_headers = opts.security_headers;
         let mut cors_allow_origins = opts.cors_allow_origins;
         let mut cors_allow_headers = opts.cors_allow_headers;
@@ -172,6 +176,14 @@ impl Settings {
                     #[cfg(feature = "http2")]
                     if let Some(v) = general.http2_tls_key {
                         http2_tls_key = Some(v)
+                    }
+                    #[cfg(feature = "http2")]
+                    if let Some(v) = general.https_redirect {
+                        https_redirect = v
+                    }
+                    #[cfg(feature = "http2")]
+                    if let Some(v) = general.https_redirect_port {
+                        https_redirect_port = v
                     }
                     if let Some(v) = general.security_headers {
                         security_headers = v
@@ -342,6 +354,10 @@ impl Settings {
                 http2_tls_cert,
                 #[cfg(feature = "http2")]
                 http2_tls_key,
+                #[cfg(feature = "http2")]
+                https_redirect,
+                #[cfg(feature = "http2")]
+                https_redirect_port,
                 security_headers,
                 cors_allow_origins,
                 cors_allow_headers,

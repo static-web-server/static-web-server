@@ -26,7 +26,7 @@ pub struct General {
         long,
         short = "f",
         env = "SERVER_LISTEN_FD",
-        conflicts_with_all(&["host", "port"])
+        conflicts_with_all(&["host", "port", "https_redirect"])
     )]
     /// Instead of binding to a TCP port, accept incoming connections to an already-bound TCP
     /// socket listener on the specified file descriptor number (usually zero). Requires that the
@@ -159,6 +159,27 @@ pub struct General {
     #[cfg_attr(docsrs, doc(cfg(feature = "http2")))]
     /// Specify the file path to read the private key.
     pub http2_tls_key: Option<PathBuf>,
+
+    #[structopt(
+        long,
+        required_if("http2", "true"),
+        parse(try_from_str),
+        default_value = "false",
+        env = "SERVER_HTTPS_REDIRECT"
+    )]
+    #[cfg(feature = "http2")]
+    /// Redirect all requests with scheme "http" to "https" for the current server instance. It depends on "http2" to be enabled.
+    pub https_redirect: bool,
+
+    #[structopt(
+        long,
+        required_if("https_redirect", "true"),
+        default_value = "80",
+        env = "SERVER_HTTPS_REDIRECT_PORT"
+    )]
+    #[cfg(feature = "http2")]
+    /// Host port for redirecting HTTP requests to HTTPS. It depends on "https_redirect" to be enabled.
+    pub https_redirect_port: u16,
 
     #[cfg(feature = "compression")]
     #[cfg_attr(docsrs, doc(cfg(feature = "compression")))]
