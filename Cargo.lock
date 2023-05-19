@@ -710,7 +710,7 @@ dependencies = [
 [[package]]
 name = "mio"
 version = "0.8.3"
-source = "git+https://github.com/john-sharratt/mio.git?branch=wasix#ec970219b180cf7a9f1d080d9c73f32a5997c447"
+source = "git+https://github.com/john-sharratt/mio.git?branch=wasix#e918d3a31dedb3df6cac2127e07809127acec2ca"
 dependencies = [
  "libc",
  "log",
@@ -1475,8 +1475,12 @@ checksum = "9c8d87e72b64a3b4db28d11ce29237c246188f4f51057d65a7eab63b7987e423"
 
 [[package]]
 name = "wasix"
-version = "0.11.65"
-source = "git+https://github.com/john-sharratt/wasix.git#329f83f56b3a6529f629eb4698ce2f1e7169cd92"
+version = "0.12.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "941aa1554ffe0653821a8aeb0fc0964c5f82f9c357e5ec4e15d6d828c4a8b590"
+dependencies = [
+ "wasi 0.11.0+wasi-snapshot-preview1",
+]
 
 [[package]]
 name = "wasm-bindgen"
