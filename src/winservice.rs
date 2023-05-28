@@ -79,7 +79,7 @@ fn run_service() -> Result {
     tracing::info!("windows service: starting service setup");
 
     // Create a channel to be able to poll a stop event from the service worker loop.
-    let (shutdown_tx, shutdown_rx) = tokio::sync::oneshot::channel();
+    let (shutdown_tx, shutdown_rx) = tokio::sync::watch::channel(());
     let mut shutdown_tx = Some(shutdown_tx);
 
     // Define system service event handler that will be receiving service events.
