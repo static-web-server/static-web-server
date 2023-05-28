@@ -185,32 +185,35 @@ impl TlsConfigBuilder {
             .map(Certificate)
             .collect();
 
-        let key = {
-            // convert it to Vec<u8> to allow reading it again if key is RSA
-            let mut key_vec = Vec::new();
-            self.key
-                .read_to_end(&mut key_vec)
-                .map_err(TlsConfigError::Io)?;
+        // convert it to Vec<u8> to allow reading it again if key is RSA
+        let mut key_vec = Vec::new();
+        self.key
+            .read_to_end(&mut key_vec)
+            .map_err(TlsConfigError::Io)?;
 
-            if key_vec.is_empty() {
-                return Err(TlsConfigError::EmptyKey);
-            }
+        if key_vec.is_empty() {
+            return Err(TlsConfigError::EmptyKey);
+        }
 
-            let mut pkcs8 = rustls_pemfile::pkcs8_private_keys(&mut key_vec.as_slice())
-                .map_err(|_e| TlsConfigError::Pkcs8ParseError)?;
-
-            if !pkcs8.is_empty() {
-                PrivateKey(pkcs8.remove(0))
-            } else {
-                let mut rsa = rustls_pemfile::rsa_private_keys(&mut key_vec.as_slice())
-                    .map_err(|_e| TlsConfigError::RsaParseError)?;
-
-                if !rsa.is_empty() {
-                    PrivateKey(rsa.remove(0))
-                } else {
-                    return Err(TlsConfigError::EmptyKey);
+        let mut key = None;
+        let mut reader = std::io::Cursor::new(key_vec);
+        for item in
+            rustls_pemfile::read_all(&mut reader).map_err(|_e| TlsConfigError::Pkcs8ParseError)?
+        {
+            match item {
+                rustls_pemfile::Item::RSAKey(k) => key = Some(PrivateKey(k)),
+                rustls_pemfile::Item::PKCS8Key(k) => key = Some(PrivateKey(k)),
+                rustls_pemfile::Item::ECKey(k) => key = Some(PrivateKey(k)),
+                _ => {
+                    return Err(TlsConfigError::InvalidKey(
+                        TlsError::InvalidCertificateData("unknown private key format".to_owned()),
+                    ))
                 }
             }
+        }
+        let key = match key {
+            Some(k) => k,
+            _ => return Err(TlsConfigError::EmptyKey),
         };
 
         fn read_trust_anchor(
@@ -419,6 +422,27 @@ mod tests {
     fn bytes_cert_key() {
         let cert = include_str!("../tests/tls/local.dev_cert.pem");
         let key = include_str!("../tests/tls/local.dev_key.pem");
+
+        TlsConfigBuilder::new()
+            .key(key.as_bytes())
+            .cert(cert.as_bytes())
+            .build()
+            .unwrap();
+    }
+
+    #[test]
+    fn file_cert_key_ecc() {
+        TlsConfigBuilder::new()
+            .cert_path("tests/tls/local.dev_cert.ecc.pem")
+            .key_path("tests/tls/local.dev_key.ecc.pem")
+            .build()
+            .unwrap();
+    }
+
+    #[test]
+    fn bytes_cert_key_ecc() {
+        let cert = include_str!("../tests/tls/local.dev_cert.ecc.pem");
+        let key = include_str!("../tests/tls/local.dev_key.ecc.pem");
 
         TlsConfigBuilder::new()
             .key(key.as_bytes())
