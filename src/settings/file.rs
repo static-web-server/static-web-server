@@ -144,9 +144,15 @@ pub struct General {
     /// Redirect all HTTP requests to HTTPS.
     #[cfg(feature = "http2")]
     pub https_redirect: Option<bool>,
+    /// HTTP host port where the redirect server will listen for requests to redirect them to HTTPS.
+    #[cfg(feature = "http2")]
+    pub https_redirect_host: Option<String>,
     /// Host port for redirecting HTTP requests to HTTPS.
     #[cfg(feature = "http2")]
-    pub https_redirect_port: Option<u16>,
+    pub https_redirect_from_port: Option<u16>,
+    /// List of host names or IPs allowed to redirect from.
+    #[cfg(feature = "http2")]
+    pub https_redirect_from_hosts: Option<String>,
 
     /// Security headers.
     pub security_headers: Option<bool>,

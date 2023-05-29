@@ -2,8 +2,8 @@
 
 #### Address & Root dir
 host = "::"
-port = 8787
-root = "tests/fixtures/public"
+port = 4433
+root = "docker/public"
 
 #### Logging
 log-level = "trace"
@@ -20,11 +20,15 @@ page50x = "docker/public/50x.html"
 
 #### HTTP/2 + TLS
 http2 = false
-http2-tls-cert = ""
-http2-tls-key = ""
+http2-tls-cert = "tests/tls/local.dev_cert.ecc.pem"
+http2-tls-key = "tests/tls/local.dev_key.ecc.pem"
+https-redirect = false
+https-redirect-host = "localhost"
+https-redirect-from-port = 80
+https-redirect-from-hosts = "localhost"
 
 #### CORS & Security headers
-security-headers = true
+# security-headers = true
 cors-allow-origins = ""
 
 #### Directory listing

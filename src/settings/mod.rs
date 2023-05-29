@@ -94,7 +94,11 @@ impl Settings {
         #[cfg(feature = "http2")]
         let mut https_redirect = opts.https_redirect;
         #[cfg(feature = "http2")]
-        let mut https_redirect_port = opts.https_redirect_port;
+        let mut https_redirect_host = opts.https_redirect_host;
+        #[cfg(feature = "http2")]
+        let mut https_redirect_from_port = opts.https_redirect_from_port;
+        #[cfg(feature = "http2")]
+        let mut https_redirect_from_hosts = opts.https_redirect_from_hosts;
         let mut security_headers = opts.security_headers;
         let mut cors_allow_origins = opts.cors_allow_origins;
         let mut cors_allow_headers = opts.cors_allow_headers;
@@ -182,8 +186,16 @@ impl Settings {
                         https_redirect = v
                     }
                     #[cfg(feature = "http2")]
-                    if let Some(v) = general.https_redirect_port {
-                        https_redirect_port = v
+                    if let Some(v) = general.https_redirect_host {
+                        https_redirect_host = v
+                    }
+                    #[cfg(feature = "http2")]
+                    if let Some(v) = general.https_redirect_from_port {
+                        https_redirect_from_port = v
+                    }
+                    #[cfg(feature = "http2")]
+                    if let Some(v) = general.https_redirect_from_hosts {
+                        https_redirect_from_hosts = v
                     }
                     if let Some(v) = general.security_headers {
                         security_headers = v
@@ -357,7 +369,11 @@ impl Settings {
                 #[cfg(feature = "http2")]
                 https_redirect,
                 #[cfg(feature = "http2")]
-                https_redirect_port,
+                https_redirect_host,
+                #[cfg(feature = "http2")]
+                https_redirect_from_port,
+                #[cfg(feature = "http2")]
+                https_redirect_from_hosts,
                 security_headers,
                 cors_allow_origins,
                 cors_allow_headers,

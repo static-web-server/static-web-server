@@ -174,12 +174,32 @@ pub struct General {
     #[structopt(
         long,
         required_if("https_redirect", "true"),
-        default_value = "80",
-        env = "SERVER_HTTPS_REDIRECT_PORT"
+        default_value = "localhost",
+        env = "HTTPS_REDIRECT_HOST"
     )]
     #[cfg(feature = "http2")]
-    /// Host port for redirecting HTTP requests to HTTPS. It depends on "https_redirect" to be enabled.
-    pub https_redirect_port: u16,
+    /// Canonical host name or IP of the HTTPS (HTTPS/2) server. It depends on "https_redirect" to be enabled.
+    pub https_redirect_host: String,
+
+    #[structopt(
+        long,
+        required_if("https_redirect", "true"),
+        default_value = "80",
+        env = "HTTPS_REDIRECT_FROM_PORT"
+    )]
+    #[cfg(feature = "http2")]
+    /// HTTP host port where the redirect server will listen for requests to redirect them to HTTPS. It depends on "https_redirect" to be enabled.
+    pub https_redirect_from_port: u16,
+
+    #[structopt(
+        long,
+        required_if("https_redirect", "true"),
+        default_value = "localhost",
+        env = "HTTPS_REDIRECT_FROM_HOSTS"
+    )]
+    #[cfg(feature = "http2")]
+    /// List of host names or IPs allowed to redirect from. HTTP requests must contain the HTTP 'Host' header and match against this list. It depends on "https_redirect" to be enabled.
+    pub https_redirect_from_hosts: String,
 
     #[cfg(feature = "compression")]
     #[cfg_attr(docsrs, doc(cfg(feature = "compression")))]

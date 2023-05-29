@@ -61,9 +61,7 @@ async fn delay_graceful_shutdown(grace_period_secs: u8) {
 /// It waits for an incoming `ctrl+c` signal on Windows.
 pub async fn wait_for_ctrl_c(cancel_recv: Arc<Mutex<Option<Receiver<()>>>>, grace_period_secs: u8) {
     if let Some(receiver) = &mut *cancel_recv.lock().await {
-        if let Err(err) = receiver.changed().await {
-            tracing::error!("error during cancel recv: {:?}", err)
-        }
+        receiver.changed().await.ok();
     }
 
     delay_graceful_shutdown(grace_period_secs).await;

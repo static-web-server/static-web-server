@@ -24,8 +24,8 @@ use {
     hyper::server::conn::AddrIncoming,
 };
 
-use crate::https_redirect::redirect_to_https;
-use crate::{cors, helpers, logger, Settings};
+use crate::https_redirect;
+use crate::{cors, error, error_page, helpers, logger, Settings};
 use crate::{service::RouterService, Context, Result};
 
 /// Define a multi-thread HTTP or HTTP/2 web server.
@@ -237,7 +237,19 @@ impl Server {
 
         // HTTP to HTTPS redirect option
         let https_redirect = general.https_redirect;
-        tracing::info!("http to https redirect: {}", https_redirect);
+        tracing::info!("http to https redirect: enabled={}", https_redirect);
+        tracing::info!(
+            "http to https redirect host: {}",
+            general.https_redirect_host
+        );
+        tracing::info!(
+            "http to https redirect from port: {}",
+            general.https_redirect_from_port
+        );
+        tracing::info!(
+            "http to https redirect from hosts: {}",
+            general.https_redirect_from_hosts
+        );
 
         // Create a service router for Hyper
         let router_service = RouterService::new(RequestHandler {
@@ -251,8 +263,8 @@ impl Server {
                 cors,
                 security_headers,
                 cache_control_headers,
-                page404,
-                page50x,
+                page404: page404.clone(),
+                page50x: page50x.clone(),
                 page_fallback,
                 basic_auth,
                 log_remote_address,
@@ -353,7 +365,7 @@ impl Server {
                     .host
                     .parse::<IpAddr>()
                     .with_context(|| format!("failed to parse {} address", general.host))?;
-                let addr = SocketAddr::from((ip, general.https_redirect_port));
+                let addr = SocketAddr::from((ip, general.https_redirect_from_port));
                 let tcp_listener = TcpListener::bind(addr)
                     .with_context(|| format!("failed to bind to {addr} address"))?;
                 tracing::info!(
@@ -371,13 +383,48 @@ impl Server {
                 #[cfg(unix)]
                 let redirect_handle = redirect_signals.handle();
 
+                // Allowed redirect hosts
+                let redirect_allowed_hosts = general
+                    .https_redirect_from_hosts
+                    .split(',')
+                    .map(|s| s.trim().to_owned())
+                    .collect::<Vec<_>>();
+                if redirect_allowed_hosts.is_empty() {
+                    bail!("https redirect allowed hosts is empty, provide at least one host or IP")
+                }
+
+                let redirect_opts = Arc::new(https_redirect::RedirectOpts {
+                    https_hostname: general.https_redirect_host,
+                    https_port: general.port,
+                    allowed_hosts: redirect_allowed_hosts,
+                });
+
                 let server_redirect = HyperServer::from_tcp(tcp_listener)
                     .unwrap()
                     .tcp_nodelay(true)
-                    .serve(make_service_fn(move |_: &AddrStream| async move {
-                        Ok::<_, hyper::Error>(service_fn(move |req| async move {
-                            redirect_to_https(req, general.port).await
-                        }))
+                    .serve(make_service_fn(move |_: &AddrStream| {
+                        let redirect_opts = redirect_opts.clone();
+                        let page404 = page404.clone();
+                        let page50x = page50x.clone();
+                        async move {
+                            Ok::<_, error::Error>(service_fn(move |req| {
+                                let redirect_opts = redirect_opts.clone();
+                                let page404 = page404.clone();
+                                let page50x = page50x.clone();
+                                async move {
+                                    let uri = req.uri();
+                                    let method = req.method();
+                                    match https_redirect::redirect_to_https(&req, redirect_opts)
+                                        .await
+                                    {
+                                        Ok(resp) => Ok(resp),
+                                        Err(status) => error_page::error_response(
+                                            uri, method, &status, &page404, &page50x,
+                                        ),
+                                    }
+                                }
+                            }))
+                        }
                     }));
 
                 #[cfg(unix)]
