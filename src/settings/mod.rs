@@ -9,7 +9,7 @@
 use globset::{Glob, GlobMatcher};
 use headers::HeaderMap;
 use hyper::StatusCode;
-use structopt::StructOpt;
+use clap::StructOpt;
 
 use crate::{Context, Result};
 

@@ -21,7 +21,7 @@ use std::future::Future;
 use std::io;
 use std::path::Path;
 use std::time::{SystemTime, UNIX_EPOCH};
-use structopt::clap::arg_enum;
+use clap::arg_enum;
 
 use crate::{exts::http::MethodExt, Context, Result};
 
