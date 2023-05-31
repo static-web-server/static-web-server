@@ -34,12 +34,12 @@ pub enum TlsConfigError {
     Io(io::Error),
     /// An Error parsing the Certificate
     CertParseError,
-    /// An Error parsing a Pkcs8 key
-    Pkcs8ParseError,
-    /// An Error parsing a Rsa key
-    RsaParseError,
+    /// Identity PEM is invalid
+    InvalidIdentityPem,
     /// An error from an empty key
     EmptyKey,
+    /// Unknown private key format
+    UnknownPrivateKeyFormat,
     /// An error from an invalid key
     InvalidKey(TlsError),
 }
@@ -49,8 +49,8 @@ impl std::fmt::Display for TlsConfigError {
         match self {
             TlsConfigError::Io(err) => err.fmt(f),
             TlsConfigError::CertParseError => write!(f, "certificate parse error"),
-            TlsConfigError::Pkcs8ParseError => write!(f, "pkcs8 parse error"),
-            TlsConfigError::RsaParseError => write!(f, "rsa parse error"),
+            TlsConfigError::InvalidIdentityPem => write!(f, "identity PEM is invalid"),
+            TlsConfigError::UnknownPrivateKeyFormat => write!(f, "unknown private key format"),
             TlsConfigError::EmptyKey => write!(f, "key contains no private key"),
             TlsConfigError::InvalidKey(err) => write!(f, "key contains an invalid key, {err}"),
         }
@@ -197,18 +197,14 @@ impl TlsConfigBuilder {
 
         let mut key = None;
         let mut reader = std::io::Cursor::new(key_vec);
-        for item in
-            rustls_pemfile::read_all(&mut reader).map_err(|_e| TlsConfigError::Pkcs8ParseError)?
+        for item in rustls_pemfile::read_all(&mut reader)
+            .map_err(|_e| TlsConfigError::InvalidIdentityPem)?
         {
             match item {
                 rustls_pemfile::Item::RSAKey(k) => key = Some(PrivateKey(k)),
                 rustls_pemfile::Item::PKCS8Key(k) => key = Some(PrivateKey(k)),
                 rustls_pemfile::Item::ECKey(k) => key = Some(PrivateKey(k)),
-                _ => {
-                    return Err(TlsConfigError::InvalidKey(
-                        TlsError::InvalidCertificateData("unknown private key format".to_owned()),
-                    ))
-                }
+                _ => return Err(TlsConfigError::UnknownPrivateKeyFormat),
             }
         }
         let key = match key {
@@ -233,12 +229,13 @@ impl TlsConfigBuilder {
         }
 
         let client_auth = match self.client_auth {
-            TlsClientAuth::Off => NoClientAuth::new(),
+            TlsClientAuth::Off => NoClientAuth::boxed(),
             TlsClientAuth::Optional(trust_anchor) => {
                 AllowAnyAnonymousOrAuthenticatedClient::new(read_trust_anchor(trust_anchor)?)
+                    .boxed()
             }
             TlsClientAuth::Required(trust_anchor) => {
-                AllowAnyAuthenticatedClient::new(read_trust_anchor(trust_anchor)?)
+                AllowAnyAuthenticatedClient::new(read_trust_anchor(trust_anchor)?).boxed()
             }
         };
 
