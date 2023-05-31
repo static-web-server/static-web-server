@@ -6,11 +6,13 @@
 //! Server module intended to construct a multi-thread HTTP or HTTP/2 web server.
 //!
 
+use hyper::server::conn::AddrStream;
 use hyper::server::Server as HyperServer;
+use hyper::service::{make_service_fn, service_fn};
 use listenfd::ListenFd;
 use std::net::{IpAddr, SocketAddr, TcpListener};
 use std::sync::Arc;
-use tokio::sync::oneshot::Receiver;
+use tokio::sync::watch::Receiver;
 
 use crate::handler::{RequestHandler, RequestHandlerOpts};
 #[cfg(any(unix, windows))]
@@ -22,7 +24,8 @@ use {
     hyper::server::conn::AddrIncoming,
 };
 
-use crate::{cors, helpers, logger, Settings};
+use crate::https_redirect;
+use crate::{cors, error, error_page, helpers, logger, Settings};
 use crate::{service::RouterService, Context, Result};
 
 /// Define a multi-thread HTTP or HTTP/2 web server.
@@ -232,6 +235,22 @@ impl Server {
         let grace_period = general.grace_period;
         tracing::info!("grace period before graceful shutdown: {}s", grace_period);
 
+        // HTTP to HTTPS redirect option
+        let https_redirect = general.https_redirect;
+        tracing::info!("http to https redirect: enabled={}", https_redirect);
+        tracing::info!(
+            "http to https redirect host: {}",
+            general.https_redirect_host
+        );
+        tracing::info!(
+            "http to https redirect from port: {}",
+            general.https_redirect_from_port
+        );
+        tracing::info!(
+            "http to https redirect from hosts: {}",
+            general.https_redirect_from_hosts
+        );
+
         // Create a service router for Hyper
         let router_service = RouterService::new(RequestHandler {
             opts: Arc::from(RequestHandlerOpts {
@@ -244,8 +263,8 @@ impl Server {
                 cors,
                 security_headers,
                 cache_control_headers,
-                page404,
-                page50x,
+                page404: page404.clone(),
+                page50x: page50x.clone(),
                 page_fallback,
                 basic_auth,
                 log_remote_address,
@@ -253,6 +272,21 @@ impl Server {
                 ignore_hidden_files,
                 advanced_opts,
             }),
+        });
+
+        #[cfg(windows)]
+        let (sender, receiver) = tokio::sync::watch::channel(());
+        // ctrl+c listening
+        #[cfg(windows)]
+        let ctrlc_task = tokio::spawn(async move {
+            if !general.windows_service {
+                tracing::info!("installing graceful shutdown ctrl+c signal handler");
+                tokio::signal::ctrl_c()
+                    .await
+                    .expect("failed to install ctrl+c signal handler");
+                tracing::info!("installing graceful shutdown ctrl+c signal handler");
+                let _ = sender.send(());
+            }
         });
 
         // Run the corresponding HTTP Server asynchronously with its given options
@@ -293,31 +327,154 @@ impl Server {
             #[cfg(unix)]
             let handle = signals.handle();
 
-            let server =
+            let http2_server =
                 HyperServer::builder(TlsAcceptor::new(tls, incoming)).serve(router_service);
 
             #[cfg(unix)]
-            let server =
-                server.with_graceful_shutdown(signals::wait_for_signals(signals, grace_period));
+            let http2_server = http2_server
+                .with_graceful_shutdown(signals::wait_for_signals(signals, grace_period));
+
             #[cfg(windows)]
-            let server = server.with_graceful_shutdown(signals::wait_for_ctrl_c(
-                _cancel_recv,
-                _cancel_fn,
-                grace_period,
-            ));
+            let http2_cancel_recv = Arc::new(tokio::sync::Mutex::new(_cancel_recv));
+            #[cfg(windows)]
+            let redirect_cancel_recv = http2_cancel_recv.clone();
+
+            #[cfg(windows)]
+            let http2_ctrlc_recv = Arc::new(tokio::sync::Mutex::new(Some(receiver)));
+            #[cfg(windows)]
+            let redirect_ctrlc_recv = http2_ctrlc_recv.clone();
+
+            #[cfg(windows)]
+            let http2_server = http2_server.with_graceful_shutdown(async move {
+                if general.windows_service {
+                    signals::wait_for_ctrl_c(http2_cancel_recv, grace_period).await;
+                } else {
+                    signals::wait_for_ctrl_c(http2_ctrlc_recv, grace_period).await;
+                }
+            });
 
             tracing::info!(
                 parent: tracing::info_span!("Server::start_server", ?addr_str, ?threads),
-                "listening on https://{}",
+                "http2 server is listening on https://{}",
                 addr_str
             );
 
-            tracing::info!("press ctrl+c to shut down the server");
+            // HTTP to HTTPS redirect server
+            if general.https_redirect {
+                let ip = general
+                    .host
+                    .parse::<IpAddr>()
+                    .with_context(|| format!("failed to parse {} address", general.host))?;
+                let addr = SocketAddr::from((ip, general.https_redirect_from_port));
+                let tcp_listener = TcpListener::bind(addr)
+                    .with_context(|| format!("failed to bind to {addr} address"))?;
+                tracing::info!(
+                    parent: tracing::info_span!("Server::start_server", ?addr, ?threads),
+                    "http1 redirect server is listening on http://{}",
+                    addr
+                );
+                tcp_listener
+                    .set_nonblocking(true)
+                    .with_context(|| "failed to set TCP non-blocking mode")?;
 
-            server.await?;
+                #[cfg(unix)]
+                let redirect_signals = signals::create_signals()
+                    .with_context(|| "failed to register termination signals")?;
+                #[cfg(unix)]
+                let redirect_handle = redirect_signals.handle();
+
+                // Allowed redirect hosts
+                let redirect_allowed_hosts = general
+                    .https_redirect_from_hosts
+                    .split(',')
+                    .map(|s| s.trim().to_owned())
+                    .collect::<Vec<_>>();
+                if redirect_allowed_hosts.is_empty() {
+                    bail!("https redirect allowed hosts is empty, provide at least one host or IP")
+                }
+
+                let redirect_opts = Arc::new(https_redirect::RedirectOpts {
+                    https_hostname: general.https_redirect_host,
+                    https_port: general.port,
+                    allowed_hosts: redirect_allowed_hosts,
+                });
+
+                let server_redirect = HyperServer::from_tcp(tcp_listener)
+                    .unwrap()
+                    .tcp_nodelay(true)
+                    .serve(make_service_fn(move |_: &AddrStream| {
+                        let redirect_opts = redirect_opts.clone();
+                        let page404 = page404.clone();
+                        let page50x = page50x.clone();
+                        async move {
+                            Ok::<_, error::Error>(service_fn(move |req| {
+                                let redirect_opts = redirect_opts.clone();
+                                let page404 = page404.clone();
+                                let page50x = page50x.clone();
+                                async move {
+                                    let uri = req.uri();
+                                    let method = req.method();
+                                    match https_redirect::redirect_to_https(&req, redirect_opts)
+                                        .await
+                                    {
+                                        Ok(resp) => Ok(resp),
+                                        Err(status) => error_page::error_response(
+                                            uri, method, &status, &page404, &page50x,
+                                        ),
+                                    }
+                                }
+                            }))
+                        }
+                    }));
+
+                #[cfg(unix)]
+                let server_redirect = server_redirect.with_graceful_shutdown(
+                    signals::wait_for_signals(redirect_signals, grace_period),
+                );
+                #[cfg(windows)]
+                let server_redirect = server_redirect.with_graceful_shutdown(async move {
+                    if general.windows_service {
+                        signals::wait_for_ctrl_c(redirect_cancel_recv, grace_period).await;
+                    } else {
+                        signals::wait_for_ctrl_c(redirect_ctrlc_recv, grace_period).await;
+                    }
+                });
+
+                // HTTP/2 server task
+                let server_task = tokio::spawn(async move {
+                    if let Err(err) = http2_server.await {
+                        tracing::error!("http2 server failed to start up: {:?}", err);
+                        std::process::exit(1)
+                    }
+                });
+
+                // HTTP/1 redirect server task
+                let redirect_server_task = tokio::spawn(async move {
+                    if let Err(err) = server_redirect.await {
+                        tracing::error!("http1 redirect server failed to start up: {:?}", err);
+                        std::process::exit(1)
+                    }
+                });
+
+                tracing::info!("press ctrl+c to shut down the servers");
+
+                #[cfg(windows)]
+                tokio::try_join!(ctrlc_task, server_task, redirect_server_task)?;
+                #[cfg(unix)]
+                tokio::try_join!(server_task, redirect_server_task)?;
+
+                #[cfg(unix)]
+                redirect_handle.close();
+            } else {
+                tracing::info!("press ctrl+c to shut down the server");
+                http2_server.await?;
+            }
 
             #[cfg(unix)]
             handle.close();
+
+            #[cfg(windows)]
+            _cancel_fn();
 
             tracing::warn!("termination signal caught, shutting down the server execution");
             return Ok(());
@@ -335,30 +492,41 @@ impl Server {
             .set_nonblocking(true)
             .with_context(|| "failed to set TCP non-blocking mode")?;
 
-        let server = HyperServer::from_tcp(tcp_listener)
+        let http1_server = HyperServer::from_tcp(tcp_listener)
             .unwrap()
             .tcp_nodelay(true)
             .serve(router_service);
 
         #[cfg(unix)]
-        let server =
-            server.with_graceful_shutdown(signals::wait_for_signals(signals, grace_period));
+        let http1_server =
+            http1_server.with_graceful_shutdown(signals::wait_for_signals(signals, grace_period));
+
         #[cfg(windows)]
-        let server = server.with_graceful_shutdown(signals::wait_for_ctrl_c(
-            _cancel_recv,
-            _cancel_fn,
-            grace_period,
-        ));
+        let http1_cancel_recv = Arc::new(tokio::sync::Mutex::new(_cancel_recv));
+        #[cfg(windows)]
+        let http1_ctrlc_recv = Arc::new(tokio::sync::Mutex::new(Some(receiver)));
+
+        #[cfg(windows)]
+        let http1_server = http1_server.with_graceful_shutdown(async move {
+            if general.windows_service {
+                signals::wait_for_ctrl_c(http1_cancel_recv, grace_period).await;
+            } else {
+                signals::wait_for_ctrl_c(http1_ctrlc_recv, grace_period).await;
+            }
+        });
 
         tracing::info!(
             parent: tracing::info_span!("Server::start_server", ?addr_str, ?threads),
-            "listening on http://{}",
+            "http1 server is listening on http://{}",
             addr_str
         );
 
         tracing::info!("press ctrl+c to shut down the server");
 
-        server.await?;
+        http1_server.await?;
+
+        #[cfg(windows)]
+        _cancel_fn();
 
         #[cfg(unix)]
         handle.close();

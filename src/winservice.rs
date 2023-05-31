@@ -79,7 +79,7 @@ fn run_service() -> Result {
     tracing::info!("windows service: starting service setup");
 
     // Create a channel to be able to poll a stop event from the service worker loop.
-    let (shutdown_tx, shutdown_rx) = tokio::sync::oneshot::channel();
+    let (shutdown_tx, shutdown_rx) = tokio::sync::watch::channel(());
     let mut shutdown_tx = Some(shutdown_tx);
 
     // Define system service event handler that will be receiving service events.
@@ -169,7 +169,7 @@ pub fn run_server_as_service() -> Result {
 
     // Register generated `ffi_service_main` with the system and start the
     // service, blocking this thread until the service is stopped
-    service_dispatcher::start(&SERVICE_NAME, ffi_service_main)
+    service_dispatcher::start(SERVICE_NAME, ffi_service_main)
         .with_context(|| "error registering generated `ffi_service_main` with the system")?;
     Ok(())
 }
