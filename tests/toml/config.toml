@@ -25,7 +25,7 @@ http2-tls-key = "tests/tls/local.dev_key.ecc.pem"
 https-redirect = false
 https-redirect-host = "localhost"
 https-redirect-from-port = 80
-https-redirect-from-hosts = "localhost"
+https-redirect-from-hosts = "localhost, 127.0.0.1"
 
 #### CORS & Security headers
 # security-headers = true

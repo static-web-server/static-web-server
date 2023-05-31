@@ -29,10 +29,10 @@ pub async fn redirect_to_https(
 ) -> Result<Response<Body>, StatusCode> {
     if let Some(ref host) = req.headers().typed_get::<Host>() {
         let from_hostname = host.hostname();
-        if opts
+        if !opts
             .allowed_hosts
-            .binary_search(&from_hostname.to_owned())
-            .is_err()
+            .iter()
+            .any(|s| s.as_str() == from_hostname)
         {
             tracing::debug!("redirect host is not allowed!");
             return Err(StatusCode::BAD_REQUEST);
