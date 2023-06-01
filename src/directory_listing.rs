@@ -9,6 +9,7 @@
 #![allow(missing_docs)]
 
 use chrono::{DateTime, Local, NaiveDateTime, Utc};
+use clap::arg_enum;
 use futures_util::future::Either;
 use futures_util::{future, FutureExt};
 use headers::{ContentLength, ContentType, HeaderMapExt};
@@ -21,7 +22,6 @@ use std::future::Future;
 use std::io;
 use std::path::Path;
 use std::time::{SystemTime, UNIX_EPOCH};
-use clap::arg_enum;
 
 use crate::{exts::http::MethodExt, Context, Result};
 
