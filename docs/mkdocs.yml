@@ -140,6 +140,7 @@ nav:
     - 'HTTP/1': 'features/http1.md'
     - 'HTTP Methods': 'features/http-methods.md'
     - 'HTTP/2 and TLS': 'features/http2-tls.md'
+    - 'HTTP to HTTP redirect': 'features/http-https-redirect.md'
     - 'Logging': 'features/logging.md'
     - 'Compression': 'features/compression.md'
     - 'Pre-compressed files serving': 'features/compression-static.md'

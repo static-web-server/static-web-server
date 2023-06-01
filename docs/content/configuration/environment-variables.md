@@ -54,6 +54,18 @@ Specify the file path to read the certificate. Default empty (disabled).
 ### SERVER_HTTP2_TLS_KEY
 Specify the file path to read the private key. Default empty (disabled).
 
+### SERVER_HTTPS_REDIRECT
+Redirect all requests with scheme "http" to "https" for the current server instance. It depends on "http2" to be enabled.
+
+### SERVER_HTTPS_REDIRECT_HOST
+Canonical hostname or IP of the HTTPS (HTTPS/2) server. It depends on "https-redirect" to be enabled. Default `localhost`.
+
+### SERVER_HTTPS_REDIRECT_FROM_PORT
+HTTP host port where the redirect server will listen for requests to redirect them to HTTPS. It depends on "https-redirect" to be enabled. Default `80`.
+
+### SERVER_HTTPS_REDIRECT_FROM_HOSTS
+List of host names or IPs allowed to redirect from. HTTP requests must contain the HTTP 'Host' header and match against this list. It depends on "https-redirect" to be enabled. Default `localhost`.
+
 ### SERVER_CORS_ALLOW_ORIGINS
 Specify an optional CORS list of allowed origin hosts separated by commas. Host ports or protocols aren't being checked. Use an asterisk (*) to allow any host. Default empty (disabled).
 

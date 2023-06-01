@@ -17,111 +17,165 @@ A cross-platform, high-performance and asynchronous web server for static files-
 USAGE:
     static-web-server [OPTIONS]
 
-FLAGS:
-    -h, --help       Prints help information
-    -V, --version    Prints version information
-
 OPTIONS:
-        --basic-auth <basic-auth>
-            It provides The "Basic" HTTP Authentication scheme using credentials as "user-id:password" pairs. Password
-            must be encoded using the "BCrypt" password-hashing function [env: SERVER_BASIC_AUTH=]  [default: ]
-    -e, --cache-control-headers <cache-control-headers>
-            Enable cache control headers for incoming requests based on a set of file types. The file type list can be
-            found on `src/control_headers.rs` file [env: SERVER_CACHE_CONTROL_HEADERS=]  [default: true]
-    -x, --compression <compression>
-            Gzip, Deflate or Brotli compression on demand determined by the Accept-Encoding header and applied to text-
-            based web file types only [env: SERVER_COMPRESSION=]  [default: true]
-        --compression-static <compression-static>
-            Look up the pre-compressed file variant (`.gz` or `.br`) on disk of a requested file and serves it directly
-            if available. The compression type is determined by the `Accept-Encoding` header [env:
-            SERVER_COMPRESSION_STATIC=]  [default: false]
-    -w, --config-file <config-file>
-            Server TOML configuration file path [env: SERVER_CONFIG_FILE=]
+    -a, --host <HOST>
+            Host address (E.g 127.0.0.1 or ::1) [env: SERVER_HOST=] [default: ::]
 
-    -j, --cors-allow-headers <cors-allow-headers>
-            Specify an optional CORS list of allowed headers separated by commas. Default "origin, content-type". It
-            requires `--cors-allow-origins` to be used along with [env: SERVER_CORS_ALLOW_HEADERS=]  [default: origin,
-            content-type]
-    -c, --cors-allow-origins <cors-allow-origins>
-            Specify an optional CORS list of allowed origin hosts separated by commas. Host ports or protocols aren't
-            being checked. Use an asterisk (*) to allow any host [env: SERVER_CORS_ALLOW_ORIGINS=]  [default: ]
-        --cors-expose-headers <cors-expose-headers>
-            Specify an optional CORS list of exposed headers separated by commas. Default "origin, content-type". It
-            requires `--cors-expose-origins` to be used along with [env: SERVER_CORS_EXPOSE_HEADERS=]  [default: origin,
-            content-type]
-    -z, --directory-listing <directory-listing>
-            Enable directory listing for all requests ending with the slash character (‘/’) [env:
-            SERVER_DIRECTORY_LISTING=]  [default: false]
-        --directory-listing-format <directory-listing-format>
-            Specify a content format for directory listing entries. Formats supported: "html" or "json". Default "html"
-            [env: SERVER_DIRECTORY_LISTING_FORMAT=]  [default: html]  [possible values: Html, Json]
-        --directory-listing-order <directory-listing-order>
-            Specify a default code number to order directory listing entries per `Name`, `Last modified` or `Size`
-            attributes (columns). Code numbers supported: 0 (Name asc), 1 (Name desc), 2 (Last modified asc), 3 (Last
-            modified desc), 4 (Size asc), 5 (Size desc). Default 6 (unordered) [env: SERVER_DIRECTORY_LISTING_ORDER=]
-            [default: 6]
-    -f, --fd <fd>
-            Instead of binding to a TCP port, accept incoming connections to an already-bound TCP socket listener on the
-            specified file descriptor number (usually zero). Requires that the parent process (e.g. inetd, launchd, or
-            systemd) binds an address and port on behalf of static-web-server, before arranging for the resulting file
-            descriptor to be inherited by static-web-server. Cannot be used in conjunction with the port and host
-            arguments. The included systemd unit file utilises this feature to increase security by allowing the static-
-            web-server to be sandboxed more completely [env: SERVER_LISTEN_FD=]
-    -q, --grace-period <grace-period>
-            Defines a grace period in seconds after a `SIGTERM` signal is caught which will delay the server before to
-            shut it down gracefully. The maximum value is 255 seconds [env: SERVER_GRACE_PERIOD=]  [default: 0]
-    -a, --host <host>
-            Host address (E.g 127.0.0.1 or ::1) [env: SERVER_HOST=]  [default: ::]
+    -b, --max-blocking-threads <MAX_BLOCKING_THREADS>
+            Maximum number of blocking threads [env: SERVER_MAX_BLOCKING_THREADS=] [default: 512]
 
-    -t, --http2 <http2>
-            Enable HTTP/2 with TLS support [env: SERVER_HTTP2_TLS=]  [default: false]
+        --basic-auth <BASIC_AUTH>
+            It provides The "Basic" HTTP Authentication scheme using credentials as
+            "user-id:password" pairs. Password must be encoded using the "BCrypt" password-hashing
+            function [env: SERVER_BASIC_AUTH=] [default: ]
 
-        --http2-tls-cert <http2-tls-cert>
+    -c, --cors-allow-origins <CORS_ALLOW_ORIGINS>
+            Specify an optional CORS list of allowed origin hosts separated by commas. Host ports or
+            protocols aren't being checked. Use an asterisk (*) to allow any host [env:
+            SERVER_CORS_ALLOW_ORIGINS=] [default: ]
+
+        --compression-static <COMPRESSION_STATIC>
+            Look up the pre-compressed file variant (`.gz`, `.br` or `.zst`) on disk of a requested
+            file and serves it directly if available. The compression type is determined by the
+            `Accept-Encoding` header [env: SERVER_COMPRESSION_STATIC=] [default: false]
+
+        --cors-expose-headers <CORS_EXPOSE_HEADERS>
+            Specify an optional CORS list of exposed headers separated by commas. Default "origin,
+            content-type". It requires `--cors-expose-origins` to be used along with [env:
+            SERVER_CORS_EXPOSE_HEADERS=] [default: "origin, content-type"]
+
+    -d, --root <ROOT>
+            Root directory path of static files [env: SERVER_ROOT=] [default: ./public]
+
+        --directory-listing-format <DIRECTORY_LISTING_FORMAT>
+            Specify a content format for directory listing entries. Formats supported: "html" or
+            "json". Default "html" [env: SERVER_DIRECTORY_LISTING_FORMAT=] [default: html]
+
+        --directory-listing-order <DIRECTORY_LISTING_ORDER>
+            Specify a default code number to order directory listing entries per `Name`, `Last
+            modified` or `Size` attributes (columns). Code numbers supported: 0 (Name asc), 1 (Name
+            desc), 2 (Last modified asc), 3 (Last modified desc), 4 (Size asc), 5 (Size desc).
+            Default 6 (unordered) [env: SERVER_DIRECTORY_LISTING_ORDER=] [default: 6]
+
+    -e, --cache-control-headers <CACHE_CONTROL_HEADERS>
+            Enable cache control headers for incoming requests based on a set of file types. The
+            file type list can be found on `src/control_headers.rs` file [env:
+            SERVER_CACHE_CONTROL_HEADERS=] [default: true]
+
+    -f, --fd <FD>
+            Instead of binding to a TCP port, accept incoming connections to an already-bound TCP
+            socket listener on the specified file descriptor number (usually zero). Requires that
+            the parent process (e.g. inetd, launchd, or systemd) binds an address and port on behalf
+            of static-web-server, before arranging for the resulting file descriptor to be inherited
+            by static-web-server. Cannot be used in conjunction with the port and host arguments.
+            The included systemd unit file utilises this feature to increase security by allowing
+            the static-web-server to be sandboxed more completely [env: SERVER_LISTEN_FD=]
+
+    -g, --log-level <LOG_LEVEL>
+            Specify a logging level in lower case. Values: error, warn, info, debug or trace [env:
+            SERVER_LOG_LEVEL=] [default: error]
+
+    -h, --help
+            Print help information
+
+        --http2-tls-cert <HTTP2_TLS_CERT>
             Specify the file path to read the certificate [env: SERVER_HTTP2_TLS_CERT=]
 
-        --http2-tls-key <http2-tls-key>
+        --http2-tls-key <HTTP2_TLS_KEY>
             Specify the file path to read the private key [env: SERVER_HTTP2_TLS_KEY=]
 
-        --ignore-hidden-files <ignore-hidden-files>
-            Ignore hidden files/directories (dotfiles), preventing them to be served and being included in auto HTML
-            index pages (directory listing) [env: SERVER_IGNORE_HIDDEN_FILES=]  [default: false]
-    -g, --log-level <log-level>
-            Specify a logging level in lower case. Values: error, warn, info, debug or trace [env: SERVER_LOG_LEVEL=]
-            [default: error]
-        --log-remote-address <log-remote-address>
-            Log incoming requests information along with its remote address if available using the `info` log level
-            [env: SERVER_LOG_REMOTE_ADDRESS=]  [default: false]
-    -b, --max-blocking-threads <max-blocking-threads>
-            Maximum number of blocking threads [env: SERVER_MAX_BLOCKING_THREADS=]  [default: 512]
+        --https-redirect <HTTPS_REDIRECT>
+            Redirect all requests with scheme "http" to "https" for the current server instance. It
+            depends on "http2" to be enabled [env: SERVER_HTTPS_REDIRECT=] [default: false]
 
-        --page-fallback <page-fallback>
-            HTML file path that is used for GET requests when the requested path doesn't exist. The fallback page is
-            served with a 200 status code, useful when using client routers. If the path is not specified or simply
-            doesn't exist then this feature will not be active [env: SERVER_FALLBACK_PAGE=]
-        --page404 <page404>
-            HTML file path for 404 errors. If the path is not specified or simply doesn't exist then the server will use
-            a generic HTML error message [env: SERVER_ERROR_PAGE_404=]  [default: ./public/404.html]
-        --page50x <page50x>
-            HTML file path for 50x errors. If the path is not specified or simply doesn't exist then the server will use
-            a generic HTML error message [env: SERVER_ERROR_PAGE_50X=]  [default: ./public/50x.html]
-    -p, --port <port>                                            Host port [env: SERVER_PORT=]  [default: 80]
-        --redirect-trailing-slash <redirect-trailing-slash>
-            Check for a trailing slash in the requested directory URI and redirect permanently (308) to the same path
-            with a trailing slash suffix if it is missing [env: SERVER_REDIRECT_TRAILING_SLASH=]  [default: true]
-    -d, --root <root>
-            Root directory path of static files [env: SERVER_ROOT=]  [default: ./public]
+        --https-redirect-from-hosts <HTTPS_REDIRECT_FROM_HOSTS>
+            List of host names or IPs allowed to redirect from. HTTP requests must contain the HTTP
+            'Host' header and match against this list. It depends on "https_redirect" to be enabled
+            [env: SERVER_HTTPS_REDIRECT_FROM_HOSTS=] [default: localhost]
 
-        --security-headers <security-headers>
-            Enable security headers by default when HTTP/2 feature is activated. Headers included: "Strict-Transport-
-            Security: max-age=63072000; includeSubDomains; preload" (2 years max-age), "X-Frame-
-            Options: DENY", "X-XSS-Protection: 1; mode=block" and "Content-Security-Policy: frame-ancestors
-            'self'" [env: SERVER_SECURITY_HEADERS=]  [default: false]
-    -n, --threads-multiplier <threads-multiplier>
-            Number of worker threads multiplier that'll be multiplied by the number of system CPUs using the formula:
-            `worker threads = number of CPUs * n` where `n` is the value that changes here. When multiplier value is 0
-            or 1 then one thread per core is used. Number of worker threads result should be a number between 1 and
-            32,768 though it is advised to keep this value on the smaller side [env: SERVER_THREADS_MULTIPLIER=]
-            [default: 1]
+        --https-redirect-from-port <HTTPS_REDIRECT_FROM_PORT>
+            HTTP host port where the redirect server will listen for requests to redirect them to
+            HTTPS. It depends on "https_redirect" to be enabled [env:
+            SERVER_HTTPS_REDIRECT_FROM_PORT=] [default: 80]
+
+        --https-redirect-host <HTTPS_REDIRECT_HOST>
+            Canonical host name or IP of the HTTPS (HTTPS/2) server. It depends on "https_redirect"
+            to be enabled [env: SERVER_HTTPS_REDIRECT_HOST=] [default: localhost]
+
+        --ignore-hidden-files <IGNORE_HIDDEN_FILES>
+            Ignore hidden files/directories (dotfiles), preventing them to be served and being
+            included in auto HTML index pages (directory listing) [env: SERVER_IGNORE_HIDDEN_FILES=]
+            [default: false]
+
+    -j, --cors-allow-headers <CORS_ALLOW_HEADERS>
+            Specify an optional CORS list of allowed headers separated by commas. Default "origin,
+            content-type". It requires `--cors-allow-origins` to be used along with [env:
+            SERVER_CORS_ALLOW_HEADERS=] [default: "origin, content-type"]
+
+        --log-remote-address <LOG_REMOTE_ADDRESS>
+            Log incoming requests information along with its remote address if available using the
+            `info` log level [env: SERVER_LOG_REMOTE_ADDRESS=] [default: false]
+
+    -n, --threads-multiplier <THREADS_MULTIPLIER>
+            Number of worker threads multiplier that'll be multiplied by the number of system CPUs
+            using the formula: `worker threads = number of CPUs * n` where `n` is the value that
+            changes here. When multiplier value is 0 or 1 then one thread per core is used. Number
+            of worker threads result should be a number between 1 and 32,768 though it is advised to
+            keep this value on the smaller side [env: SERVER_THREADS_MULTIPLIER=] [default: 1]
+
+    -p, --port <PORT>
+            Host port [env: SERVER_PORT=] [default: 80]
+
+        --page-fallback <PAGE_FALLBACK>
+            HTML file path that is used for GET requests when the requested path doesn't exist. The
+            fallback page is served with a 200 status code, useful when using client routers. If the
+            path is not specified or simply doesn't exist then this feature will not be active [env:
+            SERVER_FALLBACK_PAGE=]
+
+        --page404 <PAGE404>
+            HTML file path for 404 errors. If the path is not specified or simply doesn't exist then
+            the server will use a generic HTML error message [env: SERVER_ERROR_PAGE_404=] [default:
+            ./public/404.html]
+
+        --page50x <PAGE50X>
+            HTML file path for 50x errors. If the path is not specified or simply doesn't exist then
+            the server will use a generic HTML error message [env: SERVER_ERROR_PAGE_50X=] [default:
+            ./public/50x.html]
+
+    -q, --grace-period <GRACE_PERIOD>
+            Defines a grace period in seconds after a `SIGTERM` signal is caught which will delay
+            the server before to shut it down gracefully. The maximum value is 255 seconds [env:
+            SERVER_GRACE_PERIOD=] [default: 0]
+
+        --redirect-trailing-slash <REDIRECT_TRAILING_SLASH>
+            Check for a trailing slash in the requested directory URI and redirect permanently (308)
+            to the same path with a trailing slash suffix if it is missing [env:
+            SERVER_REDIRECT_TRAILING_SLASH=] [default: true]
+
+        --security-headers <SECURITY_HEADERS>
+            Enable security headers by default when HTTP/2 feature is activated. Headers included:
+            "Strict-Transport-Security: max-age=63072000; includeSubDomains; preload" (2 years
+            max-age), "X-Frame-Options: DENY", "X-XSS-Protection: 1; mode=block" and
+            "Content-Security-Policy: frame-ancestors 'self'" [env: SERVER_SECURITY_HEADERS=]
+            [default: false]
+
+    -t, --http2 <HTTP2>
+            Enable HTTP/2 with TLS support [env: SERVER_HTTP2_TLS=] [default: false]
+
+    -V, --version
+            Print version information
+
+    -w, --config-file <CONFIG_FILE>
+            Server TOML configuration file path [env: SERVER_CONFIG_FILE=]
+
+    -x, --compression <COMPRESSION>
+            Gzip, Deflate, Brotli or Zstd compression on demand determined by the Accept-Encoding
+            header and applied to text-based web file types only [env: SERVER_COMPRESSION=]
+            [default: true]
+
+    -z, --directory-listing <DIRECTORY_LISTING>
+            Enable directory listing for all requests ending with the slash character (‘/’) [env:
+            SERVER_DIRECTORY_LISTING=] [default: false]
 ```
 
 ## Windows
