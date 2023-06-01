@@ -235,22 +235,6 @@ impl Server {
         let grace_period = general.grace_period;
         tracing::info!("grace period before graceful shutdown: {}s", grace_period);
 
-        // HTTP to HTTPS redirect option
-        let https_redirect = general.https_redirect;
-        tracing::info!("http to https redirect: enabled={}", https_redirect);
-        tracing::info!(
-            "http to https redirect host: {}",
-            general.https_redirect_host
-        );
-        tracing::info!(
-            "http to https redirect from port: {}",
-            general.https_redirect_from_port
-        );
-        tracing::info!(
-            "http to https redirect from hosts: {}",
-            general.https_redirect_from_hosts
-        );
-
         // Create a service router for Hyper
         let router_service = RouterService::new(RequestHandler {
             opts: Arc::from(RequestHandlerOpts {
@@ -292,8 +276,23 @@ impl Server {
         // Run the corresponding HTTP Server asynchronously with its given options
         #[cfg(feature = "http2")]
         if general.http2 {
-            // HTTP/2 + TLS
+            // HTTP to HTTPS redirect option
+            let https_redirect = general.https_redirect;
+            tracing::info!("http to https redirect: enabled={}", https_redirect);
+            tracing::info!(
+                "http to https redirect host: {}",
+                general.https_redirect_host
+            );
+            tracing::info!(
+                "http to https redirect from port: {}",
+                general.https_redirect_from_port
+            );
+            tracing::info!(
+                "http to https redirect from hosts: {}",
+                general.https_redirect_from_hosts
+            );
 
+            // HTTP/2 + TLS
             tcp_listener
                 .set_nonblocking(true)
                 .with_context(|| "failed to set TCP non-blocking mode")?;

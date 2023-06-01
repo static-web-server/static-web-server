@@ -12,7 +12,7 @@ use crate::directory_listing::DirListFmt;
 
 /// General server configuration available in CLI and config file options.
 #[derive(Debug, StructOpt)]
-#[structopt(about, author)]
+#[structopt(about, author, version)]
 pub struct General {
     #[structopt(long, short = 'a', default_value = "::", env = "SERVER_HOST")]
     /// Host address (E.g 127.0.0.1 or ::1)
@@ -176,7 +176,7 @@ pub struct General {
         long,
         requires_if("true", "https-redirect"),
         default_value = "localhost",
-        env = "HTTPS_REDIRECT_HOST"
+        env = "SERVER_HTTPS_REDIRECT_HOST"
     )]
     #[cfg(feature = "http2")]
     #[cfg_attr(docsrs, doc(cfg(feature = "http2")))]
@@ -187,7 +187,7 @@ pub struct General {
         long,
         requires_if("true", "https-redirect"),
         default_value = "80",
-        env = "HTTPS_REDIRECT_FROM_PORT"
+        env = "SERVER_HTTPS_REDIRECT_FROM_PORT"
     )]
     #[cfg(feature = "http2")]
     #[cfg_attr(docsrs, doc(cfg(feature = "http2")))]
@@ -198,7 +198,7 @@ pub struct General {
         long,
         requires_if("true", "https-redirect"),
         default_value = "localhost",
-        env = "HTTPS_REDIRECT_FROM_HOSTS"
+        env = "SERVER_HTTPS_REDIRECT_FROM_HOSTS"
     )]
     #[cfg(feature = "http2")]
     #[cfg_attr(docsrs, doc(cfg(feature = "http2")))]

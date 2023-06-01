@@ -116,6 +116,7 @@ pub mod exts;
 pub mod fallback_page;
 pub mod handler;
 #[cfg(feature = "http2")]
+#[cfg_attr(docsrs, doc(cfg(feature = "http2")))]
 pub mod https_redirect;
 pub mod logger;
 pub mod redirects;
