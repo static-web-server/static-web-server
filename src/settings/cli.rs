@@ -5,8 +5,8 @@
 
 //! The server CLI options
 
+use clap::StructOpt;
 use std::path::PathBuf;
-use structopt::StructOpt;
 
 use crate::directory_listing::DirListFmt;
 
@@ -14,19 +14,19 @@ use crate::directory_listing::DirListFmt;
 #[derive(Debug, StructOpt)]
 #[structopt(about, author)]
 pub struct General {
-    #[structopt(long, short = "a", default_value = "::", env = "SERVER_HOST")]
+    #[structopt(long, short = 'a', default_value = "::", env = "SERVER_HOST")]
     /// Host address (E.g 127.0.0.1 or ::1)
     pub host: String,
 
-    #[structopt(long, short = "p", default_value = "80", env = "SERVER_PORT")]
+    #[structopt(long, short = 'p', default_value = "80", env = "SERVER_PORT")]
     /// Host port
     pub port: u16,
 
     #[structopt(
         long,
-        short = "f",
+        short = 'f',
         env = "SERVER_LISTEN_FD",
-        conflicts_with_all(&["host", "port", "https_redirect"])
+        conflicts_with_all(&["host", "port", "https-redirect"])
     )]
     /// Instead of binding to a TCP port, accept incoming connections to an already-bound TCP
     /// socket listener on the specified file descriptor number (usually zero). Requires that the
@@ -41,7 +41,7 @@ pub struct General {
         not(wasm),
         structopt(
             long,
-            short = "n",
+            short = 'n',
             default_value = "1",
             env = "SERVER_THREADS_MULTIPLIER"
         )
@@ -50,7 +50,7 @@ pub struct General {
         wasm,
         structopt(
             long,
-            short = "n",
+            short = 'n',
             default_value = "2",
             env = "SERVER_THREADS_MULTIPLIER"
         )
@@ -65,7 +65,7 @@ pub struct General {
         not(wasm),
         structopt(
             long,
-            short = "b",
+            short = 'b',
             default_value = "512",
             env = "SERVER_MAX_BLOCKING_THREADS"
         )
@@ -74,7 +74,7 @@ pub struct General {
         wasm,
         structopt(
             long,
-            short = "b",
+            short = 'b',
             default_value = "20",
             env = "SERVER_MAX_BLOCKING_THREADS"
         )
@@ -82,7 +82,7 @@ pub struct General {
     /// Maximum number of blocking threads
     pub max_blocking_threads: usize,
 
-    #[structopt(long, short = "d", default_value = "./public", env = "SERVER_ROOT")]
+    #[structopt(long, short = 'd', default_value = "./public", env = "SERVER_ROOT")]
     /// Root directory path of static files.
     pub root: PathBuf,
 
@@ -106,13 +106,13 @@ pub struct General {
     /// HTML file path that is used for GET requests when the requested path doesn't exist. The fallback page is served with a 200 status code, useful when using client routers. If the path is not specified or simply doesn't exist then this feature will not be active.
     pub page_fallback: Option<PathBuf>,
 
-    #[structopt(long, short = "g", default_value = "error", env = "SERVER_LOG_LEVEL")]
+    #[structopt(long, short = 'g', default_value = "error", env = "SERVER_LOG_LEVEL")]
     /// Specify a logging level in lower case. Values: error, warn, info, debug or trace
     pub log_level: String,
 
     #[structopt(
         long,
-        short = "c",
+        short = 'c',
         default_value = "",
         env = "SERVER_CORS_ALLOW_ORIGINS"
     )]
@@ -121,7 +121,7 @@ pub struct General {
 
     #[structopt(
         long,
-        short = "j",
+        short = 'j',
         default_value = "origin, content-type",
         env = "SERVER_CORS_ALLOW_HEADERS"
     )]
@@ -138,7 +138,7 @@ pub struct General {
 
     #[structopt(
         long,
-        short = "t",
+        short = 't',
         parse(try_from_str),
         default_value = "false",
         env = "SERVER_HTTP2_TLS"
@@ -148,13 +148,13 @@ pub struct General {
     /// Enable HTTP/2 with TLS support.
     pub http2: bool,
 
-    #[structopt(long, required_if("http2", "true"), env = "SERVER_HTTP2_TLS_CERT")]
+    #[structopt(long, required_if_eq("http2", "true"), env = "SERVER_HTTP2_TLS_CERT")]
     #[cfg(feature = "http2")]
     #[cfg_attr(docsrs, doc(cfg(feature = "http2")))]
     /// Specify the file path to read the certificate.
     pub http2_tls_cert: Option<PathBuf>,
 
-    #[structopt(long, required_if("http2", "true"), env = "SERVER_HTTP2_TLS_KEY")]
+    #[structopt(long, required_if_eq("http2", "true"), env = "SERVER_HTTP2_TLS_KEY")]
     #[cfg(feature = "http2")]
     #[cfg_attr(docsrs, doc(cfg(feature = "http2")))]
     /// Specify the file path to read the private key.
@@ -162,42 +162,46 @@ pub struct General {
 
     #[structopt(
         long,
-        required_if("http2", "true"),
+        requires_if("true", "http2"),
         parse(try_from_str),
         default_value = "false",
         env = "SERVER_HTTPS_REDIRECT"
     )]
     #[cfg(feature = "http2")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "http2")))]
     /// Redirect all requests with scheme "http" to "https" for the current server instance. It depends on "http2" to be enabled.
     pub https_redirect: bool,
 
     #[structopt(
         long,
-        required_if("https_redirect", "true"),
+        requires_if("true", "https-redirect"),
         default_value = "localhost",
         env = "HTTPS_REDIRECT_HOST"
     )]
     #[cfg(feature = "http2")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "http2")))]
     /// Canonical host name or IP of the HTTPS (HTTPS/2) server. It depends on "https_redirect" to be enabled.
     pub https_redirect_host: String,
 
     #[structopt(
         long,
-        required_if("https_redirect", "true"),
+        requires_if("true", "https-redirect"),
         default_value = "80",
         env = "HTTPS_REDIRECT_FROM_PORT"
     )]
     #[cfg(feature = "http2")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "http2")))]
     /// HTTP host port where the redirect server will listen for requests to redirect them to HTTPS. It depends on "https_redirect" to be enabled.
     pub https_redirect_from_port: u16,
 
     #[structopt(
         long,
-        required_if("https_redirect", "true"),
+        requires_if("true", "https-redirect"),
         default_value = "localhost",
         env = "HTTPS_REDIRECT_FROM_HOSTS"
     )]
     #[cfg(feature = "http2")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "http2")))]
     /// List of host names or IPs allowed to redirect from. HTTP requests must contain the HTTP 'Host' header and match against this list. It depends on "https_redirect" to be enabled.
     pub https_redirect_from_hosts: String,
 
@@ -205,7 +209,7 @@ pub struct General {
     #[cfg_attr(docsrs, doc(cfg(feature = "compression")))]
     #[structopt(
         long,
-        short = "x",
+        short = 'x',
         parse(try_from_str),
         default_value = "true",
         env = "SERVER_COMPRESSION"
@@ -227,7 +231,7 @@ pub struct General {
 
     #[structopt(
         long,
-        short = "z",
+        short = 'z',
         parse(try_from_str),
         default_value = "false",
         env = "SERVER_DIRECTORY_LISTING"
@@ -237,7 +241,7 @@ pub struct General {
 
     #[structopt(
         long,
-        required_if("directory_listing", "true"),
+        required_if_eq("directory-listing", "true"),
         default_value = "6",
         env = "SERVER_DIRECTORY_LISTING_ORDER"
     )]
@@ -246,8 +250,7 @@ pub struct General {
 
     #[structopt(
         long,
-        required_if("directory_listing", "true"),
-        possible_values = &DirListFmt::variants(),
+        required_if_eq("directory-listing", "true"),
         default_value = "html",
         env = "SERVER_DIRECTORY_LISTING_FORMAT",
         case_insensitive = true
@@ -258,8 +261,7 @@ pub struct General {
     #[structopt(
         long,
         parse(try_from_str),
-        required_if("http2", "true"),
-        default_value_if("http2", Some("true"), "true"),
+        default_value_if("http2", Some("true"), Some("true")),
         default_value = "false",
         env = "SERVER_SECURITY_HEADERS"
     )]
@@ -270,7 +272,7 @@ pub struct General {
 
     #[structopt(
         long,
-        short = "e",
+        short = 'e',
         parse(try_from_str),
         default_value = "true",
         env = "SERVER_CACHE_CONTROL_HEADERS"
@@ -282,11 +284,11 @@ pub struct General {
     #[structopt(long, default_value = "", env = "SERVER_BASIC_AUTH")]
     pub basic_auth: String,
 
-    #[structopt(long, short = "q", default_value = "0", env = "SERVER_GRACE_PERIOD")]
+    #[structopt(long, short = 'q', default_value = "0", env = "SERVER_GRACE_PERIOD")]
     /// Defines a grace period in seconds after a `SIGTERM` signal is caught which will delay the server before to shut it down gracefully. The maximum value is 255 seconds.
     pub grace_period: u8,
 
-    #[structopt(long, short = "w", env = "SERVER_CONFIG_FILE")]
+    #[structopt(long, short = 'w', env = "SERVER_CONFIG_FILE")]
     /// Server TOML configuration file path.
     pub config_file: Option<PathBuf>,
 
@@ -323,7 +325,7 @@ pub struct General {
     #[cfg(windows)]
     #[structopt(
         long,
-        short = "s",
+        short = 's',
         parse(try_from_str),
         default_value = "false",
         env = "SERVER_WINDOWS_SERVICE"
