@@ -10,7 +10,7 @@ The server can be configured via the following command-line arguments.
 ```
 $ static-web-server -h
 
-static-web-server 2.16.0
+static-web-server 2.17.0
 Jose Quintana <https://joseluisq.net>
 A cross-platform, high-performance and asynchronous web server for static files-serving.
 

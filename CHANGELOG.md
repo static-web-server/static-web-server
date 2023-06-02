@@ -7,6 +7,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _**Note:** See changelog for v1 under the [1.x](https://github.com/static-web-server/static-web-server/blob/1.x/CHANGELOG.md) branch._
 
+## v2.17.0 - 2023-06-03
+
+This new `v2.17.0` release brings several dependency updates/bug fixes, ECC private keys support for the `tls` feature, HTTP to HTTPS redirect support, several Cargo features for controlling the SWS `compression` and `compression-static`, dependency migrations like the `clap` CLI parser and `tokio-rustls` as well as various refactorings and improvements.
+
+__Fixes__
+
+- [b685cda](https://github.com/static-web-server/static-web-server/commit/b685cda) Bugfix/security dependency updates including tokio, tracing, chrono, serde, h2, libc, pin-project, windows-sys and other crates.
+
+__Features__
+
+- [946b4e5](https://github.com/static-web-server/static-web-server/commit/946b4e5) HTTP to HTTPS redirect support. PR [#203](https://github.com/static-web-server/static-web-server/pull/203) resolves [#202](https://github.com/static-web-server/static-web-server/issues/202) suggested by [@micsama](https://github.com/micsama). See [docs](https://static-web-server.net/features/http-https-redirect/).
+- [0f66443](https://github.com/static-web-server/static-web-server/commit/0f66443) ECC private keys support for the `tls` feature. PR [#208](https://github.com/static-web-server/static-web-server/pull/208) resolves [#207](https://github.com/static-web-server/static-web-server/issues/207) suggested by [@mac-chaffee](https://github.com/mac-chaffee). See [docs](https://static-web-server.net/features/http2-tls/#private-key-file-formats).
+- [af77e4a](https://github.com/static-web-server/static-web-server/commit/af77e4a) Lib: Cargo features for `compression` and `compression-static`. PR [#201](https://github.com/static-web-server/static-web-server/pull/201).
+- [f8fca0a](https://github.com/static-web-server/static-web-server/commit/f8fca0a) Misc: Include SPDX license identifiers in every source file.
+- [a345df3](https://github.com/static-web-server/static-web-server/commit/a345df3) Misc: Benchmarks 2023-04. See [repository](https://github.com/static-web-server/benchmarks).
+- [1894474](https://github.com/static-web-server/static-web-server/commit/1894474) CI: Workflow to automate checksums.
+
+__Refactorings__
+
+- [4e01de6](https://github.com/static-web-server/static-web-server/commit/4e01de6) Migrate `clap` CLI parser to v3. PR [#211](https://github.com/static-web-server/static-web-server/pull/211) by [@mac-chaffee](https://github.com/mac-chaffee).
+- [e8560a0](https://github.com/static-web-server/static-web-server/commit/e8560a0) Update `tokio-rustls` to `0.24`.
+- [20de5d0](https://github.com/static-web-server/static-web-server/commit/20de5d0) HTTP to HTTPS redirect feature improvements.
+- [647e9b0](https://github.com/static-web-server/static-web-server/commit/647e9b0) Lib: Include missing `rustls-pemfile` in Cargo `tls` feature.
+- [53ef76e](https://github.com/static-web-server/static-web-server/commit/53ef76e) Lib: Improve Rust docs for Cargo features.
+- [6b81c48](https://github.com/static-web-server/static-web-server/commit/6b81c48) Lib: Simplify `http2` Cargo feature.
+- [ae17023](https://github.com/static-web-server/static-web-server/commit/ae17023) CI: Simplify workflow scripts.
+
+__Docs__
+
+- [d3fa602](https://github.com/static-web-server/static-web-server/commit/d3fa602) HTTP to HTTPS redirect feature page. See [docs](https://static-web-server.net/features/http-https-redirect/).
+- [880eaf4](https://github.com/static-web-server/static-web-server/commit/880eaf4) HTTP/2 and TLS feature page improvements. See [docs](https://static-web-server.net/features/http-https-redirect/). See [docs](https://static-web-server.net/features/http2-tls/).
+- [e0ae5a7](https://github.com/static-web-server/static-web-server/commit/e0ae5a7) Blocking threads feature page. See [docs](https://static-web-server.net/features/blocking-threads/).
+- [c64e3d6](https://github.com/static-web-server/static-web-server/commit/c64e3d6) Safe TLS defaults description. See [docs](https://static-web-server.net/features/http2-tls/#safe-tls-defaults).
+- [6876a75](https://github.com/static-web-server/static-web-server/commit/6876a75) Enable content editing option and revision. See [docs](https://static-web-server.net/).
+
 ## v2.16.0 - 2023-04-25
 
 This new `v2.16.0` release brings several dependency updates/bug fixes including the Alpine Docker image, a new Android ARM64 target, Zstandard (zstd) auto-compression and pre-compressed files support, `static-web-server` available as a crate, as well as other additions and improvements.
