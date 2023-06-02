@@ -18,15 +18,17 @@ rm -rf $release_dir
 mkdir -p $release_dir
 cd $release_dir
 
+server_version_num=$(echo $SERVER_VERSION | sed "s/v//")
+
 # Download precompiled binary assets
 while read -r file_url; do
     curl -LO --progress-bar $file_url
 done < <(cat $release_json | jq -r ".assets[] | .browser_download_url")
 
 echo "Downloading source code assets..."
-curl -Lo static-web-server-$SERVER_VERSION.zip --progress-bar \
+curl -Lo static-web-server-$server_version_num.zip --progress-bar \
     https://github.com/static-web-server/static-web-server/archive/refs/tags/$SERVER_VERSION.zip
-curl -Lo static-web-server-$SERVER_VERSION.tar.gz --progress-bar \
+curl -Lo static-web-server-$server_version_num.tar.gz --progress-bar \
     https://github.com/static-web-server/static-web-server/archive/refs/tags/$SERVER_VERSION.tar.gz
 
 # Compose checksum file name
@@ -52,7 +54,6 @@ echo "Updating $SERVER_VERSION checksums for 'Download and Install' page..."
 
 cd $cwd
 release_date=$(date +%Y-%m-%d)
-server_version_num=$(echo $SERVER_VERSION | sed "s/v//")
 filename_version="static-web-server-$SERVER_VERSION"
 filename_version_num="static-web-server-$server_version_num"
 

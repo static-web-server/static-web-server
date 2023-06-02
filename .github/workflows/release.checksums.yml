@@ -16,7 +16,7 @@ jobs:
       - name: Prepare
         shell: bash
         run: |
-          echo "SERVER_VERSION=${GITHUB_REF##*/v}" >> $GITHUB_ENV
+          echo "SERVER_VERSION=${GITHUB_REF}" >> $GITHUB_ENV
           echo "version is: ${{ env.SERVER_VERSION }}"
 
       - name: Generate and upload
