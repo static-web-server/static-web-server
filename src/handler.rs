@@ -293,7 +293,64 @@ impl RequestHandler {
                         && status == StatusCode::NOT_FOUND
                         && !self.opts.page_fallback.is_empty()
                     {
-                        return Ok(fallback_page::fallback_response(&self.opts.page_fallback));
+                        // We use all modules as usual when the `page-fallback` feature is enabled
+                        let mut resp = fallback_page::fallback_response(&self.opts.page_fallback);
+
+                        // Append CORS headers if they are present
+                        if let Some(cors_headers) = cors_headers {
+                            if !cors_headers.is_empty() {
+                                for (k, v) in cors_headers.iter() {
+                                    resp.headers_mut().insert(k, v.to_owned());
+                                }
+                                resp.headers_mut().remove(http::header::ALLOW);
+                            }
+                        }
+
+                        // Compression content encoding varies so use a `Vary` header
+                        #[cfg(feature = "compression")]
+                        if self.opts.compression || compression_static {
+                            resp.headers_mut().append(
+                                hyper::header::VARY,
+                                hyper::header::HeaderValue::from_name(
+                                    hyper::header::ACCEPT_ENCODING,
+                                ),
+                            );
+                        }
+
+                        // Auto compression based on the `Accept-Encoding` header
+                        #[cfg(feature = "compression")]
+                        if self.opts.compression {
+                            resp = match compression::auto(method, headers, resp) {
+                                Ok(res) => res,
+                                Err(err) => {
+                                    tracing::error!("error during body compression: {:?}", err);
+                                    return error_page::error_response(
+                                        uri,
+                                        method,
+                                        &StatusCode::INTERNAL_SERVER_ERROR,
+                                        &self.opts.page404,
+                                        &self.opts.page50x,
+                                    );
+                                }
+                            };
+                        }
+
+                        // Append `Cache-Control` headers for web assets
+                        if self.opts.cache_control_headers {
+                            control_headers::append_headers(uri_path, &mut resp);
+                        }
+
+                        // Append security headers
+                        if self.opts.security_headers {
+                            security_headers::append_headers(&mut resp);
+                        }
+
+                        // Add/update custom headers
+                        if let Some(advanced) = &self.opts.advanced_opts {
+                            custom_headers::append_headers(uri_path, &advanced.headers, &mut resp)
+                        }
+
+                        return Ok(resp);
                     }
 
                     // Otherwise return a response error
