@@ -8,7 +8,6 @@
 
 use http::header::{
     CONTENT_SECURITY_POLICY, STRICT_TRANSPORT_SECURITY, X_CONTENT_TYPE_OPTIONS, X_FRAME_OPTIONS,
-    X_XSS_PROTECTION,
 };
 use hyper::{Body, Response};
 
@@ -26,10 +25,6 @@ pub fn append_headers(resp: &mut Response<Body>) {
     // X-Frame-Options
     resp.headers_mut()
         .insert(X_FRAME_OPTIONS, "DENY".parse().unwrap());
-
-    // X-XSS-Protection
-    resp.headers_mut()
-        .insert(X_XSS_PROTECTION, "1; mode=block".parse().unwrap());
 
     // X-Content-Type-Options
     resp.headers_mut()
