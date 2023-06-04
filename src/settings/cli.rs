@@ -375,20 +375,20 @@ pub struct General {
 
     // Windows commands
     #[cfg(windows)]
-    #[arg(subcommand)]
+    #[command(subcommand)]
     /// Subcommands to install or uninstall the SWS Windows Service.
     pub commands: Option<Commands>,
 }
 
 #[cfg(windows)]
-#[derive(Debug, arg)]
+#[derive(Debug, clap::Subcommand)]
 /// Subcommands to install or uninstall the SWS Windows Service.
 pub enum Commands {
     /// Install a Windows Service for the web server.
-    #[arg(name = "install")]
+    #[command(name = "install")]
     Install {},
 
     /// Uninstall the current Windows Service.
-    #[arg(name = "uninstall")]
+    #[command(name = "uninstall")]
     Uninstall {},
 }
