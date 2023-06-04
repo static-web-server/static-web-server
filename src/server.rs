@@ -196,7 +196,7 @@ impl Server {
 
         // Directory listing format
         let dir_listing_format = general.directory_listing_format;
-        tracing::info!("directory listing format: {}", dir_listing_format);
+        tracing::info!("directory listing format: {:?}", dir_listing_format);
 
         // Cache control headers option
         let cache_control_headers = general.cache_control_headers;

@@ -6,7 +6,7 @@
 //! Module that provides all settings of SWS.
 //!
 
-use clap::StructOpt;
+use clap::Parser;
 use globset::{Glob, GlobMatcher};
 use headers::HeaderMap;
 use hyper::StatusCode;
@@ -68,7 +68,7 @@ pub struct Settings {
 impl Settings {
     /// Handles CLI and config file options and converging them into one.
     pub fn get() -> Result<Settings> {
-        let opts = General::from_args();
+        let opts = General::parse();
 
         // Define the general CLI/file options
         let mut host = opts.host;
