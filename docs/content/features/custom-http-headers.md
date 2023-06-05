@@ -39,7 +39,7 @@ Below are some examples of how to customize server HTTP headers in three variant
 
 [[advanced.headers]]
 source = "**/*.{js,css}"
-headers = { Access-Control-Allow-Origin = "*", X-XSS-PROTECTION = "1; mode=block" }
+headers = { Access-Control-Allow-Origin = "*" }
 ```
 
 ### Multiline version

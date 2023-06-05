@@ -78,7 +78,7 @@ compression-static = true
 #### a. Oneline version
 [[advanced.headers]]
 source = "**/*.{js,css}"
-headers = { Access-Control-Allow-Origin = "*", X-XSS-PROTECTION = "1; mode=block" }
+headers = { Access-Control-Allow-Origin = "*" }
 
 # #### b. Multiline version
 [[advanced.headers]]
