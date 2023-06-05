@@ -197,8 +197,13 @@ impl Settings {
                     if let Some(v) = general.https_redirect_from_hosts {
                         https_redirect_from_hosts = v
                     }
-                    if let Some(v) = general.security_headers {
-                        security_headers = v
+                    match general.security_headers {
+                        Some(v) => security_headers = v,
+                        _ => {
+                            if http2 {
+                                security_headers = true;
+                            }
+                        }
                     }
                     if let Some(ref v) = general.cors_allow_origins {
                         cors_allow_origins = v.to_owned()
