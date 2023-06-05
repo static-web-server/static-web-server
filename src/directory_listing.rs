@@ -9,7 +9,7 @@
 #![allow(missing_docs)]
 
 use chrono::{DateTime, Local, NaiveDateTime, Utc};
-use clap::arg_enum;
+use clap::ValueEnum;
 use futures_util::future::Either;
 use futures_util::{future, FutureExt};
 use headers::{ContentLength, ContentType, HeaderMapExt};
@@ -25,14 +25,12 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::{exts::http::MethodExt, Context, Result};
 
-arg_enum! {
-    #[derive(Debug, Serialize, Deserialize, Clone)]
-    #[serde(rename_all = "lowercase")]
-    /// Directory listing output format for file entries.
-    pub enum DirListFmt {
-        Html,
-        Json,
-    }
+#[derive(Debug, Serialize, Deserialize, Clone, ValueEnum)]
+#[serde(rename_all = "lowercase")]
+/// Directory listing output format for file entries.
+pub enum DirListFmt {
+    Html,
+    Json,
 }
 
 /// Provides directory listing support for the current request.
