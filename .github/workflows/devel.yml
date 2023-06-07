@@ -7,6 +7,8 @@ on:
     - staging
     - trying
     paths:
+      - .github/workflows/devel.yml
+      - .cargo/config.toml
       - Cargo.lock
       - Cargo.toml
       - src/**
@@ -19,8 +21,6 @@ jobs:
     name: test
     runs-on: ${{ matrix.os }}
     env:
-      # Cargo's sparse protocol from 1.68.0 onwards
-      CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
       CARGO_BIN: cargo
       # When CARGO_BIN is set to CROSS, this is set to `--target matrix.target`
       TARGET_FLAGS: ""
@@ -154,6 +154,7 @@ jobs:
 
     - name: Set up Cross
       if: ${{ !contains(matrix.os, 'windows') && matrix.target != '' }}
+      shell: bash
       run: |
         # Use 'cargo.sh' script for Android targets only
         if [[ "${{ matrix.build }}" == "linux-android-armv7" ]] || [[ "${{ matrix.build }}" == "linux-android-arm64" ]]; then
@@ -163,16 +164,19 @@ jobs:
           echo "CARGO_BIN=cross" >> $GITHUB_ENV
         fi
 
-        echo "TARGET_FLAGS=--target=${{ matrix.target }}" >> $GITHUB_ENV
-        echo "TARGET_DIR=./target/${{ matrix.target }}" >> $GITHUB_ENV
-
-    - name: Show command used for Cargo
+    - name: Setup Cargo
+      shell: bash
       run: |
+        if [[ "${{ matrix.target }}" != "" ]]; then
+          echo "TARGET_FLAGS=--target=${{ matrix.target }}" >> $GITHUB_ENV
+          echo "TARGET_DIR=./target/${{ matrix.target }}" >> $GITHUB_ENV
+        fi
         echo "cargo command is: ${{ env.CARGO_BIN }}"
         echo "target flag is: ${{ env.TARGET_FLAGS }}"
         echo "target dir is: ${{ env.TARGET_DIR }}"
 
     - name: Skip tests
+      shell: bash
       if: ${{ contains(fromJSON('["macos-arm64", "linux-android-arm64", "linux-android-armv7"]'), matrix.build) }}
       run: |
         # Can't run tests: cross-compiling
@@ -181,14 +185,28 @@ jobs:
     - name: Run tests
       shell: bash
       run: |
-        if [[ "${{ matrix.build }}" == "pinned" ]]; then unset CARGO_REGISTRIES_CRATES_IO_PROTOCOL; fi
         ${{ env.CARGO_BIN }} test --verbose ${{ env.TARGET_FLAGS }} ${{ env.SKIP_TESTS }}
 
     - name: Run build
       shell: bash
       run: |
-        if [[ "${{ matrix.build }}" == "pinned" ]]; then unset CARGO_REGISTRIES_CRATES_IO_PROTOCOL; fi
-        ${{ env.CARGO_BIN }} build --verbose ${{ env.TARGET_FLAGS }}
+        ${{ env.CARGO_BIN }} rustc --bin static-web-server --verbose ${{ env.TARGET_FLAGS }}
+
+    - name: Run executable
+      shell: bash
+      run: |
+        case "${{ matrix.build }}" in
+          *-arm*)
+            echo "arm(64) is not supported on ci, can not execute!"
+          ;;
+          *)
+            if [[ "${{ matrix.os }}" == "windows-2022" ]]; then
+              target/${{ matrix.target }}/debug/static-web-server.exe -h
+            else
+              target/${{ matrix.target }}/debug/static-web-server -h
+            fi
+          ;;
+        esac
 
   checks:
     name: checks
