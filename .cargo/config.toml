@@ -1,0 +1,7 @@
+[registries.crates-io]
+protocol = "sparse"
+
+# Statically link the C runtime on Windows MSVC x86_64,
+# so that the resulting EXE doesn't depend on the VCRUNTIME140.dll.
+[target.x86_64-pc-windows-msvc]
+rustflags = ["-C", "target-feature=+crt-static"]
