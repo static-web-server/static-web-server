@@ -60,11 +60,12 @@ It's cross-platform and available for `Linux`, `macOS`, `Windows` and `FreeBSD` 
 - Run the server as a [Windows Service](https://docs.microsoft.com/en-us/previous-versions/windows/it-pro/windows-server-2003/cc783643(v=ws.10)).
 - Configurable using CLI arguments, environment variables or a TOML file.
 - Default and custom error pages.
+- HTTP to HTTPS redirect.
+- Support for serving pre-compressed (Gzip/Brotli/Zstd) files.
 - Custom URL rewrites and redirects via glob patterns.
-- Support for serving pre-compressed (Gzip/Brotli) files.
 - First-class [Docker](https://docs.docker.com/get-started/overview/) support. [Scratch](https://hub.docker.com/_/scratch) and latest [Alpine Linux](https://hub.docker.com/_/alpine) Docker images.
 - Ability to accept a socket listener as a file descriptor for sandboxing and on-demand applications (e.g [systemd](http://0pointer.de/blog/projects/socket-activation.html)).
-- Cross-platform. Pre-compiled binaries for Linux, macOS, Windows and FreeBSD (`x86`,`x86_64`,`ARM`,`ARM64`).
+- Cross-platform. Pre-compiled binaries for Linux, macOS, Windows, FreeBSD and Android (`x86`,`x86_64`,`ARM`,`ARM64`).
 
 ## Documentation
 

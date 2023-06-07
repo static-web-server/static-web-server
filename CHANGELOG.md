@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _**Note:** See changelog for v1 under the [1.x](https://github.com/static-web-server/static-web-server/blob/1.x/CHANGELOG.md) branch._
 
+## v2.18.0 - 2023-06-07
+
+This new `v2.18.0` release brings several dependency updates/bug fixes, bug fixes for the `security-headers` and `page-fallback` features, the C runtime in Windows x86_64 is now statically linked, possibility to use CLI boolean flags without explicit values as well as some refactorings and improvements.
+
+__Fixes__
+
+- [ddfc00b](https://github.com/static-web-server/static-web-server/commit/ddfc00b) Bugfix/security dependency updates including clap, parking_lot, libc, percent-encoding, form_urlencoded, regex and other crates.
+- [cbb21c0](https://github.com/static-web-server/static-web-server/commit/cbb21c0) `security-headers` not enabled by default when using `http2` via config file. PR [#216](https://github.com/static-web-server/static-web-server/pull/216) fixes [#210](https://github.com/static-web-server/static-web-server/issues/210) resported by [@mac-chaffee](https://github.com/mac-chaffee).
+- [91519c9](https://github.com/static-web-server/static-web-server/commit/91519c9) Obsolete `X-XSS-Protection` header on `security-headers` (also [d5279ff](https://github.com/static-web-server/static-web-server/commit/d5279ff)). Reported on [#213](https://github.com/static-web-server/static-web-server/discussions/213) by [@picchietti](https://github.com/picchietti).
+- [e183ea3](https://github.com/static-web-server/static-web-server/commit/e183ea3) Missing SWS base modules when `page-fallback` is enabled. Reported on [#213](https://github.com/static-web-server/static-web-server/discussions/213) by [@picchietti](https://github.com/picchietti).<br>
+  The following SWS modules are now used when `page-fallback` feature is activated:
+  - `cors`
+  - `compression`
+  - `cache_control_headers`
+  - `security_headers`
+  - `custom_headers`
+- [fba6665](https://github.com/static-web-server/static-web-server/commit/fba6665) CI: Workflow fails to generate proper checksums.
+
+__Features__
+
+- [2150c74](https://github.com/static-web-server/static-web-server/commit/2150c74) Support for CLI boolean flags without explicit values (E.g. `static-web-server -d public/ --compression -z`). PR [#215](https://github.com/static-web-server/static-web-server/pull/215) resolves [#209](https://github.com/static-web-server/static-web-server/issues/209) suggested by [@mac-chaffee](https://github.com/mac-chaffee).
+
+__Refactorings__
+
+- [fa0cca5](https://github.com/static-web-server/static-web-server/commit/fa0cca5) Statically link the C runtime on Windows MSVC x86_64 to avoid the `VCRUNTIME140.dll`.
+- [a75147e](https://github.com/static-web-server/static-web-server/commit/a75147e) Lib: Rust nightly toolchain for crate docs.
+- [520e66d](https://github.com/static-web-server/static-web-server/commit/520e66d) CI: Increase verbosity of `cargo build` across pipelines.
+
+__Acknowledgments__
+
+Thanks to our new donor [@picchietti](https://github.com/picchietti) for supporting the project.
+
 ## v2.17.0 - 2023-06-03
 
 This new `v2.17.0` release brings several dependency updates/bug fixes, ECC private keys support for the `tls` feature, HTTP to HTTPS redirect support, several Cargo features for controlling the SWS `compression` and `compression-static`, dependency migrations like the `clap` CLI parser and `tokio-rustls` as well as various refactorings and improvements.
