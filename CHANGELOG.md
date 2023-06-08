@@ -112,7 +112,7 @@ __Docs__
 
 ## v2.15.0 - 2023-03-13
 
-This new `v2.15.0` release brings several dependency updates, one bug fix for the `compression-static`, new features like  Tokio's `--max-blocking-threads` or `.html` prefixing for directory requests, the possibity to build SWS on non-Unix/Windows platforms and performance optimizations and improvements across several modules including `static_file` which [speeds up](https://gist.github.com/joseluisq/cb0962474210e56e768ff5671b3ddd11) SWS around `~4.37%` (req/sec) for almost the same computing.
+This new `v2.15.0` release brings several dependency updates, one bug fix for the `compression-static`, new features like  Tokio's `--max-blocking-threads` or `.html` prefixing for directory requests, the possibility to build SWS on non-Unix/Windows platforms and performance optimizations and improvements across several modules including `static_file` which [speeds up](https://gist.github.com/joseluisq/cb0962474210e56e768ff5671b3ddd11) SWS around `~4.37%` (req/sec) for almost the same computing.
 
 __Fixes__
 

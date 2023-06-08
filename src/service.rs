@@ -72,7 +72,7 @@ pub struct RequestServiceBuilder {
 }
 
 impl RequestServiceBuilder {
-    /// Initializes a new request service buider.
+    /// Initializes a new request service builder.
     pub fn new(handler: RequestHandler) -> Self {
         Self {
             handler: Arc::new(handler),
