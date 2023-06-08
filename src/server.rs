@@ -154,7 +154,18 @@ impl Server {
         let page50x = helpers::read_bytes_default(&general.page50x);
 
         // Fallback page content
-        let page_fallback = helpers::read_bytes_default(&general.page_fallback.unwrap_or_default());
+        let page_fallback_pbuf = general.page_fallback;
+        let page_fallback = helpers::read_bytes_default(&page_fallback_pbuf);
+        let page_fallback_enabled = !page_fallback.is_empty();
+        let mut page_fallback_opt = "";
+        if page_fallback_enabled {
+            page_fallback_opt = page_fallback_pbuf.to_str().unwrap()
+        }
+        tracing::info!(
+            "fallback page: enabled={}, value=\"{}\"",
+            page_fallback_enabled,
+            page_fallback_opt
+        );
 
         // Number of worker threads option
         let threads = self.worker_threads;

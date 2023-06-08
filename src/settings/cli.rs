@@ -8,7 +8,7 @@
 use clap::Parser;
 use std::path::PathBuf;
 
-use crate::directory_listing::DirListFmt;
+use crate::{directory_listing::DirListFmt, Result};
 
 /// General server configuration available in CLI and config file options.
 #[derive(Parser, Debug)]
@@ -102,9 +102,9 @@ pub struct General {
     /// HTML file path for 404 errors. If the path is not specified or simply doesn't exist then the server will use a generic HTML error message.
     pub page404: PathBuf,
 
-    #[arg(long, env = "SERVER_FALLBACK_PAGE")]
+    #[arg(long, default_value = "", value_parser = value_parser_pathbuf, env = "SERVER_FALLBACK_PAGE")]
     /// HTML file path that is used for GET requests when the requested path doesn't exist. The fallback page is served with a 200 status code, useful when using client routers. If the path is not specified or simply doesn't exist then this feature will not be active.
-    pub page_fallback: Option<PathBuf>,
+    pub page_fallback: PathBuf,
 
     #[arg(long, short = 'g', default_value = "error", env = "SERVER_LOG_LEVEL")]
     /// Specify a logging level in lower case. Values: error, warn, info, debug or trace
@@ -391,4 +391,8 @@ pub enum Commands {
     /// Uninstall the current Windows Service.
     #[command(name = "uninstall")]
     Uninstall {},
+}
+
+fn value_parser_pathbuf(s: &str) -> Result<PathBuf, String> {
+    Ok(PathBuf::from(s))
 }

@@ -239,7 +239,7 @@ impl Settings {
                         grace_period = v
                     }
                     if let Some(v) = general.page_fallback {
-                        page_fallback = Some(v)
+                        page_fallback = v
                     }
                     if let Some(v) = general.log_remote_address {
                         log_remote_address = v
