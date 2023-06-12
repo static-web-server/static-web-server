@@ -197,16 +197,20 @@ impl Server {
         #[cfg(feature = "compression")]
         tracing::info!("compression static: enabled={}", compression_static);
 
-        // Directory listing option
+        // Directory listing options
+        #[cfg(feature = "directory-listing")]
         let dir_listing = general.directory_listing;
+        #[cfg(feature = "directory-listing")]
         tracing::info!("directory listing: enabled={}", dir_listing);
-
         // Directory listing order number
+        #[cfg(feature = "directory-listing")]
         let dir_listing_order = general.directory_listing_order;
+        #[cfg(feature = "directory-listing")]
         tracing::info!("directory listing order code: {}", dir_listing_order);
-
         // Directory listing format
+        #[cfg(feature = "directory-listing")]
         let dir_listing_format = general.directory_listing_format;
+        #[cfg(feature = "directory-listing")]
         tracing::info!("directory listing format: {:?}", dir_listing_format);
 
         // Cache control headers option
@@ -252,8 +256,11 @@ impl Server {
                 root_dir,
                 compression,
                 compression_static,
+                #[cfg(feature = "directory-listing")]
                 dir_listing,
+                #[cfg(feature = "directory-listing")]
                 dir_listing_order,
+                #[cfg(feature = "directory-listing")]
                 dir_listing_format,
                 cors,
                 security_headers,

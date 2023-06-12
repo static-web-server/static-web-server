@@ -38,6 +38,8 @@ Feature | Description
 `compression-deflate` | Activates auto-compression/compression static with only the `deflate` algorithm.
 `compression-gzip` | Activates auto-compression/compression static with only the `gzip` algorithm.
 `compression-zstd` | Activates auto-compression/compression static with only the `zstd` algorithm.
+[**Directory Listing**](./features/directory-listing.md) |
+`directory-listing` | Activates the directory listing feature.
 
 ### Disable all default features
 

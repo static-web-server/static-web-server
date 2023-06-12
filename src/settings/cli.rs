@@ -8,7 +8,10 @@
 use clap::Parser;
 use std::path::PathBuf;
 
-use crate::{directory_listing::DirListFmt, Result};
+use crate::Result;
+
+#[cfg(feature = "directory-listing")]
+use crate::directory_listing::DirListFmt;
 
 /// General server configuration available in CLI and config file options.
 #[derive(Parser, Debug)]
@@ -241,6 +244,8 @@ pub struct General {
     /// The compression type is determined by the `Accept-Encoding` header.
     pub compression_static: bool,
 
+    #[cfg(feature = "directory-listing")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "directory-listing")))]
     #[arg(
         long,
         short = 'z',
@@ -254,6 +259,8 @@ pub struct General {
     /// Enable directory listing for all requests ending with the slash character (‘/’).
     pub directory_listing: bool,
 
+    #[cfg(feature = "directory-listing")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "directory-listing")))]
     #[arg(
         long,
         requires_if("true", "directory_listing"),
@@ -263,6 +270,8 @@ pub struct General {
     /// Specify a default code number to order directory listing entries per `Name`, `Last modified` or `Size` attributes (columns). Code numbers supported: 0 (Name asc), 1 (Name desc), 2 (Last modified asc), 3 (Last modified desc), 4 (Size asc), 5 (Size desc). Default 6 (unordered)
     pub directory_listing_order: u8,
 
+    #[cfg(feature = "directory-listing")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "directory-listing")))]
     #[arg(
         long,
         value_enum,

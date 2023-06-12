@@ -11,10 +11,9 @@ mod tests {
     use http::Method;
     use std::path::PathBuf;
 
-    use static_web_server::{
-        directory_listing::DirListFmt,
-        static_files::{self, HandleOpts},
-    };
+    #[cfg(feature = "directory-listing")]
+    use static_web_server::directory_listing::DirListFmt;
+    use static_web_server::static_files::{self, HandleOpts};
 
     fn public_dir() -> PathBuf {
         PathBuf::from("docker/public/")
@@ -39,8 +38,11 @@ mod tests {
             base_path: &public_dir(),
             uri_path: "index.html",
             uri_query: None,
+            #[cfg(feature = "directory-listing")]
             dir_listing: false,
+            #[cfg(feature = "directory-listing")]
             dir_listing_order: 6,
+            #[cfg(feature = "directory-listing")]
             dir_listing_format: &DirListFmt::Html,
             redirect_trailing_slash: true,
             #[cfg(feature = "compression")]
@@ -94,8 +96,11 @@ mod tests {
             base_path: &public_dir().join("assets/"),
             uri_path: "index.html",
             uri_query: None,
+            #[cfg(feature = "directory-listing")]
             dir_listing: false,
+            #[cfg(feature = "directory-listing")]
             dir_listing_order: 6,
+            #[cfg(feature = "directory-listing")]
             dir_listing_format: &DirListFmt::Html,
             redirect_trailing_slash: true,
             #[cfg(feature = "compression")]
@@ -130,6 +135,7 @@ mod tests {
         );
     }
 
+    #[cfg(feature = "directory-listing")]
     #[tokio::test]
     async fn compression_static_base_path_as_dot() {
         let mut headers = HeaderMap::new();
@@ -150,7 +156,6 @@ mod tests {
             dir_listing_order: 6,
             dir_listing_format: &DirListFmt::Html,
             redirect_trailing_slash: true,
-            #[cfg(feature = "compression")]
             compression_static: true,
             ignore_hidden_files: false,
         })

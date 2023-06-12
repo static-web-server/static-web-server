@@ -85,6 +85,7 @@ impl Settings {
 
         let mut page404 = opts.page404;
         let mut page50x = opts.page50x;
+
         #[cfg(feature = "http2")]
         let mut http2 = opts.http2;
         #[cfg(feature = "http2")]
@@ -99,13 +100,19 @@ impl Settings {
         let mut https_redirect_from_port = opts.https_redirect_from_port;
         #[cfg(feature = "http2")]
         let mut https_redirect_from_hosts = opts.https_redirect_from_hosts;
+
         let mut security_headers = opts.security_headers;
         let mut cors_allow_origins = opts.cors_allow_origins;
         let mut cors_allow_headers = opts.cors_allow_headers;
         let mut cors_expose_headers = opts.cors_expose_headers;
+
+        #[cfg(feature = "directory-listing")]
         let mut directory_listing = opts.directory_listing;
+        #[cfg(feature = "directory-listing")]
         let mut directory_listing_order = opts.directory_listing_order;
+        #[cfg(feature = "directory-listing")]
         let mut directory_listing_format = opts.directory_listing_format;
+
         let mut basic_auth = opts.basic_auth;
         let mut fd = opts.fd;
         let mut threads_multiplier = opts.threads_multiplier;
@@ -214,12 +221,15 @@ impl Settings {
                     if let Some(ref v) = general.cors_expose_headers {
                         cors_expose_headers = v.to_owned()
                     }
+                    #[cfg(feature = "directory-listing")]
                     if let Some(v) = general.directory_listing {
                         directory_listing = v
                     }
+                    #[cfg(feature = "directory-listing")]
                     if let Some(v) = general.directory_listing_order {
                         directory_listing_order = v
                     }
+                    #[cfg(feature = "directory-listing")]
                     if let Some(v) = general.directory_listing_format {
                         directory_listing_format = v
                     }
@@ -383,8 +393,11 @@ impl Settings {
                 cors_allow_origins,
                 cors_allow_headers,
                 cors_expose_headers,
+                #[cfg(feature = "directory-listing")]
                 directory_listing,
+                #[cfg(feature = "directory-listing")]
                 directory_listing_order,
+                #[cfg(feature = "directory-listing")]
                 directory_listing_format,
                 basic_auth,
                 fd,

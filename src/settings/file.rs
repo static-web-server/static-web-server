@@ -11,7 +11,9 @@ use serde_repr::{Deserialize_repr, Serialize_repr};
 use std::path::Path;
 use std::{collections::BTreeSet, path::PathBuf};
 
+#[cfg(feature = "directory-listing")]
 use crate::directory_listing::DirListFmt;
+
 use crate::{helpers, Context, Result};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -165,10 +167,13 @@ pub struct General {
     pub cors_expose_headers: Option<String>,
 
     /// Directory listing feature.
+    #[cfg(feature = "directory-listing")]
     pub directory_listing: Option<bool>,
     /// Directory listing order feature.
+    #[cfg(feature = "directory-listing")]
     pub directory_listing_order: Option<u8>,
     /// Directory listing format feature.
+    #[cfg(feature = "directory-listing")]
     pub directory_listing_format: Option<DirListFmt>,
 
     /// Basich Authentication feature.

@@ -14,15 +14,16 @@ use std::{future::Future, net::IpAddr, net::SocketAddr, path::PathBuf, sync::Arc
 use crate::compression;
 
 use crate::{
-    basic_auth, control_headers, cors, custom_headers,
-    directory_listing::DirListFmt,
-    error_page,
+    basic_auth, control_headers, cors, custom_headers, error_page,
     exts::http::MethodExt,
     fallback_page, redirects, rewrites, security_headers,
     settings::Advanced,
     static_files::{self, HandleOpts},
     Error, Result,
 };
+
+#[cfg(feature = "directory-listing")]
+use crate::directory_listing::DirListFmt;
 
 /// It defines options for a request handler.
 pub struct RequestHandlerOpts {
@@ -34,9 +35,12 @@ pub struct RequestHandlerOpts {
     /// Compression static feature.
     pub compression_static: bool,
     /// Directory listing feature.
+    #[cfg(feature = "directory-listing")]
     pub dir_listing: bool,
     /// Directory listing order feature.
+    #[cfg(feature = "directory-listing")]
     pub dir_listing_order: u8,
+    #[cfg(feature = "directory-listing")]
     /// Directory listing format feature.
     pub dir_listing_format: DirListFmt,
     /// CORS feature.
@@ -84,8 +88,11 @@ impl RequestHandler {
         let base_path = &self.opts.root_dir;
         let mut uri_path = uri.path();
         let uri_query = uri.query();
+        #[cfg(feature = "directory-listing")]
         let dir_listing = self.opts.dir_listing;
+        #[cfg(feature = "directory-listing")]
         let dir_listing_order = self.opts.dir_listing_order;
+        #[cfg(feature = "directory-listing")]
         let dir_listing_format = &self.opts.dir_listing_format;
         let log_remote_addr = self.opts.log_remote_address;
         let redirect_trailing_slash = self.opts.redirect_trailing_slash;
@@ -223,8 +230,11 @@ impl RequestHandler {
                 base_path,
                 uri_path,
                 uri_query,
+                #[cfg(feature = "directory-listing")]
                 dir_listing,
+                #[cfg(feature = "directory-listing")]
                 dir_listing_order,
+                #[cfg(feature = "directory-listing")]
                 dir_listing_format,
                 redirect_trailing_slash,
                 compression_static,
