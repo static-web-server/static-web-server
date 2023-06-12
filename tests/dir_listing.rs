@@ -3,6 +3,7 @@
 #![deny(rust_2018_idioms)]
 #![deny(dead_code)]
 
+#[cfg(feature = "directory-listing")]
 #[cfg(test)]
 mod tests {
     use headers::HeaderMap;

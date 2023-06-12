@@ -14,10 +14,9 @@ mod tests {
     #[cfg(feature = "compression")]
     use static_web_server::compression;
 
-    use static_web_server::{
-        directory_listing::DirListFmt,
-        static_files::{self, HandleOpts},
-    };
+    #[cfg(feature = "directory-listing")]
+    use static_web_server::directory_listing::DirListFmt;
+    use static_web_server::static_files::{self, HandleOpts};
 
     fn root_dir() -> PathBuf {
         PathBuf::from("docker/public/")
@@ -31,8 +30,11 @@ mod tests {
             base_path: &root_dir(),
             uri_path: "index.html",
             uri_query: None,
+            #[cfg(feature = "directory-listing")]
             dir_listing: false,
+            #[cfg(feature = "directory-listing")]
             dir_listing_order: 6,
+            #[cfg(feature = "directory-listing")]
             dir_listing_format: &DirListFmt::Html,
             redirect_trailing_slash: true,
             compression_static: false,
@@ -69,8 +71,11 @@ mod tests {
             base_path: &root_dir(),
             uri_path: "index.html",
             uri_query: None,
+            #[cfg(feature = "directory-listing")]
             dir_listing: false,
+            #[cfg(feature = "directory-listing")]
             dir_listing_order: 6,
+            #[cfg(feature = "directory-listing")]
             dir_listing_format: &DirListFmt::Html,
             redirect_trailing_slash: true,
             compression_static: false,
@@ -108,8 +113,11 @@ mod tests {
                 base_path: &root_dir(),
                 uri_path: "xyz.html",
                 uri_query: None,
+                #[cfg(feature = "directory-listing")]
                 dir_listing: false,
+                #[cfg(feature = "directory-listing")]
                 dir_listing_order: 6,
+                #[cfg(feature = "directory-listing")]
                 dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: true,
                 compression_static: false,
@@ -135,8 +143,11 @@ mod tests {
             base_path: &root_dir(),
             uri_path: "assets",
             uri_query: None,
+            #[cfg(feature = "directory-listing")]
             dir_listing: false,
+            #[cfg(feature = "directory-listing")]
             dir_listing_order: 0,
+            #[cfg(feature = "directory-listing")]
             dir_listing_format: &DirListFmt::Html,
             redirect_trailing_slash: true,
             compression_static: false,
@@ -163,8 +174,11 @@ mod tests {
             base_path: &root_dir(),
             uri_path: "assets",
             uri_query: None,
+            #[cfg(feature = "directory-listing")]
             dir_listing: false,
+            #[cfg(feature = "directory-listing")]
             dir_listing_order: 0,
+            #[cfg(feature = "directory-listing")]
             dir_listing_format: &DirListFmt::Html,
             redirect_trailing_slash: true,
             compression_static: false,
@@ -190,8 +204,11 @@ mod tests {
             base_path: &root_dir(),
             uri_path: "assets",
             uri_query: None,
+            #[cfg(feature = "directory-listing")]
             dir_listing: false,
+            #[cfg(feature = "directory-listing")]
             dir_listing_order: 0,
+            #[cfg(feature = "directory-listing")]
             dir_listing_format: &DirListFmt::Html,
             redirect_trailing_slash: false,
             compression_static: false,
@@ -222,8 +239,11 @@ mod tests {
                     base_path: &root_dir(),
                     uri_path: uri,
                     uri_query: None,
+                    #[cfg(feature = "directory-listing")]
                     dir_listing: false,
+                    #[cfg(feature = "directory-listing")]
                     dir_listing_order: 6,
+                    #[cfg(feature = "directory-listing")]
                     dir_listing_format: &DirListFmt::Html,
                     redirect_trailing_slash: true,
                     compression_static: false,
@@ -269,8 +289,11 @@ mod tests {
                 base_path: &root_dir(),
                 uri_path: "/index%2ehtml",
                 uri_query: None,
+                #[cfg(feature = "directory-listing")]
                 dir_listing: false,
+                #[cfg(feature = "directory-listing")]
                 dir_listing_order: 6,
+                #[cfg(feature = "directory-listing")]
                 dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: true,
                 compression_static: false,
@@ -298,8 +321,11 @@ mod tests {
                 base_path: &root_dir(),
                 uri_path: "/%2E%2e.html",
                 uri_query: None,
+                #[cfg(feature = "directory-listing")]
                 dir_listing: false,
+                #[cfg(feature = "directory-listing")]
                 dir_listing_order: 6,
+                #[cfg(feature = "directory-listing")]
                 dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: true,
                 compression_static: false,
@@ -330,8 +356,11 @@ mod tests {
                 base_path: &root_dir(),
                 uri_path: "index.html",
                 uri_query: None,
+                #[cfg(feature = "directory-listing")]
                 dir_listing: false,
+                #[cfg(feature = "directory-listing")]
                 dir_listing_order: 6,
+                #[cfg(feature = "directory-listing")]
                 dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: true,
                 compression_static: false,
@@ -362,8 +391,11 @@ mod tests {
                 base_path: &root_dir(),
                 uri_path: "index.html",
                 uri_query: None,
+                #[cfg(feature = "directory-listing")]
                 dir_listing: false,
+                #[cfg(feature = "directory-listing")]
                 dir_listing_order: 6,
+                #[cfg(feature = "directory-listing")]
                 dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: true,
                 compression_static: false,
@@ -397,8 +429,11 @@ mod tests {
                 base_path: &root_dir(),
                 uri_path: "index.html",
                 uri_query: None,
+                #[cfg(feature = "directory-listing")]
                 dir_listing: false,
+                #[cfg(feature = "directory-listing")]
                 dir_listing_order: 6,
+                #[cfg(feature = "directory-listing")]
                 dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: true,
                 compression_static: false,
@@ -430,8 +465,11 @@ mod tests {
                 base_path: &root_dir(),
                 uri_path: "index.html",
                 uri_query: None,
+                #[cfg(feature = "directory-listing")]
                 dir_listing: false,
+                #[cfg(feature = "directory-listing")]
                 dir_listing_order: 6,
+                #[cfg(feature = "directory-listing")]
                 dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: true,
                 compression_static: false,
@@ -461,8 +499,11 @@ mod tests {
                 base_path: &root_dir(),
                 uri_path: "index.html",
                 uri_query: None,
+                #[cfg(feature = "directory-listing")]
                 dir_listing: false,
+                #[cfg(feature = "directory-listing")]
                 dir_listing_order: 6,
+                #[cfg(feature = "directory-listing")]
                 dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: true,
                 compression_static: false,
@@ -491,8 +532,11 @@ mod tests {
                 base_path: &root_dir(),
                 uri_path: "index.html",
                 uri_query: None,
+                #[cfg(feature = "directory-listing")]
                 dir_listing: false,
+                #[cfg(feature = "directory-listing")]
                 dir_listing_order: 6,
+                #[cfg(feature = "directory-listing")]
                 dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: true,
                 compression_static: false,
@@ -535,8 +579,11 @@ mod tests {
                 base_path: &root_dir(),
                 uri_path: "index.html",
                 uri_query: None,
+                #[cfg(feature = "directory-listing")]
                 dir_listing: false,
+                #[cfg(feature = "directory-listing")]
                 dir_listing_order: 6,
+                #[cfg(feature = "directory-listing")]
                 dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: true,
                 compression_static: false,
@@ -593,8 +640,11 @@ mod tests {
                 base_path: &root_dir(),
                 uri_path: "index.html",
                 uri_query: None,
+                #[cfg(feature = "directory-listing")]
                 dir_listing: false,
+                #[cfg(feature = "directory-listing")]
                 dir_listing_order: 6,
+                #[cfg(feature = "directory-listing")]
                 dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: true,
                 compression_static: false,
@@ -653,8 +703,11 @@ mod tests {
                 base_path: &root_dir(),
                 uri_path: "index.html",
                 uri_query: None,
+                #[cfg(feature = "directory-listing")]
                 dir_listing: false,
+                #[cfg(feature = "directory-listing")]
                 dir_listing_order: 6,
+                #[cfg(feature = "directory-listing")]
                 dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: true,
                 compression_static: false,
@@ -697,8 +750,11 @@ mod tests {
                 base_path: &root_dir(),
                 uri_path: "index.html",
                 uri_query: None,
+                #[cfg(feature = "directory-listing")]
                 dir_listing: false,
+                #[cfg(feature = "directory-listing")]
                 dir_listing_order: 6,
+                #[cfg(feature = "directory-listing")]
                 dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: true,
                 compression_static: false,
@@ -741,8 +797,11 @@ mod tests {
                 base_path: &root_dir(),
                 uri_path: "index.html",
                 uri_query: None,
+                #[cfg(feature = "directory-listing")]
                 dir_listing: false,
+                #[cfg(feature = "directory-listing")]
                 dir_listing_order: 6,
+                #[cfg(feature = "directory-listing")]
                 dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: true,
                 compression_static: false,
@@ -786,8 +845,11 @@ mod tests {
                 base_path: &root_dir(),
                 uri_path: "index.html",
                 uri_query: None,
+                #[cfg(feature = "directory-listing")]
                 dir_listing: false,
+                #[cfg(feature = "directory-listing")]
                 dir_listing_order: 6,
+                #[cfg(feature = "directory-listing")]
                 dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: true,
                 compression_static: false,
@@ -823,8 +885,11 @@ mod tests {
                 base_path: &root_dir(),
                 uri_path: "index.html",
                 uri_query: None,
+                #[cfg(feature = "directory-listing")]
                 dir_listing: false,
+                #[cfg(feature = "directory-listing")]
                 dir_listing_order: 6,
+                #[cfg(feature = "directory-listing")]
                 dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: true,
                 compression_static: false,
@@ -870,8 +935,11 @@ mod tests {
                 base_path: &root_dir(),
                 uri_path: "index.html",
                 uri_query: None,
+                #[cfg(feature = "directory-listing")]
                 dir_listing: false,
+                #[cfg(feature = "directory-listing")]
                 dir_listing_order: 6,
+                #[cfg(feature = "directory-listing")]
                 dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: true,
                 compression_static: false,
@@ -914,8 +982,11 @@ mod tests {
                 base_path: &root_dir(),
                 uri_path: "index.html",
                 uri_query: None,
+                #[cfg(feature = "directory-listing")]
                 dir_listing: false,
+                #[cfg(feature = "directory-listing")]
                 dir_listing_order: 6,
+                #[cfg(feature = "directory-listing")]
                 dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: true,
                 compression_static: false,
@@ -961,8 +1032,11 @@ mod tests {
                 base_path: &root_dir(),
                 uri_path: "index.html",
                 uri_query: None,
+                #[cfg(feature = "directory-listing")]
                 dir_listing: false,
+                #[cfg(feature = "directory-listing")]
                 dir_listing_order: 6,
+                #[cfg(feature = "directory-listing")]
                 dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: true,
                 compression_static: false,
@@ -1006,8 +1080,11 @@ mod tests {
                 base_path: &root_dir(),
                 uri_path: "index.html",
                 uri_query: None,
+                #[cfg(feature = "directory-listing")]
                 dir_listing: false,
+                #[cfg(feature = "directory-listing")]
                 dir_listing_order: 6,
+                #[cfg(feature = "directory-listing")]
                 dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: true,
                 compression_static: false,
@@ -1046,8 +1123,11 @@ mod tests {
                 base_path: &root_dir(),
                 uri_path: "index.html",
                 uri_query: None,
+                #[cfg(feature = "directory-listing")]
                 dir_listing: false,
+                #[cfg(feature = "directory-listing")]
                 dir_listing_order: 6,
+                #[cfg(feature = "directory-listing")]
                 dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: true,
                 compression_static: false,
@@ -1097,8 +1177,11 @@ mod tests {
                 base_path: &root_dir(),
                 uri_path: "index.html",
                 uri_query: None,
+                #[cfg(feature = "directory-listing")]
                 dir_listing: false,
+                #[cfg(feature = "directory-listing")]
                 dir_listing_order: 6,
+                #[cfg(feature = "directory-listing")]
                 dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: true,
                 compression_static: false,
@@ -1140,8 +1223,11 @@ mod tests {
                 base_path: &root_dir,
                 uri_path: ".dotfile",
                 uri_query: None,
+                #[cfg(feature = "directory-listing")]
                 dir_listing: false,
+                #[cfg(feature = "directory-listing")]
                 dir_listing_order: 6,
+                #[cfg(feature = "directory-listing")]
                 dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: true,
                 compression_static: true,

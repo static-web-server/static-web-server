@@ -84,6 +84,8 @@
 //! `compression-deflate` | Activates auto-compression/compression static with only the `deflate` algorithm.
 //! `compression-gzip` | Activates auto-compression/compression static with only the `gzip` algorithm.
 //! `compression-zstd` | Activates auto-compression/compression static with only the `zstd` algorithm.
+//! [**Directory Listing**](https://static-web-server.net/features/directory-listing/) |
+//! `directory-listing` | Activates the directory listing feature.
 //!
 
 #![deny(missing_docs)]
@@ -110,6 +112,8 @@ pub mod compression_static;
 pub mod control_headers;
 pub mod cors;
 pub mod custom_headers;
+#[cfg(feature = "directory-listing")]
+#[cfg_attr(docsrs, doc(cfg(feature = "directory-listing")))]
 pub mod directory_listing;
 pub mod error_page;
 pub mod exts;

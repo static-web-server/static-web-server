@@ -38,7 +38,8 @@ path = "src/bin/server.rs"
 doc = false
 
 [features]
-default = ["compression", "http2"]
+# All features enabled by default
+default = ["compression", "http2", "directory-listing"]
 # HTTP2
 http2 = ["tokio-rustls", "rustls-pemfile"]
 # Compression
@@ -47,6 +48,8 @@ compression-brotli = ["async-compression/brotli"]
 compression-deflate = ["async-compression/deflate"]
 compression-gzip = ["async-compression/deflate"]
 compression-zstd = ["async-compression/zstd"]
+# Directory listing
+directory-listing = ["humansize", "chrono"]
 
 [dependencies]
 anyhow = "1.0"
@@ -59,7 +62,7 @@ globset = { version = "0.4", features = ["serde1"] }
 headers = { package = "headers-accept-encoding", version = "1.0" }
 http = "0.2"
 http-serde = "1.1"
-humansize = { version = "2.1", features = ["impl_style"] }
+humansize = { version = "2.1", features = ["impl_style"], optional = true }
 hyper = { version = "0.14", features = ["stream", "http1", "http2", "tcp", "server"] }
 listenfd = "1.0"
 mime_guess = "2.0"
@@ -71,7 +74,7 @@ serde = { version = "1.0", default-features = false, features = ["derive"] }
 serde_ignored = "0.1"
 serde_repr = "0.1"
 clap = { version = "4.3", features = ["derive", "env"] }
-chrono = { version = "0.4", default-features = false, features = ["std", "clock"] }
+chrono = { version = "0.4", default-features = false, features = ["std", "clock"], optional = true }
 tokio = { version = "1", default-features = false, features = ["rt-multi-thread", "macros", "fs", "io-util", "signal"] }
 tokio-rustls = { version = "0.24", optional = true }
 tokio-util = { version = "0.7", default-features = false, features = ["io"] }

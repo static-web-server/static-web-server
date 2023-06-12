@@ -31,7 +31,10 @@ use crate::compression_static;
 
 use crate::exts::http::{MethodExt, HTTP_SUPPORTED_METHODS};
 use crate::exts::path::PathExt;
-use crate::{directory_listing, directory_listing::DirListFmt, Result};
+use crate::Result;
+
+#[cfg(feature = "directory-listing")]
+use crate::{directory_listing, directory_listing::DirListFmt};
 
 /// Defines all options needed by the static-files handler.
 pub struct HandleOpts<'a> {
@@ -46,10 +49,13 @@ pub struct HandleOpts<'a> {
     /// Request URI query.
     pub uri_query: Option<&'a str>,
     /// Directory listing feature.
+    #[cfg(feature = "directory-listing")]
     pub dir_listing: bool,
     /// Directory listing order feature.
+    #[cfg(feature = "directory-listing")]
     pub dir_listing_order: u8,
     /// Directory listing format feature.
+    #[cfg(feature = "directory-listing")]
     pub dir_listing_format: &'a DirListFmt,
     /// Redirect trailing slash feature.
     pub redirect_trailing_slash: bool,
@@ -125,6 +131,7 @@ pub async fn handle<'a>(opts: &HandleOpts<'a>) -> Result<(Response<Body>, bool),
         // Check if "directory listing" feature is enabled,
         // if current path is a valid directory and
         // if it does not contain an `index.html` file (if a proper auto index is generated)
+        #[cfg(feature = "directory-listing")]
         if opts.dir_listing && !file_path.exists() {
             let resp = directory_listing::auto_index(
                 method,
