@@ -25,11 +25,23 @@ pub struct General {
     /// Host port
     pub port: u16,
 
-    #[arg(
-        long,
-        short = 'f',
-        env = "SERVER_LISTEN_FD",
-        conflicts_with_all(&["host", "port", "https_redirect"])
+    #[cfg_attr(
+        feature = "http2",
+        arg(
+            long,
+            short = 'f',
+            env = "SERVER_LISTEN_FD",
+            conflicts_with_all(&["host", "port", "https_redirect"])
+        )
+    )]
+    #[cfg_attr(
+        not(feature = "http2"),
+        arg(
+            long,
+            short = 'f',
+            env = "SERVER_LISTEN_FD",
+            conflicts_with_all(&["host", "port"])
+        )
     )]
     /// Instead of binding to a TCP port, accept incoming connections to an already-bound TCP
     /// socket listener on the specified file descriptor number (usually zero). Requires that the

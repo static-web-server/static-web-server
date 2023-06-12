@@ -6,9 +6,7 @@
 //! Server module intended to construct a multi-thread HTTP or HTTP/2 web server.
 //!
 
-use hyper::server::conn::AddrStream;
 use hyper::server::Server as HyperServer;
-use hyper::service::{make_service_fn, service_fn};
 use listenfd::ListenFd;
 use std::net::{IpAddr, SocketAddr, TcpListener};
 use std::sync::Arc;
@@ -21,11 +19,12 @@ use crate::signals;
 #[cfg(feature = "http2")]
 use {
     crate::tls::{TlsAcceptor, TlsConfigBuilder},
-    hyper::server::conn::AddrIncoming,
+    crate::{error, error_page, https_redirect},
+    hyper::server::conn::{AddrIncoming, AddrStream},
+    hyper::service::{make_service_fn, service_fn},
 };
 
-use crate::https_redirect;
-use crate::{cors, error, error_page, helpers, logger, Settings};
+use crate::{cors, helpers, logger, Settings};
 use crate::{service::RouterService, Context, Result};
 
 /// Define a multi-thread HTTP or HTTP/2 web server.

@@ -204,6 +204,7 @@ impl Settings {
                     if let Some(v) = general.https_redirect_from_hosts {
                         https_redirect_from_hosts = v
                     }
+                    #[cfg(feature = "http2")]
                     match general.security_headers {
                         Some(v) => security_headers = v,
                         _ => {
@@ -211,6 +212,10 @@ impl Settings {
                                 security_headers = true;
                             }
                         }
+                    }
+                    #[cfg(not(feature = "http2"))]
+                    if let Some(v) = general.security_headers {
+                        security_headers = v
                     }
                     if let Some(ref v) = general.cors_allow_origins {
                         cors_allow_origins = v.to_owned()
