@@ -1,16 +1,21 @@
 # Docker
 
-`SWS` has first-class [Docker](https://docs.docker.com/get-started/overview/) support. It provides a [Scratch](https://hub.docker.com/_/scratch) as well as the latest [Alpine Linux](https://hub.docker.com/_/alpine) Docker images.
+`SWS` has first-class [Docker](https://docs.docker.com/get-started/overview/) support.
+
+It is provided in three Docker image variants such as [Scratch](https://hub.docker.com/_/scratch), [Alpine](https://hub.docker.com/_/alpine) and [Debian](https://hub.docker.com/_/debian) images.
 
 ## OS/Arch
 
-Only the following operating systems and architectures are supported.
+All Docker images are [Multi-Arch](https://www.docker.com/blog/how-to-rapidly-build-multi-architecture-images-with-buildx/) and the following operating systems and architectures are supported.
 
 - `linux/386`
 - `linux/amd64`
 - `linux/arm/v6`
 - `linux/arm/v7`
 - `linux/arm64`
+
+!!! tip "SWS statically-linked binary"
+    All the Docker images use the SWS statically-linked binary, meaning that the binary is highly-optimized, performant, and dependency-free thanks to [musl libc](https://www.musl-libc.org/).
 
 View all images on [Docker Hub](https://hub.docker.com/r/joseluisq/static-web-server/).
 
@@ -22,33 +27,48 @@ To give the server a quick try then just run the following commands.
     - [The SWS CLI arguments](/configuration/command-line-arguments/) can be provided directly to the container or omitted as shown below.
     - A Docker volume like `-v $HOME/my-public-dir:/public` can be specified to overwrite the default root directory.
 
-Run the scratch Docker image (just the binary)
+To run SWS, there are several Docker image variants that you can use.
+
+**Scratch** image variant (just the binary)
 
 ```sh
 docker run --rm -it -p 8787:80 joseluisq/static-web-server:2 -g info
 ```
 
-Or run the Alpine Docker image variant
+**Alpine** Docker image variant
 
 ```sh
 docker run --rm -it -p 8787:80 joseluisq/static-web-server:2-alpine -g info
+```
+
+**Debian** Docker image variant
+
+```sh
+docker run --rm -it -p 8787:80 joseluisq/static-web-server:2-debian -g info
 ```
 
 ## Dockerfile
 
 SWS Docker images can be extended as needed.
 
-Extending the scratch Docker image (just the binary)
+Extending the **Scratch** Docker image (just the binary)
 
 ```Dockerfile
 FROM joseluisq/static-web-server:2
 # do stuff...
 ```
 
-Or the Alpine Docker image variant
+Or the **Alpine** Docker image variant
 
 ```Dockerfile
 FROM joseluisq/static-web-server:2-alpine
+# do stuff...
+```
+
+Or the **Debian** Docker image variant
+
+```Dockerfile
+FROM joseluisq/static-web-server:2-debian
 # do stuff...
 ```
 

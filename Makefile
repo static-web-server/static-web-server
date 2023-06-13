@@ -125,6 +125,15 @@ docker.image.alpine:
 		-t joseluisq/${PKG_NAME}:devel-alpine . --pull=true
 .PHONY: docker.image.alpine
 
+docker.image.debian:
+	@echo "Creating Docker Alpine image..."
+	@cp -frp ./target/x86_64-unknown-linux-gnu/release/static-web-server ./docker/devel/
+	@docker build \
+		--platform="linux/x86_64" \
+		--rm=true -f ./docker/devel/Dockerfile.debian \
+		-t joseluisq/${PKG_NAME}:devel-debian . --pull=true
+.PHONY: docker.image.debian
+
 
 #######################################
 ########## Production tasks ###########
