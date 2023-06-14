@@ -40,6 +40,8 @@ Feature | Description
 `compression-zstd` | Activates auto-compression/compression static with only the `zstd` algorithm.
 [**Directory Listing**](./features/directory-listing.md) |
 `directory-listing` | Activates the directory listing feature.
+[**Basic Authorization**](./features/basic-authentication.md) |
+`basic-auth` | Activates the Basic HTTP Authorization Schema feature.
 
 ### Disable all default features
 

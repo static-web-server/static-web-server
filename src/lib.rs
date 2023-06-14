@@ -86,6 +86,8 @@
 //! `compression-zstd` | Activates auto-compression/compression static with only the `zstd` algorithm.
 //! [**Directory Listing**](https://static-web-server.net/features/directory-listing/) |
 //! `directory-listing` | Activates the directory listing feature.
+//! [**Basic Authorization**](./features/basic-authentication.md) |
+//! `basic-auth` | Activates the Basic HTTP Authorization Schema feature.
 //!
 
 #![deny(missing_docs)]
@@ -102,6 +104,8 @@ extern crate anyhow;
 extern crate serde;
 
 // Public modules
+#[cfg(feature = "basic-auth")]
+#[cfg_attr(docsrs, doc(cfg(feature = "basic-auth")))]
 pub mod basic_auth;
 #[cfg(feature = "compression")]
 #[cfg_attr(docsrs, doc(cfg(feature = "compression")))]
