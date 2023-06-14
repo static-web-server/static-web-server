@@ -7,14 +7,17 @@
 //!
 
 use headers::HeaderValue;
-use hyper::{header::WWW_AUTHENTICATE, Body, Request, Response, StatusCode};
+use hyper::{Body, Request, Response, StatusCode};
 use std::{future::Future, net::IpAddr, net::SocketAddr, path::PathBuf, sync::Arc};
 
 #[cfg(feature = "compression")]
 use crate::compression;
 
+#[cfg(feature = "basic-auth")]
+use {crate::basic_auth, hyper::header::WWW_AUTHENTICATE};
+
 use crate::{
-    basic_auth, control_headers, cors, custom_headers, error_page,
+    control_headers, cors, custom_headers, error_page,
     exts::http::MethodExt,
     fallback_page, redirects, rewrites, security_headers,
     settings::Advanced,
@@ -56,6 +59,7 @@ pub struct RequestHandlerOpts {
     /// Page fallback feature.
     pub page_fallback: Vec<u8>,
     /// Basic auth feature.
+    #[cfg(feature = "basic-auth")]
     pub basic_auth: String,
     /// Log remote address feature.
     pub log_remote_address: bool,
@@ -156,6 +160,7 @@ impl RequestHandler {
                 };
             }
 
+            #[cfg(feature = "basic-auth")]
             // `Basic` HTTP Authorization Schema
             if !self.opts.basic_auth.is_empty() {
                 if let Some((user_id, password)) = self.opts.basic_auth.split_once(':') {

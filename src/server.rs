@@ -223,8 +223,10 @@ impl Server {
             general.cors_expose_headers.trim(),
         );
 
+        #[cfg(feature = "basic-auth")]
         // `Basic` HTTP Authentication Schema option
         let basic_auth = general.basic_auth.trim().to_owned();
+        #[cfg(feature = "basic-auth")]
         tracing::info!(
             "basic authentication: enabled={}",
             !general.basic_auth.is_empty()
@@ -267,6 +269,7 @@ impl Server {
                 page404: page404.clone(),
                 page50x: page50x.clone(),
                 page_fallback,
+                #[cfg(feature = "basic-auth")]
                 basic_auth,
                 log_remote_address,
                 redirect_trailing_slash,

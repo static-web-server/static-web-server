@@ -113,7 +113,9 @@ impl Settings {
         #[cfg(feature = "directory-listing")]
         let mut directory_listing_format = opts.directory_listing_format;
 
+        #[cfg(feature = "basic-auth")]
         let mut basic_auth = opts.basic_auth;
+
         let mut fd = opts.fd;
         let mut threads_multiplier = opts.threads_multiplier;
         let mut max_blocking_threads = opts.max_blocking_threads;
@@ -238,6 +240,7 @@ impl Settings {
                     if let Some(v) = general.directory_listing_format {
                         directory_listing_format = v
                     }
+                    #[cfg(feature = "basic-auth")]
                     if let Some(ref v) = general.basic_auth {
                         basic_auth = v.to_owned()
                     }
@@ -404,6 +407,7 @@ impl Settings {
                 directory_listing_order,
                 #[cfg(feature = "directory-listing")]
                 directory_listing_format,
+                #[cfg(feature = "basic-auth")]
                 basic_auth,
                 fd,
                 threads_multiplier,
