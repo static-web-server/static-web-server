@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _**Note:** See changelog for v1 under the [1.x](https://github.com/static-web-server/static-web-server/blob/1.x/CHANGELOG.md) branch._
 
+## v2.19.0 - 2023-06-16
+
+This new `v2.19.0` release brings several dependency updates/bug fixes (including minor versions), a new [Debian 12 "bookworm"](https://www.debian.org/News/2023/20230610) Docker image, more Cargo features for controlling the SWS feature set when building, bug fixes for the SWS crate and one regression for the `fallback-page` feature, documentation for cross-compiling SWS from source using [Zig as a linker](https://andrewkelley.me/post/zig-cc-powerful-drop-in-replacement-gcc-clang.html) as well as other improvements.
+
+__Fixes__
+
+- [d258803](https://github.com/static-web-server/static-web-server/commit/d258803) Bugfix/security dependency updates including clap, async-compression, zstd, tokio-rustls, toml, pin-project, form_urlencoded, percent-encoding and other crates.
+- [3e4bd47](https://github.com/static-web-server/static-web-server/commit/3e4bd47) Value is required for `fallback-page` when using empty values. PR [#219](https://github.com/static-web-server/static-web-server/pull/219) fixes [#218](https://github.com/static-web-server/static-web-server/issues/218) reported by [@OdyX](https://github.com/OdyX)
+- [558fd96](https://github.com/static-web-server/static-web-server/commit/558fd96) Lib: Unresolved/unused imports when disabling all Cargo features.
+- [911a1c2](https://github.com/static-web-server/static-web-server/commit/911a1c2) Misc: Fix some module typos.
+- [b751b40](https://github.com/static-web-server/static-web-server/commit/b751b40) CI: Wrong release tag for checksums workflow.
+
+__Features__
+
+- [3adf75e](https://github.com/static-web-server/static-web-server/commit/3adf75e) Docker: [Debian 12 "bookworm"](https://www.debian.org/News/2023/20230610) Docker image using statically-linked binary (musl libc). See [docs](https://static-web-server.net/features/docker/).
+- [79a93f6](https://github.com/static-web-server/static-web-server/commit/79a93f6) Lib: `directory-listing` Cargo feature. PR [#220](https://github.com/static-web-server/static-web-server/pull/220). See [docs](https://static-web-server.net/building-from-source/#building-project-from-source).
+- [a8144d6](https://github.com/static-web-server/static-web-server/commit/a8144d6) Lib: `basic-auth` Cargo feature. PR [#221](https://github.com/static-web-server/static-web-server/pull/221). See [docs](https://static-web-server.net/building-from-source/#building-project-from-source).
+- [680c8aa](https://github.com/static-web-server/static-web-server/commit/680c8aa) Lib: `fallback-page` Cargo feature. PR [#222](https://github.com/static-web-server/static-web-server/pull/222). See [docs](https://static-web-server.net/building-from-source/#building-project-from-source).
+
+__Refactorings__
+
+- [986b663](https://github.com/static-web-server/static-web-server/commit/986b663) Lib: Enable Crate `docsrs` config flag.
+- [9e635bd](https://github.com/static-web-server/static-web-server/commit/9e635bd) Lib: Improve Cargo docs for some SWS features.
+- [a0f92f5](https://github.com/static-web-server/static-web-server/commit/a0f92f5) CI: Post-release updates script.
+
+__Docs__
+
+- [379f88b](https://github.com/static-web-server/static-web-server/commit/379f88b) Cross-compile SWS from source using [Zig as a linker](https://andrewkelley.me/post/zig-cc-powerful-drop-in-replacement-gcc-clang.html). See [docs](https://static-web-server.net/building-from-source/#cross-compiling).
+
 ## v2.18.0 - 2023-06-07
 
 This new `v2.18.0` release brings several dependency updates/bug fixes, bug fixes for the `security-headers` and `page-fallback` features, the C runtime in Windows x86_64 is now statically linked, possibility to use CLI boolean flags without explicit values as well as some refactorings and improvements.
