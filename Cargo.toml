@@ -39,7 +39,7 @@ doc = false
 
 [features]
 # All features enabled by default
-default = ["compression", "http2", "directory-listing", "basic-auth"]
+default = ["compression", "http2", "directory-listing", "basic-auth", "fallback-page"]
 # HTTP2
 http2 = ["tokio-rustls", "rustls-pemfile"]
 # Compression
@@ -52,6 +52,8 @@ compression-zstd = ["async-compression/zstd"]
 directory-listing = ["humansize", "chrono"]
 # Basic HTTP Authorization
 basic-auth = ["bcrypt"]
+# Fallback Page
+fallback-page = []
 
 [dependencies]
 anyhow = "1.0"

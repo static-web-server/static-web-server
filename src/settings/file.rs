@@ -192,6 +192,8 @@ pub struct General {
     pub grace_period: Option<u8>,
 
     /// Page fallback feature.
+    #[cfg(feature = "fallback-page")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "fallback-page")))]
     pub page_fallback: Option<PathBuf>,
 
     /// Log remote address feature.

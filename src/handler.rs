@@ -16,10 +16,13 @@ use crate::compression;
 #[cfg(feature = "basic-auth")]
 use {crate::basic_auth, hyper::header::WWW_AUTHENTICATE};
 
+#[cfg(feature = "fallback-page")]
+use crate::fallback_page;
+
 use crate::{
     control_headers, cors, custom_headers, error_page,
     exts::http::MethodExt,
-    fallback_page, redirects, rewrites, security_headers,
+    redirects, rewrites, security_headers,
     settings::Advanced,
     static_files::{self, HandleOpts},
     Error, Result,
@@ -57,6 +60,8 @@ pub struct RequestHandlerOpts {
     /// Page for 50x errors.
     pub page50x: Vec<u8>,
     /// Page fallback feature.
+    #[cfg(feature = "fallback-page")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "fallback-page")))]
     pub page_fallback: Vec<u8>,
     /// Basic auth feature.
     #[cfg(feature = "basic-auth")]
@@ -304,6 +309,7 @@ impl RequestHandler {
                 }
                 Err(status) => {
                     // Check for a fallback response
+                    #[cfg(feature = "fallback-page")]
                     if method.is_get()
                         && status == StatusCode::NOT_FOUND
                         && !self.opts.page_fallback.is_empty()
@@ -368,7 +374,7 @@ impl RequestHandler {
                         return Ok(resp);
                     }
 
-                    // Otherwise return a response error
+                    // Otherwise return an error response
                     error_page::error_response(
                         uri,
                         method,
