@@ -152,19 +152,25 @@ impl Server {
         let page404 = helpers::read_bytes_default(&general.page404);
         let page50x = helpers::read_bytes_default(&general.page50x);
 
-        // Fallback page content
+        // Fallback page option
+        #[cfg(feature = "fallback-page")]
         let page_fallback_pbuf = general.page_fallback;
+        #[cfg(feature = "fallback-page")]
         let page_fallback = helpers::read_bytes_default(&page_fallback_pbuf);
-        let page_fallback_enabled = !page_fallback.is_empty();
-        let mut page_fallback_opt = "";
-        if page_fallback_enabled {
-            page_fallback_opt = page_fallback_pbuf.to_str().unwrap()
+        #[cfg(feature = "fallback-page")]
+        {
+            let page_fallback_enabled = !page_fallback.is_empty();
+            let mut page_fallback_opt = "";
+            if page_fallback_enabled {
+                page_fallback_opt = page_fallback_pbuf.to_str().unwrap()
+            }
+
+            tracing::info!(
+                "fallback page: enabled={}, value=\"{}\"",
+                page_fallback_enabled,
+                page_fallback_opt
+            );
         }
-        tracing::info!(
-            "fallback page: enabled={}, value=\"{}\"",
-            page_fallback_enabled,
-            page_fallback_opt
-        );
 
         // Number of worker threads option
         let threads = self.worker_threads;
@@ -268,6 +274,7 @@ impl Server {
                 cache_control_headers,
                 page404: page404.clone(),
                 page50x: page50x.clone(),
+                #[cfg(feature = "fallback-page")]
                 page_fallback,
                 #[cfg(feature = "basic-auth")]
                 basic_auth,

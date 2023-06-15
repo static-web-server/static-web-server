@@ -42,6 +42,8 @@ Feature | Description
 `directory-listing` | Activates the directory listing feature.
 [**Basic Authorization**](./features/basic-authentication.md) |
 `basic-auth` | Activates the Basic HTTP Authorization Schema feature.
+[**Fallback Page**](./features/error-pages.md#fallback-page-for-use-with-client-routers) |
+`fallback-page` | Activates the Fallback Page feature.
 
 ### Disable all default features
 

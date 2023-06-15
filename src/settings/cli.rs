@@ -8,8 +8,6 @@
 use clap::Parser;
 use std::path::PathBuf;
 
-use crate::Result;
-
 #[cfg(feature = "directory-listing")]
 use crate::directory_listing::DirListFmt;
 
@@ -117,6 +115,8 @@ pub struct General {
     /// HTML file path for 404 errors. If the path is not specified or simply doesn't exist then the server will use a generic HTML error message.
     pub page404: PathBuf,
 
+    #[cfg(feature = "fallback-page")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "fallback-page")))]
     #[arg(long, default_value = "", value_parser = value_parser_pathbuf, env = "SERVER_FALLBACK_PAGE")]
     /// HTML file path that is used for GET requests when the requested path doesn't exist. The fallback page is served with a 200 status code, useful when using client routers. If the path is not specified or simply doesn't exist then this feature will not be active.
     pub page_fallback: PathBuf,
@@ -415,6 +415,7 @@ pub enum Commands {
     Uninstall {},
 }
 
-fn value_parser_pathbuf(s: &str) -> Result<PathBuf, String> {
+#[cfg(feature = "fallback-page")]
+fn value_parser_pathbuf(s: &str) -> crate::Result<PathBuf, String> {
     Ok(PathBuf::from(s))
 }

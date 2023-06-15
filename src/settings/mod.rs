@@ -120,7 +120,10 @@ impl Settings {
         let mut threads_multiplier = opts.threads_multiplier;
         let mut max_blocking_threads = opts.max_blocking_threads;
         let mut grace_period = opts.grace_period;
+
+        #[cfg(feature = "fallback-page")]
         let mut page_fallback = opts.page_fallback;
+
         let mut log_remote_address = opts.log_remote_address;
         let mut redirect_trailing_slash = opts.redirect_trailing_slash;
         let mut ignore_hidden_files = opts.ignore_hidden_files;
@@ -256,6 +259,7 @@ impl Settings {
                     if let Some(v) = general.grace_period {
                         grace_period = v
                     }
+                    #[cfg(feature = "fallback-page")]
                     if let Some(v) = general.page_fallback {
                         page_fallback = v
                     }
@@ -413,6 +417,7 @@ impl Settings {
                 threads_multiplier,
                 max_blocking_threads,
                 grace_period,
+                #[cfg(feature = "fallback-page")]
                 page_fallback,
                 log_remote_address,
                 redirect_trailing_slash,

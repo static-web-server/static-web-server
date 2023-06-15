@@ -88,6 +88,8 @@
 //! `directory-listing` | Activates the directory listing feature.
 //! [**Basic Authorization**](./features/basic-authentication.md) |
 //! `basic-auth` | Activates the Basic HTTP Authorization Schema feature.
+//! [**Fallback Page**](./features/error-pages.md#fallback-page-for-use-with-client-routers) |
+//! `fallback-page` | Activates the Fallback Page feature.
 //!
 
 #![deny(missing_docs)]
@@ -121,6 +123,8 @@ pub mod custom_headers;
 pub mod directory_listing;
 pub mod error_page;
 pub mod exts;
+#[cfg(feature = "fallback-page")]
+#[cfg_attr(docsrs, doc(cfg(feature = "fallback-page")))]
 pub mod fallback_page;
 pub mod handler;
 #[cfg(feature = "http2")]
