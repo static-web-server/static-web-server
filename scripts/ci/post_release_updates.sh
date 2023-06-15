@@ -77,13 +77,19 @@ done < <(cat "$release_dir/$checksum_file_name")
 
 sed -i '' "s/{{RELEASE_VERSION}}/$SERVER_VERSION/g" docs/content/download-and-install.md
 sed -i '' "s/{{RELEASE_VERSION_NUM}}/$server_version_num/g" docs/content/download-and-install.md
+echo "Download and install pages updated!"
+
+# Update current installer script version
+sed -i '' "s/version=\".*\"/version=\"$server_version_num\"/g" scripts/installer.sh
+echo "Installer script $server_version_num version updated!"
 
 echo
-echo "Committing checksum page updates..."
+echo "Committing post release page updates..."
 git config user.name "github-actions"
 git config user.email "actions@users.noreply.github.com"
 git add docs/content/download-and-install.md
-git commit -m "docs: $SERVER_VERSION [skip ci]" || exit 0
+git add scripts/installer.sh
+git commit -m "chore: release $SERVER_VERSION updates [skip ci]" || exit 0
 git push
 
-echo "Checksums page updated successfully!"
+echo "All changes after release were done successfully!"
