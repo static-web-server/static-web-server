@@ -55,10 +55,10 @@ basic-auth = ["bcrypt"]
 
 [dependencies]
 anyhow = "1.0"
-async-compression = { version = "0.3", default-features = false, optional = true, features = ["brotli", "deflate", "gzip", "zstd", "tokio"] }
+async-compression = { version = "0.4", default-features = false, optional = true, features = ["brotli", "deflate", "gzip", "zstd", "tokio"] }
 bcrypt = { version = "0.14", optional = true }
 bytes = "1.4"
-form_urlencoded = "1.1"
+form_urlencoded = "1.2"
 futures-util = { version = "0.3", default-features = false, features = ["sink"] }
 globset = { version = "0.4", features = ["serde1"] }
 headers = { package = "headers-accept-encoding", version = "1.0" }
@@ -69,8 +69,8 @@ hyper = { version = "0.14", features = ["stream", "http1", "http2", "tcp", "serv
 listenfd = "1.0"
 mime_guess = "2.0"
 num_cpus = { version = "1.15" }
-percent-encoding = "2.2"
-pin-project = "1.0"
+percent-encoding = "2.3"
+pin-project = "1.1"
 rustls-pemfile = { version = "1.0", optional = true }
 serde = { version = "1.0", default-features = false, features = ["derive"] }
 serde_ignored = "0.1"
@@ -80,7 +80,7 @@ chrono = { version = "0.4", default-features = false, features = ["std", "clock"
 tokio = { version = "1", default-features = false, features = ["rt-multi-thread", "macros", "fs", "io-util", "signal"] }
 tokio-rustls = { version = "0.24", optional = true }
 tokio-util = { version = "0.7", default-features = false, features = ["io"] }
-toml = "0.5"
+toml = "0.7"
 tracing = { version = "0.1", default-features = false, features = ["std"] }
 tracing-subscriber = { version = "0.3", default-features = false, features = ["smallvec", "parking_lot", "fmt", "ansi", "tracing-log"] }
 
