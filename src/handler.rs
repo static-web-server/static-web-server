@@ -42,11 +42,14 @@ pub struct RequestHandlerOpts {
     pub compression_static: bool,
     /// Directory listing feature.
     #[cfg(feature = "directory-listing")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "directory-listing")))]
     pub dir_listing: bool,
     /// Directory listing order feature.
     #[cfg(feature = "directory-listing")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "directory-listing")))]
     pub dir_listing_order: u8,
     #[cfg(feature = "directory-listing")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "directory-listing")))]
     /// Directory listing format feature.
     pub dir_listing_format: DirListFmt,
     /// CORS feature.
@@ -65,6 +68,7 @@ pub struct RequestHandlerOpts {
     pub page_fallback: Vec<u8>,
     /// Basic auth feature.
     #[cfg(feature = "basic-auth")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "basic-auth")))]
     pub basic_auth: String,
     /// Log remote address feature.
     pub log_remote_address: bool,

@@ -138,6 +138,7 @@ pub mod server;
 pub mod service;
 pub mod settings;
 #[cfg(any(unix, windows))]
+#[cfg_attr(docsrs, doc(cfg(any(unix, windows))))]
 pub mod signals;
 pub mod static_files;
 #[cfg(feature = "http2")]
@@ -145,6 +146,7 @@ pub mod static_files;
 pub mod tls;
 pub mod transport;
 #[cfg(windows)]
+#[cfg_attr(docsrs, doc(cfg(windows)))]
 pub mod winservice;
 #[macro_use]
 pub mod error;

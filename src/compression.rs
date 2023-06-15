@@ -115,6 +115,7 @@ pub fn auto(
 /// Create a wrapping handler that compresses the Body of a [`Response`](hyper::Response)
 /// using gzip, adding `content-encoding: gzip` to the Response's [`HeaderMap`](hyper::HeaderMap)
 #[cfg(feature = "compression-gzip")]
+#[cfg_attr(docsrs, doc(cfg(feature = "compression-gzip")))]
 pub fn gzip(
     mut head: http::response::Parts,
     body: CompressableBody<Body, hyper::Error>,
@@ -131,6 +132,7 @@ pub fn gzip(
 /// Create a wrapping handler that compresses the Body of a [`Response`](hyper::Response)
 /// using deflate, adding `content-encoding: deflate` to the Response's [`HeaderMap`](hyper::HeaderMap)
 #[cfg(feature = "compression-deflate")]
+#[cfg_attr(docsrs, doc(cfg(feature = "compression-deflate")))]
 pub fn deflate(
     mut head: http::response::Parts,
     body: CompressableBody<Body, hyper::Error>,
@@ -152,6 +154,7 @@ pub fn deflate(
 /// Create a wrapping handler that compresses the Body of a [`Response`](hyper::Response)
 /// using brotli, adding `content-encoding: br` to the Response's [`HeaderMap`](hyper::HeaderMap)
 #[cfg(feature = "compression-brotli")]
+#[cfg_attr(docsrs, doc(cfg(feature = "compression-brotli")))]
 pub fn brotli(
     mut head: http::response::Parts,
     body: CompressableBody<Body, hyper::Error>,
@@ -171,6 +174,7 @@ pub fn brotli(
 /// Create a wrapping handler that compresses the Body of a [`Response`](hyper::Response)
 /// using zstd, adding `content-encoding: zstd` to the Response's [`HeaderMap`](hyper::HeaderMap)
 #[cfg(feature = "compression-zstd")]
+#[cfg_attr(docsrs, doc(cfg(feature = "compression-zstd")))]
 pub fn zstd(
     mut head: http::response::Parts,
     body: CompressableBody<Body, hyper::Error>,

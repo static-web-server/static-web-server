@@ -6,8 +6,6 @@
 //! It provides directory listig and auto-index support.
 //!
 
-#![allow(missing_docs)]
-
 use chrono::{DateTime, Local, NaiveDateTime, Utc};
 use clap::ValueEnum;
 use futures_util::future::Either;
@@ -29,7 +27,9 @@ use crate::{exts::http::MethodExt, Context, Result};
 #[serde(rename_all = "lowercase")]
 /// Directory listing output format for file entries.
 pub enum DirListFmt {
+    /// HTML format to display (default).
     Html,
+    /// JSON format to display.
     Json,
 }
 

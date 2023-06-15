@@ -135,25 +135,32 @@ pub struct General {
 
     /// HTTP/2 + TLS.
     #[cfg(feature = "http2")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "http2")))]
     pub http2: Option<bool>,
     /// Http2 tls certificate feature.
     #[cfg(feature = "http2")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "http2")))]
     pub http2_tls_cert: Option<PathBuf>,
     /// Http2 tls key feature.
     #[cfg(feature = "http2")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "http2")))]
     pub http2_tls_key: Option<PathBuf>,
 
     /// Redirect all HTTP requests to HTTPS.
     #[cfg(feature = "http2")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "http2")))]
     pub https_redirect: Option<bool>,
     /// HTTP host port where the redirect server will listen for requests to redirect them to HTTPS.
     #[cfg(feature = "http2")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "http2")))]
     pub https_redirect_host: Option<String>,
     /// Host port for redirecting HTTP requests to HTTPS.
     #[cfg(feature = "http2")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "http2")))]
     pub https_redirect_from_port: Option<u16>,
     /// List of host names or IPs allowed to redirect from.
     #[cfg(feature = "http2")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "http2")))]
     pub https_redirect_from_hosts: Option<String>,
 
     /// Security headers.
@@ -168,15 +175,20 @@ pub struct General {
 
     /// Directory listing feature.
     #[cfg(feature = "directory-listing")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "directory-listing")))]
     pub directory_listing: Option<bool>,
     /// Directory listing order feature.
     #[cfg(feature = "directory-listing")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "directory-listing")))]
     pub directory_listing_order: Option<u8>,
     /// Directory listing format feature.
     #[cfg(feature = "directory-listing")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "directory-listing")))]
     pub directory_listing_format: Option<DirListFmt>,
 
     /// Basich Authentication feature.
+    #[cfg(feature = "basic-auth")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "basic-auth")))]
     pub basic_auth: Option<String>,
 
     /// File descriptor binding feature.

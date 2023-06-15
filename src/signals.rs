@@ -18,6 +18,7 @@ use {
 use {std::sync::Arc, tokio::sync::watch::Receiver, tokio::sync::Mutex};
 
 #[cfg(unix)]
+#[cfg_attr(docsrs, doc(cfg(unix)))]
 /// It creates a common list of signals stream for `SIGTERM`, `SIGINT` and `SIGQUIT` to be observed.
 pub fn create_signals() -> Result<Signals> {
     Ok(Signals::new([SIGHUP, SIGTERM, SIGINT, SIGQUIT])?)
@@ -58,6 +59,7 @@ async fn delay_graceful_shutdown(grace_period_secs: u8) {
 }
 
 #[cfg(windows)]
+#[cfg_attr(docsrs, doc(cfg(windows)))]
 /// It waits for an incoming `ctrl+c` signal on Windows.
 pub async fn wait_for_ctrl_c(cancel_recv: Arc<Mutex<Option<Receiver<()>>>>, grace_period_secs: u8) {
     if let Some(receiver) = &mut *cancel_recv.lock().await {

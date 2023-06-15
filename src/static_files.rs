@@ -50,12 +50,15 @@ pub struct HandleOpts<'a> {
     pub uri_query: Option<&'a str>,
     /// Directory listing feature.
     #[cfg(feature = "directory-listing")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "directory-listing")))]
     pub dir_listing: bool,
     /// Directory listing order feature.
     #[cfg(feature = "directory-listing")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "directory-listing")))]
     pub dir_listing_order: u8,
     /// Directory listing format feature.
     #[cfg(feature = "directory-listing")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "directory-listing")))]
     pub dir_listing_format: &'a DirListFmt,
     /// Redirect trailing slash feature.
     pub redirect_trailing_slash: bool,
