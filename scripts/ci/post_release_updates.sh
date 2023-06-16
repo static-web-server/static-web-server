@@ -57,6 +57,11 @@ release_date=$(date +%Y-%m-%d)
 filename_version="static-web-server-$SERVER_VERSION"
 filename_version_num="static-web-server-$server_version_num"
 
+sed_fname=""
+if [[ $(uname -s) = "Darwin" ]]; then
+    sed_fname=" ''"
+fi
+
 # Replace placeholder occurrences
 sed "s/{{RELEASE_DATE}}/$release_date/g" docs/content/download-and-install.tmpl.md > docs/content/download-and-install.md
 
@@ -64,23 +69,26 @@ while read -r line; do
     checksum=$(echo $line | awk -F ' ' '{print $1}')
     filename=$(echo $line | awk -F ' ' '{print $2}')
     placeholder_checksum=$(echo $filename | sed "s/^$filename_version-//")
-    sed -i '' "s/{{$placeholder_checksum}}/$checksum/" docs/content/download-and-install.md
 
     if [[ "$placeholder_checksum" = "$filename_version_num.tar.gz" ]]; then
-        sed -i '' "s/{{SRC_TAR}}/$checksum/" docs/content/download-and-install.md
+        sed -i$sed_fname -e "s/{{SRC_TAR}}/$checksum/" docs/content/download-and-install.md
+        continue
     fi
 
     if [[ "$placeholder_checksum" = "$filename_version_num.zip" ]]; then
-        sed -i '' "s/{{SRC_ZIP}}/$checksum/" docs/content/download-and-install.md
+        sed -i$sed_fname -e "s/{{SRC_ZIP}}/$checksum/" docs/content/download-and-install.md
+        continue
     fi
+
+    sed -i$sed_fname -e "s/{{$placeholder_checksum}}/$checksum/" docs/content/download-and-install.md
 done < <(cat "$release_dir/$checksum_file_name")
 
-sed -i '' "s/{{RELEASE_VERSION}}/$SERVER_VERSION/g" docs/content/download-and-install.md
-sed -i '' "s/{{RELEASE_VERSION_NUM}}/$server_version_num/g" docs/content/download-and-install.md
-echo "Download and install pages updated!"
+sed -i$sed_fname -e "s/{{RELEASE_VERSION}}/$SERVER_VERSION/g" docs/content/download-and-install.md
+sed -i$sed_fname -e "s/{{RELEASE_VERSION_NUM}}/$server_version_num/g" docs/content/download-and-install.md
+echo "Download and install page updated!"
 
 # Update current installer script version
-sed -i '' "s/version=\".*\"/version=\"$server_version_num\"/g" scripts/installer.sh
+sed -i$sed_fname -e "s/version=\".*\"/version=\"$server_version_num\"/g" $cwd/scripts/installer.sh
 echo "Installer script $server_version_num version updated!"
 
 echo
