@@ -2,7 +2,7 @@
 
 **`SWS`** provides support to serve pre-compressed [`Gzip`](https://datatracker.ietf.org/doc/html/rfc1952), [`Brotli`](https://www.ietf.org/rfc/rfc7932.txt) and [`Zstandard` (zstd)](https://datatracker.ietf.org/doc/html/rfc8878) files directly from the disk.
 
-SWS can look up existing pre-compressed file variants (`.gz`, `.br` or `zst`) on disk and serve them directly.
+SWS can look up existing pre-compressed file variants (`.gz`, `.br` or `.zst`) on disk and serve them directly.
 
 The feature is disabled by default and can be controlled by the boolean `--compression-static` option or the equivalent [SERVER_COMPRESSION_STATIC](./../configuration/environment-variables.md#server_compression_static) env.
 

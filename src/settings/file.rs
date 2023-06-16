@@ -186,7 +186,7 @@ pub struct General {
     #[cfg_attr(docsrs, doc(cfg(feature = "directory-listing")))]
     pub directory_listing_format: Option<DirListFmt>,
 
-    /// Basich Authentication feature.
+    /// Basic Authentication feature.
     #[cfg(feature = "basic-auth")]
     #[cfg_attr(docsrs, doc(cfg(feature = "basic-auth")))]
     pub basic_auth: Option<String>,

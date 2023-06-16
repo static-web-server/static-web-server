@@ -31,27 +31,28 @@ page50x = "./public/50x.html"
 
 #### HTTP/2 + TLS
 http2 = false
-# http2-tls-cert = "some.cert"
-# http2-tls-key = "some.key"
+http2-tls-cert = ""
+http2-tls-key = ""
+https-redirect = false
+https-redirect-host = "localhost"
+https-redirect-from-port = 80
+https-redirect-from-hosts = "localhost"
 
-#### Security headers
-security-headers = true
-
-#### CORS
-cors-allow-origins = ""
-cors-allow-headers = ""
+#### CORS & Security headers
+# security-headers = true
+# cors-allow-origins = ""
 
 #### Directory listing
 directory-listing = false
 
 #### Directory listing sorting code
-directory-listing-order = 6
+directory-listing-order = 1
 
-#### Directory listing content format ("html" or "json")
+#### Directory listing content format
 directory-listing-format = "html"
 
-#### Basich Authentication
-basic-auth = ""
+#### Basic Authentication
+# basic-auth = ""
 
 #### File descriptor binding
 # fd = ""
@@ -63,7 +64,7 @@ threads-multiplier = 1
 grace-period = 0
 
 #### Page fallback for 404s
-# page-fallback = "some_page.html"
+# page-fallback = ""
 
 #### Log request Remote Address if available
 log-remote-address = false
@@ -72,26 +73,58 @@ log-remote-address = false
 redirect-trailing-slash = true
 
 #### Check for existing pre-compressed files
-compression-static = false
-
-#### Ignore hidden files/directories (dotfiles)
-ignore-hidden-files = false
-
+compression-static = true
 
 ### Windows Only
 
-#### Windows Service support.
-#### NOTE: this doesn't create a Windows Service per se,
-#### instead, it just tells SWS to run in a Windows Service context,
-#### so it's necessary to install the SWS Windows Service first
-#### using the `static-web-server.exe -w config.toml install` command.
-#### More details on https://static-web-server.net/features/windows-service/
+#### Run the web server as a Windows Service
 # windows-service = false
 
 
 [advanced]
 
-#### ....
+#### HTTP Headers customization (examples only)
+
+#### a. Oneline version
+# [[advanced.headers]]
+# source = "**/*.{js,css}"
+# headers = { Access-Control-Allow-Origin = "*" }
+
+#### b. Multiline version
+# [[advanced.headers]]
+# source = "/index.html"
+# [advanced.headers.headers]
+# Cache-Control = "public, max-age=36000"
+# Content-Security-Policy = "frame-ancestors 'self'"
+# Strict-Transport-Security = "max-age=63072000; includeSubDomains; preload"
+
+#### c. Multiline version with explicit key (dotted)
+# [[advanced.headers]]
+# source = "**/*.{jpg,jpeg,png,ico,gif}"
+# headers.Strict-Transport-Security = "max-age=63072000; includeSubDomains; preload"
+
+
+### URL Redirects (examples only)
+
+# [[advanced.redirects]]
+# source = "**/*.{jpg,jpeg}"
+# destination = "/images/generic1.png"
+# kind = 301
+
+# [[advanced.redirects]]
+# source = "/index.html"
+# destination = "https://static-web-server.net"
+# kind = 302
+
+### URL Rewrites (examples only)
+
+# [[advanced.rewrites]]
+# source = "**/*.{png,ico,gif}"
+# destination = "/assets/favicon.ico"
+
+# [[advanced.rewrites]]
+# source = "**/*.{jpg,jpeg}"
+# destination = "/images/sws.png"
 ```
 
 ### General options

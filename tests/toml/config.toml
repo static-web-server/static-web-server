@@ -40,7 +40,7 @@ directory-listing-order = 1
 #### Directory listing content format
 directory-listing-format = "json"
 
-#### Basich Authentication
+#### Basic Authentication
 basic-auth = ""
 
 #### File descriptor binding
@@ -63,7 +63,7 @@ log-remote-address = false
 redirect-trailing-slash = true
 
 #### Check for existing pre-compressed files
-compression-static = true
+compression-static = false
 
 ### Windows Only
 

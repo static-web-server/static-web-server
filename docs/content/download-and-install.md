@@ -13,7 +13,7 @@ Latest **v2.19.0** release `2023-06-16` ([changelog](https://github.com/static-w
 See also [the release history](https://github.com/static-web-server/static-web-server/releases) on GitHub.
 
 !!! info "Docker"
-    If you are working with Docker containers then check out [the Docker page](https://static-web-server.net/features/docker/).
+    If you are working with Docker containers then check out [the Docker feature page](https://static-web-server.net/features/docker/).
 
 ## Installation methods
 

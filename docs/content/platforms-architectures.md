@@ -3,7 +3,7 @@
 Currently, only the following platforms/architectures are supported.
 
 !!! tip "Docker tip"
-    For Docker images supported list see [Docker OS/Arch](/features/docker/#osarch).
+    For the list of Docker images supported see [Docker OS/Arch](/features/docker/#osarch) page.
 
 ## Linux
 

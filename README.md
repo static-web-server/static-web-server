@@ -34,7 +34,7 @@ Written on top of [Hyper](https://github.com/hyperium/hyper) and [Tokio](https:/
 
 It's cross-platform and available for `Linux`, `macOS`, `Windows` and `FreeBSD` (`x86`/`x86_64`,  `ARM`/`ARM64`) and `Docker`.
 
-![static-web-server](https://user-images.githubusercontent.com/1700322/152613820-658f025c-d0a4-46b3-aa6d-bdc7f638ce77.png)
+![static-web-server running](https://github.com/static-web-server/static-web-server/assets/1700322/102bef12-1f30-4054-a1bc-30c650d4ffa7)
 
 ## Features
 
@@ -51,7 +51,7 @@ It's cross-platform and available for `Linux`, `macOS`, `Windows` and `FreeBSD` 
 - [Security headers](https://web.dev/security-headers/) for HTTP/2 by default.
 - [HEAD](https://tools.ietf.org/html/rfc7231#section-4.3.2) responses.
 - Lightweight and configurable logging via [tracing](https://github.com/tokio-rs/tracing) crate.
-- A Customizable number of worker threads.
+- Customizable number of blocking and worker threads.
 - Optional directory listing.
 - [CORS](https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS) support.
 - Basic HTTP Authentication.
@@ -63,7 +63,7 @@ It's cross-platform and available for `Linux`, `macOS`, `Windows` and `FreeBSD` 
 - HTTP to HTTPS redirect.
 - Support for serving pre-compressed (Gzip/Brotli/Zstd) files.
 - Custom URL rewrites and redirects via glob patterns.
-- First-class [Docker](https://docs.docker.com/get-started/overview/) support. [Scratch](https://hub.docker.com/_/scratch) and latest [Alpine Linux](https://hub.docker.com/_/alpine) Docker images.
+- First-class [Docker](https://docs.docker.com/get-started/overview/) support. [Scratch](https://hub.docker.com/_/scratch), latest [Alpine Linux](https://hub.docker.com/_/alpine) and [Debian](https://hub.docker.com/_/alpine) Docker images.
 - Ability to accept a socket listener as a file descriptor for sandboxing and on-demand applications (e.g [systemd](http://0pointer.de/blog/projects/socket-activation.html)).
 - Cross-platform. Pre-compiled binaries for Linux, macOS, Windows, FreeBSD and Android (`x86`,`x86_64`,`ARM`,`ARM64`).
 

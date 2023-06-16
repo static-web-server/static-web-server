@@ -62,10 +62,10 @@ If you want to cross-compile SWS then consider using [Zig](https://github.com/zi
 
 Let's say, you want to cross-compile SWS from macOS to Linux. Then follow these steps.
 
-1. Add the necessary toolchain, for example: `rustup target add x86_64-unknown-linux-gnu` or using `rustup target add x86_64-unknown-linux-musl` if a statically-linked binary is wanted.
+1. Add the necessary toolchain, for example just type: `rustup target add x86_64-unknown-linux-gnu` or `rustup target add x86_64-unknown-linux-musl` if a statically-linked binary is wanted.
 2. Install the latest [Zig](https://github.com/ziglang/zig) version via `brew install zig`
 3. Install [cargo-zigbuild](https://github.com/rust-cross/cargo-zigbuild) via `cargo install cargo-zigbuild`
-4. Finally, just build SWS as follows:
+4. Finally, build SWS as follows:
     ```sh
     # dynamically-linked binary
     cargo zigbuild --verbose --release --target=x86_64-unknown-linux-gnu

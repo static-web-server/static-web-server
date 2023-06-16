@@ -35,7 +35,7 @@
 //!
 //! It's cross-platform and available for `Linux`, `macOS`, `Windows` and `FreeBSD` (`x86`/`x86_64`,  `ARM`/`ARM64`) as well as `Docker`.
 //!
-//! ![static-web-server](https://user-images.githubusercontent.com/1700322/152613820-658f025c-d0a4-46b3-aa6d-bdc7f638ce77.png)
+//! ![static-web-server](https://github.com/static-web-server/static-web-server/assets/1700322/102bef12-1f30-4054-a1bc-30c650d4ffa7)
 //!
 //! ## Features
 //!
