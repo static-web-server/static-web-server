@@ -38,7 +38,7 @@ version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "819e7219dbd41043ac279b19830f2efc897156490d7fd6ea916720117ee66311"
 dependencies = [
- "libc 0.2.139 (git+https://github.com/wasix-org/libc.git)",
+ "libc",
 ]
 
 [[package]]
@@ -231,7 +231,7 @@ version = "0.2.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "280a9f2d8b3a38871a3c8a46fb80db65e5e5ed97da80c4d08bf27fb63e35e181"
 dependencies = [
- "libc 0.2.139 (git+https://github.com/wasix-org/libc.git)",
+ "libc",
 ]
 
 [[package]]
@@ -353,12 +353,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "futures"
+version = "0.3.28"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "23342abe12aba583913b2e62f22225ff9c950774065e4bfb61a19cd9770fec40"
+dependencies = [
+ "futures-channel",
+ "futures-core",
+ "futures-executor",
+ "futures-io",
+ "futures-sink",
+ "futures-task",
+ "futures-util",
+]
+
+[[package]]
 name = "futures-channel"
 version = "0.3.28"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "955518d47e09b25bbebc7a18df10b81f0c766eaf4c4f1cccef2fca5f2a4fb5f2"
 dependencies = [
  "futures-core",
+ "futures-sink",
 ]
 
 [[package]]
@@ -366,6 +382,34 @@ name = "futures-core"
 version = "0.3.28"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4bca583b7e26f571124fe5b7561d49cb2868d79116cfa0eefce955557c6fee8c"
+
+[[package]]
+name = "futures-executor"
+version = "0.3.28"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ccecee823288125bd88b4d7f565c9e58e41858e47ab72e8ea2d64e93624386e0"
+dependencies = [
+ "futures-core",
+ "futures-task",
+ "futures-util",
+]
+
+[[package]]
+name = "futures-io"
+version = "0.3.28"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4fff74096e71ed47f8e023204cfd0aa1289cd54ae5430a9523be060cdb849964"
+
+[[package]]
+name = "futures-macro"
+version = "0.3.28"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "89ca545a94061b6365f2c7355b4b32bd20df3ff95f02da9329b34ccc3bd6ee72"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.13",
+]
 
 [[package]]
 name = "futures-sink"
@@ -385,11 +429,16 @@ version = "0.3.28"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "26b01e40b772d54cf6c6d721c1d1abd0647a0106a12ecaa1c186273392a69533"
 dependencies = [
+ "futures-channel",
  "futures-core",
+ "futures-io",
+ "futures-macro",
  "futures-sink",
  "futures-task",
+ "memchr",
  "pin-project-lite",
  "pin-utils",
+ "slab",
 ]
 
 [[package]]
@@ -409,7 +458,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c05aeb6a22b8f62540c194aac980f2115af067bfe15a0734d7277a768d396b31"
 dependencies = [
  "cfg-if",
- "libc 0.2.139 (git+https://github.com/wasix-org/libc.git)",
+ "libc",
  "wasi 0.11.0+wasi-snapshot-preview1",
 ]
 
@@ -491,7 +540,7 @@ version = "0.2.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ee512640fe35acbfb4bb779db6f0d80704c2cacfa2e39b601ef3e3f47d1ae4c7"
 dependencies = [
- "libc 0.2.139 (git+https://github.com/wasix-org/libc.git)",
+ "libc",
 ]
 
 [[package]]
@@ -635,11 +684,6 @@ checksum = "e2abad23fbc42b3700f2f279844dc832adb2b2eb069b2df918f455c4e18cc646"
 [[package]]
 name = "libc"
 version = "0.2.139"
-source = "git+https://github.com/wasix-org/libc.git?branch=master#682f9e91246c73b5b5c2beb09594ca2f74ca77d3"
-
-[[package]]
-name = "libc"
-version = "0.2.139"
 source = "git+https://github.com/wasix-org/libc.git#682f9e91246c73b5b5c2beb09594ca2f74ca77d3"
 
 [[package]]
@@ -657,7 +701,7 @@ version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c02b14f35d9f5f082fd0b1b34aa0ef32e3354c859c721d7f3325b3f79a42ba54"
 dependencies = [
- "libc 0.2.139 (git+https://github.com/wasix-org/libc.git)",
+ "libc",
  "uuid",
  "winapi",
 ]
@@ -717,7 +761,7 @@ name = "mio"
 version = "0.8.3"
 source = "git+https://github.com/wasix-org/mio.git?branch=wasix#efdfc79c84d1791fd709fcb8b1c9e0d343c58bf0"
 dependencies = [
- "libc 0.2.139 (git+https://github.com/wasix-org/libc.git)",
+ "libc",
  "log",
  "wasi 0.11.0+wasi-snapshot-preview1",
  "wasix",
@@ -760,7 +804,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0fac9e2da13b5eb447a6ce3d392f23a29d8694bff781bf03a16cd9ac8697593b"
 dependencies = [
  "hermit-abi",
- "libc 0.2.139 (git+https://github.com/wasix-org/libc.git)",
+ "libc",
 ]
 
 [[package]]
@@ -798,7 +842,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9069cbb9f99e3a5083476ccb29ceb1de18b9118cafa53e90c9551235de2b9521"
 dependencies = [
  "cfg-if",
- "libc 0.2.139 (git+https://github.com/wasix-org/libc.git)",
+ "libc",
  "redox_syscall",
  "smallvec",
  "windows-sys 0.45.0",
@@ -917,7 +961,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3053cf52e236a3ed746dfc745aa9cacf1b791d846bdaf412f60a8d7d6e17c8fc"
 dependencies = [
  "cc",
- "libc 0.2.139 (git+https://github.com/wasix-org/libc.git)",
+ "libc",
  "once_cell",
  "spin",
  "untrusted",
@@ -1058,7 +1102,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "732768f1176d21d09e076c23a93123d40bba92d50c4058da34d45c8de8e682b9"
 dependencies = [
  "cc",
- "libc 0.2.139 (git+https://github.com/wasix-org/libc.git)",
+ "libc",
  "signal-hook-registry",
 ]
 
@@ -1068,7 +1112,7 @@ version = "1.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d8229b473baa5980ac72ef434c4415e70c4b5e71b423043adb4ba059f89c99a1"
 dependencies = [
- "libc 0.2.139 (git+https://github.com/wasix-org/libc.git)",
+ "libc",
 ]
 
 [[package]]
@@ -1078,7 +1122,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "213241f76fb1e37e27de3b6aa1b068a2c333233b59cca6634f634b80a27ecf1e"
 dependencies = [
  "futures-core",
- "libc 0.2.139 (git+https://github.com/wasix-org/libc.git)",
+ "libc",
  "signal-hook",
  "tokio",
 ]
@@ -1103,7 +1147,7 @@ name = "socket2"
 version = "0.4.7"
 source = "git+https://github.com/wasix-org/socket2.git?branch=v0.4.7#6852c76cd63c0b68a2f3506cebe1f1a4b7ee7bf1"
 dependencies = [
- "libc 0.2.139 (git+https://github.com/wasix-org/libc.git)",
+ "libc",
  "windows-sys 0.36.1",
 ]
 
@@ -1247,7 +1291,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a678df20055b43e57ef8cddde41cdfda9a3c1a060b67f4c5836dfb1d78543ba8"
 dependencies = [
  "cc",
- "libc 0.2.139 (git+https://github.com/wasix-org/libc.git)",
+ "libc",
 ]
 
 [[package]]
@@ -1256,7 +1300,7 @@ version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "20612db8a13a6c06d57ec83953694185a367e16945f66565e8028d2c0bd76979"
 dependencies = [
- "libc 0.2.139 (git+https://github.com/wasix-org/libc.git)",
+ "libc",
  "tikv-jemalloc-sys",
 ]
 
@@ -1266,7 +1310,7 @@ version = "0.1.45"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1b797afad3f312d1c66a56d11d0316f916356d11bd158fbc6ca6389ff6bf805a"
 dependencies = [
- "libc 0.2.139 (git+https://github.com/wasix-org/libc.git)",
+ "libc",
  "wasi 0.10.0+wasi-snapshot-preview1",
  "winapi",
 ]
@@ -1274,11 +1318,12 @@ dependencies = [
 [[package]]
 name = "tokio"
 version = "1.24.2"
-source = "git+https://github.com/wasix-org/tokio.git?branch=wasix-1.24.2#630188516ed54ead1f441ecc65d8be6dc490c8d8"
+source = "git+https://github.com/wasix-org/tokio.git?branch=async-io#4f06dc9be9a201a71d5caa4cfa794869565b0e80"
 dependencies = [
  "autocfg",
  "bytes",
- "libc 0.2.139 (git+https://github.com/wasix-org/libc.git?branch=master)",
+ "futures",
+ "libc",
  "memchr",
  "mio",
  "num_cpus",
@@ -1293,7 +1338,7 @@ dependencies = [
 [[package]]
 name = "tokio-macros"
 version = "1.8.0"
-source = "git+https://github.com/wasix-org/tokio.git?branch=wasix-1.24.2#630188516ed54ead1f441ecc65d8be6dc490c8d8"
+source = "git+https://github.com/wasix-org/tokio.git?branch=async-io#4f06dc9be9a201a71d5caa4cfa794869565b0e80"
 dependencies = [
  "proc-macro2",
  "quote",
