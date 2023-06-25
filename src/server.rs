@@ -18,6 +18,7 @@ use crate::{service::RouterService, Context, Result};
 /// Define a multi-thread HTTP or HTTP/2 web server.
 pub struct Server {
     opts: Settings,
+    cpus: usize,
     worker_threads: usize,
     max_blocking_threads: usize,
 }
@@ -35,9 +36,10 @@ impl Server {
             n => cpus * n,
         };
         let max_blocking_threads = opts.general.max_blocking_threads;
-
+        
         Ok(Server {
             opts,
+            cpus,
             worker_threads,
             max_blocking_threads,
         })
@@ -141,6 +143,9 @@ impl Server {
 
         // Fallback page content
         let page_fallback = helpers::read_bytes_default(&general.page_fallback.unwrap_or_default());
+
+        // Number of CPUs
+        tracing::info!("number cpus: {}", self.cpus);
 
         // Number of worker threads option
         let threads = self.worker_threads;
