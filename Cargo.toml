@@ -56,8 +56,8 @@ serde_ignored = "0.1"
 structopt = { version = "0.3", default-features = false }
 serde_repr = "0.1"
 chrono = { version = "0.4", default-features = false, features = ["std", "clock"] }
-tokio = { path = "../tokio/tokio", default-features = false, features = ["rt-multi-thread", "macros", "fs", "io-util", "signal"]  }
-#tokio = { git = "https://github.com/wasix-org/tokio.git", branch = "epoll", default-features = false, features = ["rt-multi-thread", "macros", "fs", "io-util", "signal"] }
+#tokio = { path = "../tokio/tokio", default-features = false, features = ["rt-multi-thread", "macros", "fs", "io-util", "signal"]  }
+tokio = { git = "https://github.com/wasix-org/tokio.git", branch = "epoll", default-features = false, features = ["rt-multi-thread", "macros", "fs", "io-util", "signal"] }
 tokio-rustls = { version = "0.23", optional = true }
 tokio-util = { version = "0.7", default-features = false, features = ["io"] }
 toml = "0.5"
@@ -82,8 +82,8 @@ serde_json = "1.0"
 [patch.crates-io]
 socket2 = { git = "https://github.com/wasix-org/socket2.git", branch = "v0.4.7" }
 libc = { git = "https://github.com/wasix-org/libc.git" }
-tokio = { path = "../tokio/tokio" }
-#tokio = { git = "https://github.com/wasix-org/tokio.git", branch = "epoll" }
+#tokio = { path = "../tokio/tokio" }
+tokio = { git = "https://github.com/wasix-org/tokio.git", branch = "epoll" }
 
 [profile.release]
 codegen-units = 1
