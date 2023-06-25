@@ -35,7 +35,7 @@ pub struct General {
     #[structopt(
         long,
         short = "n",
-        default_value = "4",
+        default_value = "8",
         env = "SERVER_THREADS_MULTIPLIER"
     )]
     /// Number of worker threads multiplier that'll be multiplied by the number of system CPUs
