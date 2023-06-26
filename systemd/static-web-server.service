@@ -52,7 +52,10 @@ StandardError=journal
 Restart=always
 RestartSec=5
 DynamicUser=true
+
+# Make sure to change this value with an existing user 
 SupplementaryGroups=www-data
+
 NoNewPrivileges=yes
 PrivateTmp=yes
 ProtectSystem=strict
