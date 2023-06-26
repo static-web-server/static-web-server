@@ -21,6 +21,8 @@ pub use cli::Commands;
 
 use cli::General;
 
+use self::file::RedirectsKind;
+
 /// The `headers` file options.
 pub struct Headers {
     /// Source pattern glob matcher
@@ -35,6 +37,8 @@ pub struct Rewrites {
     pub source: GlobMatcher,
     /// A local file that must exist
     pub destination: String,
+    /// Optional redirect type either 301 (Moved Permanently) or 302 (Found).
+    pub redirect: Option<RedirectsKind>,
 }
 
 /// The `Redirects` file options.
@@ -327,6 +331,7 @@ impl Settings {
                                 rewrites_vec.push(Rewrites {
                                     source,
                                     destination: rewrites_entry.destination.to_owned(),
+                                    redirect: rewrites_entry.redirect.to_owned(),
                                 });
                             }
                             Some(rewrites_vec)
