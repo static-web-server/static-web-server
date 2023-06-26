@@ -74,7 +74,7 @@ pub struct Redirects {
     pub source: String,
     /// Redirect destination.
     pub destination: String,
-    /// Redirect type.
+    /// Redirect type either 301 (Moved Permanently) or 302 (Found).
     pub kind: RedirectsKind,
 }
 
@@ -86,6 +86,8 @@ pub struct Rewrites {
     pub source: String,
     /// Rewrite destination.
     pub destination: String,
+    /// Optional redirect type either 301 (Moved Permanently) or 302 (Found).
+    pub redirect: Option<RedirectsKind>,
 }
 
 /// Advanced server options only available in configuration file mode.

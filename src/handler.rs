@@ -23,7 +23,7 @@ use crate::{
     control_headers, cors, custom_headers, error_page,
     exts::http::MethodExt,
     redirects, rewrites, security_headers,
-    settings::Advanced,
+    settings::{file::RedirectsKind, Advanced},
     static_files::{self, HandleOpts},
     Error, Result,
 };
@@ -232,8 +232,30 @@ impl RequestHandler {
                 }
 
                 // Rewrites
-                if let Some(uri) = rewrites::rewrite_uri_path(uri_path, &advanced.rewrites) {
-                    uri_path = uri
+                if let Some(rewrite) = rewrites::rewrite_uri_path(uri_path, &advanced.rewrites) {
+                    uri_path = rewrite.destination.as_str();
+                    if let Some(redirect_type) = &rewrite.redirect {
+                        let loc = match HeaderValue::from_str(uri_path) {
+                            Ok(val) => val,
+                            Err(err) => {
+                                tracing::error!("invalid header value from current uri: {:?}", err);
+                                return error_page::error_response(
+                                    uri,
+                                    method,
+                                    &StatusCode::INTERNAL_SERVER_ERROR,
+                                    &self.opts.page404,
+                                    &self.opts.page50x,
+                                );
+                            }
+                        };
+                        let mut resp = Response::new(Body::empty());
+                        resp.headers_mut().insert(hyper::header::LOCATION, loc);
+                        *resp.status_mut() = match redirect_type {
+                            RedirectsKind::Permanent => StatusCode::MOVED_PERMANENTLY,
+                            RedirectsKind::Temporary => StatusCode::FOUND,
+                        };
+                        return Ok(resp);
+                    }
                 }
             }
 
