@@ -33,36 +33,49 @@ pub enum DirListFmt {
     Json,
 }
 
+/// Directory listing options.
+pub struct DirListOpts<'a> {
+    /// Request method.
+    pub method: &'a Method,
+    /// Current Request path.
+    pub current_path: &'a str,
+    /// URI Request query
+    pub uri_query: Option<&'a str>,
+    /// Request file path.
+    pub filepath: &'a Path,
+    /// Directory listing order.
+    pub dir_listing_order: u8,
+    /// Directory listing format.
+    pub dir_listing_format: &'a DirListFmt,
+    /// Ignore hidden files (dotfiles).
+    pub ignore_hidden_files: bool,
+}
+
 /// Provides directory listing support for the current request.
 /// Note that this function highly depends on `static_files::composed_file_metadata()` function
 /// which must be called first. See `static_files::handle()` for more details.
-pub fn auto_index<'a>(
-    method: &'a Method,
-    current_path: &'a str,
-    uri_query: Option<&'a str>,
-    filepath: &'a Path,
-    dir_listing_order: u8,
-    dir_listing_format: &'a DirListFmt,
-    ignore_hidden_files: bool,
-) -> impl Future<Output = Result<Response<Body>, StatusCode>> + Send + 'a {
+pub fn auto_index(
+    opts: DirListOpts<'_>,
+) -> impl Future<Output = Result<Response<Body>, StatusCode>> + Send + '_ {
     // Note: it's safe to call `parent()` here since `filepath`
     // value always refer to a path with file ending and under
     // a root directory boundary.
     // See `composed_file_metadata()` function which sanitizes the requested
     // path before to be delegated here.
+    let filepath = opts.filepath;
     let parent = filepath.parent().unwrap_or(filepath);
 
     tokio::fs::read_dir(parent).then(move |res| match res {
         Ok(dir_reader) => Either::Left(async move {
-            let is_head = method.is_head();
+            let is_head = opts.method.is_head();
             match read_dir_entries(
                 dir_reader,
-                current_path,
-                uri_query,
+                opts.current_path,
+                opts.uri_query,
                 is_head,
-                dir_listing_order,
-                dir_listing_format,
-                ignore_hidden_files,
+                opts.dir_listing_order,
+                opts.dir_listing_format,
+                opts.ignore_hidden_files,
             )
             .await
             {

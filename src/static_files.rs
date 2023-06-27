@@ -34,7 +34,10 @@ use crate::exts::path::PathExt;
 use crate::Result;
 
 #[cfg(feature = "directory-listing")]
-use crate::{directory_listing, directory_listing::DirListFmt};
+use crate::{
+    directory_listing,
+    directory_listing::{DirListFmt, DirListOpts},
+};
 
 /// Defines all options needed by the static-files handler.
 pub struct HandleOpts<'a> {
@@ -136,15 +139,15 @@ pub async fn handle<'a>(opts: &HandleOpts<'a>) -> Result<(Response<Body>, bool),
         // if it does not contain an `index.html` file (if a proper auto index is generated)
         #[cfg(feature = "directory-listing")]
         if opts.dir_listing && !file_path.exists() {
-            let resp = directory_listing::auto_index(
+            let resp = directory_listing::auto_index(DirListOpts {
                 method,
-                uri_path,
-                opts.uri_query,
-                file_path,
-                opts.dir_listing_order,
-                opts.dir_listing_format,
-                opts.ignore_hidden_files,
-            )
+                current_path: uri_path,
+                uri_query: opts.uri_query,
+                filepath: file_path,
+                dir_listing_order: opts.dir_listing_order,
+                dir_listing_format: opts.dir_listing_format,
+                ignore_hidden_files: opts.ignore_hidden_files,
+            })
             .await?;
 
             return Ok((resp, is_precompressed));
