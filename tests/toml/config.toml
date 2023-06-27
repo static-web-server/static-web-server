@@ -38,7 +38,7 @@ directory-listing = true
 directory-listing-order = 1
 
 #### Directory listing content format
-directory-listing-format = "json"
+directory-listing-format = "html"
 
 #### Basic Authentication
 basic-auth = ""
