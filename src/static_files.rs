@@ -571,7 +571,17 @@ async fn response_body(
                     if sub_len != len {
                         *resp.status_mut() = StatusCode::PARTIAL_CONTENT;
                         resp.headers_mut().typed_insert(
-                            ContentRange::bytes(start..end, len).expect("valid ContentRange"),
+                            match ContentRange::bytes(start..end, len) {
+                                Ok(range) => range,
+                                Err(err) => {
+                                    tracing::error!("invalid content range error: {:?}", err);
+                                    let mut resp = Response::new(Body::empty());
+                                    *resp.status_mut() = StatusCode::RANGE_NOT_SATISFIABLE;
+                                    resp.headers_mut()
+                                        .typed_insert(ContentRange::unsatisfied_bytes(len));
+                                    return Ok(resp);
+                                }
+                            },
                         );
 
                         len = sub_len;
