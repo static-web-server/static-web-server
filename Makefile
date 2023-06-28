@@ -262,14 +262,12 @@ crate-docs:
 
 crate-docs-dev:
 	@env \
-		RUSTFLAGS="--cfg docsrs" \
 		RUSTDOCFLAGS="--cfg docsrs" \
 			cargo doc --lib --no-deps --all-features --document-private-items
 	@echo "Crate documentation: http://localhost:8787/static_web_server"
 	@static-web-server -p 8787 -d target/doc/ \
 		& watchman-make -p 'src/**/*.rs' --run '\
 			env \
-				RUSTFLAGS="--cfg docsrs" \
 				RUSTDOCFLAGS="--cfg docsrs" \
 					cargo doc --lib --no-deps --all-features --document-private-items'
 .PHONY: crate-docs-dev

@@ -24,10 +24,6 @@ include = [
 autotests = true
 autoexamples = true
 
-[package.metadata.docs.rs]
-all-features = true
-rustc-args = ["--cfg", "docsrs"]
-
 [lib]
 name = "static_web_server"
 path = "src/lib.rs"
@@ -109,3 +105,7 @@ opt-level = 3
 panic = "abort"
 rpath = false
 strip = true
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
