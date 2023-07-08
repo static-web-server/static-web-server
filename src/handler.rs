@@ -6,7 +6,7 @@
 //! Request handler module intended to manage incoming HTTP requests.
 //!
 
-use headers::HeaderValue;
+use headers::{ContentType, HeaderMapExt, HeaderValue};
 use hyper::{Body, Request, Response, StatusCode};
 use std::{future::Future, net::IpAddr, net::SocketAddr, path::PathBuf, sync::Arc};
 
@@ -117,7 +117,8 @@ impl RequestHandler {
 
         let mut cors_headers: Option<http::HeaderMap> = None;
 
-        let health_request = health && uri_path == "/health" && method.is_get();
+        let health_request =
+            health && uri_path == "/health" && (method.is_get() || method.is_head());
 
         // Log request information with its remote address if available
         let mut remote_addr_str = String::new();
@@ -154,7 +155,14 @@ impl RequestHandler {
 
         async move {
             if health_request {
-                return Ok(Response::new(Body::from("OK")));
+                let body = if method.is_get() {
+                    Body::from("OK")
+                } else {
+                    Body::empty()
+                };
+                let mut resp = Response::new(body);
+                resp.headers_mut().typed_insert(ContentType::html());
+                return Ok(resp);
             }
 
             // Reject in case of incoming HTTP request method is not allowed
