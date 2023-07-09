@@ -109,8 +109,8 @@ kind = 302
 ### URL Rewrites
 
 [[advanced.rewrites]]
-source = "**/*.{png,gif}"
-destination = "/assets/favicon.ico"
+source = "**/{*}.{png,gif}"
+destination = "/assets/$1.$2"
 # redirect = 301
 
 [[advanced.rewrites]]
