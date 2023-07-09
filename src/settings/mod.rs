@@ -10,6 +10,7 @@ use clap::Parser;
 use globset::{Glob, GlobMatcher};
 use headers::HeaderMap;
 use hyper::StatusCode;
+use regex::Regex;
 
 use crate::{Context, Result};
 
@@ -34,7 +35,7 @@ pub struct Headers {
 /// The `Rewrites` file options.
 pub struct Rewrites {
     /// Source pattern glob matcher
-    pub source: GlobMatcher,
+    pub source: Regex,
     /// A local file that must exist
     pub destination: String,
     /// Optional redirect type either 301 (Moved Permanently) or 302 (Found).
@@ -327,6 +328,24 @@ impl Settings {
                                         )
                                     })?
                                     .compile_matcher();
+
+                                // NOTE: we don’t need Unicode-aware word boundary assertions,
+                                // therefore we use (?-u:\b) instead of (?-u)
+                                // so the former uses an ASCII-only definition of a word character.
+                                // https://docs.rs/regex/latest/regex/#unicode-can-impact-memory-usage-and-search-speed
+                                let pattern = source.glob().regex().replace("(?-u)^", "(?-u:\\b)");
+                                tracing::debug!(
+                                    "url rewrites glob pattern: {}",
+                                    &rewrites_entry.source
+                                );
+                                tracing::debug!("url rewrites regex equivalent: {}", pattern);
+
+                                let source = Regex::new(&pattern).with_context(|| {
+                                    format!(
+                                        "can not compile regex pattern equivalent for rewrite source: {}",
+                                        &pattern
+                                    )
+                                })?;
 
                                 rewrites_vec.push(Rewrites {
                                     source,

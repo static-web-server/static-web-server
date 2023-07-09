@@ -99,7 +99,7 @@ impl RequestHandler {
         let uri = req.uri();
 
         let base_path = &self.opts.root_dir;
-        let mut uri_path = uri.path();
+        let mut uri_path = uri.path().to_owned();
         let uri_query = uri.query();
         #[cfg(feature = "directory-listing")]
         let dir_listing = self.opts.dir_listing;
@@ -205,7 +205,7 @@ impl RequestHandler {
             // Advanced options
             if let Some(advanced) = &self.opts.advanced_opts {
                 // Redirects
-                if let Some(parts) = redirects::get_redirection(uri_path, &advanced.redirects) {
+                if let Some(parts) = redirects::get_redirection(&uri_path, &advanced.redirects) {
                     let (uri_dest, status) = parts;
                     match HeaderValue::from_str(uri_dest) {
                         Ok(loc) => {
@@ -232,10 +232,42 @@ impl RequestHandler {
                 }
 
                 // Rewrites
-                if let Some(rewrite) = rewrites::rewrite_uri_path(uri_path, &advanced.rewrites) {
-                    uri_path = rewrite.destination.as_str();
+                if let Some(rewrite) =
+                    rewrites::rewrite_uri_path(&uri_path.clone(), &advanced.rewrites)
+                {
+                    // Rewrites: Handle replacements (placeholders)
+                    if let Some(regex_caps) = rewrite.source.captures(&uri_path) {
+                        let caps_range = 0..regex_caps.len();
+                        let caps = caps_range
+                            .clone()
+                            .filter_map(|i| regex_caps.get(i).map(|s| s.as_str()))
+                            .collect::<Vec<&str>>();
+
+                        let patterns = caps_range
+                            .map(|i| format!("${}", i))
+                            .collect::<Vec<String>>();
+
+                        let dest = rewrite.destination.as_str();
+
+                        tracing::debug!("url rewrites glob pattern: {:?}", patterns);
+                        tracing::debug!("url rewrites regex equivalent: {}", rewrite.source);
+                        tracing::debug!("url rewrites glob pattern captures: {:?}", caps);
+                        tracing::debug!("url rewrites glob pattern destination: {:?}", dest);
+
+                        if let Ok(ac) = aho_corasick::AhoCorasick::new(patterns) {
+                            if let Ok(dest) = ac.try_replace_all(dest, &caps) {
+                                tracing::debug!(
+                                    "url rewrites glob pattern destination replaced: {:?}",
+                                    dest
+                                );
+                                uri_path = dest;
+                            }
+                        }
+                    }
+
+                    // Rewrites: Handle redirections
                     if let Some(redirect_type) = &rewrite.redirect {
-                        let loc = match HeaderValue::from_str(uri_path) {
+                        let loc = match HeaderValue::from_str(&uri_path) {
                             Ok(val) => val,
                             Err(err) => {
                                 tracing::error!("invalid header value from current uri: {:?}", err);
@@ -258,6 +290,8 @@ impl RequestHandler {
                     }
                 }
             }
+
+            let uri_path = &uri_path;
 
             // Static files
             match static_files::handle(&HandleOpts {
