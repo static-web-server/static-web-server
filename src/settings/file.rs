@@ -219,6 +219,9 @@ pub struct General {
     /// Ignore hidden files feature.
     pub ignore_hidden_files: Option<bool>,
 
+    /// Health endpoint feature.
+    pub health: Option<bool>,
+
     #[cfg(windows)]
     /// windows service feature.
     pub windows_service: Option<bool>,

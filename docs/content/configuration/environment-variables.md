@@ -105,6 +105,9 @@ Check for a trailing slash in the requested directory URI and redirect permanent
 ### SERVER_IGNORE_HIDDEN_FILES
 Ignore hidden files/directories (dotfiles), preventing them to be served and being included in auto HTML index pages (directory listing).
 
+### SERVER_HEALTH
+Activate the health endpoint.
+
 ## Windows
 The following options and commands are Windows platform-specific.
 

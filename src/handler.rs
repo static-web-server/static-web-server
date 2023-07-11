@@ -6,7 +6,7 @@
 //! Request handler module intended to manage incoming HTTP requests.
 //!
 
-use headers::HeaderValue;
+use headers::{ContentType, HeaderMapExt, HeaderValue};
 use hyper::{Body, Request, Response, StatusCode};
 use std::{future::Future, net::IpAddr, net::SocketAddr, path::PathBuf, sync::Arc};
 
@@ -76,6 +76,8 @@ pub struct RequestHandlerOpts {
     pub redirect_trailing_slash: bool,
     /// Ignore hidden files feature.
     pub ignore_hidden_files: bool,
+    /// Health endpoint feature.
+    pub health: bool,
 
     /// Advanced options from the config file.
     pub advanced_opts: Option<Advanced>,
@@ -111,8 +113,12 @@ impl RequestHandler {
         let redirect_trailing_slash = self.opts.redirect_trailing_slash;
         let compression_static = self.opts.compression_static;
         let ignore_hidden_files = self.opts.ignore_hidden_files;
+        let health = self.opts.health;
 
         let mut cors_headers: Option<http::HeaderMap> = None;
+
+        let health_request =
+            health && uri_path == "/health" && (method.is_get() || method.is_head());
 
         // Log request information with its remote address if available
         let mut remote_addr_str = String::new();
@@ -130,14 +136,35 @@ impl RequestHandler {
                 remote_addr_str.push_str(&client_ip_address.to_string())
             }
         }
-        tracing::info!(
-            "incoming request: method={} uri={}{}",
-            method,
-            uri,
-            remote_addr_str,
-        );
+
+        if health_request {
+            tracing::debug!(
+                "incoming request: method={} uri={}{}",
+                method,
+                uri,
+                remote_addr_str,
+            );
+        } else {
+            tracing::info!(
+                "incoming request: method={} uri={}{}",
+                method,
+                uri,
+                remote_addr_str,
+            );
+        }
 
         async move {
+            if health_request {
+                let body = if method.is_get() {
+                    Body::from("OK")
+                } else {
+                    Body::empty()
+                };
+                let mut resp = Response::new(body);
+                resp.headers_mut().typed_insert(ContentType::html());
+                return Ok(resp);
+            }
+
             // Reject in case of incoming HTTP request method is not allowed
             if !method.is_allowed() {
                 return error_page::error_response(

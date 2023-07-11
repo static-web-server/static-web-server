@@ -378,6 +378,19 @@ pub struct General {
     /// Ignore hidden files/directories (dotfiles), preventing them to be served and being included in auto HTML index pages (directory listing).
     pub ignore_hidden_files: bool,
 
+    #[arg(
+        long,
+        default_value = "false",
+        default_missing_value("true"),
+        num_args(0..=1),
+        require_equals(true),
+        action = clap::ArgAction::Set,
+        env = "SERVER_HEALTH",
+    )]
+    /// Add a /health endpoint that doesn't generate any log entry and returns a 200 status code.
+    /// This is especially useful with Kubernetes liveness and readiness probes.
+    pub health: bool,
+
     //
     // Windows specific arguments and commands
     //

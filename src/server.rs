@@ -257,6 +257,10 @@ impl Server {
         let grace_period = general.grace_period;
         tracing::info!("grace period before graceful shutdown: {}s", grace_period);
 
+        // Health endpoint option
+        let health = general.health;
+        tracing::info!("health endpoint: enabled={}", health);
+
         // Create a service router for Hyper
         let router_service = RouterService::new(RequestHandler {
             opts: Arc::from(RequestHandlerOpts {
@@ -281,6 +285,7 @@ impl Server {
                 log_remote_address,
                 redirect_trailing_slash,
                 ignore_hidden_files,
+                health,
                 advanced_opts,
             }),
         });
