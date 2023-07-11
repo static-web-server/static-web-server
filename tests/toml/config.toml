@@ -97,8 +97,8 @@ headers.Strict-Transport-Security = "max-age=63072000; includeSubDomains; preloa
 ### URL Redirects
 
 [[advanced.redirects]]
-source = "**/*.{jpg,jpeg}"
-destination = "/images/generic1.png"
+source = "**/{*}.{jpg,jpeg}"
+destination = "http://localhost/$1.$2"
 kind = 301
 
 [[advanced.redirects]]

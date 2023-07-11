@@ -34,7 +34,7 @@ pub struct Headers {
 
 /// The `Rewrites` file options.
 pub struct Rewrites {
-    /// Source pattern glob matcher
+    /// Source pattern Regex matcher
     pub source: Regex,
     /// A local file that must exist
     pub destination: String,
@@ -44,8 +44,8 @@ pub struct Rewrites {
 
 /// The `Redirects` file options.
 pub struct Redirects {
-    /// Source pattern glob matcher
-    pub source: GlobMatcher,
+    /// Source pattern Regex matcher
+    pub source: Regex,
     /// A local file that must exist
     pub destination: String,
     /// Redirection type either 301 (Moved Permanently) or 302 (Found)
@@ -377,6 +377,24 @@ impl Settings {
                                         )
                                     })?
                                     .compile_matcher();
+
+                                // NOTE: we don’t need Unicode-aware word boundary assertions,
+                                // therefore we use (?-u:\b) instead of (?-u)
+                                // so the former uses an ASCII-only definition of a word character.
+                                // https://docs.rs/regex/latest/regex/#unicode-can-impact-memory-usage-and-search-speed
+                                let pattern = source.glob().regex().replace("(?-u)^", "(?-u:\\b)");
+                                tracing::debug!(
+                                    "url rewrites glob pattern: {}",
+                                    &redirects_entry.source
+                                );
+                                tracing::debug!("url rewrites regex equivalent: {}", pattern);
+
+                                let source = Regex::new(&pattern).with_context(|| {
+                                    format!(
+                                        "can not compile regex pattern equivalent for rewrite source: {}",
+                                        &pattern
+                                    )
+                                })?;
 
                                 let status_code = redirects_entry.kind.to_owned() as u16;
                                 redirects_vec.push(Redirects {
