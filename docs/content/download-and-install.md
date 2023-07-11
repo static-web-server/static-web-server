@@ -40,8 +40,13 @@ yay -S static-web-server-bin
 Via [Nix](https://github.com/NixOS/nix) (Linux/MacOS)
 
 ```sh
+nix-shell -p static-web-server
+# or
 nix-env -iA nixpkgs.static-web-server
 ```
+
+- [SWS Nix package](https://search.nixos.org/packages?show=static-web-server&from=0&size=50&sort=relevance&type=packages&query=static-web-server) maintained by [@figsoda](https://github.com/figsoda)
+- [SWS Nix module](https://nixos.wiki/wiki/Static_Web_Server) maintained by [@mac-chaffee](https://github.com/mac-chaffee)
 
 ### MacOS
 
