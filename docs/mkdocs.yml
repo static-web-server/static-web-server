@@ -129,8 +129,8 @@ plugins:
 # Content Navigation
 nav:
   - 'Overview': 'index.md'
-  - 'Download and Install': 'download-and-install.md'
   - 'Getting Started': 'getting-started.md'
+  - 'Download and Install': 'download-and-install.md'
   - 'Configuration':
     - 'Command Line Arguments': 'configuration/command-line-arguments.md'
     - 'Environment Variables': 'configuration/environment-variables.md'
