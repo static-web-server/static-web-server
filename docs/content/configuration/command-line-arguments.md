@@ -32,7 +32,7 @@ Options:
       --page404 <PAGE404>
           HTML file path for 404 errors. If the path is not specified or simply doesn't exist then the server will use a generic HTML error message [env: SERVER_ERROR_PAGE_404=] [default: ./public/404.html]
       --page-fallback <PAGE_FALLBACK>
-          HTML file path that is used for GET requests when the requested path doesn't exist. The fallback page is served with a 200 status code, useful when using client routers. If the path is not specified or simply doesn't exist then this feature will not be active [env: SERVER_FALLBACK_PAGE=]
+          HTML file path that is used for GET requests when the requested path doesn't exist. The fallback page is served with a 200 status code, useful when using client routers. If the path is not specified or simply doesn't exist then this feature will not be active [env: SERVER_FALLBACK_PAGE=] [default: ]
   -g, --log-level <LOG_LEVEL>
           Specify a logging level in lower case. Values: error, warn, info, debug or trace [env: SERVER_LOG_LEVEL=] [default: error]
   -c, --cors-allow-origins <CORS_ALLOW_ORIGINS>
@@ -81,8 +81,10 @@ Options:
           Check for a trailing slash in the requested directory URI and redirect permanently (308) to the same path with a trailing slash suffix if it is missing [env: SERVER_REDIRECT_TRAILING_SLASH=] [default: true] [possible values: true, false]
       --ignore-hidden-files[=<IGNORE_HIDDEN_FILES>]
           Ignore hidden files/directories (dotfiles), preventing them to be served and being included in auto HTML index pages (directory listing) [env: SERVER_IGNORE_HIDDEN_FILES=] [default: false] [possible values: true, false]
+      --health[=<HEALTH>]
+          Add a /health endpoint that doesn't generate any log entry and returns a 200 status code. This is especially useful with Kubernetes liveness and readiness probes [env: SERVER_HEALTH=] [default: false] [possible values: true, false]
   -h, --help
-          Print help
+          Print help (see more with '--help')
   -V, --version
           Print version
 ```

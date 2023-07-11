@@ -7,6 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _**Note:** See changelog for v1 under the [1.x](https://github.com/static-web-server/static-web-server/blob/1.x/CHANGELOG.md) branch._
 
+## v2.20.0 - 2023-07-12
+
+This new `v2.20.0` release brings several dependency updates and bug fixes, advanced features like Glob pattern replacements for URL Redirects and Rewrites, a new health-check endpoint, GitHub Container Registry (GHCR) Docker images as well as other improvements.
+
+__Fixes__
+
+- [9b84786](https://github.com/static-web-server/static-web-server/commit/9b84786) Bugfix/security dependency updates including tokio, hyper, h2, rustls, clap, serde, toml and other crates (also [9b84786](https://github.com/static-web-server/static-web-server/commit/9b84786)).
+- [b8473aa](https://github.com/static-web-server/static-web-server/commit/b8473aa) Potential panic when invalid content range.
+- [2331c88](https://github.com/static-web-server/static-web-server/commit/2331c88) CI: Post-release update script.
+
+__Features__
+
+- [4a10635](https://github.com/static-web-server/static-web-server/commit/4a10635) Docker: GitHub Container Registry (GHCR) Docker images. PR [#232](https://github.com/static-web-server/static-web-server/pull/232). See [docs](https://static-web-server.net/features/docker/).
+- [06955e9](https://github.com/static-web-server/static-web-server/commit/06955e9) Redirect option for URL Rewrites feature. PR [#231](https://github.com/static-web-server/static-web-server/pull/231). See [docs](https://static-web-server.net/features/health-endpoint/).
+- [3a47ef6](https://github.com/static-web-server/static-web-server/commit/3a47ef6) Replacements support for URL Rewrites destination. PR [#235](https://github.com/static-web-server/static-web-server/pull/235). See [docs](https://static-web-server.net/features/url-rewrites/).
+- [7c66c5c](https://github.com/static-web-server/static-web-server/commit/7c66c5c) Replacements support for URL Redirects destination. PR [#239](https://github.com/static-web-server/static-web-server/pull/239). See [docs](https://static-web-server.net/features/url-redirects/).
+- [b42214b](https://github.com/static-web-server/static-web-server/commit/b42214b) Health-check endpoint. PR [#238](https://github.com/static-web-server/static-web-server/pull/238). See [docs](https://static-web-server.net/features/health-endpoint/).
+
+__Refactorings__
+
+- [1bce204](https://github.com/static-web-server/static-web-server/commit/1bce204) Improve auto index options.
+- [b2e4e49](https://github.com/static-web-server/static-web-server/commit/b2e4e49) Improve directory listing styling for HTML display.
+- [e23a06d](https://github.com/static-web-server/static-web-server/commit/e23a06d) Lib: Crate docs metadata.
+
+__Docs__
+
+- [506f54e](https://github.com/static-web-server/static-web-server/commit/506f54e) Systemd service example. See [docs](https://static-web-server.net/features/file-descriptor-socket-passing/#service-example).
+- [eb2887f](https://github.com/static-web-server/static-web-server/commit/eb2887f) Nix package and module maintainers. See [docs](https://static-web-server.net/features/file-descriptor-socket-passing/#service-example).
+- [031931f](https://github.com/static-web-server/static-web-server/commit/031931f) GHCR Docker images description. See [docs](https://static-web-server.net/features/docker/).
+- [21c90db](https://github.com/static-web-server/static-web-server/commit/21c90db) Several documentation improvements.
+
 ## v2.19.0 - 2023-06-16
 
 This new `v2.19.0` release brings several dependency updates/bug fixes (including minor versions), a new [Debian 12 "bookworm"](https://www.debian.org/News/2023/20230610) Docker image, more Cargo features for controlling the SWS feature set when building, bug fixes for the SWS crate and one regression for the `fallback-page` feature, documentation for cross-compiling SWS from source using [Zig as a linker](https://andrewkelley.me/post/zig-cc-powerful-drop-in-replacement-gcc-clang.html) as well as other improvements.

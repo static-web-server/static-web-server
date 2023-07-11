@@ -75,6 +75,9 @@ redirect-trailing-slash = true
 #### Check for existing pre-compressed files
 compression-static = true
 
+#### Health-check endpoint (GET or HEAD `/health`)
+health = false
+
 ### Windows Only
 
 #### Run the web server as a Windows Service
