@@ -1,7 +1,9 @@
 # Health endpoint
 
 SWS provides an optional `/health` endpoint that can be used to check if it is running properly.
-When queried, `/health` generates a log with at the `debug` level instead of the usual `info` level for a regular file.
+When the  `/health` is requested, SWS will generate a log only at the `debug` level instead of the usual `info` level for a regular file.
+
+The HTTP methods supported are `GET` and `HEAD`.
 
 This feature is disabled by default and can be controlled by the boolean `--health` option or the equivalent [SERVER_HEALTH](./../configuration/environment-variables.md#health) env.
 
