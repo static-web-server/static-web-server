@@ -1,6 +1,6 @@
 # URL Rewrites 
 
-**SWS** provides the ability to rewrite request URLs with pattern-matching support.
+**SWS** provides the ability to rewrite request URLs (routes) with Glob pattern-matching support.
 
 URI rewrites are particularly useful with pattern matching ([globs](https://en.wikipedia.org/wiki/Glob_(programming))), as the server can accept any URL that matches the pattern and let the client-side code decide what to display.
 
@@ -10,9 +10,9 @@ URL rewrite rules should be defined mainly as an [Array of Tables](https://toml.
 
 Each table entry should have two key/value pairs:
 
-- `source`: a key containing a string _glob pattern_.
-- `destination` a file path with optional replacements (placeholders).
-- `redirect` an optional number containing the HTTP response code (redirection).
+- `source`: key containing a string _glob pattern_.
+- `destination`: file path with optional replacements (placeholders).
+- `redirect`: optional number containing the HTTP response code (redirection).
 
 !!! info "Note"
     The incoming request(s) will reach the `destination` only if the request(s) URI matches the `source` pattern.
@@ -28,7 +28,7 @@ The glob pattern functionality is powered by the [globset](https://docs.rs/globs
 
 ### Destination
 
-The value can be either a local file path that maps to an existing file on the system or an external URL.
+The value can be either a local file path that maps to an existing file on the system or an external URL (URLs only in case of redirection).
 It could look like `/some/directory/file.html`. It is worth noting that the `/` at the beginning indicates the server's root directory.
 
 #### Replacements
@@ -56,23 +56,24 @@ The values can be:
 
 ### URL Rewrites
 
+# a. Simple route rewrite example
 [[advanced.rewrites]]
 source = "**/*.{png,ico,gif}"
 destination = "/assets/generic1.png"
 
-# a. Route rewrite example with redirection
+# b. Route rewrite example with redirection
 [[advanced.rewrites]]
 source = "**/*.{jpg,jpeg}"
 destination = "/images/generic2.png"
 ## NOTE: `redirect` can be omitted too
 redirect = 301
 
-# b. Route rewrite example with destination replacements
+# c. Route rewrite example with destination replacements
 [[advanced.rewrites]]
 ## Note that we're using curly braces to group the `*` wildcard.
 ## See https://docs.rs/globset/latest/globset/#syntax
 source = "**/{*}.{png,gif}"
-## For exmaple, the destination will result in `/assets/abcdef.png`
+## For example, the destination will result in `/assets/abcdef.png`
 destination = "/assets/$1.$2"
 ```
 
@@ -82,7 +83,7 @@ If you request something like:
 curl -I http://localhost/abcdef.png
 ```
 
-Then the Server logs should look like this:
+Then the server logs should look something like this:
 
 ```log
 2023-07-08T20:31:36.606035Z  INFO static_web_server::handler: incoming request: method=HEAD uri=/abcdef.png
