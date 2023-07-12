@@ -19,11 +19,11 @@ __Fixes__
 
 __Features__
 
-- [4a10635](https://github.com/static-web-server/static-web-server/commit/4a10635) Docker: GitHub Container Registry (GHCR) Docker images. PR [#232](https://github.com/static-web-server/static-web-server/pull/232). See [docs](https://static-web-server.net/features/docker/).
+- [4a10635](https://github.com/static-web-server/static-web-server/commit/4a10635) Docker: GitHub Container Registry (GHCR) Docker images. PR [#232](https://github.com/static-web-server/static-web-server/pull/232) resolves [#225](https://github.com/static-web-server/static-web-server/issues/225) suggested by [@jcgruenhage](https://github.com/jcgruenhage). See [docs](https://static-web-server.net/features/docker/).
 - [06955e9](https://github.com/static-web-server/static-web-server/commit/06955e9) Redirect option for URL Rewrites feature. PR [#231](https://github.com/static-web-server/static-web-server/pull/231). See [docs](https://static-web-server.net/features/health-endpoint/).
 - [3a47ef6](https://github.com/static-web-server/static-web-server/commit/3a47ef6) Replacements support for URL Rewrites destination. PR [#235](https://github.com/static-web-server/static-web-server/pull/235). See [docs](https://static-web-server.net/features/url-rewrites/).
 - [7c66c5c](https://github.com/static-web-server/static-web-server/commit/7c66c5c) Replacements support for URL Redirects destination. PR [#239](https://github.com/static-web-server/static-web-server/pull/239). See [docs](https://static-web-server.net/features/url-redirects/).
-- [b42214b](https://github.com/static-web-server/static-web-server/commit/b42214b) Health-check endpoint. PR [#238](https://github.com/static-web-server/static-web-server/pull/238). See [docs](https://static-web-server.net/features/health-endpoint/).
+- [b42214b](https://github.com/static-web-server/static-web-server/commit/b42214b) Health-check endpoint. PR [#238](https://github.com/static-web-server/static-web-server/pull/238) resolves [#237](https://github.com/static-web-server/static-web-server/issues/237) by [@glehmann](https://github.com/glehmann). See [docs](https://static-web-server.net/features/health-endpoint/).
 
 __Refactorings__
 
@@ -34,9 +34,13 @@ __Refactorings__
 __Docs__
 
 - [506f54e](https://github.com/static-web-server/static-web-server/commit/506f54e) Systemd service example. See [docs](https://static-web-server.net/features/file-descriptor-socket-passing/#service-example).
-- [eb2887f](https://github.com/static-web-server/static-web-server/commit/eb2887f) Nix package and module maintainers. See [docs](https://static-web-server.net/features/file-descriptor-socket-passing/#service-example).
-- [031931f](https://github.com/static-web-server/static-web-server/commit/031931f) GHCR Docker images description. See [docs](https://static-web-server.net/features/docker/).
+- [eb2887f](https://github.com/static-web-server/static-web-server/commit/eb2887f) Nix package and module maintainers ([@figsoda](https://github.com/figsoda), [@mac-chaffee](https://github.com/mac-chaffee)). See [docs](https://static-web-server.net/download-and-install/#nixos).
+- [031931f](https://github.com/static-web-server/static-web-server/commit/031931f) GHCR Docker images description. See [docs](https://static-web-server.net/features/docker).
 - [21c90db](https://github.com/static-web-server/static-web-server/commit/21c90db) Several documentation improvements.
+
+**Acknowledgments**
+
+Thanks to our new donor [@kirillt](https://github.com/kirillt) for supporting the project.
 
 ## v2.19.0 - 2023-06-16
 
