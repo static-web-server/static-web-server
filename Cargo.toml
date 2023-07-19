@@ -55,7 +55,7 @@ fallback-page = []
 aho-corasick = "1.0"
 anyhow = "1.0"
 async-compression = { version = "0.4", default-features = false, optional = true, features = ["brotli", "deflate", "gzip", "zstd", "tokio"] }
-bcrypt = { version = "0.14", optional = true }
+bcrypt = { version = "0.15", optional = true }
 bytes = "1.4"
 chrono = { version = "0.4", default-features = false, features = ["std", "clock"], optional = true }
 clap = { version = "4.3", features = ["derive", "env"] }
@@ -69,7 +69,7 @@ humansize = { version = "2.1", features = ["impl_style"], optional = true }
 hyper = { version = "0.14", features = ["stream", "http1", "http2", "tcp", "server"] }
 listenfd = "1.0"
 mime_guess = "2.0"
-num_cpus = { version = "1.15" }
+num_cpus = { version = "1.16" }
 percent-encoding = "2.3"
 pin-project = "1.1"
 regex = "1.9"
