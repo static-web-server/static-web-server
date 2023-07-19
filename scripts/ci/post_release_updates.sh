@@ -95,9 +95,11 @@ echo
 echo "Committing post release page updates..."
 git config user.name "github-actions"
 git config user.email "actions@users.noreply.github.com"
+git checkout master
+git pull origin master
 git add docs/content/download-and-install.md
 git add scripts/installer.sh
 git commit -m "chore: release $SERVER_VERSION updates [skip ci]" || exit 0
-git push
+git push origin master
 
 echo "All changes after release were done successfully!"

@@ -127,7 +127,7 @@ docker.image.alpine:
 
 docker.image.debian:
 	@echo "Creating Docker Alpine image..."
-	@cp -frp ./target/x86_64-unknown-linux-gnu/release/static-web-server ./docker/devel/
+	@cp -frp ./target/x86_64-unknown-linux-musl/release/static-web-server ./docker/devel/
 	@docker build \
 		--platform="linux/x86_64" \
 		--rm=true -f ./docker/devel/Dockerfile.debian \
