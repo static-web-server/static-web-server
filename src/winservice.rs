@@ -22,7 +22,7 @@ use windows_service::{
     service_manager::{ServiceManager, ServiceManagerAccess},
 };
 
-use crate::{helpers, logger, Context, Result, Server, Settings};
+use crate::{helpers, Context, Result, Server, Settings};
 
 const SERVICE_NAME: &str = "static-web-server";
 const SERVICE_TYPE: ServiceType = ServiceType::OWN_PROCESS;
@@ -72,9 +72,7 @@ fn set_service_state(
 }
 
 fn run_service() -> Result {
-    let opts = Settings::get()?;
-
-    logger::init(&opts.general.log_level)?;
+    let _ = Settings::get()?;
 
     tracing::info!("windows service: starting service setup");
 

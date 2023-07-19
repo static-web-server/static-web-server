@@ -24,7 +24,7 @@ use {
     hyper::service::{make_service_fn, service_fn},
 };
 
-use crate::{cors, helpers, logger, Settings};
+use crate::{cors, helpers, Settings};
 use crate::{service::RouterService, Context, Result};
 
 /// Define a multi-thread HTTP or HTTP/2 web server.
@@ -58,9 +58,6 @@ impl Server {
     /// Run the multi-thread `Server` as standalone.
     /// It is a top-level function of [run_server_on_rt](#method.run_server_on_rt).
     pub fn run_standalone(self) -> Result {
-        // Logging system initialization
-        logger::init(&self.opts.general.log_level)?;
-
         self.run_server_on_rt(None, || {})
     }
 
