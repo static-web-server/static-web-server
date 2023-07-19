@@ -109,10 +109,20 @@ kind = 302
 ### URL Rewrites
 
 [[advanced.rewrites]]
+source = "/image.ico"
+destination = "/assets/favicon.ico"
+# redirect = 301
+
+[[advanced.rewrites]]
+source = "/{picture}.{ico,webp}"
+destination = "/assets/$1.$2"
+# redirect = 301
+
+[[advanced.rewrites]]
 source = "**/{*}.{png,gif}"
 destination = "/assets/$1.$2"
 # redirect = 301
 
 [[advanced.rewrites]]
-source = "**/*.{jpg,jpeg}"
+source = "/abc/**/*.{svg,jxl}"
 destination = "/assets/favicon.ico"
