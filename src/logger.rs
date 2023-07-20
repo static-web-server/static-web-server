@@ -7,7 +7,7 @@
 //!
 
 use tracing::Level;
-use tracing_subscriber::fmt::format::FmtSpan;
+use tracing_subscriber::{filter::Targets, fmt::format::FmtSpan, prelude::*};
 
 use crate::{Context, Result};
 
@@ -16,8 +16,6 @@ pub fn init(log_level: &str) -> Result {
     let log_level = log_level.to_lowercase();
 
     configure(&log_level).with_context(|| "failed to initialize logging")?;
-
-    tracing::info!("logging level: {}", log_level);
 
     Ok(())
 }
@@ -31,14 +29,44 @@ fn configure(level: &str) -> Result {
     #[cfg(windows)]
     let enable_ansi = false;
 
-    match tracing_subscriber::fmt()
+    let filtered_layer = tracing_subscriber::fmt::layer()
         .with_writer(std::io::stderr)
-        .with_max_level(level)
         .with_span_events(FmtSpan::CLOSE)
         .with_ansi(enable_ansi)
+        .with_filter(
+            Targets::default()
+                .with_default(level)
+                .with_target("static_web_server::info", Level::INFO)
+                .with_target("static_web_server::warn", Level::WARN),
+        );
+
+    match tracing_subscriber::registry()
+        .with(filtered_layer)
         .try_init()
     {
         Err(err) => Err(anyhow!(err)),
         _ => Ok(()),
     }
+}
+
+/// Custom info level macro.
+#[macro_export]
+macro_rules! server_info {
+    ($($arg:tt)*) => {
+        tracing::info!(
+            target: "static_web_server::info",
+            $($arg)*
+        )
+    };
+}
+
+/// Custom warn level macro.
+#[macro_export]
+macro_rules! server_warn {
+    ($($arg:tt)*) => {
+        tracing::warn!(
+            target: "static_web_server::warn",
+            $($arg)*
+        )
+    };
 }

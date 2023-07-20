@@ -130,6 +130,7 @@ pub mod handler;
 #[cfg(feature = "http2")]
 #[cfg_attr(docsrs, doc(cfg(feature = "http2")))]
 pub mod https_redirect;
+#[macro_use]
 pub mod logger;
 pub mod redirects;
 pub mod rewrites;

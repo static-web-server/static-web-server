@@ -63,12 +63,6 @@ pub fn stringify(dst: &mut String, path: &serde_ignored::Path<'_>) {
     }
 }
 
-#[cfg(unix)]
-/// In Unix-like systems it just casts the `PathBuf` into an string.
-pub fn adjust_canonicalization(p: &Path) -> String {
-    p.display().to_string()
-}
-
 #[cfg(windows)]
 /// In Windows systems it adjusts the `PathBuf` stripping its `\\?\` prefix.
 pub fn adjust_canonicalization(p: &Path) -> String {

@@ -284,6 +284,7 @@ impl Settings {
 
             // Logging system initialization
             logger::init(log_level.as_str())?;
+            tracing::debug!("toml configuration file read successfully");
 
             // File-based "advanced" options
             if let Some(advanced) = settings.advanced {
@@ -374,14 +375,14 @@ impl Settings {
                             let pattern =
                                 source.glob().regex().trim_start_matches("(?-u)").to_owned();
                             tracing::debug!(
-                                "url rewrites glob pattern: {}",
+                                "url redirects glob pattern: {}",
                                 &redirects_entry.source
                             );
-                            tracing::debug!("url rewrites regex equivalent: {}", pattern);
+                            tracing::debug!("url redirects regex equivalent: {}", pattern);
 
                             let source = Regex::new(&pattern).with_context(|| {
                                     format!(
-                                        "can not compile regex pattern equivalent for rewrite source: {}",
+                                        "can not compile regex pattern equivalent for redirect source: {}",
                                         &pattern
                                     )
                                 })?;
@@ -479,17 +480,13 @@ fn get_file_settings(file_path_opt: Option<PathBuf>) -> Result<Option<(FileSetti
             let file_path_resolved = file_path
                 .canonicalize()
                 .with_context(|| "error resolving toml config file path")?;
+
             let settings = FileSettings::read(&file_path_resolved).with_context(|| {
                 "can not read toml config file because has invalid or unsupported format/options"
             })?;
+
             return Ok(Some((settings, file_path_resolved)));
         }
-        tracing::warn!(
-            "config file `{}` is not a regular toml file, ignored!",
-            file_path.display()
-        );
-    } else {
-        tracing::warn!("config file was not determined, ignored!");
     }
     Ok(None)
 }
