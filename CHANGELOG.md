@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _**Note:** See changelog for v1 under the [1.x](https://github.com/static-web-server/static-web-server/blob/1.x/CHANGELOG.md) branch._
 
+## v2.20.1 - 2023-07-20
+
+This new `v2.20.1` release brings several dependency updates and bug fixes. In particular, one fix for a regression introduced by the previous *v2.20.0* release as well as other improvements.
+
+__Fixes__
+
+- [1fe464b](https://github.com/static-web-server/static-web-server/commit/1fe464b) Bugfix/security dependency updates including zstd, clap, serde, bcrypt, globset, signal and other crates (also [b763b50](https://github.com/static-web-server/static-web-server/commit/b763b50)).
+- [3cf13dc](https://github.com/static-web-server/static-web-server/commit/3cf13dc) URL Rewrites and Redirects don't work properly without replacements. PR [#244](https://github.com/static-web-server/static-web-server/pull/244) fixes [#243](https://github.com/static-web-server/static-web-server/issues/243) reported by [@domi2120](https://github.com/domi2120).
+- [8da2b69](https://github.com/static-web-server/static-web-server/commit/8da2b69) Alpine 3.17.4.
+
+__Refactorings__
+
+- [949c539](https://github.com/static-web-server/static-web-server/commit/949c539) Initialize log system at config level.
+- [7fc0e1b](https://github.com/static-web-server/static-web-server/commit/7fc0e1b) Improve start-up server log information.
+- [032aaf3](https://github.com/static-web-server/static-web-server/commit/032aaf3) CI: Post-release script and devel Makefile.
+
 ## v2.20.0 - 2023-07-12
 
 This new `v2.20.0` release brings several dependency updates and bug fixes, advanced features like Glob pattern replacements for URL Redirects and Rewrites, a new health-check endpoint, GitHub Container Registry (GHCR) Docker images as well as other improvements.
