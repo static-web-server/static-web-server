@@ -40,7 +40,7 @@ bytes = "1.1"
 form_urlencoded = "1.0"
 futures-util = { version = "0.3", default-features = false, features = ["sink"] }
 globset = { version = "0.4", features = ["serde1"] }
-headers = { git = "https://github.com/joseluisq/hyper-headers.git", branch = "headers_encoding" }
+headers = { package = "headers-accept-encoding", git = "https://github.com/static-web-server/headers-accept-encoding.git", branch = "headers_encoding" }
 http = "0.2"
 http-serde = "1.1"
 humansize = "1.1"
