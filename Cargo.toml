@@ -80,10 +80,11 @@ bytes = "1.1"
 serde_json = "1.0"
 
 [patch.crates-io]
-socket2 = { git = "https://github.com/wasix-org/socket2.git", branch = "v0.4.7" }
+socket2 = { git = "https://github.com/wasix-org/socket2.git", branch = "v0.4.9" }
 libc = { git = "https://github.com/wasix-org/libc.git" }
-#tokio = { path = "../tokio/tokio" }
 tokio = { git = "https://github.com/wasix-org/tokio.git", branch = "epoll" }
+rustls = { git = "https://github.com/wasix-org/rustls.git", branch = "v0.21.5" }
+hyper = { git = "https://github.com/wasix-org/hyper.git", branch = "v0.14.27" }
 
 [profile.release]
 codegen-units = 1

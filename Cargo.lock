@@ -710,6 +710,7 @@ dependencies = [
 [[package]]
 name = "mio"
 version = "0.8.3"
+source = "git+https://github.com/wasix-org/mio.git?branch=epoll#2a2a3881ecb788428d31c0f5af1833fd9af90dad"
 dependencies = [
  "libc",
  "log",
@@ -1094,11 +1095,11 @@ checksum = "a507befe795404456341dfab10cef66ead4c041f62b8b11bbb92bffe5d0953e0"
 
 [[package]]
 name = "socket2"
-version = "0.4.7"
-source = "git+https://github.com/wasix-org/socket2.git?branch=v0.4.7#6852c76cd63c0b68a2f3506cebe1f1a4b7ee7bf1"
+version = "0.4.9"
+source = "git+https://github.com/wasix-org/socket2.git?branch=v0.4.9#a701d8559c11746b4facf3a6aa1b1de271e4ce16"
 dependencies = [
  "libc",
- "windows-sys 0.36.1",
+ "winapi",
 ]
 
 [[package]]
@@ -1268,6 +1269,7 @@ dependencies = [
 [[package]]
 name = "tokio"
 version = "1.24.2"
+source = "git+https://github.com/wasix-org/tokio.git?branch=epoll#37dc27f7558401cb226c641767f3f012bb0a73f3"
 dependencies = [
  "autocfg",
  "bytes",
@@ -1286,6 +1288,7 @@ dependencies = [
 [[package]]
 name = "tokio-macros"
 version = "1.8.0"
+source = "git+https://github.com/wasix-org/tokio.git?branch=epoll#37dc27f7558401cb226c641767f3f012bb0a73f3"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1776,3 +1779,13 @@ name = "windows_x86_64_msvc"
 version = "0.48.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1a515f5799fe4961cb532f983ce2b23082366b898e52ffbce459c86f67c8378a"
+
+[[patch.unused]]
+name = "hyper"
+version = "0.14.27"
+source = "git+https://github.com/wasix-org/hyper.git?branch=v0.14.27#1e517b167560028acef5df6f3c2d42b46219506d"
+
+[[patch.unused]]
+name = "rustls"
+version = "0.21.5"
+source = "git+https://github.com/wasix-org/rustls.git?branch=v0.21.5#744e3c710697153efacdde0dcc80c6d56090ae3f"
