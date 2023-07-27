@@ -28,7 +28,7 @@ name = "static-web-server"
 path = "src/bin/server.rs"
 
 [features]
-default = [ ]
+default = [ "http2" ]
 tls = [ "tokio-rustls" ]
 http2 = [ "tls" ]
 
@@ -58,7 +58,7 @@ serde_repr = "0.1"
 chrono = { version = "0.4", default-features = false, features = ["std", "clock"] }
 #tokio = { path = "../tokio/tokio", default-features = false, features = ["rt-multi-thread", "macros", "fs", "io-util", "signal"]  }
 tokio = { git = "https://github.com/wasix-org/tokio.git", branch = "epoll", default-features = false, features = ["rt-multi-thread", "macros", "fs", "io-util", "signal"] }
-tokio-rustls = { version = "0.23", optional = true }
+tokio-rustls = { version = "=0.24.1", optional = true }
 tokio-util = { version = "0.7", default-features = false, features = ["io"] }
 toml = "0.5"
 tracing = { version = "0.1", default-features = false, features = ["std"] }
@@ -81,7 +81,7 @@ serde_json = "1.0"
 
 [patch.crates-io]
 socket2 = { git = "https://github.com/wasix-org/socket2.git", branch = "v0.4.9" }
-libc = { git = "https://github.com/wasix-org/libc.git" }
+libc = { git = "https://github.com/wasix-org/libc.git", branch = "v0.2.147" }
 tokio = { git = "https://github.com/wasix-org/tokio.git", branch = "epoll" }
 rustls = { git = "https://github.com/wasix-org/rustls.git", branch = "v0.21.5" }
 hyper = { git = "https://github.com/wasix-org/hyper.git", branch = "v0.14.27" }
