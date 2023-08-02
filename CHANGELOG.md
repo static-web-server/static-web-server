@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _**Note:** See changelog for v1 under the [1.x](https://github.com/static-web-server/static-web-server/blob/1.x/CHANGELOG.md) branch._
 
+## v2.20.2 - 2023-08-03
+
+This new `v2.20.2` release brings several dependency updates and bug fixes. Also, it fixes a regression in Windows introduced by the previous *v2.20.1* release.
+
+__Fixes__
+
+- [bba9083](https://github.com/static-web-server/static-web-server/commit/bba9083) Bugfix/security dependency updates including jemallocator, rustls, clap, serde, globset and other crates.
+- [8cc073f](https://github.com/static-web-server/static-web-server/commit/8cc073f) Unable to initialize logger in Windows. [#248](https://github.com/static-web-server/static-web-server/issues/248) reported by [@tripplet](https://github.com/tripplet).
+
+__Refactorings__
+
+- [949c539](https://github.com/static-web-server/static-web-server/commit/949c539) Basic-auth check request function.
+
 ## v2.20.1 - 2023-07-20
 
 This new `v2.20.1` release brings several dependency updates and bug fixes. In particular, one fix for a regression introduced by the previous *v2.20.0* release as well as other improvements.
