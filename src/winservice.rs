@@ -72,7 +72,8 @@ fn set_service_state(
 }
 
 fn run_service() -> Result {
-    let _ = Settings::get()?;
+    // Log is already initialized so there is no need to do it again.
+    let opts = Settings::get(false)?;
 
     tracing::info!("windows service: starting service setup");
 
@@ -132,7 +133,7 @@ fn run_service() -> Result {
     };
 
     // Starting web server
-    match Server::new() {
+    match Server::new(opts) {
         Ok(server) => {
             if let Err(err) = server.run_as_service(Some(shutdown_rx), stop_handler) {
                 tracing::error!(

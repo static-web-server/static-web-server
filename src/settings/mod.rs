@@ -75,7 +75,7 @@ impl Settings {
     /// Reads CLI/Env and config file options returning the server settings.
     /// It also takes care to initialize the logging system with its level
     /// once the `general` settings are determined.
-    pub fn get() -> Result<Settings> {
+    pub fn get(log_init: bool) -> Result<Settings> {
         let opts = General::parse();
 
         // Define the general CLI/file options
@@ -283,7 +283,9 @@ impl Settings {
             }
 
             // Logging system initialization
-            logger::init(log_level.as_str())?;
+            if log_init {
+                logger::init(log_level.as_str())?;
+            }
             tracing::debug!("toml configuration file read successfully");
 
             // File-based "advanced" options
@@ -407,7 +409,7 @@ impl Settings {
                     redirects: redirects_entries,
                 });
             }
-        } else {
+        } else if log_init {
             // Logging system initialization
             logger::init(log_level.as_str())?;
         }

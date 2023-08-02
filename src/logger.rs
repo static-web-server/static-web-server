@@ -22,7 +22,9 @@ pub fn init(log_level: &str) -> Result {
 
 /// Initialize logging builder with its levels.
 fn configure(level: &str) -> Result {
-    let level = level.parse::<Level>()?;
+    let level = level
+        .parse::<Level>()
+        .with_context(|| "failed to parse log level")?;
 
     #[cfg(not(windows))]
     let enable_ansi = true;

@@ -36,10 +36,7 @@ pub struct Server {
 
 impl Server {
     /// Create new multi-thread server instance.
-    pub fn new() -> Result<Server> {
-        // Get server config
-        let opts = Settings::get()?;
-
+    pub fn new(opts: Settings) -> Result<Server> {
         // Configure number of worker threads
         let cpus = num_cpus::get();
         let worker_threads = match opts.general.threads_multiplier {
