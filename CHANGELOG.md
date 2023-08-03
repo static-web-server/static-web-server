@@ -18,7 +18,7 @@ __Fixes__
 
 __Refactorings__
 
-- [949c539](https://github.com/static-web-server/static-web-server/commit/949c539) Basic-auth check request function.
+- [e9d33ca](https://github.com/static-web-server/static-web-server/commit/e9d33ca) Basic-auth check request function.
 
 ## v2.20.1 - 2023-07-20
 
