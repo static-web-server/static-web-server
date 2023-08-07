@@ -90,6 +90,16 @@ pub struct Rewrites {
     pub redirect: Option<RedirectsKind>,
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "kebab-case")]
+/// Represents virtual hosts with different root directories
+pub struct VirtualHosts {
+    /// The value to check for in the "Host" header
+    pub host: String,
+    /// The root directory for this virtual host
+    pub root: Option<PathBuf>,
+}
+
 /// Advanced server options only available in configuration file mode.
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "kebab-case")]
@@ -100,6 +110,8 @@ pub struct Advanced {
     pub rewrites: Option<Vec<Rewrites>>,
     /// Redirects
     pub redirects: Option<Vec<Redirects>>,
+    /// Name-based virtual hosting
+    pub virtual_hosts: Option<Vec<VirtualHosts>>,
 }
 
 /// General server options available in configuration file mode.

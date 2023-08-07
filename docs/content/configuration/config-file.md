@@ -143,7 +143,7 @@ So they are equivalent to each other **except** for the `-w, --config-file` opti
 
 The TOML `[advanced]` section is intended for more complex features.
 
-For example [Custom HTTP Headers](../features/custom-http-headers.md) or [Custom URL Redirects](../features/url-redirects.md).
+For example [Custom HTTP Headers](../features/custom-http-headers.md), [Custom URL Redirects](../features/url-redirects.md), [URL Rewrites](../features/url-rewrites.md), or [Virtual Hosting](../features/virtual-hosting.md)
 
 ### Precedence
 

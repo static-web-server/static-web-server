@@ -126,3 +126,13 @@ destination = "/assets/$1.$2"
 [[advanced.rewrites]]
 source = "/abc/**/*.{svg,jxl}"
 destination = "/assets/favicon.ico"
+
+### Name-based virtual hosting
+
+[[advanced.virtual-hosts]]
+host = "example.com"
+root = "docker"
+
+[[advanced.virtual-hosts]]
+host = "localhost"
+root = "docker/abc"
