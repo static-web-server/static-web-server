@@ -1,6 +1,6 @@
 # Migrating from v1 to v2
 
-The `v2` introduces notable changes including new features, performance improvements and new target support like ARM64 and OSes like FreeBSD.
+The `v2` introduces notable changes including new features, performance improvements and new target support like ARM64 and OSes like FreeBSD, NetBSD or Android.
 
 This version `v2` was re-written almost from scratch on top of [Hyper](https://github.com/hyperium/hyper) and [Tokio](https://github.com/tokio-rs/tokio) runtime which gives us the [Rust asynchronous ability](https://rust-lang.github.io/async-book/01_getting_started/02_why_async.html) by default and the latest HTTP/1 - HTTP/2 implementation improvements.
 However, it still tries to keep the same principles of its `v1`: lightness and easy-to-use. Therefore migration should not be a big deal.
