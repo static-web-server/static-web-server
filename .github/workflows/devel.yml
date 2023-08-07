@@ -48,6 +48,7 @@ jobs:
           # NOTE: looks like not supported by `listenfd` crate
           # - linux-android-armv7
           - linux-android-arm64
+          - netbsd
           - macos
           - macos-arm64
           - windows-msvc
@@ -112,6 +113,10 @@ jobs:
             os: ubuntu-22.04
             rust: stable
             target: aarch64-linux-android
+          - build: netbsd
+            os: ubuntu-22.04
+            rust: stable
+            target: x86_64-unknown-netbsd
           - build: macos
             os: macos-12
             rust: stable
@@ -177,7 +182,7 @@ jobs:
 
     - name: Skip tests
       shell: bash
-      if: ${{ contains(fromJSON('["macos-arm64", "linux-android-arm64", "linux-android-armv7"]'), matrix.build) }}
+      if: ${{ contains(fromJSON('["macos-arm64", "linux-android-arm64", "linux-android-armv7", "netbsd"]'), matrix.build) }}
       run: |
         # Can't run tests: cross-compiling
         echo "SKIP_TESTS=--no-run" >> $GITHUB_ENV
@@ -196,8 +201,8 @@ jobs:
       shell: bash
       run: |
         case "${{ matrix.build }}" in
-          *-arm*)
-            echo "arm(64) is not supported on ci, can not execute!"
+          *-arm*|*bsd*)
+            echo "arm(64) or BSD are unable to execute on CI!"
           ;;
           *)
             if [[ "${{ matrix.os }}" == "windows-2022" ]]; then

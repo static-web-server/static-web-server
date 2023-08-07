@@ -52,3 +52,8 @@ Currently, only the following platforms/architectures are supported.
 
 #### x86_64
   - `x86_64-unknown-freebsd`
+
+## NetBSD
+
+#### x86_64
+  - `x86_64-unknown-netbsd`

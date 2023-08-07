@@ -88,6 +88,8 @@ Pre-compiled binaries grouped by CPU architectures.
 <small>**SHA256SUM:** `{{x86_64-unknown-linux-gnu.tar.gz}}`</small>
 - [static-web-server-{{RELEASE_VERSION}}-x86_64-unknown-linux-musl.tar.gz](https://github.com/static-web-server/static-web-server/releases/download/{{RELEASE_VERSION}}/static-web-server-{{RELEASE_VERSION}}-x86_64-unknown-linux-musl.tar.gz)<br>
 <small>**SHA256SUM:** `{{x86_64-unknown-linux-musl.tar.gz}}`</small>
+- [static-web-server-{{RELEASE_VERSION}}-x86_64-unknown-netbsd.tar.gz](https://github.com/static-web-server/static-web-server/releases/download/{{RELEASE_VERSION}}/static-web-server-{{RELEASE_VERSION}}-x86_64-unknown-netbsd.tar.gz)<br>
+<small>**SHA256SUM:** `{{x86_64-unknown-netbsd.tar.gz}}`</small>
 
 ### ARM64
 
