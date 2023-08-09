@@ -4,7 +4,7 @@
 
 It is provided in three Docker image variants such as [Scratch](https://hub.docker.com/_/scratch), [Alpine](https://hub.docker.com/_/alpine) and [Debian](https://hub.docker.com/_/debian) images.
 
-All images are available on [Docker Hub](https://hub.docker.com/r/joseluisq/static-web-server/) and [GitHub Container Registry](https://github.com/orgs/static-web-server/packages?repo_name=static-web-server)
+All images are available on [Docker Hub](https://hub.docker.com/r/joseluisq/static-web-server/) and [GitHub Container Registry](https://github.com/static-web-server/static-web-server/pkgs/container/static-web-server)
 
 ## OS/Arch
 
@@ -24,7 +24,7 @@ All Docker images are [Multi-Arch](https://www.docker.com/blog/how-to-rapidly-bu
 To give the server a quick try then just run the following commands.
 
 !!! tip "Tips"
-    - [The SWS CLI arguments](/configuration/command-line-arguments/) can be provided directly to the container or omitted as shown below.
+    - [The SWS CLI arguments](../configuration/command-line-arguments.md) can be provided directly to the container or omitted as shown below.
     - A Docker volume like `-v $HOME/my-public-dir:/public` can be specified to overwrite the default root directory.
 
 To run SWS, there are several Docker image variants that you can use.
