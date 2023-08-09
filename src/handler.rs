@@ -25,7 +25,7 @@ use crate::{
     redirects, rewrites, security_headers,
     settings::{file::RedirectsKind, Advanced},
     static_files::{self, HandleOpts},
-    Error, Result,
+    virtual_hosts, Error, Result,
 };
 
 #[cfg(feature = "directory-listing")]
@@ -100,7 +100,7 @@ impl RequestHandler {
         let headers = req.headers();
         let uri = req.uri();
 
-        let base_path = &self.opts.root_dir;
+        let mut base_path = &self.opts.root_dir;
         let mut uri_path = uri.path().to_owned();
         let uri_query = uri.query();
         #[cfg(feature = "directory-listing")]
@@ -346,6 +346,11 @@ impl RequestHandler {
                         };
                         return Ok(resp);
                     }
+                }
+
+                // If the "Host" header matches any virtual_host, change the root dir
+                if let Some(root) = virtual_hosts::get_real_root(&advanced.virtual_hosts, headers) {
+                    base_path = root;
                 }
             }
 

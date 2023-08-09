@@ -13,7 +13,7 @@ use hyper::StatusCode;
 use regex::Regex;
 use std::path::PathBuf;
 
-use crate::{logger, Context, Result};
+use crate::{helpers, logger, Context, Result};
 
 pub mod cli;
 pub mod file;
@@ -53,6 +53,14 @@ pub struct Redirects {
     pub kind: StatusCode,
 }
 
+/// The `VirtualHosts` file options.
+pub struct VirtualHosts {
+    /// The value to check for in the "Host" header
+    pub host: String,
+    /// The root directory for this virtual host
+    pub root: PathBuf,
+}
+
 /// The `advanced` file options.
 pub struct Advanced {
     /// Headers list.
@@ -61,6 +69,8 @@ pub struct Advanced {
     pub rewrites: Option<Vec<Rewrites>>,
     /// Redirects list.
     pub redirects: Option<Vec<Redirects>>,
+    /// Name-based virtual hosting
+    pub virtual_hosts: Option<Vec<VirtualHosts>>,
 }
 
 /// The full server CLI and File options.
@@ -403,10 +413,37 @@ impl Settings {
                     _ => None,
                 };
 
+                // 3. Virtual hosts assignment
+                let vhosts_entries = match advanced.virtual_hosts {
+                    Some(vhosts_entries) => {
+                        let mut vhosts_vec: Vec<VirtualHosts> = Vec::new();
+
+                        for vhosts_entry in vhosts_entries.iter() {
+                            if let Some(root) = vhosts_entry.root.to_owned() {
+                                // Make sure path is valid
+                                let root_dir = helpers::get_valid_dirpath(&root)
+                                    .with_context(|| "root directory for virtual host was not found or inaccessible")?;
+                                tracing::debug!(
+                                    "added virtual host: {} -> {}",
+                                    vhosts_entry.host,
+                                    root_dir.display()
+                                );
+                                vhosts_vec.push(VirtualHosts {
+                                    host: vhosts_entry.host.to_owned(),
+                                    root: root_dir,
+                                });
+                            }
+                        }
+                        Some(vhosts_vec)
+                    }
+                    _ => None,
+                };
+
                 settings_advanced = Some(Advanced {
                     headers: headers_entries,
                     rewrites: rewrites_entries,
                     redirects: redirects_entries,
+                    virtual_hosts: vhosts_entries,
                 });
             }
         } else if log_init {

@@ -139,7 +139,7 @@ docker.image.debian:
 ########## Production tasks ###########
 #######################################
 
-# Compile release binary 
+# Compile release binary
 define build_release =
 	set -e
 	set -u
@@ -196,7 +196,7 @@ define build_release_shrink =
 	echo "Releases size shrinking completed!"
 endef
 
-# Creates release files (tarballs, zipballs) 
+# Creates release files (tarballs, zipballs)
 define build_release_files =
 	set -e
 	set -u
