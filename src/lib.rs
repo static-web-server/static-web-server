@@ -134,6 +134,7 @@ pub mod https_redirect;
 pub mod logger;
 pub mod redirects;
 pub mod rewrites;
+pub mod scripts;
 pub mod security_headers;
 pub mod server;
 pub mod service;

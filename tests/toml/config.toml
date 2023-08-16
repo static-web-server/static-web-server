@@ -127,6 +127,11 @@ destination = "/assets/$1.$2"
 source = "/abc/**/*.{svg,jxl}"
 destination = "/assets/favicon.ico"
 
+### Scripts
+[[advanced.scripts]]
+source = "/dynamic/**"
+destination = "tests/scripts/dynamic.lua"
+
 ### Name-based virtual hosting
 
 [[advanced.virtual-hosts]]
