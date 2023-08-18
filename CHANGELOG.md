@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _**Note:** See changelog for v1 under the [1.x](https://github.com/static-web-server/static-web-server/blob/1.x/CHANGELOG.md) branch._
 
+## v2.21.0 - 2023-08-19
+
+This new `v2.21.0` release brings several dependency updates and bug fixes, a new NetBSD x86_64 target, Virtual Hosting support, and other improvements.
+
+__Fixes__
+
+- [91d8bf1](https://github.com/static-web-server/static-web-server/commit/91d8bf1) Bugfix/security dependency updates including tokio, regex, clap, serde, globset and other crates.
+- [2142053](https://github.com/static-web-server/static-web-server/commit/2142053) Docker: Alpine 3.17.5 update.
+- [37a5113](https://github.com/static-web-server/static-web-server/commit/37a5113) Docker: Debian 12.1 update.
+
+__Features__
+
+- [94e050b](https://github.com/static-web-server/static-web-server/commit/94e050b) NetBSD x86_64 target (`x86_64-unknown-netbsd`).
+- [7baf569](https://github.com/static-web-server/static-web-server/commit/7baf569) Virtual Hosting support. PR [#252](https://github.com/static-web-server/static-web-server/pull/252) by [@mac-chaffee](https://github.com/mac-chaffee) resolves [#171](https://github.com/static-web-server/static-web-server/issues/171) suggested by [@kshpytsya](https://github.com/kshpytsya). See [docs](https://static-web-server.net/features/virtual-hosting/).
+
+__Docs__
+
+- [3f63a0b](https://github.com/static-web-server/static-web-server/commit/3f63a0b) docs: improve several feature pages.
+
 ## v2.20.2 - 2023-08-03
 
 This new `v2.20.2` release brings several dependency updates and bug fixes. Also, it fixes a regression in Windows introduced by the previous *v2.20.1* release.
