@@ -385,19 +385,36 @@ impl RequestHandler {
                     // NOTE: scripts do not support redirects
 
                     // TODO: handle all errors
+                    // TODO: customize list of stdlib modules to load
+                    let lua = rlua::Lua::new_with(
+                        // Defaults
+                        rlua::StdLib::BASE
+                            | rlua::StdLib::TABLE
+                            | rlua::StdLib::STRING
+                            | rlua::StdLib::UTF8
+                            | rlua::StdLib::MATH,
+                        // Extras
+                        // | rlua::StdLib::COROUTINE
+                        // | rlua::StdLib::IO
+                        // | rlua::StdLib::OS
+                        // | rlua::StdLib::PACKAGE
+                        // | rlua::StdLib::DEBUG,
+                    );
+                    lua.set_memory_limit(Some(1024 * 1024));
+
                     // TODO: consider passing useful SWS info
-                    let lua = rlua::Lua::new();
                     // TODO: validate path before use it here
                     let dest = PathBuf::from(script.destination.as_str());
-                    let script_str = helpers::read_file(dest.as_path()).unwrap();
-                    let _: Result<(), Error> = lua.context(move |lua_ctx| {
-                        lua_ctx
-                            .globals()
-                            .set("RUST_OS", std::env::consts::OS.trim())
-                            .unwrap();
-                        lua_ctx.load(script_str.as_str()).exec()?;
-                        Ok(())
-                    });
+                    let script_str = helpers::read_file(dest.as_path())?;
+                    lua.context::<_, Result<(), Error>>(move |lua_ctx| {
+                        let globals = lua_ctx.globals();
+                        lua_ctx.scope(|_scope| {
+                            // TODO: share useful data
+                            globals.set("RUST_OS", std::env::consts::OS.trim())?;
+                            lua_ctx.load(script_str.as_str()).exec()?;
+                            Ok(())
+                        })
+                    })?;
 
                     // TODO: return proper response, consider append script output
                     let body = Body::from("Testing a Lua script!");

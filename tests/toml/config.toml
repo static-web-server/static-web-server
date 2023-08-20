@@ -129,6 +129,10 @@ destination = "/assets/favicon.ico"
 
 ### Scripts
 [[advanced.scripts]]
+# 1 MB
+memory-limit = 1
+# Lua stdlib modules
+std = [ "io", "os", "pkg", "debug", "coroutine" ]
 source = "/dynamic/**"
 destination = "tests/scripts/dynamic.lua"
 
