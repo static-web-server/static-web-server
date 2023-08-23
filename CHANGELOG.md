@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _**Note:** See changelog for v1 under the [1.x](https://github.com/static-web-server/static-web-server/blob/1.x/CHANGELOG.md) branch._
 
+## v2.21.1 - 2023-08-23
+
+This new `v2.21.1` release brings several security dependency updates. In particular for `serde_derive` and `rustls-webpki` dependencies.
+
+__Fixes__
+
+- [c6172b4](https://github.com/static-web-server/static-web-server/commit/c6172b4) Security dependency updates including serde_derive, rustls-webpki, h2 and other crates.
+  - `serde_derive`: potential supply chain attack associated with shipping
+precompiled binaries (silently) [serde-rs/serde#2538](https://github.com/serde-rs/serde/issues/2538)
+  - `rustls-webpki`: potential CPU denial of service in certificate path building [GHSA-fh2r-99q2-6mmg](https://github.com/advisories/GHSA-fh2r-99q2-6mmg)
+
 ## v2.21.0 - 2023-08-19
 
 This new `v2.21.0` release brings several dependency updates and bug fixes, a new NetBSD x86_64 target, Virtual Hosting support, and other improvements.
