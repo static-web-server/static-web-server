@@ -1,6 +1,6 @@
 # Migrating from v1 to v2
 
-The `v2` introduces notable changes including new features, performance improvements and new target support like ARM64 and OSes like FreeBSD, NetBSD or Android.
+The `v2` introduces notable changes including new features, performance improvements and new target support like ARM64 and OSes like FreeBSD, NetBSD, Illumos or Android.
 
 This version `v2` was re-written almost from scratch on top of [Hyper](https://github.com/hyperium/hyper) and [Tokio](https://github.com/tokio-rs/tokio) runtime which gives us the [Rust asynchronous ability](https://rust-lang.github.io/async-book/01_getting_started/02_why_async.html) by default and the latest HTTP/1 - HTTP/2 implementation improvements.
 However, it still tries to keep the same principles of its `v1`: lightness and easy-to-use. Therefore migration should not be a big deal.
@@ -12,7 +12,7 @@ This major `v2` has a few breaking changes. However, migration should not repres
 !!! tip "Tip"
     It is always worth recommending that you test a major server version upgrade like this first with your application(s) in a development environment or similar.
 
-Please have in mind the following changes in `v2`:
+Please keep in mind the following changes in `v2`:
 
 - The server now supports only a root directory path (via `--root` or its equivalent env) so an assets path option is no longer required.
 - Cache-control headers are arbitrarily applied to assets. See [control headers examples](./features/cache-control-headers.md) for more details.
