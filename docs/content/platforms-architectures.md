@@ -57,3 +57,8 @@ Currently, only the following platforms/architectures are supported.
 
 #### x86_64
   - `x86_64-unknown-netbsd`
+
+## Illumos
+
+#### x86_64
+  - `x86_64-unknown-illumos`
