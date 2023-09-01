@@ -53,6 +53,14 @@ pub struct Redirects {
     pub kind: StatusCode,
 }
 
+/// The `Scripts` file options.
+pub struct Scripts {
+    /// Source pattern Regex matcher
+    pub source: Regex,
+    /// A local file that must exist
+    pub destination: String,
+}
+
 /// The `VirtualHosts` file options.
 pub struct VirtualHosts {
     /// The value to check for in the "Host" header
@@ -69,6 +77,8 @@ pub struct Advanced {
     pub rewrites: Option<Vec<Rewrites>>,
     /// Redirects list.
     pub redirects: Option<Vec<Redirects>>,
+    /// Scripts list.
+    pub scripts: Option<Vec<Scripts>>,
     /// Name-based virtual hosting
     pub virtual_hosts: Option<Vec<VirtualHosts>>,
 }
@@ -413,7 +423,45 @@ impl Settings {
                     _ => None,
                 };
 
-                // 3. Virtual hosts assignment
+                // 4. Scripts assignment
+                let scripts_entries = match advanced.scripts {
+                    Some(scripts_entries) => {
+                        let mut scripts_vec: Vec<Scripts> = Vec::new();
+
+                        // Compile a glob pattern for each script sources entry
+                        for scripts_entry in scripts_entries.iter() {
+                            let source = Glob::new(&scripts_entry.source)
+                                .with_context(|| {
+                                    format!(
+                                        "can not compile glob pattern for script source: {}",
+                                        &scripts_entry.source
+                                    )
+                                })?
+                                .compile_matcher();
+
+                            let pattern =
+                                source.glob().regex().trim_start_matches("(?-u)").to_owned();
+                            tracing::debug!("url script glob pattern: {}", &scripts_entry.source);
+                            tracing::debug!("url script regex equivalent: {}", pattern);
+
+                            let source = Regex::new(&pattern).with_context(|| {
+                                    format!(
+                                        "can not compile regex pattern equivalent for script source: {}",
+                                        &pattern
+                                    )
+                                })?;
+
+                            scripts_vec.push(Scripts {
+                                source,
+                                destination: scripts_entry.destination.to_owned(),
+                            });
+                        }
+                        Some(scripts_vec)
+                    }
+                    _ => None,
+                };
+
+                // 5. Virtual hosts assignment
                 let vhosts_entries = match advanced.virtual_hosts {
                     Some(vhosts_entries) => {
                         let mut vhosts_vec: Vec<VirtualHosts> = Vec::new();
@@ -443,6 +491,7 @@ impl Settings {
                     headers: headers_entries,
                     rewrites: rewrites_entries,
                     redirects: redirects_entries,
+                    scripts: scripts_entries,
                     virtual_hosts: vhosts_entries,
                 });
             }

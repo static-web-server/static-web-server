@@ -22,7 +22,7 @@ use crate::fallback_page;
 use crate::{
     control_headers, cors, custom_headers, error_page,
     exts::http::MethodExt,
-    redirects, rewrites, security_headers,
+    helpers, redirects, rewrites, scripts, security_headers,
     settings::{file::RedirectsKind, Advanced},
     static_files::{self, HandleOpts},
     virtual_hosts, Error, Result,
@@ -346,6 +346,81 @@ impl RequestHandler {
                         };
                         return Ok(resp);
                     }
+                }
+
+                // Scripts
+                if let Some(script) =
+                    scripts::script_uri_path(uri_path.clone().as_str(), &advanced.scripts)
+                {
+                    // TODO: handle proper replacements
+                    // Scripts: Handle replacements (placeholders)
+                    if let Some(regex_caps) = script.source.captures(uri_path.as_str()) {
+                        let caps_range = 0..regex_caps.len();
+                        let caps = caps_range
+                            .clone()
+                            .filter_map(|i| regex_caps.get(i).map(|s| s.as_str()))
+                            .collect::<Vec<&str>>();
+
+                        let patterns = caps_range
+                            .map(|i| format!("${}", i))
+                            .collect::<Vec<String>>();
+
+                        let dest = script.destination.as_str();
+
+                        tracing::debug!("url scripts glob pattern: {:?}", patterns);
+                        tracing::debug!("url scripts regex equivalent: {}", script.source);
+                        tracing::debug!("url scripts glob pattern captures: {:?}", caps);
+                        tracing::debug!("url scripts glob pattern destination: {:?}", dest);
+
+                        if let Ok(ac) = aho_corasick::AhoCorasick::new(patterns) {
+                            if let Ok(dest) = ac.try_replace_all(dest, &caps) {
+                                tracing::debug!(
+                                    "url scripts glob pattern destination replaced: {:?}",
+                                    dest
+                                );
+                                // uri_path = dest;
+                            }
+                        }
+                    }
+                    // NOTE: scripts do not support redirects
+
+                    // TODO: handle all errors
+                    // TODO: customize list of stdlib modules to load
+                    let lua = rlua::Lua::new_with(
+                        // Defaults
+                        rlua::StdLib::BASE
+                            | rlua::StdLib::TABLE
+                            | rlua::StdLib::STRING
+                            | rlua::StdLib::UTF8
+                            | rlua::StdLib::MATH,
+                        // Extras
+                        // | rlua::StdLib::COROUTINE
+                        // | rlua::StdLib::IO
+                        // | rlua::StdLib::OS
+                        // | rlua::StdLib::PACKAGE
+                        // | rlua::StdLib::DEBUG,
+                    );
+                    lua.set_memory_limit(Some(1024 * 1024));
+
+                    // TODO: consider passing useful SWS info
+                    // TODO: validate path before use it here
+                    let dest = PathBuf::from(script.destination.as_str());
+                    let script_str = helpers::read_file(dest.as_path())?;
+                    lua.context::<_, Result<(), Error>>(move |lua_ctx| {
+                        let globals = lua_ctx.globals();
+                        lua_ctx.scope(|_scope| {
+                            // TODO: share useful data
+                            globals.set("RUST_OS", std::env::consts::OS.trim())?;
+                            lua_ctx.load(script_str.as_str()).exec()?;
+                            Ok(())
+                        })
+                    })?;
+
+                    // TODO: return proper response, consider append script output
+                    let body = Body::from("Testing a Lua script!");
+                    let mut resp = Response::new(body);
+                    *resp.status_mut() = StatusCode::OK;
+                    return Ok(resp);
                 }
 
                 // If the "Host" header matches any virtual_host, change the root dir

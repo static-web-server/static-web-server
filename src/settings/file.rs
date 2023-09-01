@@ -92,6 +92,16 @@ pub struct Rewrites {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "kebab-case")]
+/// Represents Scripts types.
+pub struct Scripts {
+    /// Source of the rewrite.
+    pub source: String,
+    /// Script destination.
+    pub destination: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "kebab-case")]
 /// Represents virtual hosts with different root directories
 pub struct VirtualHosts {
     /// The value to check for in the "Host" header
@@ -110,6 +120,8 @@ pub struct Advanced {
     pub rewrites: Option<Vec<Rewrites>>,
     /// Redirects
     pub redirects: Option<Vec<Redirects>>,
+    /// Scripts
+    pub scripts: Option<Vec<Scripts>>,
     /// Name-based virtual hosting
     pub virtual_hosts: Option<Vec<VirtualHosts>>,
 }
