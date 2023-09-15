@@ -1,6 +1,8 @@
 [package]
 name = "static-web-server"
 version = "2.21.1"
+edition = "2021"
+rust-version = "1.70.0"
 authors = ["Jose Quintana <https://joseluisq.net>"]
 license = "MIT OR Apache-2.0"
 description = "A cross-platform, high-performance and asynchronous web server for static files-serving."
@@ -13,7 +15,6 @@ keywords = [
     "http-server"
 ]
 categories = ["network-programming", "web-programming::http-server"]
-edition = "2021"
 include = [
     "src/**/*.rs",
     "Cargo.toml",

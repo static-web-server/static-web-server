@@ -60,7 +60,7 @@ jobs:
           # Specific Rust channels
           - build: pinned
             os: ubuntu-22.04
-            rust: 1.66.0
+            rust: 1.70.0
           - build: stable
             os: ubuntu-22.04
             rust: stable
