@@ -537,7 +537,9 @@ fn parse_last_modified(modified: SystemTime) -> Result<DateTime<Local>> {
         NaiveDateTime::from_timestamp_opt(since_epoch.as_secs() as i64, since_epoch.subsec_nanos());
 
     match utc_dt {
-        Some(utc_dt) => Ok(DateTime::<Utc>::from_utc(utc_dt, Utc).with_timezone(&Local)),
+        Some(utc_dt) => {
+            Ok(DateTime::<Utc>::from_naive_utc_and_offset(utc_dt, Utc).with_timezone(&Local))
+        }
         None => Err(anyhow!(
             "out-of-range number of seconds and/or invalid nanosecond"
         )),
