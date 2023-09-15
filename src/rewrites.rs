@@ -12,9 +12,9 @@ use crate::settings::Rewrites;
 /// matches against the provided rewrites array.
 pub fn rewrite_uri_path<'a>(
     uri_path: &'a str,
-    rewrites_opts_vec: &'a Option<Vec<Rewrites>>,
+    rewrites_opts: Option<&'a [Rewrites]>,
 ) -> Option<&'a Rewrites> {
-    if let Some(rewrites_vec) = rewrites_opts_vec {
+    if let Some(rewrites_vec) = rewrites_opts {
         for rewrites_entry in rewrites_vec.iter() {
             // Match source glob pattern against request uri path
             if rewrites_entry.source.is_match(uri_path) {

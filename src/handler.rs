@@ -232,9 +232,10 @@ impl RequestHandler {
             // Advanced options
             if let Some(advanced) = &self.opts.advanced_opts {
                 // Redirects
-                if let Some(redirects) =
-                    redirects::get_redirection(uri_path.clone().as_str(), &advanced.redirects)
-                {
+                if let Some(redirects) = redirects::get_redirection(
+                    uri_path.clone().as_str(),
+                    advanced.redirects.as_deref(),
+                ) {
                     // Redirects: Handle replacements (placeholders)
                     if let Some(regex_caps) = redirects.source.captures(uri_path.as_str()) {
                         let caps_range = 0..regex_caps.len();
@@ -290,9 +291,10 @@ impl RequestHandler {
                 }
 
                 // Rewrites
-                if let Some(rewrite) =
-                    rewrites::rewrite_uri_path(uri_path.clone().as_str(), &advanced.rewrites)
-                {
+                if let Some(rewrite) = rewrites::rewrite_uri_path(
+                    uri_path.clone().as_str(),
+                    advanced.rewrites.as_deref(),
+                ) {
                     // Rewrites: Handle replacements (placeholders)
                     if let Some(regex_caps) = rewrite.source.captures(uri_path.as_str()) {
                         let caps_range = 0..regex_caps.len();
@@ -348,8 +350,10 @@ impl RequestHandler {
                     }
                 }
 
-                // If the "Host" header matches any virtual_host, change the root dir
-                if let Some(root) = virtual_hosts::get_real_root(&advanced.virtual_hosts, headers) {
+                // If the "Host" header matches any virtual_host, change the root directory
+                if let Some(root) =
+                    virtual_hosts::get_real_root(headers, advanced.virtual_hosts.as_deref())
+                {
                     base_path = root;
                 }
             }
@@ -425,7 +429,11 @@ impl RequestHandler {
 
                     // Add/update custom headers
                     if let Some(advanced) = &self.opts.advanced_opts {
-                        custom_headers::append_headers(uri_path, &advanced.headers, &mut resp)
+                        custom_headers::append_headers(
+                            uri_path,
+                            advanced.headers.as_deref(),
+                            &mut resp,
+                        )
                     }
 
                     Ok(resp)
@@ -491,7 +499,11 @@ impl RequestHandler {
 
                         // Add/update custom headers
                         if let Some(advanced) = &self.opts.advanced_opts {
-                            custom_headers::append_headers(uri_path, &advanced.headers, &mut resp)
+                            custom_headers::append_headers(
+                                uri_path,
+                                advanced.headers.as_deref(),
+                                &mut resp,
+                            )
                         }
 
                         return Ok(resp);
