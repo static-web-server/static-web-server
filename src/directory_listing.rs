@@ -118,9 +118,9 @@ pub fn auto_index(
     })
 }
 
-const STYLE: &str = r#"<style>html{background-color:#fff;-moz-osx-font-smoothing:grayscale;-webkit-font-smoothing:antialiased;min-width:20rem;text-rendering:optimizeLegibility;-webkit-text-size-adjust:100%;-moz-text-size-adjust:100%;text-size-adjust:100%}body{padding:1rem;font-family:Consolas,'Liberation Mono',Menlo,monospace;font-size:.75rem;max-width:70rem;margin:0 auto;color:#4a4a4a;font-weight:400;line-height:1.5}h1{margin:0;padding:0;font-size:1.375rem;line-height:1.25;margin-bottom:0.5rem;}table{width:100%;border-spacing: 0;}table th,table td{padding:.15rem 0;white-space:nowrap;vertical-align:top}table th a,table td a{display:inline-block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:95%;vertical-align:top;}table tr:hover td{background-color:#f5f5f5}footer{padding-top:0.5rem}table tr th{text-align:left;}</style>"#;
+const STYLE: &str = r#"<style>html{background-color:#fff;-moz-osx-font-smoothing:grayscale;-webkit-font-smoothing:antialiased;min-width:20rem;text-rendering:optimizeLegibility;-webkit-text-size-adjust:100%;-moz-text-size-adjust:100%;text-size-adjust:100%}:after,:before{box-sizing:border-box;}body{padding:1rem;font-family:Consolas,'Liberation Mono',Menlo,monospace;font-size:.75rem;max-width:70rem;margin:0 auto;color:#4a4a4a;font-weight:400;line-height:1.5}h1{margin:0;padding:0;font-size:1rem;line-height:1.25;margin-bottom:0.5rem;}table{width:100%;table-layout:fixed;border-spacing: 0;}hr{border-style: none;border-bottom: solid 1px gray;}table th,table td{padding:.15rem 0;white-space:nowrap;vertical-align:top}table th a,table td a{display:inline-block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:95%;vertical-align:top;}table tr:hover td{background-color:#f5f5f5}footer{padding-top:0.5rem}table tr th{text-align:left;}@media (max-width:30rem){table th:first-child{width:20rem;}}</style>"#;
 const FOOTER: &str =
-    r#"<footer><em>Powered by Static Web Server (SWS) / static-web-server.net</em></footer>"#;
+    r#"<footer><small>Powered by Static Web Server (SWS) / static-web-server.net</small></footer>"#;
 
 const DATETIME_FORMAT_UTC: &str = "%FT%TZ";
 const DATETIME_FORMAT_LOCAL: &str = "%F %T";
@@ -428,7 +428,7 @@ fn html_auto_index<'a>(
 
     // Create the table header specifying every order code column
     let table_header = format!(
-        r#"<thead><tr><th><a href="?sort={}">Name</a></th><th style="width:160px;"><a href="?sort={}">Last modified</a></th><th style="width:120px;text-align:right;"><a href="?sort={}">Size</a></th></tr></thead>"#,
+        r#"<thead><tr><th><a href="?sort={}">Name</a></th><th style="width:10rem;"><a href="?sort={}">Last modified</a></th><th style="width:6rem;text-align:right;"><a href="?sort={}">Size</a></th></tr></thead>"#,
         sort_attrs.name, sort_attrs.last_modified, sort_attrs.size,
     );
 
@@ -460,12 +460,12 @@ fn html_auto_index<'a>(
 
     let current_path = percent_decode_str(base_path).decode_utf8()?.to_string();
     let summary = format!(
-        "<div>directories: {}, files: {}</div>",
+        "<p><small>directories: {}, files: {}</small></p>",
         dirs_count, files_count,
     );
 
     let html_page = format!(
-        "<!DOCTYPE html><html><head><meta charset=\"utf-8\"><title>Index of {current_path}</title>{STYLE}</head><body><h1>Index of {current_path}</h1>{summary}<hr><table>{table_header}{table_row}</table><hr>{FOOTER}</body></html>"
+        "<!DOCTYPE html><html><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,minimum-scale=1,initial-scale=1\"><title>Index of {current_path}</title>{STYLE}</head><body><h1>Index of {current_path}</h1>{summary}<hr><div style=\"overflow-x: auto;\"><table>{table_header}{table_row}</table></div><hr>{FOOTER}</body></html>"
     );
 
     Ok(html_page)
