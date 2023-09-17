@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _**Note:** See changelog for v1 under the [1.x](https://github.com/static-web-server/static-web-server/blob/1.x/CHANGELOG.md) branch._
 
+## v2.22.0 - 2023-09-18
+
+This new `v2.22.0` release brings several dependency updates and bug fixes. It fixes a performance regression leading to better RAM utilization (~28% less) in comparison to the previous releases with a slight req/sec increase, a new Illumos x86_64 target, as well as improved responsiveness of the directory listing HTML page for mobile and desktop screens.
+
+__Fixes__
+
+- [232677c](https://github.com/static-web-server/static-web-server/commit/232677c) Bugfix/security dependency updates including rustls, async-compression, chrono, clap, serde, regex and other crates. Also [b2322a9](https://github.com/static-web-server/static-web-server/commit/b2322a9).
+
+__Features__
+
+- [2ec408c](https://github.com/static-web-server/static-web-server/commit/2ec408c) Illumos x86_64 target. PR [#258](https://github.com/static-web-server/static-web-server/pull/258).
+
+__Refactorings__
+
+- [698a244](https://github.com/static-web-server/static-web-server/commit/698a244) Prefer optional slice references for several `vec` data arguments.
+- [257d47f](https://github.com/static-web-server/static-web-server/commit/257d47f) Remove typed headers when appending `cache-control`.
+- [48d1910](https://github.com/static-web-server/static-web-server/commit/48d1910) Improve the responsiveness of the directory listing HTML view. PR [#260](https://github.com/static-web-server/static-web-server/pull/260) resolves [#259](https://github.com/static-web-server/static-web-server/issues/259) reported by [@anantakrishna](https://github.com/anantakrishna).
+- [e551d67](https://github.com/static-web-server/static-web-server/commit/e551d67) Increase MSRV to 1.70.0.
+
 ## v2.21.1 - 2023-08-23
 
 This new `v2.21.1` release brings several security dependency updates. In particular for `serde_derive` and `rustls-webpki` dependencies.
