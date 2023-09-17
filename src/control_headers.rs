@@ -7,7 +7,6 @@
 //! for incoming requests based on a set of file types.
 //!
 
-use headers::{CacheControl, HeaderMapExt};
 use hyper::{Body, Response};
 
 // Cache-Control `max-age` variants
@@ -36,15 +35,16 @@ pub fn append_headers(uri: &str, resp: &mut Response<Body>) {
         }
     }
 
-    let cache_control = CacheControl::new()
-        .with_public()
-        .with_max_age(duration_from_secs(max_age));
-    resp.headers_mut().typed_insert(cache_control);
-}
-
-/// It caps a duration value at ~136 years.
-fn duration_from_secs(secs: u64) -> std::time::Duration {
-    std::time::Duration::from_secs(std::cmp::min(secs, u32::MAX as u64))
+    resp.headers_mut().insert(
+        "cache-control",
+        format!(
+            "public, max-age={}",
+            // It caps value in seconds at ~136 years
+            std::cmp::min(max_age, u32::MAX as u64)
+        )
+        .parse()
+        .unwrap(),
+    );
 }
 
 /// Gets the file extension for a URI.

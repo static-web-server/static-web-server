@@ -1,0 +1,15 @@
+[package]
+name = "benches"
+version = "0.0.0"
+publish = false
+edition = "2021"
+
+[dependencies]
+static-web-server = { version = "2", path = "../", features = ["default"] }
+criterion = "0.5"
+hyper = { version = "0.14", features = ["stream", "http1", "http2", "tcp", "server"] }
+
+[[bench]]
+name = "control_headers"
+path = "control_headers.rs"
+harness = false
