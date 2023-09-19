@@ -127,6 +127,10 @@ destination = "/assets/$1.$2"
 source = "/abc/**/*.{svg,jxl}"
 destination = "/assets/favicon.ico"
 
+[[advanced.rewrites]]
+source = "/files/{*}"
+destination = "/$1"
+
 ### Name-based virtual hosting
 
 [[advanced.virtual-hosts]]
