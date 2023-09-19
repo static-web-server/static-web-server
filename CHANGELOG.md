@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _**Note:** See changelog for v1 under the [1.x](https://github.com/static-web-server/static-web-server/blob/1.x/CHANGELOG.md) branch._
 
+## v2.22.1 - 2023-09-19
+
+This new `v2.22.1` release brings several dependency updates and bug fixes. In particular, it fixes an issue when capturing glob groups for URL Rewrites and Redirects.
+
+__Fixes__
+
+- [0b5f590](https://github.com/static-web-server/static-web-server/commit/0b5f590) Bugfix/security dependency updates including aho-corasick (regex), clap, syn and other crates.
+- [2e3e49f](https://github.com/static-web-server/static-web-server/commit/2e3e49f) URL Rewrites and Redirects do not capture glob groups like `/dir/{*}` correctly. PR [#265](https://github.com/static-web-server/static-web-server/pull/265) resolves [#264](https://github.com/static-web-server/static-web-server/issues/264) reported by [@clembu](https://github.com/clembu).
+
 ## v2.22.0 - 2023-09-18
 
 This new `v2.22.0` release brings several dependency updates and bug fixes. It fixes a performance regression leading to better RAM utilization (~28% less) in comparison to the previous releases with a slight req/sec increase, a new Illumos x86_64 target, as well as improved responsiveness of the directory listing HTML page for mobile and desktop screens.
