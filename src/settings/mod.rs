@@ -342,8 +342,12 @@ impl Settings {
                                 })?
                                 .compile_matcher();
 
-                            let pattern =
-                                source.glob().regex().trim_start_matches("(?-u)").to_owned();
+                            let pattern = source
+                                .glob()
+                                .regex()
+                                .trim_start_matches("(?-u)")
+                                .replace("?:.*", ".*")
+                                .to_owned();
                             tracing::debug!(
                                 "url rewrites glob pattern: {}",
                                 &rewrites_entry.source
@@ -384,8 +388,12 @@ impl Settings {
                                 })?
                                 .compile_matcher();
 
-                            let pattern =
-                                source.glob().regex().trim_start_matches("(?-u)").to_owned();
+                            let pattern = source
+                                .glob()
+                                .regex()
+                                .trim_start_matches("(?-u)")
+                                .replace("?:.*", ".*")
+                                .to_owned();
                             tracing::debug!(
                                 "url redirects glob pattern: {}",
                                 &redirects_entry.source
