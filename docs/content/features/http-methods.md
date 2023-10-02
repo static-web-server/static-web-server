@@ -19,7 +19,7 @@ curl -I -X OPTIONS http://localhost:8787/assets/main.js
 # date: Thu, 10 Mar 2022 21:26:01 GMT
 ```
 
-### Preflighted requests in CORS
+### Preflight requests in CORS
 
 The HTTP [OPTIONS](https://developer.mozilla.org/en-US/docs/Web/HTTP/Methods/OPTIONS) method can also be used to send a request asking if it is acceptable to send requests to the server and if it is aware of using specific methods and headers.
 

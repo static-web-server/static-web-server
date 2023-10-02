@@ -24,5 +24,3 @@ Here is an example of delaying the graceful shutdown process by `10` seconds aft
 ```sh
 static-web-server -p 8787 -d ./public/ -g trace --grace-period 10
 ```
-
-

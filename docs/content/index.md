@@ -78,6 +78,6 @@ Cross-platform and available for `Linux`, `macOS`, `Windows`, `FreeBSD`, `NetBSD
 
 <img title="SWS - Benchmarks April 2023" src="https://raw.githubusercontent.com/static-web-server/benchmarks/master/data/2023-04/benchmark-2023-04.png" width="860">
 
-For more details see [benchmarks repository](https://github.com/static-web-server/benchmarks).
+For more details see [the benchmarks repository](https://github.com/static-web-server/benchmarks).
 
 For feedback or questions feel free to reach us on [the discussions page](https://github.com/static-web-server/static-web-server/discussions).

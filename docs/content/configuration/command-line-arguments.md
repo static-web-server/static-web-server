@@ -91,7 +91,7 @@ Options:
 
 ## Windows
 
-The following options and commands are Windows platform specific.
+The following options and commands are Windows platform-specific.
 
 ```
  -s, --windows-service <windows-service>

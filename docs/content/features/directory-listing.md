@@ -114,7 +114,7 @@ static-web-server \
     --directory-listing-format="json"
 ```
 
-And below and client request example to illustrate how the feature works.
+And below is a client request example to illustrate how the feature works.
 
 ```sh
 curl -iH "content-type: application/json" http://localhost:8787

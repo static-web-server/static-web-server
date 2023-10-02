@@ -7,9 +7,9 @@ The HTTP methods supported are `GET` and `HEAD`.
 
 This feature is disabled by default and can be controlled by the boolean `--health` option or the equivalent [SERVER_HEALTH](./../configuration/environment-variables.md#health) env.
 
-## Usage with kubernetes liveness probe
+## Usage with Kubernetes liveness probe
 
-The health endpoint is well suited for the kubernetes liveness probe:
+The health endpoint is well suited for the Kubernetes liveness probe:
 
 ```yaml
 apiVersion: v1

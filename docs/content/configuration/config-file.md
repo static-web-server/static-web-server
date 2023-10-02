@@ -124,10 +124,24 @@ health = false
 # [[advanced.rewrites]]
 # source = "**/*.{png,ico,gif}"
 # destination = "/assets/favicon.ico"
+## Optional redirection
+# redirect = 301
 
 # [[advanced.rewrites]]
 # source = "**/*.{jpg,jpeg}"
 # destination = "/images/sws.png"
+
+### Virtual Hosting
+
+# [[advanced.virtual-hosts]]
+## But if the "Host" header matches this...
+# host = "sales.example.com"
+## ...then files will be served from here instead
+# root = "/var/sales/html"
+
+# [[advanced.virtual-hosts]]
+# host = "blog.example.com"
+# root = "/var/blog/html"
 ```
 
 ### General options

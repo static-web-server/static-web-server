@@ -45,7 +45,7 @@ static-web-server -p 4433 -d public/ -g trace \
     # --https-redirect-from-hosts = "localhost,127.0.0.1"
 ```
 
-After running the server, the logs should look as follow.
+After running the server, the logs should look as follows.
 
 ```log
 .......

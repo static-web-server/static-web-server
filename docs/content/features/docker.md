@@ -17,11 +17,11 @@ All Docker images are [Multi-Arch](https://www.docker.com/blog/how-to-rapidly-bu
 - `linux/arm64`
 
 !!! tip "SWS statically-linked binary"
-    All the Docker images use the SWS statically-linked binary, meaning that the binary is highly-optimized, performant, and dependency-free thanks to [musl libc](https://www.musl-libc.org/).
+    All the Docker images use the SWS statically-linked binary, meaning that the binary is highly optimized, performant, and dependency-free thanks to [musl libc](https://www.musl-libc.org/).
 
 ## Run a container
 
-To give the server a quick try then just run the following commands.
+To give the server a quick try just run the following commands.
 
 !!! tip "Tips"
     - [The SWS CLI arguments](../configuration/command-line-arguments.md) can be provided directly to the container or omitted as shown below.

@@ -79,7 +79,7 @@ sudo systemd-analyze security static-web-server.service
 
 Alternatively, the lightweight [`systemfd`](https://github.com/mitsuhiko/systemfd) utility may be useful, especially for testing purposes.
 
-For example, using `systemfd` utility as follow:
+For example, using `systemfd` utility as follows:
 
 ```sh
 sudo systemfd --no-pid -s http::8091 -- path/to/static-web-server --fd 0
