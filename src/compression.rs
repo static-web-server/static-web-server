@@ -60,9 +60,9 @@ pub const TEXT_MIME_TYPES: [&str; 24] = [
     "application/wasm",
 ];
 
-/// Create a wrapping handler that compresses the Body of a [`Response`](hyper::Response)
+/// Create a wrapping handler that compresses the Body of a [`hyper::Response`]
 /// using `gzip`, `deflate`, `brotli` or `zstd` if is specified in the `Accept-Encoding` header, adding
-/// `content-encoding: <coding>` to the Response's [`HeaderMap`](hyper::HeaderMap)
+/// `content-encoding: <coding>` to the Response's [`HeaderMap`].
 /// It also provides the ability to apply compression for text-based MIME types only.
 pub fn auto(
     method: &Method,
@@ -112,8 +112,8 @@ pub fn auto(
     Ok(resp)
 }
 
-/// Create a wrapping handler that compresses the Body of a [`Response`](hyper::Response)
-/// using gzip, adding `content-encoding: gzip` to the Response's [`HeaderMap`](hyper::HeaderMap)
+/// Create a wrapping handler that compresses the Body of a [`Response`].
+/// using gzip, adding `content-encoding: gzip` to the Response's [`HeaderMap`].
 #[cfg(feature = "compression-gzip")]
 #[cfg_attr(docsrs, doc(cfg(feature = "compression-gzip")))]
 pub fn gzip(
@@ -129,8 +129,8 @@ pub fn gzip(
     Response::from_parts(head, body)
 }
 
-/// Create a wrapping handler that compresses the Body of a [`Response`](hyper::Response)
-/// using deflate, adding `content-encoding: deflate` to the Response's [`HeaderMap`](hyper::HeaderMap)
+/// Create a wrapping handler that compresses the Body of a [`Response`].
+/// using deflate, adding `content-encoding: deflate` to the Response's [`HeaderMap`].
 #[cfg(feature = "compression-deflate")]
 #[cfg_attr(docsrs, doc(cfg(feature = "compression-deflate")))]
 pub fn deflate(
@@ -151,8 +151,8 @@ pub fn deflate(
     Response::from_parts(head, body)
 }
 
-/// Create a wrapping handler that compresses the Body of a [`Response`](hyper::Response)
-/// using brotli, adding `content-encoding: br` to the Response's [`HeaderMap`](hyper::HeaderMap)
+/// Create a wrapping handler that compresses the Body of a [`Response`].
+/// using brotli, adding `content-encoding: br` to the Response's [`HeaderMap`].
 #[cfg(feature = "compression-brotli")]
 #[cfg_attr(docsrs, doc(cfg(feature = "compression-brotli")))]
 pub fn brotli(
@@ -171,8 +171,8 @@ pub fn brotli(
     Response::from_parts(head, body)
 }
 
-/// Create a wrapping handler that compresses the Body of a [`Response`](hyper::Response)
-/// using zstd, adding `content-encoding: zstd` to the Response's [`HeaderMap`](hyper::HeaderMap)
+/// Create a wrapping handler that compresses the Body of a [`Response`].
+/// using zstd, adding `content-encoding: zstd` to the Response's [`HeaderMap`].
 #[cfg(feature = "compression-zstd")]
 #[cfg_attr(docsrs, doc(cfg(feature = "compression-zstd")))]
 pub fn zstd(
