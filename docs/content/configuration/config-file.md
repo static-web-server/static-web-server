@@ -78,6 +78,9 @@ compression-static = true
 #### Health-check endpoint (GET or HEAD `/health`)
 health = false
 
+#### List of index files
+# index-files = "index.html, index.htm"
+
 ### Windows Only
 
 #### Run the web server as a Windows Service

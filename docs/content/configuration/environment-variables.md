@@ -108,6 +108,9 @@ Ignore hidden files/directories (dotfiles), preventing them to be served and bei
 ### SERVER_HEALTH
 Activate the health endpoint.
 
+### SERVER_INDEX_FILES
+List of files that will be used as an index for requests ending with the slash character (‘/’). Files are checked in the specified order. Default `index.html`.
+
 ## Windows
 The following options and commands are Windows platform-specific.
 
