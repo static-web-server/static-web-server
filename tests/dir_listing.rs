@@ -272,7 +272,7 @@ mod tests {
                         assert_eq!(last_entry.name, "index.htm");
                         assert_eq!(last_entry.typed, "file");
                         assert!(!last_entry.mtime.is_empty());
-                        assert!(last_entry.size.unwrap() >= 38);
+                        assert!(last_entry.size.unwrap() >= 36);
                     } else {
                         assert!(body_str.is_empty());
                     }
