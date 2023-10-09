@@ -39,6 +39,7 @@ mod tests {
             redirect_trailing_slash: true,
             compression_static: false,
             ignore_hidden_files: false,
+            index_files: &[],
         })
         .await
         .expect("unexpected error response on `handle` function");
@@ -80,6 +81,7 @@ mod tests {
             redirect_trailing_slash: true,
             compression_static: false,
             ignore_hidden_files: false,
+            index_files: &[],
         })
         .await
         .expect("unexpected error response on `handle` function");
@@ -122,6 +124,7 @@ mod tests {
                 redirect_trailing_slash: true,
                 compression_static: false,
                 ignore_hidden_files: false,
+                index_files: &[],
             })
             .await
             {
@@ -152,6 +155,7 @@ mod tests {
             redirect_trailing_slash: true,
             compression_static: false,
             ignore_hidden_files: false,
+            index_files: &[],
         })
         .await
         .expect("unexpected error response on `handle` function");
@@ -183,6 +187,7 @@ mod tests {
             redirect_trailing_slash: true,
             compression_static: false,
             ignore_hidden_files: false,
+            index_files: &[],
         })
         .await
         {
@@ -213,6 +218,7 @@ mod tests {
             redirect_trailing_slash: false,
             compression_static: false,
             ignore_hidden_files: false,
+            index_files: &[],
         })
         .await
         {
@@ -248,6 +254,7 @@ mod tests {
                     redirect_trailing_slash: true,
                     compression_static: false,
                     ignore_hidden_files: false,
+                    index_files: &[],
                 })
                 .await
                 {
@@ -298,6 +305,7 @@ mod tests {
                 redirect_trailing_slash: true,
                 compression_static: false,
                 ignore_hidden_files: false,
+                index_files: &[],
             })
             .await
             {
@@ -330,6 +338,7 @@ mod tests {
                 redirect_trailing_slash: true,
                 compression_static: false,
                 ignore_hidden_files: false,
+                index_files: &[],
             })
             .await
             {
@@ -365,6 +374,7 @@ mod tests {
                 redirect_trailing_slash: true,
                 compression_static: false,
                 ignore_hidden_files: false,
+                index_files: &[],
             })
             .await
             {
@@ -400,6 +410,7 @@ mod tests {
                 redirect_trailing_slash: true,
                 compression_static: false,
                 ignore_hidden_files: false,
+                index_files: &[],
             })
             .await
             {
@@ -438,6 +449,7 @@ mod tests {
                 redirect_trailing_slash: true,
                 compression_static: false,
                 ignore_hidden_files: false,
+                index_files: &[],
             })
             .await
             {
@@ -474,6 +486,7 @@ mod tests {
                 redirect_trailing_slash: true,
                 compression_static: false,
                 ignore_hidden_files: false,
+                index_files: &[],
             })
             .await
             {
@@ -508,6 +521,7 @@ mod tests {
                 redirect_trailing_slash: true,
                 compression_static: false,
                 ignore_hidden_files: false,
+                index_files: &[],
             })
             .await
             {
@@ -541,6 +555,7 @@ mod tests {
                 redirect_trailing_slash: true,
                 compression_static: false,
                 ignore_hidden_files: false,
+                index_files: &[],
             })
             .await
             {
@@ -588,6 +603,7 @@ mod tests {
                 redirect_trailing_slash: true,
                 compression_static: false,
                 ignore_hidden_files: false,
+                index_files: &[],
             })
             .await
             {
@@ -649,6 +665,7 @@ mod tests {
                 redirect_trailing_slash: true,
                 compression_static: false,
                 ignore_hidden_files: false,
+                index_files: &[],
             })
             .await
             {
@@ -712,6 +729,7 @@ mod tests {
                 redirect_trailing_slash: true,
                 compression_static: false,
                 ignore_hidden_files: false,
+                index_files: &[],
             })
             .await
             {
@@ -759,6 +777,7 @@ mod tests {
                 redirect_trailing_slash: true,
                 compression_static: false,
                 ignore_hidden_files: false,
+                index_files: &[],
             })
             .await
             {
@@ -806,6 +825,7 @@ mod tests {
                 redirect_trailing_slash: true,
                 compression_static: false,
                 ignore_hidden_files: false,
+                index_files: &[],
             })
             .await
             {
@@ -854,6 +874,7 @@ mod tests {
                 redirect_trailing_slash: true,
                 compression_static: false,
                 ignore_hidden_files: false,
+                index_files: &[],
             })
             .await
             {
@@ -894,6 +915,7 @@ mod tests {
                 redirect_trailing_slash: true,
                 compression_static: false,
                 ignore_hidden_files: false,
+                index_files: &[],
             })
             .await
             {
@@ -944,6 +966,7 @@ mod tests {
                 redirect_trailing_slash: true,
                 compression_static: false,
                 ignore_hidden_files: false,
+                index_files: &[],
             })
             .await
             {
@@ -991,6 +1014,7 @@ mod tests {
                 redirect_trailing_slash: true,
                 compression_static: false,
                 ignore_hidden_files: false,
+                index_files: &[],
             })
             .await
             {
@@ -1041,6 +1065,7 @@ mod tests {
                 redirect_trailing_slash: true,
                 compression_static: false,
                 ignore_hidden_files: false,
+                index_files: &[],
             })
             .await
             {
@@ -1089,6 +1114,7 @@ mod tests {
                 redirect_trailing_slash: true,
                 compression_static: false,
                 ignore_hidden_files: false,
+                index_files: &[],
             })
             .await
             {
@@ -1132,6 +1158,7 @@ mod tests {
                 redirect_trailing_slash: true,
                 compression_static: false,
                 ignore_hidden_files: false,
+                index_files: &[],
             })
             .await
             {
@@ -1186,6 +1213,7 @@ mod tests {
                 redirect_trailing_slash: true,
                 compression_static: false,
                 ignore_hidden_files: false,
+                index_files: &[],
             })
             .await
             {
@@ -1232,6 +1260,7 @@ mod tests {
                 redirect_trailing_slash: true,
                 compression_static: true,
                 ignore_hidden_files: true,
+                index_files: &[],
             })
             .await
             {
@@ -1240,6 +1269,50 @@ mod tests {
                 }
                 Err(status) => {
                     assert_eq!(status, StatusCode::NOT_FOUND);
+                }
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn handle_multiple_index_files() {
+        let root_dir = PathBuf::from("tests/fixtures/public/");
+        let headers = HeaderMap::new();
+
+        let buf = fs::read(root_dir.join("index.htm"))
+            .expect("unexpected error during index.htm reading");
+        let buf = Bytes::from(buf);
+
+        for method in [Method::HEAD, Method::GET] {
+            match static_files::handle(&HandleOpts {
+                method: &method,
+                headers: &headers,
+                base_path: &root_dir,
+                uri_path: "/",
+                uri_query: None,
+                #[cfg(feature = "directory-listing")]
+                dir_listing: false,
+                #[cfg(feature = "directory-listing")]
+                dir_listing_order: 6,
+                #[cfg(feature = "directory-listing")]
+                dir_listing_format: &DirListFmt::Html,
+                redirect_trailing_slash: true,
+                compression_static: true,
+                ignore_hidden_files: true,
+                index_files: &["index.html", "index.htm"],
+            })
+            .await
+            {
+                Ok((mut res, _)) => {
+                    assert_eq!(res.status(), 200);
+                    assert_eq!(res.headers()["content-length"], format!("{}", buf.len()));
+                    let body = hyper::body::to_bytes(res.body_mut())
+                        .await
+                        .expect("unexpected bytes error during `body` conversion");
+                    assert_eq!(body, &buf);
+                }
+                Err(_) => {
+                    panic!("expected a normal response rather than a status error")
                 }
             }
         }

@@ -252,6 +252,17 @@ impl Server {
         let grace_period = general.grace_period;
         server_info!("grace period before graceful shutdown: {}s", grace_period);
 
+        // Index files option
+        let index_files = general
+            .index_files
+            .split(',')
+            .map(|s| s.trim().to_owned())
+            .collect::<Vec<_>>();
+        if index_files.is_empty() {
+            bail!("index files list is empty, provide at least one index file")
+        }
+        server_info!("index files: {}", general.index_files);
+
         // Health endpoint option
         let health = general.health;
         server_info!("health endpoint: enabled={}", health);
@@ -280,6 +291,7 @@ impl Server {
                 log_remote_address,
                 redirect_trailing_slash,
                 ignore_hidden_files,
+                index_files,
                 health,
                 advanced_opts,
             }),
@@ -419,6 +431,7 @@ impl Server {
                     bail!("https redirect allowed hosts is empty, provide at least one host or IP")
                 }
 
+                // Redirect options
                 let redirect_opts = Arc::new(https_redirect::RedirectOpts {
                     https_hostname: general.https_redirect_host,
                     https_port: general.port,

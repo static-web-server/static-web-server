@@ -49,6 +49,7 @@ mod tests {
                 redirect_trailing_slash: true,
                 compression_static: false,
                 ignore_hidden_files: false,
+                index_files: &[],
             })
             .await
             {
@@ -79,6 +80,7 @@ mod tests {
                 redirect_trailing_slash: true,
                 compression_static: false,
                 ignore_hidden_files: false,
+                index_files: &[],
             })
             .await
             {
@@ -119,6 +121,7 @@ mod tests {
                 redirect_trailing_slash: false,
                 compression_static: false,
                 ignore_hidden_files: false,
+                index_files: &[],
             })
             .await
             {
@@ -159,6 +162,7 @@ mod tests {
                 redirect_trailing_slash: false,
                 compression_static: false,
                 ignore_hidden_files: false,
+                index_files: &[],
             })
             .await
             {
@@ -189,6 +193,7 @@ mod tests {
                 redirect_trailing_slash: true,
                 compression_static: false,
                 ignore_hidden_files: false,
+                index_files: &[],
             })
             .await
             {
@@ -240,6 +245,7 @@ mod tests {
                 redirect_trailing_slash: true,
                 compression_static: false,
                 ignore_hidden_files: true,
+                index_files: &[],
             })
             .await
             {
@@ -254,7 +260,7 @@ mod tests {
 
                     if method == Method::GET {
                         let entries: Vec<FileEntry> = serde_json::from_str(body_str).unwrap();
-                        assert_eq!(entries.len(), 2);
+                        assert_eq!(entries.len(), 3);
 
                         let first_entry = entries.first().unwrap();
                         assert_eq!(first_entry.name, "spécial directöry");
@@ -263,10 +269,10 @@ mod tests {
                         assert!(first_entry.size.is_none());
 
                         let last_entry = entries.last().unwrap();
-                        assert_eq!(last_entry.name, "index.html.gz");
+                        assert_eq!(last_entry.name, "index.htm");
                         assert_eq!(last_entry.typed, "file");
                         assert!(!last_entry.mtime.is_empty());
-                        assert!(last_entry.size.unwrap() > 300);
+                        assert!(last_entry.size.unwrap() >= 38);
                     } else {
                         assert!(body_str.is_empty());
                     }
@@ -309,6 +315,7 @@ mod tests {
                 redirect_trailing_slash: true,
                 compression_static: false,
                 ignore_hidden_files: false,
+                index_files: &[],
             })
             .await
             {
@@ -351,6 +358,7 @@ mod tests {
                 redirect_trailing_slash: true,
                 compression_static: false,
                 ignore_hidden_files: true,
+                index_files: &[],
             })
             .await
             {

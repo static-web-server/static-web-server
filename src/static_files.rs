@@ -39,6 +39,8 @@ use crate::{
     directory_listing::{DirListFmt, DirListOpts},
 };
 
+const DEFAULT_INDEX_FILES: &[&str; 1] = &["index.html"];
+
 /// Defines all options needed by the static-files handler.
 pub struct HandleOpts<'a> {
     /// Request method.
@@ -49,6 +51,8 @@ pub struct HandleOpts<'a> {
     pub base_path: &'a PathBuf,
     /// Request base path.
     pub uri_path: &'a str,
+    /// Index files.
+    pub index_files: &'a [&'a str],
     /// Request URI query.
     pub uri_query: Option<&'a str>,
     /// Directory listing feature.
@@ -91,7 +95,13 @@ pub async fn handle<'a>(opts: &HandleOpts<'a>) -> Result<(Response<Body>, bool),
         metadata,
         is_dir,
         precompressed_variant,
-    } = composed_file_metadata(&mut file_path, headers_opt, compression_static_opt).await?;
+    } = composed_file_metadata(
+        &mut file_path,
+        headers_opt,
+        compression_static_opt,
+        opts.index_files,
+    )
+    .await?;
 
     // Check for a hidden file/directory (dotfile) and ignore it if feature enabled
     if opts.ignore_hidden_files && file_path.is_hidden() {
@@ -215,47 +225,62 @@ async fn composed_file_metadata<'a>(
     mut file_path: &'a mut PathBuf,
     _headers: &'a HeaderMap<HeaderValue>,
     _compression_static: bool,
+    mut index_files: &'a [&'a str],
 ) -> Result<FileMetadata<'a>, StatusCode> {
     tracing::trace!("getting metadata for file {}", file_path.display());
 
     match file_metadata(file_path) {
         Ok((mut metadata, is_dir)) => {
             if is_dir {
-                // Append a HTML index page by default if it's a directory path (`autoindex`)
-                tracing::debug!("dir: appending an index.html to the directory path");
-                file_path.push("index.html");
+                // Try every index file variant in order
+                if index_files.is_empty() {
+                    index_files = DEFAULT_INDEX_FILES;
+                }
+                let mut index_found = false;
+                for index in index_files {
+                    // Append a HTML index page by default if it's a directory path (`autoindex`)
+                    tracing::debug!("dir: appending {} to the directory path", index);
+                    file_path.push(index);
 
-                // Pre-compressed variant check for the autoindex
-                #[cfg(feature = "compression")]
-                if _compression_static {
-                    if let Some(p) =
-                        compression_static::precompressed_variant(file_path, _headers).await
-                    {
-                        return Ok(FileMetadata {
-                            file_path,
-                            metadata: p.metadata,
-                            is_dir: false,
-                            precompressed_variant: Some((p.file_path, p.extension)),
-                        });
+                    // Pre-compressed variant check for the autoindex
+                    #[cfg(feature = "compression")]
+                    if _compression_static {
+                        if let Some(p) =
+                            compression_static::precompressed_variant(file_path, _headers).await
+                        {
+                            return Ok(FileMetadata {
+                                file_path,
+                                metadata: p.metadata,
+                                is_dir: false,
+                                precompressed_variant: Some((p.file_path, p.extension)),
+                            });
+                        }
+                    }
+
+                    // Otherwise, just fallback to finding the index.html
+                    // and overwrite the current `meta`
+                    // Also noting that it's still a directory request
+                    if let Ok(meta_res) = file_metadata(file_path) {
+                        (metadata, _) = meta_res;
+                        index_found = true;
+                        break;
+                    } else {
+                        // We remove only the appended index file
+                        file_path.pop();
+                        let new_meta: Option<Metadata>;
+                        (file_path, new_meta) = suffix_file_html_metadata(file_path);
+                        if let Some(new_meta) = new_meta {
+                            metadata = new_meta;
+                            index_found = true;
+                            break;
+                        }
                     }
                 }
 
-                // Otherwise, just fallback to finding the index.html
-                // and overwrite the current `meta`
-                // Also noting that it's still a directory request
-                if let Ok(meta_res) = file_metadata(file_path) {
-                    (metadata, _) = meta_res
-                } else {
-                    // We remove the appended index.html
-                    file_path.pop();
-                    let new_meta: Option<Metadata>;
-                    (file_path, new_meta) = suffix_file_html_metadata(file_path);
-                    if let Some(new_meta) = new_meta {
-                        metadata = new_meta;
-                    } else {
-                        // We append the index.html to preserve previous behavior
-                        file_path.push("index.html");
-                    }
+                // In case no index was found then we append the last index
+                // of the list to preserve the previous behavior
+                if !index_found && !index_files.is_empty() {
+                    file_path.push(index_files.last().unwrap());
                 }
             } else {
                 // Fallback pre-compressed variant check for the specific file

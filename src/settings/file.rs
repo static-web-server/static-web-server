@@ -187,6 +187,9 @@ pub struct General {
     /// Cors expose headers feature.
     pub cors_expose_headers: Option<String>,
 
+    /// List of files to be used as an index for requests ending with the slash character (‘/’).
+    pub index_files: Option<String>,
+
     /// Directory listing feature.
     #[cfg(feature = "directory-listing")]
     #[cfg_attr(docsrs, doc(cfg(feature = "directory-listing")))]
