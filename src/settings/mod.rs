@@ -145,6 +145,7 @@ impl Settings {
         let mut log_remote_address = opts.log_remote_address;
         let mut redirect_trailing_slash = opts.redirect_trailing_slash;
         let mut ignore_hidden_files = opts.ignore_hidden_files;
+        let mut index_files = opts.index_files;
         let mut health = opts.health;
 
         // Windows-only options
@@ -283,6 +284,9 @@ impl Settings {
                 }
                 if let Some(v) = general.health {
                     health = v
+                }
+                if let Some(v) = general.index_files {
+                    index_files = v
                 }
 
                 // Windows-only options
@@ -508,6 +512,7 @@ impl Settings {
                 log_remote_address,
                 redirect_trailing_slash,
                 ignore_hidden_files,
+                index_files,
                 health,
 
                 // Windows-only options and commands

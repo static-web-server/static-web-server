@@ -70,6 +70,8 @@ pub struct RequestHandlerOpts {
     #[cfg(feature = "basic-auth")]
     #[cfg_attr(docsrs, doc(cfg(feature = "basic-auth")))]
     pub basic_auth: String,
+    /// Index files feature.
+    pub index_files: Vec<String>,
     /// Log remote address feature.
     pub log_remote_address: bool,
     /// Redirect trailing slash feature.
@@ -114,6 +116,7 @@ impl RequestHandler {
         let compression_static = self.opts.compression_static;
         let ignore_hidden_files = self.opts.ignore_hidden_files;
         let health = self.opts.health;
+        let index_files: Vec<&str> = self.opts.index_files.iter().map(|s| s.as_str()).collect();
 
         let mut cors_headers: Option<http::HeaderMap> = None;
 
@@ -359,6 +362,7 @@ impl RequestHandler {
             }
 
             let uri_path = &uri_path;
+            let index_files = index_files.as_ref();
 
             // Static files
             match static_files::handle(&HandleOpts {
@@ -376,6 +380,7 @@ impl RequestHandler {
                 redirect_trailing_slash,
                 compression_static,
                 ignore_hidden_files,
+                index_files,
             })
             .await
             {

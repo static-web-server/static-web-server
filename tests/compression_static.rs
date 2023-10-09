@@ -48,6 +48,7 @@ mod tests {
             #[cfg(feature = "compression")]
             compression_static: true,
             ignore_hidden_files: false,
+            index_files: &[],
         })
         .await
         .expect("unexpected error response on `handle` function");
@@ -106,6 +107,7 @@ mod tests {
             #[cfg(feature = "compression")]
             compression_static: true,
             ignore_hidden_files: false,
+            index_files: &[],
         })
         .await
         .expect("unexpected error response on `handle` function");
@@ -158,6 +160,7 @@ mod tests {
             redirect_trailing_slash: true,
             compression_static: true,
             ignore_hidden_files: false,
+            index_files: &[],
         })
         .await
         .expect("unexpected error response on `handle` function");

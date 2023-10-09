@@ -69,6 +69,7 @@ Cross-platform and available for `Linux`, `macOS`, `Windows`, `FreeBSD`, `NetBSD
 - Support for serving pre-compressed (Gzip/Brotli/Zstd) files directly from disk.
 - Custom URL rewrites and redirects via glob patterns with replacements.
 - Virtual hosting support.
+- Multiple index files.
 - Available as a library crate with opt-in features.
 - First-class [Docker](https://docs.docker.com/get-started/overview/) support. [Scratch](https://hub.docker.com/_/scratch), latest [Alpine Linux](https://hub.docker.com/_/alpine) and [Debian](https://hub.docker.com/_/alpine) Docker images.
 - Ability to accept a socket listener as a file descriptor for sandboxing and on-demand applications (e.g. [systemd](http://0pointer.de/blog/projects/socket-activation.html)).

@@ -226,6 +226,11 @@ pub struct General {
     /// List of host names or IPs allowed to redirect from. HTTP requests must contain the HTTP 'Host' header and match against this list. It depends on "https_redirect" to be enabled.
     pub https_redirect_from_hosts: String,
 
+    #[arg(long, default_value = "index.html", env = "SERVER_INDEX_FILES")]
+    /// List of files that will be used as an index for requests ending with the slash character (‘/’).
+    /// Files are checked in the specified order.
+    pub index_files: String,
+
     #[cfg(feature = "compression")]
     #[cfg_attr(docsrs, doc(cfg(feature = "compression")))]
     #[arg(
