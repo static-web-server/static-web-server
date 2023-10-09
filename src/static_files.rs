@@ -538,21 +538,45 @@ impl Conditionals {
 }
 
 #[cfg(unix)]
-const READ_BUF_SIZE: usize = 4_096;
+const DEFAULT_READ_BUF_SIZE: usize = 4_096;
 
 #[cfg(not(unix))]
-const READ_BUF_SIZE: usize = 8_192;
+const DEFAULT_READ_BUF_SIZE: usize = 8_192;
+
+fn optimal_buf_size(metadata: &Metadata) -> usize {
+    let block_size = get_block_size(metadata);
+
+    // If file length is smaller than block size,
+    // don't waste space reserving a bigger-than-needed buffer.
+    std::cmp::min(block_size as u64, metadata.len()) as usize
+}
+
+#[cfg(unix)]
+fn get_block_size(metadata: &Metadata) -> usize {
+    use std::os::unix::fs::MetadataExt;
+    // TODO: blksize() returns u64, should handle bad cast...
+    // (really, a block size bigger than 4gb?)
+
+    // Use device blocksize unless it's really small.
+    std::cmp::max(metadata.blksize() as usize, DEFAULT_READ_BUF_SIZE)
+}
+
+#[cfg(not(unix))]
+fn get_block_size(_metadata: &Metadata) -> usize {
+    DEFAULT_READ_BUF_SIZE
+}
 
 #[derive(Debug)]
 struct FileStream<T> {
     reader: T,
+    buf_size: usize,
 }
 
 impl<T: Read + Unpin> Stream for FileStream<T> {
     type Item = Result<Bytes>;
 
     fn poll_next(self: Pin<&mut Self>, _: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        let mut buf = BytesMut::zeroed(READ_BUF_SIZE);
+        let mut buf = BytesMut::zeroed(self.buf_size);
         match Pin::into_inner(self).reader.read(&mut buf[..]) {
             Ok(n) => {
                 if n == 0 {
@@ -579,6 +603,7 @@ async fn response_body(
     match conditionals.check(modified) {
         Cond::NoBody(resp) => Ok(resp),
         Cond::WithBody(range) => {
+            let buf_size = optimal_buf_size(meta);
             bytes_range(range, len)
                 .map(|(start, end)| {
                     match file.seek(SeekFrom::Start(start)) {
@@ -591,7 +616,7 @@ async fn response_body(
 
                     let sub_len = end - start;
                     let reader = BufReader::new(file).take(sub_len);
-                    let stream = FileStream { reader };
+                    let stream = FileStream { reader, buf_size };
 
                     let body = Body::wrap_stream(stream);
                     let mut resp = Response::new(body);
