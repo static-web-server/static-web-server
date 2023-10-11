@@ -131,6 +131,7 @@ struct FileEntry {
     name_encoded: String,
     modified: Option<DateTime<Local>>,
     filesize: u64,
+    is_dir: bool,
     uri: Option<String>,
 }
 
@@ -286,11 +287,14 @@ async fn read_dir_entries(
                 None
             }
         };
+        let is_dir = meta.is_dir();
+
         file_entries.push(FileEntry {
             name,
             name_encoded,
             modified,
             filesize,
+            is_dir,
             uri,
         });
     }
@@ -364,8 +368,7 @@ fn json_auto_index(entries: &mut [FileEntry], order_code: u8) -> Result<String> 
     for entry in entries {
         let file_size = &entry.filesize;
         let file_name = &entry.name;
-        let is_empty = *file_size == 0_u64;
-        let file_type = if is_empty { "directory" } else { "file" };
+        let file_type = if entry.is_dir { "directory" } else { "file" };
         let file_modified = &entry.modified;
 
         json.push('{');
@@ -380,7 +383,7 @@ fn json_auto_index(entries: &mut [FileEntry], order_code: u8) -> Result<String> 
         });
         json.push_str(format!("\"mtime\":\"{file_modified_str}\"").as_str());
 
-        if !is_empty {
+        if !entry.is_dir {
             json.push_str(format!(",\"size\":{file_size}").as_str());
         }
         json.push_str("},");
