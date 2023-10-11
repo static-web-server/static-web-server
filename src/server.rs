@@ -267,6 +267,20 @@ impl Server {
         let health = general.health;
         server_info!("health endpoint: enabled={}", health);
 
+        // Maintenance mode option
+        let maintenance_mode = general.maintenance_mode;
+        let maintenance_mode_status = general.maintenance_mode_status;
+        let maintenance_mode_file = general.maintenance_mode_file;
+        server_info!("maintenance mode: enabled={}", maintenance_mode);
+        server_info!(
+            "maintenance mode status: {}",
+            maintenance_mode_status.as_str()
+        );
+        server_info!(
+            "maintenance mode file: \"{}\"",
+            maintenance_mode_file.display()
+        );
+
         // Create a service router for Hyper
         let router_service = RouterService::new(RequestHandler {
             opts: Arc::from(RequestHandlerOpts {
@@ -293,6 +307,9 @@ impl Server {
                 ignore_hidden_files,
                 index_files,
                 health,
+                maintenance_mode,
+                maintenance_mode_status,
+                maintenance_mode_file,
                 advanced_opts,
             }),
         });

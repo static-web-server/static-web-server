@@ -6,6 +6,7 @@
 //! The server CLI options
 
 use clap::Parser;
+use hyper::StatusCode;
 use std::path::PathBuf;
 
 #[cfg(feature = "directory-listing")]
@@ -396,6 +397,38 @@ pub struct General {
     /// This is especially useful with Kubernetes liveness and readiness probes.
     pub health: bool,
 
+    #[arg(
+        long,
+        default_value = "false",
+        default_missing_value("true"),
+        num_args(0..=1),
+        require_equals(true),
+        action = clap::ArgAction::Set,
+        env = "SERVER_MAINTENANCE_MODE"
+    )]
+    /// Enable the server's maintenance mode functionality.
+    pub maintenance_mode: bool,
+
+    #[arg(
+        long,
+        default_value = "503",
+        value_parser = value_parser_status_code,
+        requires_if("true", "maintenance_mode"),
+        env = "SERVER_MAINTENANCE_MODE_STATUS"
+    )]
+    /// Provide a custom HTTP status code when entering into maintenance mode. Default 503.
+    pub maintenance_mode_status: StatusCode,
+
+    #[arg(
+        long,
+        default_value = "",
+        value_parser = value_parser_pathbuf,
+        requires_if("true", "maintenance_mode"),
+        env = "SERVER_MAINTENANCE_MODE_FILE"
+    )]
+    /// Provide a custom maintenance mode HTML file. If not provided then a generic message will be displayed.
+    pub maintenance_mode_file: PathBuf,
+
     //
     // Windows specific arguments and commands
     //
@@ -433,7 +466,13 @@ pub enum Commands {
     Uninstall {},
 }
 
-#[cfg(feature = "fallback-page")]
 fn value_parser_pathbuf(s: &str) -> crate::Result<PathBuf, String> {
     Ok(PathBuf::from(s))
+}
+
+fn value_parser_status_code(s: &str) -> Result<StatusCode, String> {
+    match s.parse::<u16>() {
+        Ok(code) => StatusCode::from_u16(code).map_err(|err| err.to_string()),
+        Err(err) => Err(err.to_string()),
+    }
 }

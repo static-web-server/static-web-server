@@ -148,6 +148,10 @@ impl Settings {
         let mut index_files = opts.index_files;
         let mut health = opts.health;
 
+        let mut maintenance_mode = opts.maintenance_mode;
+        let mut maintenance_mode_status = opts.maintenance_mode_status;
+        let mut maintenance_mode_file = opts.maintenance_mode_file;
+
         // Windows-only options
         #[cfg(windows)]
         let mut windows_service = opts.windows_service;
@@ -287,6 +291,16 @@ impl Settings {
                 }
                 if let Some(v) = general.index_files {
                     index_files = v
+                }
+                if let Some(v) = general.maintenance_mode {
+                    maintenance_mode = v
+                }
+                if let Some(v) = general.maintenance_mode_status {
+                    maintenance_mode_status =
+                        StatusCode::from_u16(v).with_context(|| "invalid HTTP status code")?
+                }
+                if let Some(v) = general.maintenance_mode_file {
+                    maintenance_mode_file = v
                 }
 
                 // Windows-only options
@@ -514,6 +528,9 @@ impl Settings {
                 ignore_hidden_files,
                 index_files,
                 health,
+                maintenance_mode,
+                maintenance_mode_status,
+                maintenance_mode_file,
 
                 // Windows-only options and commands
                 #[cfg(windows)]
