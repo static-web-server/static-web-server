@@ -110,6 +110,12 @@ Activate the health endpoint.
 
 ### SERVER_INDEX_FILES
 List of files that will be used as an index for requests ending with the slash character (‘/’). Files are checked in the specified order. Default `index.html`.
+### SERVER_MAINTENANCE_MODE
+Enable the server's maintenance mode functionality.
+### SERVER_MAINTENANCE_MODE_STATUS
+Provide a custom HTTP status code when entering into maintenance mode. Default `503`.
+### SERVER_MAINTENANCE_MODE_FILE
+Provide a custom maintenance mode HTML file. If not provided then a generic message will be displayed.
 
 ## Windows
 The following options and commands are Windows platform-specific.

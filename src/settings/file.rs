@@ -237,6 +237,15 @@ pub struct General {
     /// Health endpoint feature.
     pub health: Option<bool>,
 
+    /// Maintenance mode feature.
+    pub maintenance_mode: Option<bool>,
+
+    /// Custom HTTP status for when entering into maintenance mode.
+    pub maintenance_mode_status: Option<u16>,
+
+    /// Custom maintenance mode HTML file.
+    pub maintenance_mode_file: Option<PathBuf>,
+
     #[cfg(windows)]
     /// windows service feature.
     pub windows_service: Option<bool>,

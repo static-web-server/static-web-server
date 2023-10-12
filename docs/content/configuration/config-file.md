@@ -80,6 +80,11 @@ health = false
 
 #### List of index files
 # index-files = "index.html, index.htm"
+#### Maintenance Mode
+
+maintenance-mode = false
+# maintenance-mode-status = 503 
+# maintenance-mode-file = "./maintenance.html"
 
 ### Windows Only
 

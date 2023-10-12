@@ -85,6 +85,12 @@ Options:
           Ignore hidden files/directories (dotfiles), preventing them to be served and being included in auto HTML index pages (directory listing) [env: SERVER_IGNORE_HIDDEN_FILES=] [default: false] [possible values: true, false]
       --health[=<HEALTH>]
           Add a /health endpoint that doesn't generate any log entry and returns a 200 status code. This is especially useful with Kubernetes liveness and readiness probes [env: SERVER_HEALTH=] [default: false] [possible values: true, false]
+      --maintenance-mode[=<MAINTENANCE_MODE>]
+          Enable the server's maintenance mode functionality [env: SERVER_MAINTENANCE_MODE=] [default: false] [possible values: true, false]
+      --maintenance-mode-status <MAINTENANCE_MODE_STATUS>
+          Provide a custom HTTP status code when entering into maintenance mode. Default 503 [env: SERVER_MAINTENANCE_MODE_STATUS=] [default: 503]
+      --maintenance-mode-file <MAINTENANCE_MODE_FILE>
+          Provide a custom maintenance mode HTML file. If not provided then a generic message will be displayed [env: SERVER_MAINTENANCE_MODE_FILE=] [default: ]
   -h, --help
           Print help (see more with '--help')
   -V, --version

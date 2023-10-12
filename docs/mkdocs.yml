@@ -164,6 +164,7 @@ nav:
     - 'Health endpoint': 'features/health-endpoint.md'
     - 'Virtual Hosting': 'features/virtual-hosting.md'
     - 'Multiple Index Files': 'features/multiple-index-files.md'
+    - 'Maintenance Mode': 'features/maintenance-mode.md'
     - 'WebAssembly': 'features/webassembly.md'
   - 'Platforms & Architectures': 'platforms-architectures.md'
   - 'Migrating from v1 to v2': 'migration.md'

@@ -22,7 +22,7 @@ use crate::fallback_page;
 use crate::{
     control_headers, cors, custom_headers, error_page,
     exts::http::MethodExt,
-    redirects, rewrites, security_headers,
+    maintenance_mode, redirects, rewrites, security_headers,
     settings::{file::RedirectsKind, Advanced},
     static_files::{self, HandleOpts},
     virtual_hosts, Error, Result,
@@ -80,6 +80,12 @@ pub struct RequestHandlerOpts {
     pub ignore_hidden_files: bool,
     /// Health endpoint feature.
     pub health: bool,
+    /// Maintenance mode feature.
+    pub maintenance_mode: bool,
+    /// Custom HTTP status for when entering into maintenance mode.
+    pub maintenance_mode_status: StatusCode,
+    /// Custom maintenance mode HTML file.
+    pub maintenance_mode_file: PathBuf,
 
     /// Advanced options from the config file.
     pub advanced_opts: Option<Advanced>,
@@ -140,6 +146,7 @@ impl RequestHandler {
             }
         }
 
+        // Health endpoint logs
         if health_request {
             tracing::debug!(
                 "incoming request: method={} uri={}{}",
@@ -157,6 +164,7 @@ impl RequestHandler {
         }
 
         async move {
+            // Health endpoint check
             if health_request {
                 let body = if method.is_get() {
                     Body::from("OK")
@@ -230,6 +238,15 @@ impl RequestHandler {
                         &self.opts.page50x,
                     );
                 }
+            }
+
+            // Maintenance Mode
+            if self.opts.maintenance_mode {
+                return maintenance_mode::get_response(
+                    method,
+                    &self.opts.maintenance_mode_status,
+                    &self.opts.maintenance_mode_file,
+                );
             }
 
             // Advanced options
