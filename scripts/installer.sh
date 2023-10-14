@@ -68,9 +68,14 @@ main() {
     local _filename="static-web-server-v$version-$_arch"
     local _url="https://github.com/static-web-server/static-web-server/releases/download/v$version/$_filename.$_ext"
 
+    local _download_file=$(mktemp -d -t sws.XXXXXXXXXX)
+
     _err=$(curl --proto '=https' --tlsv1.2 -sSf --location $_url \
-        | sudo tar zxf - -C "$local_bin/" --strip-components 1 "$_filename/static-web-server" 2>&1)
-    ensure chmod u+x "$local_bin/static-web-server"
+        | tar zxf - -C "$_download_file/" --strip-components 1 "$_filename/static-web-server" 2>&1)
+    ensure chmod u+x "$_download_file/static-web-server"
+
+    echo "Copying SWS pre-compiled binary to $local_bin..."
+    sudo cp -ax "$_download_file/static-web-server" $local_bin
 
     local _status=$?
 
@@ -84,12 +89,13 @@ main() {
     if $_ansi_escapes_are_valid; then
         printf "\33[1minfo:\33[0m pre-compiled binary installed on $local_bin/static-web-server\n" 1>&2
     else
-        printf '%s\n' 'info: pre-compiled binary installed on $local_bin/static-web-server' 1>&2
+        printf '%s\n' "info: pre-compiled binary installed on $local_bin/static-web-server" 1>&2
     fi
 
-    local sws=$(static-web-server --version)
-    echo  "$sws was installed successfully!" 1>&2
-    echo "If you want to uninstall SWS then just remove it from its location." 1>&2
+    ensure $local_bin/static-web-server --version
+
+    echo "SWS was installed successfully!" 1>&2
+    echo "To uninstall SWS just remove it from its location." 1>&2
 
     return "$_status"
 }
@@ -194,9 +200,9 @@ get_architecture() {
 
     case "$_ostype" in
 
-        # Android)
-        #     _ostype=linux-android
-        #     ;;
+        Android)
+            _ostype=linux-android
+            ;;
 
         Linux)
             check_proc
@@ -208,9 +214,9 @@ get_architecture() {
             _ostype=unknown-freebsd
             ;;
 
-        # NetBSD)
-        #     _ostype=unknown-netbsd
-        #     ;;
+        NetBSD)
+            _ostype=unknown-netbsd
+            ;;
 
         # DragonFly)
         #     _ostype=unknown-dragonfly
@@ -220,9 +226,9 @@ get_architecture() {
             _ostype=apple-darwin
             ;;
 
-        # illumos)
-        #     _ostype=unknown-illumos
-        #     ;;
+        illumos)
+            _ostype=unknown-illumos
+            ;;
 
         MINGW* | MSYS* | CYGWIN* | Windows_NT)
             _ostype=pc-windows-gnu
