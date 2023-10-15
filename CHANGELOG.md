@@ -7,6 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _**Note:** See changelog for v1 under the [1.x](https://github.com/static-web-server/static-web-server/blob/1.x/CHANGELOG.md) branch._
 
+## v2.23.0 - 2023-10-15
+
+This new `v2.23.0` release brings several dependency updates and bug fixes. New features like multiple index files and maintenance mode support, more performance and resource optimizations (~15% less memory usage), a bug fix for the directory listing, documentation for using SWS in WebAssembly and TrueNAS SCALE and other improvements.
+
+__Fixes__
+
+- [85ea7c4](https://github.com/static-web-server/static-web-server/commit/85ea7c4) Bugfix/security dependency updates including tokio, regex, clap, async-compression (zstd, flate2), tracing, serde and other crates (also [27cb09d](https://github.com/static-web-server/static-web-server/commit/27cb09d)).
+- [7c5df01](https://github.com/static-web-server/static-web-server/commit/7c5df01) Wrong directory type for empty files in JSON directory listing. PR [#271](https://github.com/static-web-server/static-web-server/pull/271) resolves [#270](https://github.com/static-web-server/static-web-server/issues/270) reported by [@carueda](https://github.com/carueda).
+- [89d70d0](https://github.com/static-web-server/static-web-server/commit/89d70d0) Docker: Debian 12.2 image update.
+- [aeebc6f](https://github.com/static-web-server/static-web-server/commit/aeebc6f) Installer: Installer script breakage. PR [#274](https://github.com/static-web-server/static-web-server/pull/274) resolves [#273](https://github.com/static-web-server/static-web-server/issues/273) reported by [@kzhui125](https://github.com/kzhui125).
+- [e3cd810](https://github.com/static-web-server/static-web-server/commit/e3cd810) Crate: Docs links in compression module.
+
+__Features__
+
+- [efb2c0c](https://github.com/static-web-server/static-web-server/commit/efb2c0c) Multiple index files support. PR [#267](https://github.com/static-web-server/static-web-server/pull/267) resolves [#257](https://github.com/static-web-server/static-web-server/issues/257) suggested by [@moinologics](https://github.com/moinologics). See [docs](https://static-web-server.net/features/multiple-index-files/).
+- [9e50491](https://github.com/static-web-server/static-web-server/commit/9e50491) Maintenance mode support. PR [#272](https://github.com/static-web-server/static-web-server/pull/272) resolves [#268](https://github.com/static-web-server/static-web-server/issues/268) suggested by [@tuxpizza](https://github.com/tuxpizza). See [docs](https://static-web-server.net/features/maintenance-mode/).
+
+__Refactorings__
+
+- [d53c252](https://github.com/static-web-server/static-web-server/commit/d53c252) Optimize buffer size for static file reads (Linux/Unix targets). PR [#269](https://github.com/static-web-server/static-web-server/pull/269).
+
+__Docs__
+
+- [7a407c6](https://github.com/static-web-server/static-web-server/commit/7a407c6) WebAssembly page and Wasmer Wasix example. See [docs](https://static-web-server.net/features/webassembly/).
+- [b70058c](https://github.com/static-web-server/static-web-server/commit/b70058c) TrueNAS SCALE installation via TrueCharts. See [docs](https://static-web-server.net/download-and-install/#truenas-scale/).
+- [ddbf881](https://github.com/static-web-server/static-web-server/commit/ddbf881) Improve content across several pages.
+
+**Acknowledgments**
+
+Thanks to our new donor [@kirillt](https://github.com/kirillt) for supporting the project.
+
 ## v2.22.1 - 2023-09-19
 
 This new `v2.22.1` release brings several dependency updates and bug fixes. In particular, it fixes an issue when capturing glob groups for URL Rewrites and Redirects.
