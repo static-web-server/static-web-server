@@ -45,6 +45,8 @@ jobs:
           - linux-arm-gnueabihf
           - linux-musl-armv6
           - linux-musl-armv7
+          - linux-ppc64le
+          - linux-s390x
           # NOTE: looks like not supported by `listenfd` crate
           # - linux-android-armv7
           - linux-android-arm64
@@ -105,6 +107,14 @@ jobs:
             os: ubuntu-22.04
             rust: stable
             target: armv7-unknown-linux-musleabihf
+          - build: linux-ppc64le
+            os: ubuntu-22.04
+            rust: stable
+            target: powerpc64le-unknown-linux-gnu
+          - build: linux-s390x
+            os: ubuntu-22.04
+            rust: stable
+            target: s390x-unknown-linux-gnu
           #  NOTE: looks like not supported by `listenfd` crate
           # - build: linux-android-armv7
           #   os: ubuntu-22.04
@@ -206,8 +216,8 @@ jobs:
       shell: bash
       run: |
         case "${{ matrix.build }}" in
-          *-arm*|*bsd*|*illumos*)
-            echo "arm(64)s or BSDs are unable to execute on CI for now!"
+          *-arm*|*bsd*|*illumos*|*ppc64*|*s390x*)
+            echo "arm,bsd,illumos,ppc64,s390x are unable to execute on CI for now!"
           ;;
           *)
             if [[ "${{ matrix.os }}" == "windows-2022" ]]; then

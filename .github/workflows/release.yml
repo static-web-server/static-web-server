@@ -58,6 +58,8 @@ jobs:
           - linux-arm-gnueabihf
           - linux-musl-armv6
           - linux-musl-armv7
+          - linux-ppc64le
+          - linux-s390x
           # - linux-android-armv7
           - linux-android-arm64
           - netbsd
@@ -105,6 +107,14 @@ jobs:
           os: ubuntu-22.04
           rust: stable
           target: armv7-unknown-linux-musleabihf
+        - build: linux-ppc64le
+          os: ubuntu-22.04
+          rust: stable
+          target: powerpc64le-unknown-linux-gnu
+        - build: linux-s390x
+          os: ubuntu-22.04
+          rust: stable
+          target: s390x-unknown-linux-gnu
         # - build: linux-android-armv7
         #   os: ubuntu-22.04
         #   rust: stable
