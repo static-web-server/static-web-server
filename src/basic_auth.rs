@@ -1,33 +1,35 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
+// This file is part of Static Web Server.
+// See https://static-web-server.net/ for more information
+// Copyright (C) 2019-present Jose Quintana <joseluisq.net>
+
+//! Basic HTTP Authorization Schema module.
+//!
+
 use bcrypt::verify as bcrypt_verify;
 use headers::{authorization::Basic, Authorization, HeaderMapExt};
+use http::HeaderMap;
 use hyper::StatusCode;
 
 /// Check for a `Basic` HTTP Authorization Schema of an incoming request
 /// and uses `bcrypt` for password hashing verification.
-pub fn check_request(
-    headers: &http::HeaderMap,
-    userid: &str,
-    password: &str,
-) -> Result<(), StatusCode> {
-    if let Some(ref credentials) = headers.typed_get::<Authorization<Basic>>() {
-        if credentials.0.username() == userid {
-            return match bcrypt_verify(credentials.0.password(), password) {
-                Ok(valid) => {
-                    if valid {
-                        Ok(())
-                    } else {
-                        Err(StatusCode::UNAUTHORIZED)
-                    }
-                }
-                Err(err) => {
-                    tracing::error!("bcrypt password verification error: {:?}", err);
-                    Err(StatusCode::UNAUTHORIZED)
-                }
-            };
-        }
+pub fn check_request(headers: &HeaderMap, userid: &str, password: &str) -> Result<(), StatusCode> {
+    let credentials = headers
+        .typed_get::<Authorization<Basic>>()
+        .ok_or(StatusCode::UNAUTHORIZED)?;
+
+    if credentials.0.username() != userid {
+        return Err(StatusCode::UNAUTHORIZED);
     }
 
-    Err(StatusCode::UNAUTHORIZED)
+    match bcrypt_verify(credentials.0.password(), password) {
+        Ok(valid) if valid => Ok(()),
+        Ok(_) => Err(StatusCode::UNAUTHORIZED),
+        Err(err) => {
+            tracing::error!("bcrypt password verification error: {:?}", err);
+            Err(StatusCode::UNAUTHORIZED)
+        }
+    }
 }
 
 #[cfg(test)]

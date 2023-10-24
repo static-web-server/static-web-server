@@ -3,6 +3,7 @@
 #![deny(rust_2018_idioms)]
 #![deny(dead_code)]
 
+#[cfg(feature = "compression")]
 #[cfg(test)]
 mod tests {
     use bytes::Bytes;
@@ -10,10 +11,9 @@ mod tests {
     use http::Method;
     use std::path::PathBuf;
 
-    use static_web_server::{
-        directory_listing::DirListFmt,
-        static_files::{self, HandleOpts},
-    };
+    #[cfg(feature = "directory-listing")]
+    use static_web_server::directory_listing::DirListFmt;
+    use static_web_server::static_files::{self, HandleOpts};
 
     fn public_dir() -> PathBuf {
         PathBuf::from("docker/public/")
@@ -38,11 +38,17 @@ mod tests {
             base_path: &public_dir(),
             uri_path: "index.html",
             uri_query: None,
+            #[cfg(feature = "directory-listing")]
             dir_listing: false,
+            #[cfg(feature = "directory-listing")]
             dir_listing_order: 6,
+            #[cfg(feature = "directory-listing")]
             dir_listing_format: &DirListFmt::Html,
             redirect_trailing_slash: true,
+            #[cfg(feature = "compression")]
             compression_static: true,
+            ignore_hidden_files: false,
+            index_files: &[],
         })
         .await
         .expect("unexpected error response on `handle` function");
@@ -91,11 +97,17 @@ mod tests {
             base_path: &public_dir().join("assets/"),
             uri_path: "index.html",
             uri_query: None,
+            #[cfg(feature = "directory-listing")]
             dir_listing: false,
+            #[cfg(feature = "directory-listing")]
             dir_listing_order: 6,
+            #[cfg(feature = "directory-listing")]
             dir_listing_format: &DirListFmt::Html,
             redirect_trailing_slash: true,
+            #[cfg(feature = "compression")]
             compression_static: true,
+            ignore_hidden_files: false,
+            index_files: &[],
         })
         .await
         .expect("unexpected error response on `handle` function");
@@ -123,5 +135,34 @@ mod tests {
             body, index_buf,
             "body and index_gz_buf are not equal in length"
         );
+    }
+
+    #[cfg(feature = "directory-listing")]
+    #[tokio::test]
+    async fn compression_static_base_path_as_dot() {
+        let mut headers = HeaderMap::new();
+        headers.insert(
+            http::header::ACCEPT_ENCODING,
+            "gzip, deflate, br".parse().unwrap(),
+        );
+
+        let base_path = PathBuf::from(".");
+
+        let (_resp, _) = static_files::handle(&HandleOpts {
+            method: &Method::GET,
+            headers: &headers,
+            base_path: &base_path,
+            uri_path: "/",
+            uri_query: None,
+            dir_listing: true,
+            dir_listing_order: 6,
+            dir_listing_format: &DirListFmt::Html,
+            redirect_trailing_slash: true,
+            compression_static: true,
+            ignore_hidden_files: false,
+            index_files: &[],
+        })
+        .await
+        .expect("unexpected error response on `handle` function");
     }
 }

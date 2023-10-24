@@ -1,4 +1,4 @@
-/target
+**/target
 /bin
 **/*.rs.bk
 **/*.log
@@ -19,12 +19,15 @@
 **/*empty*
 **/*.json
 **/*.csv
+/benches/Cargo.lock
 release
 .vscode
 TODO
 docs/site
 docs/*/**.html
 */**/*.1
+docs/docs
+docker/devel/static-web-server
 
 !/docs
 !/tests/fixtures/**/*

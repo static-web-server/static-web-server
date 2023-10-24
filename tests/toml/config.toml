@@ -2,8 +2,8 @@
 
 #### Address & Root dir
 host = "::"
-port = 8787
-root = "tests/fixtures/public"
+port = 4433
+root = "docker/public"
 
 #### Logging
 log-level = "trace"
@@ -20,11 +20,15 @@ page50x = "docker/public/50x.html"
 
 #### HTTP/2 + TLS
 http2 = false
-http2-tls-cert = ""
-http2-tls-key = ""
+http2-tls-cert = "tests/tls/local.dev_cert.ecc.pem"
+http2-tls-key = "tests/tls/local.dev_key.ecc.pem"
+https-redirect = false
+https-redirect-host = "localhost"
+https-redirect-from-port = 80
+https-redirect-from-hosts = "localhost, 127.0.0.1"
 
 #### CORS & Security headers
-security-headers = true
+# security-headers = true
 cors-allow-origins = ""
 
 #### Directory listing
@@ -34,9 +38,9 @@ directory-listing = true
 directory-listing-order = 1
 
 #### Directory listing content format
-directory-listing-format = "json"
+directory-listing-format = "html"
 
-#### Basich Authentication
+#### Basic Authentication
 basic-auth = ""
 
 #### File descriptor binding
@@ -59,7 +63,15 @@ log-remote-address = false
 redirect-trailing-slash = true
 
 #### Check for existing pre-compressed files
-compression-static = true
+compression-static = false
+
+#### List of index files
+index-files = "index.html, index.htm"
+
+#### Maintenance Mode
+maintenance-mode = false
+# maintenance-mode-status = 503 
+# maintenance-mode-file = "maintenance.html"
 
 ### Windows Only
 
@@ -74,7 +86,7 @@ compression-static = true
 #### a. Oneline version
 [[advanced.headers]]
 source = "**/*.{js,css}"
-headers = { Access-Control-Allow-Origin = "*", X-XSS-PROTECTION = "1; mode=block" }
+headers = { Access-Control-Allow-Origin = "*" }
 
 # #### b. Multiline version
 [[advanced.headers]]
@@ -93,21 +105,46 @@ headers.Strict-Transport-Security = "max-age=63072000; includeSubDomains; preloa
 ### URL Redirects
 
 [[advanced.redirects]]
-source = "**/*.{jpg,jpeg}"
-destination = "/images/generic1.png"
+source = "**/{*}.{jpg,jpeg}"
+destination = "http://localhost/$1.$2"
 kind = 301
 
 [[advanced.redirects]]
 source = "/index.html"
-destination = "https://sws.joseluisq.net"
+destination = "https://static-web-server.net"
 kind = 302
 
 ### URL Rewrites
 
 [[advanced.rewrites]]
-source = "**/*.{png,ico,gif}"
+source = "/image.ico"
+destination = "/assets/favicon.ico"
+# redirect = 301
+
+[[advanced.rewrites]]
+source = "/{picture}.{ico,webp}"
+destination = "/assets/$1.$2"
+# redirect = 301
+
+[[advanced.rewrites]]
+source = "**/{*}.{png,gif}"
+destination = "/assets/$1.$2"
+# redirect = 301
+
+[[advanced.rewrites]]
+source = "/abc/**/*.{svg,jxl}"
 destination = "/assets/favicon.ico"
 
 [[advanced.rewrites]]
-source = "**/*.{jpg,jpeg}"
-destination = "/images/nomad.png"
+source = "/files/{*}"
+destination = "/$1"
+
+### Name-based virtual hosting
+
+[[advanced.virtual-hosts]]
+host = "example.com"
+root = "docker"
+
+[[advanced.virtual-hosts]]
+host = "localhost"
+root = "docker/abc"

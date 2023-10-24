@@ -1,3 +1,11 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
+// This file is part of Static Web Server.
+// See https://static-web-server.net/ for more information
+// Copyright (C) 2019-present Jose Quintana <joseluisq.net>
+
+//! Fallback page module useful for a custom page default.
+//!
+
 use headers::{AcceptRanges, ContentLength, ContentType, HeaderMapExt};
 use hyper::{Body, Response, StatusCode};
 use mime_guess::mime;

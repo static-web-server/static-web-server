@@ -1,3 +1,8 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
+// This file is part of Static Web Server.
+// See https://static-web-server.net/ for more information
+// Copyright (C) 2019-present Jose Quintana <joseluisq.net>
+
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -12,21 +17,6 @@ where
         v if !v.exists() => bail!("path {} was not found or inaccessible", v.display()),
         v if !v.is_dir() => bail!("path {} is not a valid directory", v.display()),
         v => Ok(v),
-    }
-}
-
-/// Get the directory name of a valid directory path.
-pub fn get_dirname<P: AsRef<Path>>(path: P) -> Result<String>
-where
-    PathBuf: From<P>,
-{
-    let path = get_valid_dirpath(path)?;
-    match path.iter().last() {
-        Some(v) => Ok(v.to_str().unwrap().to_owned()),
-        _ => bail!(
-            "directory name for path {} was not determined",
-            path.display()
-        ),
     }
 }
 
@@ -73,15 +63,9 @@ pub fn stringify(dst: &mut String, path: &serde_ignored::Path<'_>) {
     }
 }
 
-#[cfg(unix)]
-/// In Unix-like systems it just casts the `PathBuf` into an string.
-pub fn adjust_canonicalization(p: PathBuf) -> String {
-    p.display().to_string()
-}
-
 #[cfg(windows)]
 /// In Windows systems it adjusts the `PathBuf` stripping its `\\?\` prefix.
-pub fn adjust_canonicalization(p: PathBuf) -> String {
+pub fn adjust_canonicalization(p: &Path) -> String {
     const VERBATIM_PREFIX: &str = r#"\\?\"#;
     let p = p.to_str().unwrap_or_default();
     let p = if p.starts_with(VERBATIM_PREFIX) {

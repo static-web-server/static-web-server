@@ -14,11 +14,11 @@ Each table entry should have two key/value pairs:
 A particular set of HTTP headers can only be applied when a `source` matches against the request URI.
 
 !!! info "Custom HTTP headers take precedence over existing ones"
-    Whatever custom HTTP header could **replace** an existing one if it was previously defined (E.g server default headers) and matches its `source`.
+    Whatever custom HTTP header could **replace** an existing one if it was previously defined (e.g. server default headers) and matches its `source`.
 
-    The headers order is important since it determines its precedence.
+    The header's order is important because determines its precedence.
 
-    **Example:** if the feature `--cache-control-headers=true` is enabled but also a custom `cache-control` header was defined then the custom header will have priority.
+    **Example:** If the feature `--cache-control-headers=true` is enabled but also a custom `cache-control` header was defined then the custom header will have priority.
 
 ### Source
 
@@ -39,7 +39,7 @@ Below are some examples of how to customize server HTTP headers in three variant
 
 [[advanced.headers]]
 source = "**/*.{js,css}"
-headers = { Access-Control-Allow-Origin = "*", X-XSS-PROTECTION = "1; mode=block" }
+headers = { Access-Control-Allow-Origin = "*" }
 ```
 
 ### Multiline version

@@ -1,5 +1,7 @@
 [default.extend-words]
 Compressable = "Compressable"
 ba = "ba"
+caf = "caf"
 flate = "flate"
+Ody = "Ody"
 prefered = "prefered"

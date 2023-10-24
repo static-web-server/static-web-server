@@ -125,12 +125,21 @@ docker.image.alpine:
 		-t joseluisq/${PKG_NAME}:devel-alpine . --pull=true
 .PHONY: docker.image.alpine
 
+docker.image.debian:
+	@echo "Creating Docker Alpine image..."
+	@cp -frp ./target/x86_64-unknown-linux-musl/release/static-web-server ./docker/devel/
+	@docker build \
+		--platform="linux/x86_64" \
+		--rm=true -f ./docker/devel/Dockerfile.debian \
+		-t joseluisq/${PKG_NAME}:devel-debian . --pull=true
+.PHONY: docker.image.debian
+
 
 #######################################
 ########## Production tasks ###########
 #######################################
 
-# Compile release binary 
+# Compile release binary
 define build_release =
 	set -e
 	set -u
@@ -187,7 +196,7 @@ define build_release_shrink =
 	echo "Releases size shrinking completed!"
 endef
 
-# Creates release files (tarballs, zipballs) 
+# Creates release files (tarballs, zipballs)
 define build_release_files =
 	set -e
 	set -u
@@ -247,11 +256,33 @@ docs-dev:
 	@docker-compose -f docs/docker-compose.yml up --build
 .PHONY: docs-dev
 
+crate-docs:
+	@cargo doc --no-deps
+.PHONY: crate-docs
+
+crate-docs-dev:
+	@env \
+		RUSTDOCFLAGS="--cfg docsrs" \
+			cargo doc --lib --no-deps --all-features --document-private-items
+	@echo "Crate documentation: http://localhost:8787/static_web_server"
+	@static-web-server -p 8787 -d target/doc/ \
+		& watchman-make -p 'src/**/*.rs' --run '\
+			env \
+				RUSTDOCFLAGS="--cfg docsrs" \
+					cargo doc --lib --no-deps --all-features --document-private-items'
+.PHONY: crate-docs-dev
+
 docs-deploy:
 	@git stash
 	@rm -rf /tmp/docs
 	@mkdir -p /tmp/docs
-	@docker run -it --rm -v $(PWD)/docs:/docs -v /tmp/docs:/tmp/docs squidfunk/mkdocs-material build
+	@docker-compose -f docs/docker-compose.yml build
+	@docker run -it --rm \
+		-v $(PWD)/.git:/docs/.git \
+		-v $(PWD)/docs/content:/docs/docs/content \
+		-v $(PWD)/docs/mkdocs.yml:/docs/mkdocs.yml \
+		-v /tmp/docs:/tmp/docs \
+			static-web-server-docs mkdocs build
 	@git checkout gh-pages
 	@git clean -fdx
 	@cp -rf docs/CNAME /tmp/docs/
@@ -267,17 +298,9 @@ docs-deploy:
 	@git checkout master
 .PHONY: docs-deploy
 
-vegeta:
-	@vegeta --version
-	@echo "GET http://localhost:8787" | \
-		vegeta -cpus=12 attack -workers=12 -connections=500 -rate=6500/s -duration=10s -http2=false > results.bin
-	@cat results.bin | vegeta report -type='hist[0,2ms,4ms,6ms]'
-	@cat results.bin | vegeta plot > plot.html
-.PHONY: vegeta
-
-wrk:
-	@wrk -c 500 -t 12 -d 10s --latency -s benchmark/wrk_collector.lua $(WRK_URL)
-.PHONY: wrk
+typos:
+	@typos . --config ./.github/workflows/config/typos.toml
+.PHONY: typos
 
 man:
 	@asciidoctor --doctype=manpage --backend=manpage docs/man/static-web-server.1.rst

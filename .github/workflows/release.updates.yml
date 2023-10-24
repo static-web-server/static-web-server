@@ -1,0 +1,27 @@
+name: release-updates
+on:
+  release:
+    types:
+      - published
+
+jobs:
+  checksum_file:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 1
+
+      - name: Prepare
+        shell: bash
+        run: |
+          echo "SERVER_VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
+          echo "version is: ${{ env.SERVER_VERSION }}"
+
+      - name: Post release updates
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          scripts/ci/post_release_updates.sh

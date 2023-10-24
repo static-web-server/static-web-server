@@ -4,7 +4,7 @@ static-web-server(1)
 Name
 ----
 
-static-web-server - a blazing fast and asynchronous web server for static files-serving.
+static-web-server - About A cross-platform, high-performance and asynchronous web server for static files-serving.
 
 SYNOPSIS
 --------
@@ -93,7 +93,7 @@ Host port [env: SERVER_PORT=]  [default: 80]
 Root directory path of static files [env: SERVER_ROOT=]  [default: ./public]
 
 --security-headers <security-headers>::
-Enable security headers by default when HTTP/2 feature is activated. Headers included: "Strict-Transport- Security: max-age=63072000; includeSubDomains; preload" (2 years max-age), "X-Frame-Options: DENY", "X-XSS-Protection: 1; mode=block" and "Content-Security-Policy: frame-ancestors 'self'" [env: SERVER_SECURITY_HEADERS=]  [default: false]
+Enable security headers by default when HTTP/2 feature is activated. Headers included: "Strict-Transport- Security: max-age=63072000; includeSubDomains; preload" (2 years max-age), "X-Frame-Options: DENY" and "Content-Security-Policy: frame-ancestors 'self'" [env: SERVER_SECURITY_HEADERS=]  [default: false]
 
 -n, --threads-multiplier <threads-multiplier>::
 Number of worker threads multiplier that'll be multiplied by the number of system CPUs using the formula: ``worker threads = number of CPUs * n`` where ``n`` is the value that changes here. When multiplier value is 0 or 1 then one thread per core is used. Number of worker threads result should be a number between 1 and 32,768 though it is advised to keep this value on the smaller side [env: SERVER_THREADS_MULTIPLIER=] [default: 1]
@@ -106,7 +106,7 @@ VERSION
 
 HOMEPAGE
 --------
-https://sws.joseluisq.net
+https://static-web-server.net
 
 
 REPORTING BUGS

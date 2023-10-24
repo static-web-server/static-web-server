@@ -1,3 +1,11 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
+// This file is part of Static Web Server.
+// See https://static-web-server.net/ for more information
+// Copyright (C) 2019-present Jose Quintana <joseluisq.net>
+
+//! The module provides signals support like `SIGTERM`, `SIGINT` and `SIGQUIT`.
+//!
+
 use tokio::time::{sleep, Duration};
 
 #[cfg(unix)]
@@ -7,9 +15,10 @@ use {
 };
 
 #[cfg(windows)]
-use tokio::sync::oneshot::Receiver;
+use {std::sync::Arc, tokio::sync::watch::Receiver, tokio::sync::Mutex};
 
 #[cfg(unix)]
+#[cfg_attr(docsrs, doc(cfg(unix)))]
 /// It creates a common list of signals stream for `SIGTERM`, `SIGINT` and `SIGQUIT` to be observed.
 pub fn create_signals() -> Result<Signals> {
     Ok(Signals::new([SIGHUP, SIGTERM, SIGINT, SIGQUIT])?)
@@ -50,23 +59,11 @@ async fn delay_graceful_shutdown(grace_period_secs: u8) {
 }
 
 #[cfg(windows)]
+#[cfg_attr(docsrs, doc(cfg(windows)))]
 /// It waits for an incoming `ctrl+c` signal on Windows.
-pub async fn wait_for_ctrl_c<F>(
-    cancel_recv: Option<Receiver<()>>,
-    cancel_fn: F,
-    grace_period_secs: u8,
-) where
-    F: FnOnce(),
-{
-    if let Some(recv) = cancel_recv {
-        if let Err(err) = recv.await {
-            tracing::error!("error during cancel recv: {:?}", err)
-        }
-        cancel_fn()
-    } else {
-        tokio::signal::ctrl_c()
-            .await
-            .expect("failed to install ctrl+c signal handler");
+pub async fn wait_for_ctrl_c(cancel_recv: Arc<Mutex<Option<Receiver<()>>>>, grace_period_secs: u8) {
+    if let Some(receiver) = &mut *cancel_recv.lock().await {
+        receiver.changed().await.ok();
     }
 
     delay_graceful_shutdown(grace_period_secs).await;

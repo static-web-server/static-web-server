@@ -1,4 +1,10 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
+// This file is part of Static Web Server.
+// See https://static-web-server.net/ for more information
+// Copyright (C) 2019-present Jose Quintana <joseluisq.net>
+
 //! Module that lets SWS to run in a "Windows Service" context
+//!
 
 use std::ffi::OsString;
 use std::thread;
@@ -16,12 +22,13 @@ use windows_service::{
     service_manager::{ServiceManager, ServiceManagerAccess},
 };
 
-use crate::{helpers, logger, Context, Result, Server, Settings};
+use crate::{helpers, Context, Result, Server, Settings};
 
 const SERVICE_NAME: &str = "static-web-server";
 const SERVICE_TYPE: ServiceType = ServiceType::OWN_PROCESS;
 const SERVICE_EXE: &str = "static-web-server.exe";
-const SERVICE_DESC: &str = "A blazing fast and asynchronous web server for static files-serving";
+const SERVICE_DESC: &str =
+    "A cross-platform, high-performance and asynchronous web server for static files-serving";
 const SERVICE_DISPLAY_NAME: &str = "Static Web Server";
 
 // Generate the Windows Service boilerplate.
@@ -65,14 +72,13 @@ fn set_service_state(
 }
 
 fn run_service() -> Result {
-    let opts = Settings::get()?;
-
-    logger::init(&opts.general.log_level)?;
+    // Log is already initialized so there is no need to do it again.
+    let opts = Settings::get(false)?;
 
     tracing::info!("windows service: starting service setup");
 
     // Create a channel to be able to poll a stop event from the service worker loop.
-    let (shutdown_tx, shutdown_rx) = tokio::sync::oneshot::channel();
+    let (shutdown_tx, shutdown_rx) = tokio::sync::watch::channel(());
     let mut shutdown_tx = Some(shutdown_tx);
 
     // Define system service event handler that will be receiving service events.
@@ -127,7 +133,7 @@ fn run_service() -> Result {
     };
 
     // Starting web server
-    match Server::new() {
+    match Server::new(opts) {
         Ok(server) => {
             if let Err(err) = server.run_as_service(Some(shutdown_rx), stop_handler) {
                 tracing::error!(
@@ -162,7 +168,7 @@ pub fn run_server_as_service() -> Result {
 
     // Register generated `ffi_service_main` with the system and start the
     // service, blocking this thread until the service is stopped
-    service_dispatcher::start(&SERVICE_NAME, ffi_service_main)
+    service_dispatcher::start(SERVICE_NAME, ffi_service_main)
         .with_context(|| "error registering generated `ffi_service_main` with the system")?;
     Ok(())
 }
@@ -180,7 +186,7 @@ pub fn install_service(config_file: Option<PathBuf>) -> Result {
 
     // Append a `--config-file` path to the binary arguments if present
     if let Some(f) = config_file {
-        let f = helpers::adjust_canonicalization(f);
+        let f = helpers::adjust_canonicalization(&f);
         if !f.is_empty() {
             service_binary_arguments.push(OsString::from(["--config-file=", &f].concat()));
         }

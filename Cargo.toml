@@ -1,62 +1,89 @@
 [package]
 name = "static-web-server"
-version = "2.13.1"
+version = "2.23.0"
+edition = "2021"
+rust-version = "1.70.0"
 authors = ["Jose Quintana <https://joseluisq.net>"]
 license = "MIT OR Apache-2.0"
-description = "A cross-platform, blazing fast and asynchronous web server for static files-serving."
+description = "A cross-platform, high-performance and asynchronous web server for static files-serving."
 repository = "https://github.com/static-web-server/static-web-server"
 readme = "README.md"
+homepage = "https://static-web-server.net"
 keywords = [
     "static-web-server",
     "file-server",
-    "http-server",
-    "docker-image",
-    "musl-libc",
-    "x86",
-    "x86-64",
-    "arm64",
-    "linux",
-    "darwin",
-    "windows",
+    "http-server"
 ]
 categories = ["network-programming", "web-programming::http-server"]
-edition = "2021"
-include = ["src/**/*", "Cargo.toml", "Cargo.lock"]
+include = [
+    "src/**/*.rs",
+    "Cargo.toml",
+    "README.md",
+    "LICENSE-MIT",
+    "LICENSE-APACHE"
+]
+autotests = true
+autoexamples = true
+
+[lib]
+name = "static_web_server"
+path = "src/lib.rs"
 
 [[bin]]
 name = "static-web-server"
 path = "src/bin/server.rs"
+doc = false
+
+[features]
+# All features enabled by default
+default = ["compression", "http2", "directory-listing", "basic-auth", "fallback-page"]
+# HTTP2
+http2 = ["tokio-rustls", "rustls-pemfile"]
+# Compression
+compression = ["compression-brotli", "compression-deflate", "compression-gzip", "compression-zstd"]
+compression-brotli = ["async-compression/brotli"]
+compression-deflate = ["async-compression/deflate"]
+compression-gzip = ["async-compression/deflate"]
+compression-zstd = ["async-compression/zstd"]
+# Directory listing
+directory-listing = ["humansize", "chrono"]
+# Basic HTTP Authorization
+basic-auth = ["bcrypt"]
+# Fallback Page
+fallback-page = []
 
 [dependencies]
+aho-corasick = "1.0"
 anyhow = "1.0"
-async-compression = { version = "0.3", default-features = false, features = ["brotli", "deflate", "gzip", "tokio"] }
-bcrypt = "0.10"
-bytes = "1.1"
-form_urlencoded = "1.0"
-futures-util = { version = "0.3", default-features = false, features = ["sink"] }
+async-compression = { version = "0.4", default-features = false, optional = true, features = ["brotli", "deflate", "gzip", "zstd", "tokio"] }
+bcrypt = { version = "0.15", optional = true }
+bytes = "1.4"
+chrono = { version = "0.4", default-features = false, features = ["std", "clock"], optional = true }
+clap = { version = "4.3", features = ["derive", "env"] }
+form_urlencoded = "1.2"
+futures-util = { version = "0.3", default-features = false }
 globset = { version = "0.4", features = ["serde1"] }
-headers = { git = "https://github.com/joseluisq/hyper-headers.git", branch = "headers_encoding" }
+headers = { package = "headers-accept-encoding", version = "1.0" }
 http = "0.2"
 http-serde = "1.1"
-humansize = "1.1"
+humansize = { version = "2.1", features = ["impl_style"], optional = true }
 hyper = { version = "0.14", features = ["stream", "http1", "http2", "tcp", "server"] }
 listenfd = "1.0"
 mime_guess = "2.0"
-num_cpus = { version = "1.14" }
-percent-encoding = "2.1"
-pin-project = "1.0"
-rustls-pemfile = "1.0"
+num_cpus = { version = "1.16" }
+percent-encoding = "2.3"
+pin-project = "1.1"
+regex = "1.9"
+rustls-pemfile = { version = "1.0", optional = true }
 serde = { version = "1.0", default-features = false, features = ["derive"] }
 serde_ignored = "0.1"
 serde_repr = "0.1"
-structopt = { version = "0.3", default-features = false }
-chrono = { version = "0.4", default-features = false, features = ["std", "clock"] }
 tokio = { version = "1", default-features = false, features = ["rt-multi-thread", "macros", "fs", "io-util", "signal"] }
-tokio-rustls = { version = "0.23" }
+tokio-rustls = { version = "0.24", optional = true }
 tokio-util = { version = "0.7", default-features = false, features = ["io"] }
-toml = "0.5"
+toml = "0.7"
 tracing = { version = "0.1", default-features = false, features = ["std"] }
-tracing-subscriber = { version = "0.3", default-features = false, features = ["smallvec", "parking_lot", "fmt", "ansi", "tracing-log"] }
+tracing-subscriber = { version = "0.3", default-features = false, features = ["smallvec", "registry", "parking_lot", "fmt", "ansi", "tracing-log"] }
 
 [target.'cfg(all(target_env = "musl", target_pointer_width = "64"))'.dependencies.tikv-jemallocator]
 version = "0.5"
@@ -66,10 +93,10 @@ signal-hook = { version = "0.3", features = ["extended-siginfo"] }
 signal-hook-tokio = { version = "0.3", features = ["futures-v0_3"], default-features = false }
 
 [target.'cfg(windows)'.dependencies]
-windows-service = "0.5"
+windows-service = "0.6"
 
 [dev-dependencies]
-bytes = "1.1"
+bytes = "1.4"
 serde_json = "1.0"
 
 [profile.release]
@@ -81,3 +108,18 @@ opt-level = 3
 panic = "abort"
 rpath = false
 strip = true
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
+# workaround for https://github.com/cross-rs/cross/issues/1345
+[package.metadata.cross.target.x86_64-unknown-netbsd]
+pre-build = [
+    "mkdir -p /tmp/netbsd",
+    "curl https://cdn.netbsd.org/pub/NetBSD/NetBSD-9.2/amd64/binary/sets/base.tar.xz -O",
+    "tar -C /tmp/netbsd -xJf base.tar.xz",
+    "cp /tmp/netbsd/usr/lib/libexecinfo.so /usr/local/x86_64-unknown-netbsd/lib",
+    "rm base.tar.xz",
+    "rm -rf /tmp/netbsd",
+]

@@ -1,8 +1,13 @@
 version: "3.3"
 services:
   server:
-    image: squidfunk/mkdocs-material
+    container_name: static-web-server-docs
+    image: static-web-server-docs
+    build:
+      dockerfile: Dockerfile
     ports:
       - 8000:8000
     volumes:
-      - ./:/docs
+      - ../.git:/docs/.git
+      - ./content:/docs/docs/content
+      - ./mkdocs.yml:/docs/mkdocs.yml

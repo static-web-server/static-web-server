@@ -1,5 +1,5 @@
 freebsd_instance:
-  image: freebsd-12-2-release-amd64
+  image: freebsd-13-1-release-amd64
 
 # Test FreeBSD in a full VM on cirrus-ci.com
 # The binary will be also built in 32-bit mode, but will execute on a
@@ -17,7 +17,7 @@ task:
       env:
         BINARY_ARCH: i686
   setup_script:
-    - pkg install -y bash curl
+    - pkg install -y bash
     - curl https://sh.rustup.rs -sSf --output rustup.sh
     - sh rustup.sh -y --profile minimal --default-toolchain stable
     - . $HOME/.cargo/env
@@ -35,7 +35,8 @@ task:
   build_test_script:
     - . $HOME/.cargo/env
     - |
-      cargo build --verbose --target="$BINARY_ARCH-unknown-freebsd"
+      cargo rustc --bin static-web-server --verbose --target="$BINARY_ARCH-unknown-freebsd"
+      target/$BINARY_ARCH-unknown-freebsd/debug/static-web-server -h
 
 task:
   only_if: $CIRRUS_TAG != ''
@@ -50,7 +51,7 @@ task:
       env:
         BINARY_ARCH: i686
   setup_script:
-    - pkg install -y bash curl jq
+    - pkg install -y bash jq
     - curl https://sh.rustup.rs -sSf --output rustup.sh
     - sh rustup.sh -y --profile minimal --default-toolchain stable
     - . $HOME/.cargo/env
@@ -63,13 +64,12 @@ task:
     - rustup show
   build_script: |
     . $HOME/.cargo/env
-    cargo build --verbose --release --target="$BINARY_ARCH-unknown-freebsd"
+    cargo rustc --bin static-web-server --verbose --release --target="$BINARY_ARCH-unknown-freebsd"
   archive_script: |
     staging="static-web-server-$CIRRUS_TAG-$BINARY_ARCH-unknown-freebsd"
     mkdir -p "$staging/"
     cp "target/$BINARY_ARCH-unknown-freebsd/release/static-web-server" "$staging/"
-    strip "$staging/static-web-server"
     cp {README.md,LICENSE-APACHE,LICENSE-MIT} "$staging/"
     tar czf "$staging.tar.gz" "$staging"
   upload_script: |
-    ./ci/upload_release_file.sh
+    ./scripts/ci/upload_release_file.sh

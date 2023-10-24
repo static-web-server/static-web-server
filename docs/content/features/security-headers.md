@@ -15,6 +15,5 @@ The following headers are included by default.
 
 - `Strict-Transport-Security: max-age=63072000; includeSubDomains; preload" (2 years max-age)`
 - `X-Frame-Options: DENY`
-- `X-XSS-Protection: 1; mode=block`
 - `X-Content-Type-Options: nosniff`
 - `Content-Security-Policy: frame-ancestors`

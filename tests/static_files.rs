@@ -11,11 +11,12 @@ mod tests {
     use std::fs;
     use std::path::PathBuf;
 
-    use static_web_server::{
-        compression,
-        directory_listing::DirListFmt,
-        static_files::{self, HandleOpts},
-    };
+    #[cfg(feature = "compression")]
+    use static_web_server::compression;
+
+    #[cfg(feature = "directory-listing")]
+    use static_web_server::directory_listing::DirListFmt;
+    use static_web_server::static_files::{self, HandleOpts};
 
     fn root_dir() -> PathBuf {
         PathBuf::from("docker/public/")
@@ -29,11 +30,16 @@ mod tests {
             base_path: &root_dir(),
             uri_path: "index.html",
             uri_query: None,
+            #[cfg(feature = "directory-listing")]
             dir_listing: false,
+            #[cfg(feature = "directory-listing")]
             dir_listing_order: 6,
+            #[cfg(feature = "directory-listing")]
             dir_listing_format: &DirListFmt::Html,
             redirect_trailing_slash: true,
             compression_static: false,
+            ignore_hidden_files: false,
+            index_files: &[],
         })
         .await
         .expect("unexpected error response on `handle` function");
@@ -49,11 +55,7 @@ mod tests {
 
         let ctype = &res.headers()["content-type"];
 
-        assert!(
-            ctype == "text/html",
-            "content-type is not html: {:?}",
-            ctype,
-        );
+        assert!(ctype == "text/html", "content-type is not html: {ctype:?}",);
 
         let body = hyper::body::to_bytes(res.body_mut())
             .await
@@ -70,11 +72,16 @@ mod tests {
             base_path: &root_dir(),
             uri_path: "index.html",
             uri_query: None,
+            #[cfg(feature = "directory-listing")]
             dir_listing: false,
+            #[cfg(feature = "directory-listing")]
             dir_listing_order: 6,
+            #[cfg(feature = "directory-listing")]
             dir_listing_format: &DirListFmt::Html,
             redirect_trailing_slash: true,
             compression_static: false,
+            ignore_hidden_files: false,
+            index_files: &[],
         })
         .await
         .expect("unexpected error response on `handle` function");
@@ -90,11 +97,7 @@ mod tests {
 
         let ctype = &res.headers()["content-type"];
 
-        assert!(
-            ctype == "text/html",
-            "content-type is not html: {:?}",
-            ctype,
-        );
+        assert!(ctype == "text/html", "content-type is not html: {ctype:?}",);
 
         let body = hyper::body::to_bytes(res.body_mut())
             .await
@@ -112,11 +115,16 @@ mod tests {
                 base_path: &root_dir(),
                 uri_path: "xyz.html",
                 uri_query: None,
+                #[cfg(feature = "directory-listing")]
                 dir_listing: false,
+                #[cfg(feature = "directory-listing")]
                 dir_listing_order: 6,
+                #[cfg(feature = "directory-listing")]
                 dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: true,
                 compression_static: false,
+                ignore_hidden_files: false,
+                index_files: &[],
             })
             .await
             {
@@ -138,11 +146,16 @@ mod tests {
             base_path: &root_dir(),
             uri_path: "assets",
             uri_query: None,
+            #[cfg(feature = "directory-listing")]
             dir_listing: false,
+            #[cfg(feature = "directory-listing")]
             dir_listing_order: 0,
+            #[cfg(feature = "directory-listing")]
             dir_listing_format: &DirListFmt::Html,
             redirect_trailing_slash: true,
             compression_static: false,
+            ignore_hidden_files: false,
+            index_files: &[],
         })
         .await
         .expect("unexpected error response on `handle` function");
@@ -165,11 +178,16 @@ mod tests {
             base_path: &root_dir(),
             uri_path: "assets",
             uri_query: None,
+            #[cfg(feature = "directory-listing")]
             dir_listing: false,
+            #[cfg(feature = "directory-listing")]
             dir_listing_order: 0,
+            #[cfg(feature = "directory-listing")]
             dir_listing_format: &DirListFmt::Html,
             redirect_trailing_slash: true,
             compression_static: false,
+            ignore_hidden_files: false,
+            index_files: &[],
         })
         .await
         {
@@ -178,7 +196,7 @@ mod tests {
                 assert_eq!(res.headers()["location"], "assets/");
             }
             Err(status) => {
-                panic!("expected a status 308 but not a status {}", status)
+                panic!("expected a status 308 but not a status {status}")
             }
         }
     }
@@ -191,11 +209,16 @@ mod tests {
             base_path: &root_dir(),
             uri_path: "assets",
             uri_query: None,
+            #[cfg(feature = "directory-listing")]
             dir_listing: false,
+            #[cfg(feature = "directory-listing")]
             dir_listing_order: 0,
+            #[cfg(feature = "directory-listing")]
             dir_listing_format: &DirListFmt::Html,
             redirect_trailing_slash: false,
             compression_static: false,
+            ignore_hidden_files: false,
+            index_files: &[],
         })
         .await
         {
@@ -203,7 +226,7 @@ mod tests {
                 assert_eq!(res.status(), 200);
             }
             Err(status) => {
-                panic!("expected a status 200 but not a status {}", status)
+                panic!("expected a status 200 but not a status {status}")
             }
         }
     }
@@ -222,11 +245,16 @@ mod tests {
                     base_path: &root_dir(),
                     uri_path: uri,
                     uri_query: None,
+                    #[cfg(feature = "directory-listing")]
                     dir_listing: false,
+                    #[cfg(feature = "directory-listing")]
                     dir_listing_order: 6,
+                    #[cfg(feature = "directory-listing")]
                     dir_listing_format: &DirListFmt::Html,
                     redirect_trailing_slash: true,
                     compression_static: false,
+                    ignore_hidden_files: false,
+                    index_files: &[],
                 })
                 .await
                 {
@@ -268,11 +296,16 @@ mod tests {
                 base_path: &root_dir(),
                 uri_path: "/index%2ehtml",
                 uri_query: None,
+                #[cfg(feature = "directory-listing")]
                 dir_listing: false,
+                #[cfg(feature = "directory-listing")]
                 dir_listing_order: 6,
+                #[cfg(feature = "directory-listing")]
                 dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: true,
                 compression_static: false,
+                ignore_hidden_files: false,
+                index_files: &[],
             })
             .await
             {
@@ -296,11 +329,16 @@ mod tests {
                 base_path: &root_dir(),
                 uri_path: "/%2E%2e.html",
                 uri_query: None,
+                #[cfg(feature = "directory-listing")]
                 dir_listing: false,
+                #[cfg(feature = "directory-listing")]
                 dir_listing_order: 6,
+                #[cfg(feature = "directory-listing")]
                 dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: true,
                 compression_static: false,
+                ignore_hidden_files: false,
+                index_files: &[],
             })
             .await
             {
@@ -327,11 +365,16 @@ mod tests {
                 base_path: &root_dir(),
                 uri_path: "index.html",
                 uri_query: None,
+                #[cfg(feature = "directory-listing")]
                 dir_listing: false,
+                #[cfg(feature = "directory-listing")]
                 dir_listing_order: 6,
+                #[cfg(feature = "directory-listing")]
                 dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: true,
                 compression_static: false,
+                ignore_hidden_files: false,
+                index_files: &[],
             })
             .await
             {
@@ -358,11 +401,16 @@ mod tests {
                 base_path: &root_dir(),
                 uri_path: "index.html",
                 uri_query: None,
+                #[cfg(feature = "directory-listing")]
                 dir_listing: false,
+                #[cfg(feature = "directory-listing")]
                 dir_listing_order: 6,
+                #[cfg(feature = "directory-listing")]
                 dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: true,
                 compression_static: false,
+                ignore_hidden_files: false,
+                index_files: &[],
             })
             .await
             {
@@ -392,11 +440,16 @@ mod tests {
                 base_path: &root_dir(),
                 uri_path: "index.html",
                 uri_query: None,
+                #[cfg(feature = "directory-listing")]
                 dir_listing: false,
+                #[cfg(feature = "directory-listing")]
                 dir_listing_order: 6,
+                #[cfg(feature = "directory-listing")]
                 dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: true,
                 compression_static: false,
+                ignore_hidden_files: false,
+                index_files: &[],
             })
             .await
             {
@@ -424,11 +477,16 @@ mod tests {
                 base_path: &root_dir(),
                 uri_path: "index.html",
                 uri_query: None,
+                #[cfg(feature = "directory-listing")]
                 dir_listing: false,
+                #[cfg(feature = "directory-listing")]
                 dir_listing_order: 6,
+                #[cfg(feature = "directory-listing")]
                 dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: true,
                 compression_static: false,
+                ignore_hidden_files: false,
+                index_files: &[],
             })
             .await
             {
@@ -454,11 +512,16 @@ mod tests {
                 base_path: &root_dir(),
                 uri_path: "index.html",
                 uri_query: None,
+                #[cfg(feature = "directory-listing")]
                 dir_listing: false,
+                #[cfg(feature = "directory-listing")]
                 dir_listing_order: 6,
+                #[cfg(feature = "directory-listing")]
                 dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: true,
                 compression_static: false,
+                ignore_hidden_files: false,
+                index_files: &[],
             })
             .await
             {
@@ -483,11 +546,16 @@ mod tests {
                 base_path: &root_dir(),
                 uri_path: "index.html",
                 uri_query: None,
+                #[cfg(feature = "directory-listing")]
                 dir_listing: false,
+                #[cfg(feature = "directory-listing")]
                 dir_listing_order: 6,
+                #[cfg(feature = "directory-listing")]
                 dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: true,
                 compression_static: false,
+                ignore_hidden_files: false,
+                index_files: &[],
             })
             .await
             {
@@ -526,11 +594,16 @@ mod tests {
                 base_path: &root_dir(),
                 uri_path: "index.html",
                 uri_query: None,
+                #[cfg(feature = "directory-listing")]
                 dir_listing: false,
+                #[cfg(feature = "directory-listing")]
                 dir_listing_order: 6,
+                #[cfg(feature = "directory-listing")]
                 dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: true,
                 compression_static: false,
+                ignore_hidden_files: false,
+                index_files: &[],
             })
             .await
             {
@@ -548,11 +621,7 @@ mod tests {
 
                         let ctype = &res.headers()["content-type"];
 
-                        assert!(
-                            ctype == "text/html",
-                            "content-type is not html: {:?}",
-                            ctype,
-                        );
+                        assert!(ctype == "text/html", "content-type is not html: {ctype:?}",);
 
                         let body = hyper::body::to_bytes(res.body_mut())
                             .await
@@ -571,9 +640,10 @@ mod tests {
         }
     }
 
+    #[cfg(feature = "compression")]
     #[tokio::test]
     async fn handle_file_compressions() {
-        let encodings = ["gzip", "deflate", "br", "xyz"];
+        let encodings = ["gzip", "deflate", "br", "zstd", "xyz"];
         let method = &Method::GET;
 
         for enc in encodings {
@@ -586,11 +656,16 @@ mod tests {
                 base_path: &root_dir(),
                 uri_path: "index.html",
                 uri_query: None,
+                #[cfg(feature = "directory-listing")]
                 dir_listing: false,
+                #[cfg(feature = "directory-listing")]
                 dir_listing_order: 6,
+                #[cfg(feature = "directory-listing")]
                 dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: true,
                 compression_static: false,
+                ignore_hidden_files: false,
+                index_files: &[],
             })
             .await
             {
@@ -607,7 +682,7 @@ mod tests {
 
                     match enc {
                         // The handle only accepts `HEAD` or `GET` request methods
-                        "gzip" | "deflate" | "br" => {
+                        "gzip" | "deflate" | "br" | "zstd" => {
                             assert!(res.headers().get("content-length").is_none());
                             assert_eq!(res.headers()["content-encoding"], enc);
                         }
@@ -620,11 +695,7 @@ mod tests {
 
                     let ctype = &res.headers()["content-type"];
 
-                    assert!(
-                        ctype == "text/html",
-                        "content-type is not html: {:?}",
-                        ctype,
-                    );
+                    assert!(ctype == "text/html", "content-type is not html: {ctype:?}",);
                 }
                 Err(_) => {
                     panic!("unexpected status error")
@@ -649,11 +720,16 @@ mod tests {
                 base_path: &root_dir(),
                 uri_path: "index.html",
                 uri_query: None,
+                #[cfg(feature = "directory-listing")]
                 dir_listing: false,
+                #[cfg(feature = "directory-listing")]
                 dir_listing_order: 6,
+                #[cfg(feature = "directory-listing")]
                 dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: true,
                 compression_static: false,
+                ignore_hidden_files: false,
+                index_files: &[],
             })
             .await
             {
@@ -692,11 +768,16 @@ mod tests {
                 base_path: &root_dir(),
                 uri_path: "index.html",
                 uri_query: None,
+                #[cfg(feature = "directory-listing")]
                 dir_listing: false,
+                #[cfg(feature = "directory-listing")]
                 dir_listing_order: 6,
+                #[cfg(feature = "directory-listing")]
                 dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: true,
                 compression_static: false,
+                ignore_hidden_files: false,
+                index_files: &[],
             })
             .await
             {
@@ -735,11 +816,16 @@ mod tests {
                 base_path: &root_dir(),
                 uri_path: "index.html",
                 uri_query: None,
+                #[cfg(feature = "directory-listing")]
                 dir_listing: false,
+                #[cfg(feature = "directory-listing")]
                 dir_listing_order: 6,
+                #[cfg(feature = "directory-listing")]
                 dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: true,
                 compression_static: false,
+                ignore_hidden_files: false,
+                index_files: &[],
             })
             .await
             {
@@ -779,11 +865,16 @@ mod tests {
                 base_path: &root_dir(),
                 uri_path: "index.html",
                 uri_query: None,
+                #[cfg(feature = "directory-listing")]
                 dir_listing: false,
+                #[cfg(feature = "directory-listing")]
                 dir_listing_order: 6,
+                #[cfg(feature = "directory-listing")]
                 dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: true,
                 compression_static: false,
+                ignore_hidden_files: false,
+                index_files: &[],
             })
             .await
             {
@@ -815,11 +906,16 @@ mod tests {
                 base_path: &root_dir(),
                 uri_path: "index.html",
                 uri_query: None,
+                #[cfg(feature = "directory-listing")]
                 dir_listing: false,
+                #[cfg(feature = "directory-listing")]
                 dir_listing_order: 6,
+                #[cfg(feature = "directory-listing")]
                 dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: true,
                 compression_static: false,
+                ignore_hidden_files: false,
+                index_files: &[],
             })
             .await
             {
@@ -861,11 +957,16 @@ mod tests {
                 base_path: &root_dir(),
                 uri_path: "index.html",
                 uri_query: None,
+                #[cfg(feature = "directory-listing")]
                 dir_listing: false,
+                #[cfg(feature = "directory-listing")]
                 dir_listing_order: 6,
+                #[cfg(feature = "directory-listing")]
                 dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: true,
                 compression_static: false,
+                ignore_hidden_files: false,
+                index_files: &[],
             })
             .await
             {
@@ -904,11 +1005,16 @@ mod tests {
                 base_path: &root_dir(),
                 uri_path: "index.html",
                 uri_query: None,
+                #[cfg(feature = "directory-listing")]
                 dir_listing: false,
+                #[cfg(feature = "directory-listing")]
                 dir_listing_order: 6,
+                #[cfg(feature = "directory-listing")]
                 dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: true,
                 compression_static: false,
+                ignore_hidden_files: false,
+                index_files: &[],
             })
             .await
             {
@@ -950,11 +1056,16 @@ mod tests {
                 base_path: &root_dir(),
                 uri_path: "index.html",
                 uri_query: None,
+                #[cfg(feature = "directory-listing")]
                 dir_listing: false,
+                #[cfg(feature = "directory-listing")]
                 dir_listing_order: 6,
+                #[cfg(feature = "directory-listing")]
                 dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: true,
                 compression_static: false,
+                ignore_hidden_files: false,
+                index_files: &[],
             })
             .await
             {
@@ -994,11 +1105,16 @@ mod tests {
                 base_path: &root_dir(),
                 uri_path: "index.html",
                 uri_query: None,
+                #[cfg(feature = "directory-listing")]
                 dir_listing: false,
+                #[cfg(feature = "directory-listing")]
                 dir_listing_order: 6,
+                #[cfg(feature = "directory-listing")]
                 dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: true,
                 compression_static: false,
+                ignore_hidden_files: false,
+                index_files: &[],
             })
             .await
             {
@@ -1033,11 +1149,16 @@ mod tests {
                 base_path: &root_dir(),
                 uri_path: "index.html",
                 uri_query: None,
+                #[cfg(feature = "directory-listing")]
                 dir_listing: false,
+                #[cfg(feature = "directory-listing")]
                 dir_listing_order: 6,
+                #[cfg(feature = "directory-listing")]
                 dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: true,
                 compression_static: false,
+                ignore_hidden_files: false,
+                index_files: &[],
             })
             .await
             {
@@ -1083,11 +1204,16 @@ mod tests {
                 base_path: &root_dir(),
                 uri_path: "index.html",
                 uri_query: None,
+                #[cfg(feature = "directory-listing")]
                 dir_listing: false,
+                #[cfg(feature = "directory-listing")]
                 dir_listing_order: 6,
+                #[cfg(feature = "directory-listing")]
                 dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: true,
                 compression_static: false,
+                ignore_hidden_files: false,
+                index_files: &[],
             })
             .await
             {
@@ -1105,6 +1231,85 @@ mod tests {
                         .await
                         .expect("unexpected bytes error during `body` conversion");
                     assert_eq!(body, &buf[100..=buf.len() - 1]);
+                }
+                Err(_) => {
+                    panic!("expected a normal response rather than a status error")
+                }
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn handle_ignore_hidden_files() {
+        let root_dir = PathBuf::from("tests/fixtures/public/");
+        let headers = HeaderMap::new();
+
+        for method in [Method::HEAD, Method::GET] {
+            match static_files::handle(&HandleOpts {
+                method: &method,
+                headers: &headers,
+                base_path: &root_dir,
+                uri_path: ".dotfile",
+                uri_query: None,
+                #[cfg(feature = "directory-listing")]
+                dir_listing: false,
+                #[cfg(feature = "directory-listing")]
+                dir_listing_order: 6,
+                #[cfg(feature = "directory-listing")]
+                dir_listing_format: &DirListFmt::Html,
+                redirect_trailing_slash: true,
+                compression_static: true,
+                ignore_hidden_files: true,
+                index_files: &[],
+            })
+            .await
+            {
+                Ok(_) => {
+                    panic!("expected a status error 404 but not status 200")
+                }
+                Err(status) => {
+                    assert_eq!(status, StatusCode::NOT_FOUND);
+                }
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn handle_multiple_index_files() {
+        let root_dir = PathBuf::from("tests/fixtures/public/");
+        let headers = HeaderMap::new();
+
+        let buf = fs::read(root_dir.join("index.htm"))
+            .expect("unexpected error during index.htm reading");
+        let buf = Bytes::from(buf);
+
+        for method in [Method::HEAD, Method::GET] {
+            match static_files::handle(&HandleOpts {
+                method: &method,
+                headers: &headers,
+                base_path: &root_dir,
+                uri_path: "/",
+                uri_query: None,
+                #[cfg(feature = "directory-listing")]
+                dir_listing: false,
+                #[cfg(feature = "directory-listing")]
+                dir_listing_order: 6,
+                #[cfg(feature = "directory-listing")]
+                dir_listing_format: &DirListFmt::Html,
+                redirect_trailing_slash: true,
+                compression_static: true,
+                ignore_hidden_files: true,
+                index_files: &["index.html", "index.htm"],
+            })
+            .await
+            {
+                Ok((mut res, _)) => {
+                    assert_eq!(res.status(), 200);
+                    assert_eq!(res.headers()["content-length"], format!("{}", buf.len()));
+                    let body = hyper::body::to_bytes(res.body_mut())
+                        .await
+                        .expect("unexpected bytes error during `body` conversion");
+                    assert_eq!(body, &buf);
                 }
                 Err(_) => {
                     panic!("expected a normal response rather than a status error")

@@ -1,31 +1,33 @@
 # Project information
 site_name: Static Web Server
-site_description: 'A blazing fast and asynchronous web server for static files-serving ⚡'
+site_description: 'A cross-platform, high-performance and asynchronous web server for static files-serving ⚡'
 site_author: 'Jose Quintana'
-site_url: https://sws.joseluisq.net
+site_url: https://static-web-server.net
 dev_addr: 0.0.0.0:8000
 
 # Repository
-repo_name: joseluisq/static-web-server
+repo_name: static-web-server/static-web-server
 repo_url: https://github.com/static-web-server/static-web-server/
 edit_uri: edit/master/docs/content/
 
-docs_dir: 'content'
+docs_dir: 'docs/content'
 site_dir: '/tmp/docs'
 extra_css:
   - 'assets/style.css'
 
 # Copyright
-copyright: Copyright &copy; 2019-2022 Jose Quintana
+copyright: Copyright &copy; 2019-2023 Jose Quintana
 
 # Theme
 theme:
   name: 'material'
-  logo: assets/rust_logo.svg
+  logo: assets/sws_white.svg
   language: en
   include_sidebar: true
   features:
     - content.code.annotate
+    - content.action.edit
+    - content.action.view
     - content.tabs.link
     - header.autohide
     # - navigation.expand
@@ -39,6 +41,7 @@ theme:
     - search.highlight
     - search.share
     - search.suggest
+    - content.code.copy
     # - toc.integrate
   palette:
     - scheme: default
@@ -56,7 +59,7 @@ theme:
   font:
     text: 'Open Sans'
     code: 'Droid Sans Mono'
-  favicon: https://camo.githubusercontent.com/a08032a2db94aea229991af8f73c45cc95174c8066dc7a6b1f88a79c94cf1093/68747470733a2f2f75706c6f61642e77696b696d656469612e6f72672f77696b6970656469612f636f6d6d6f6e732f7468756d622f642f64352f527573745f70726f6772616d6d696e675f6c616e67756167655f626c61636b5f6c6f676f2e7376672f3130323470782d527573745f70726f6772616d6d696e675f6c616e67756167655f626c61636b5f6c6f676f2e7376672e706e67
+  favicon: https://static-web-server.net/assets/sws.svg
 
 extra:
   social:
@@ -111,12 +114,23 @@ plugins:
   - search
   - minify:
       minify_html: true
+  - git-revision-date-localized:
+      type: timeago
+      custom_format: "%d. %B %Y"
+      timezone: Europe/Berlin
+      locale: en
+      fallback_to_build_date: false
+      enable_creation_date: false
+      exclude:
+        - index.md
+      enabled: true
+      strict: true
 
 # Content Navigation
 nav:
   - 'Overview': 'index.md'
-  - 'Download and Install': 'download-and-install.md'
   - 'Getting Started': 'getting-started.md'
+  - 'Download and Install': 'download-and-install.md'
   - 'Configuration':
     - 'Command Line Arguments': 'configuration/command-line-arguments.md'
     - 'Environment Variables': 'configuration/environment-variables.md'
@@ -126,6 +140,7 @@ nav:
     - 'HTTP/1': 'features/http1.md'
     - 'HTTP Methods': 'features/http-methods.md'
     - 'HTTP/2 and TLS': 'features/http2-tls.md'
+    - 'HTTP to HTTPS redirect': 'features/http-https-redirect.md'
     - 'Logging': 'features/logging.md'
     - 'Compression': 'features/compression.md'
     - 'Pre-compressed files serving': 'features/compression-static.md'
@@ -138,16 +153,23 @@ nav:
     - 'Graceful Shutdown': 'features/graceful-shutdown.md'
     - 'File Descriptor Socket Passing': './features/file-descriptor-socket-passing.md'
     - 'Worker Threads Customization': 'features/worker-threads.md'
+    - 'Blocking Threads Customization': 'features/blocking-threads.md'
     - 'Error Pages': 'features/error-pages.md'
     - 'Custom HTTP Headers': 'features/custom-http-headers.md'
     - 'URL Rewrites': 'features/url-rewrites.md'
     - 'URL Redirects': 'features/url-redirects.md'
     - 'Windows Service': 'features/windows-service.md'
     - 'Trailing Slash Redirect': 'features/trailing-slash-redirect.md'
+    - 'Ignore Files': 'features/ignore-files.md'
+    - 'Health endpoint': 'features/health-endpoint.md'
+    - 'Virtual Hosting': 'features/virtual-hosting.md'
+    - 'Multiple Index Files': 'features/multiple-index-files.md'
+    - 'Maintenance Mode': 'features/maintenance-mode.md'
+    - 'WebAssembly': 'features/webassembly.md'
   - 'Platforms & Architectures': 'platforms-architectures.md'
-  - 'Migration from v1 to v2': 'migration.md'
-  - 'Changelog v2 (latest stable)': 'https://github.com/static-web-server/static-web-server/blob/master/CHANGELOG.md'
-  - 'Changelog v1 (stable)': 'https://github.com/static-web-server/static-web-server/blob/1.x/CHANGELOG.md'
+  - 'Migrating from v1 to v2': 'migration.md'
+  - 'Changelog v2 (stable)': 'https://github.com/static-web-server/static-web-server/blob/master/CHANGELOG.md'
+  - 'Changelog v1 (deprecated)': 'https://github.com/static-web-server/static-web-server/releases/tag/v1.19.4'
   - 'Semantic Versioning': 'semantic-versioning.md'
   - 'Contributions': 'contributions.md'
   - 'License': 'license.md'

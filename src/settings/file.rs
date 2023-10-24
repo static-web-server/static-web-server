@@ -1,3 +1,8 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
+// This file is part of Static Web Server.
+// See https://static-web-server.net/ for more information
+// Copyright (C) 2019-present Jose Quintana <joseluisq.net>
+
 //! The server configuration file options (manifest)
 
 use headers::HeaderMap;
@@ -6,20 +11,29 @@ use serde_repr::{Deserialize_repr, Serialize_repr};
 use std::path::Path;
 use std::{collections::BTreeSet, path::PathBuf};
 
+#[cfg(feature = "directory-listing")]
 use crate::directory_listing::DirListFmt;
+
 use crate::{helpers, Context, Result};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "kebab-case")]
+/// Log level variants.
 pub enum LogLevel {
+    /// Error log level.
     Error,
+    /// Warn log level.
     Warn,
+    /// Info log level.
     Info,
+    /// Debug log level.
     Debug,
+    /// Trace log level.
     Trace,
 }
 
 impl LogLevel {
+    /// Get log level name.
     pub fn name(&self) -> &'static str {
         match self {
             LogLevel::Error => "error",
@@ -33,14 +47,18 @@ impl LogLevel {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "kebab-case")]
+/// Represents an HTTP headers map.
 pub struct Headers {
+    /// Header source.
     pub source: String,
     #[serde(rename(deserialize = "headers"), with = "http_serde::header_map")]
+    /// headers list.
     pub headers: HeaderMap,
 }
 
 #[derive(Debug, Serialize_repr, Deserialize_repr, Clone)]
 #[repr(u16)]
+/// Represents redirects types.
 pub enum RedirectsKind {
     /// Moved Permanently
     Permanent = 301,
@@ -50,29 +68,50 @@ pub enum RedirectsKind {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "kebab-case")]
+/// Represents redirects types.
 pub struct Redirects {
+    /// Source of the redirect.
     pub source: String,
+    /// Redirect destination.
     pub destination: String,
+    /// Redirect type either 301 (Moved Permanently) or 302 (Found).
     pub kind: RedirectsKind,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "kebab-case")]
+/// Represents rewrites types.
 pub struct Rewrites {
+    /// Source of the rewrite.
     pub source: String,
+    /// Rewrite destination.
     pub destination: String,
+    /// Optional redirect type either 301 (Moved Permanently) or 302 (Found).
+    pub redirect: Option<RedirectsKind>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "kebab-case")]
+/// Represents virtual hosts with different root directories
+pub struct VirtualHosts {
+    /// The value to check for in the "Host" header
+    pub host: String,
+    /// The root directory for this virtual host
+    pub root: Option<PathBuf>,
 }
 
 /// Advanced server options only available in configuration file mode.
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "kebab-case")]
 pub struct Advanced {
-    // Headers
+    /// Headers
     pub headers: Option<Vec<Headers>>,
-    // Rewrites
+    /// Rewrites
     pub rewrites: Option<Vec<Rewrites>>,
-    // Redirects
+    /// Redirects
     pub redirects: Option<Vec<Redirects>>,
+    /// Name-based virtual hosting
+    pub virtual_hosts: Option<Vec<VirtualHosts>>,
 }
 
 /// General server options available in configuration file mode.
@@ -80,63 +119,135 @@ pub struct Advanced {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "kebab-case")]
 pub struct General {
-    // Address & Root dir
+    /// Server address.
     pub host: Option<String>,
+    /// Server port.
     pub port: Option<u16>,
+    /// Root directory path.
     pub root: Option<PathBuf>,
 
-    // Logging
+    /// Logging.
     pub log_level: Option<LogLevel>,
 
-    // Cache Control headers
+    /// Cache Control headers.
     pub cache_control_headers: Option<bool>,
 
-    // Compression
+    /// Compression.
+    #[cfg(feature = "compression")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "compression")))]
     pub compression: Option<bool>,
 
-    // Check for a pre-compressed file on disk
+    /// Check for a pre-compressed file on disk.
+    #[cfg(feature = "compression")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "compression")))]
     pub compression_static: Option<bool>,
 
-    // Error pages
+    /// Error 404 pages.
     pub page404: Option<PathBuf>,
+    /// Error 50x pages.
     pub page50x: Option<PathBuf>,
 
-    // HTTP/2 + TLS
+    /// HTTP/2 + TLS.
+    #[cfg(feature = "http2")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "http2")))]
     pub http2: Option<bool>,
+    /// Http2 tls certificate feature.
+    #[cfg(feature = "http2")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "http2")))]
     pub http2_tls_cert: Option<PathBuf>,
+    /// Http2 tls key feature.
+    #[cfg(feature = "http2")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "http2")))]
     pub http2_tls_key: Option<PathBuf>,
 
-    // Security headers
+    /// Redirect all HTTP requests to HTTPS.
+    #[cfg(feature = "http2")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "http2")))]
+    pub https_redirect: Option<bool>,
+    /// HTTP host port where the redirect server will listen for requests to redirect them to HTTPS.
+    #[cfg(feature = "http2")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "http2")))]
+    pub https_redirect_host: Option<String>,
+    /// Host port for redirecting HTTP requests to HTTPS.
+    #[cfg(feature = "http2")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "http2")))]
+    pub https_redirect_from_port: Option<u16>,
+    /// List of host names or IPs allowed to redirect from.
+    #[cfg(feature = "http2")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "http2")))]
+    pub https_redirect_from_hosts: Option<String>,
+
+    /// Security headers.
     pub security_headers: Option<bool>,
 
-    // CORS
+    /// Cors allow origins feature.
     pub cors_allow_origins: Option<String>,
+    /// Cors allow headers feature.
     pub cors_allow_headers: Option<String>,
+    /// Cors expose headers feature.
     pub cors_expose_headers: Option<String>,
 
-    // Directory listing
+    /// List of files to be used as an index for requests ending with the slash character (‘/’).
+    pub index_files: Option<String>,
+
+    /// Directory listing feature.
+    #[cfg(feature = "directory-listing")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "directory-listing")))]
     pub directory_listing: Option<bool>,
+    /// Directory listing order feature.
+    #[cfg(feature = "directory-listing")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "directory-listing")))]
     pub directory_listing_order: Option<u8>,
+    /// Directory listing format feature.
+    #[cfg(feature = "directory-listing")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "directory-listing")))]
     pub directory_listing_format: Option<DirListFmt>,
 
-    // Basich Authentication
+    /// Basic Authentication feature.
+    #[cfg(feature = "basic-auth")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "basic-auth")))]
     pub basic_auth: Option<String>,
 
-    // File descriptor binding
+    /// File descriptor binding feature.
     pub fd: Option<usize>,
 
-    // Worker threads
+    /// Worker threads.
     pub threads_multiplier: Option<usize>,
 
+    /// Max blocking threads feature.
+    pub max_blocking_threads: Option<usize>,
+
+    /// Grace period feature.
     pub grace_period: Option<u8>,
 
+    /// Page fallback feature.
+    #[cfg(feature = "fallback-page")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "fallback-page")))]
     pub page_fallback: Option<PathBuf>,
 
+    /// Log remote address feature.
     pub log_remote_address: Option<bool>,
 
+    /// Redirect trailing slash feature.
     pub redirect_trailing_slash: Option<bool>,
 
+    /// Ignore hidden files feature.
+    pub ignore_hidden_files: Option<bool>,
+
+    /// Health endpoint feature.
+    pub health: Option<bool>,
+
+    /// Maintenance mode feature.
+    pub maintenance_mode: Option<bool>,
+
+    /// Custom HTTP status for when entering into maintenance mode.
+    pub maintenance_mode_status: Option<u16>,
+
+    /// Custom maintenance mode HTML file.
+    pub maintenance_mode_file: Option<PathBuf>,
+
     #[cfg(windows)]
+    /// windows service feature.
     pub windows_service: Option<bool>,
 }
 
@@ -144,7 +255,9 @@ pub struct General {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "kebab-case")]
 pub struct Settings {
+    /// General settings.
     pub general: Option<General>,
+    /// Advanced settings.
     pub advanced: Option<Advanced>,
 }
 
@@ -169,10 +282,7 @@ impl Settings {
         .with_context(|| "error during toml configuration file deserialization")?;
 
         for key in unused {
-            println!(
-                "Warning: unused configuration manifest key \"{}\" or unsupported",
-                key
-            );
+            println!("Warning: unused configuration manifest key \"{key}\" or unsupported");
         }
 
         Ok(manifest)
@@ -187,29 +297,7 @@ fn read_toml_file(path: &Path) -> Result<toml::Value> {
             path.display()
         )
     })?;
-
-    let first_error = match toml_str.parse() {
-        Ok(res) => return Ok(res),
-        Err(err) => err,
-    };
-
-    let mut second_parser = toml::de::Deserializer::new(&toml_str);
-    second_parser.set_require_newline_after_table(false);
-    if let Ok(res) = toml::Value::deserialize(&mut second_parser) {
-        let msg = format!(
-            "\
-TOML file found which contains invalid syntax and will soon not parse
-at `{}`.
-The TOML spec requires newlines after table definitions (e.g., `[a] b = 1` is
-invalid), but this file has a table header which does not have a newline after
-it. A newline needs to be added and this warning will soon become a hard error
-in the future.",
-            path.display()
-        );
-        println!("{}", &msg);
-        return Ok(res);
-    }
-
-    let first_error = anyhow::Error::from(first_error);
-    Err(first_error.context("could not parse data input as toml format"))
+    toml_str
+        .parse()
+        .map_err(|e| anyhow::Error::from(e).context("could not parse input as TOML"))
 }

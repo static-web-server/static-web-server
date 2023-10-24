@@ -1,6 +1,12 @@
-// An arbitrary `Cache-Control` headers functionality for incoming requests based on a set of file types.
+// SPDX-License-Identifier: MIT OR Apache-2.0
+// This file is part of Static Web Server.
+// See https://static-web-server.net/ for more information
+// Copyright (C) 2019-present Jose Quintana <joseluisq.net>
 
-use headers::{CacheControl, HeaderMapExt};
+//! It provides an arbitrary `Cache-Control` headers functionality
+//! for incoming requests based on a set of file types.
+//!
+
 use hyper::{Body, Response};
 
 // Cache-Control `max-age` variants
@@ -21,27 +27,31 @@ pub fn append_headers(uri: &str, resp: &mut Response<Body>) {
     // Default max-age value in seconds (one day)
     let mut max_age = MAX_AGE_ONE_DAY;
 
-    if CACHE_EXT_ONE_HOUR
-        .iter()
-        .any(|x| uri.ends_with(&[".", *x].concat()))
-    {
-        max_age = MAX_AGE_ONE_HOUR;
-    } else if CACHE_EXT_ONE_YEAR
-        .iter()
-        .any(|x| uri.ends_with(&[".", *x].concat()))
-    {
-        max_age = MAX_AGE_ONE_YEAR;
+    if let Some(extension) = uri_file_extension(uri) {
+        if CACHE_EXT_ONE_HOUR.binary_search(&extension).is_ok() {
+            max_age = MAX_AGE_ONE_HOUR;
+        } else if CACHE_EXT_ONE_YEAR.binary_search(&extension).is_ok() {
+            max_age = MAX_AGE_ONE_YEAR;
+        }
     }
 
-    let cache_control = CacheControl::new()
-        .with_public()
-        .with_max_age(duration_from_secs(max_age));
-    resp.headers_mut().typed_insert(cache_control);
+    resp.headers_mut().insert(
+        "cache-control",
+        format!(
+            "public, max-age={}",
+            // It caps value in seconds at ~136 years
+            std::cmp::min(max_age, u32::MAX as u64)
+        )
+        .parse()
+        .unwrap(),
+    );
 }
 
-/// It caps a duration value at ~136 years.
-fn duration_from_secs(secs: u64) -> std::time::Duration {
-    std::time::Duration::from_secs(std::cmp::min(secs, u32::MAX as u64))
+/// Gets the file extension for a URI.
+///
+/// This assumes the extension contains a single dot. e.g. for "/file.tar.gz" it returns "gz".
+fn uri_file_extension(uri: &str) -> Option<&str> {
+    uri.rsplit_once('.').map(|(_, rest)| rest)
 }
 
 #[cfg(test)]
@@ -49,8 +59,8 @@ mod tests {
     use hyper::{Body, Response, StatusCode};
 
     use super::{
-        append_headers, CACHE_EXT_ONE_HOUR, CACHE_EXT_ONE_YEAR, MAX_AGE_ONE_DAY, MAX_AGE_ONE_HOUR,
-        MAX_AGE_ONE_YEAR,
+        append_headers, uri_file_extension, CACHE_EXT_ONE_HOUR, CACHE_EXT_ONE_YEAR,
+        MAX_AGE_ONE_DAY, MAX_AGE_ONE_HOUR, MAX_AGE_ONE_YEAR,
     };
 
     #[tokio::test]
@@ -65,7 +75,7 @@ mod tests {
             assert_eq!(resp.status(), StatusCode::OK);
             assert_eq!(
                 cache_control.to_str().unwrap(),
-                format!("public, max-age={}", MAX_AGE_ONE_HOUR)
+                format!("public, max-age={MAX_AGE_ONE_HOUR}")
             );
         }
     }
@@ -81,7 +91,7 @@ mod tests {
         assert_eq!(resp.status(), StatusCode::OK);
         assert_eq!(
             cache_control.to_str().unwrap(),
-            format!("public, max-age={}", MAX_AGE_ONE_DAY)
+            format!("public, max-age={MAX_AGE_ONE_DAY}")
         );
     }
 
@@ -97,8 +107,15 @@ mod tests {
             assert_eq!(resp.status(), StatusCode::OK);
             assert_eq!(
                 cache_control.to_str().unwrap(),
-                format!("public, max-age={}", MAX_AGE_ONE_YEAR)
+                format!("public, max-age={MAX_AGE_ONE_YEAR}")
             );
         }
+    }
+
+    #[test]
+    fn find_uri_extension() {
+        assert_eq!(uri_file_extension("/potato.zip"), Some("zip"));
+        assert_eq!(uri_file_extension("/potato."), Some(""));
+        assert_eq!(uri_file_extension("/"), None);
     }
 }

@@ -25,7 +25,7 @@ We recommend a Powershell session with administrator privileges.
 To install the SWS service use the `install` command along with a [configuration file](../configuration/config-file.md) for further SWS options customization.
 
 Make sure to provide a configuration file to run SWS service properly. In particular, configure the server `address`, `port` and `root` directory accordingly.
-If not so then the service might not start.
+If not then the service might not start.
 
 The following command will create the SWS service called `static-web-server` with a "`Static Web Server`" display name.
 

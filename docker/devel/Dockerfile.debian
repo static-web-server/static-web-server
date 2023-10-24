@@ -1,0 +1,37 @@
+FROM debian:12.2-slim
+
+ENV SERVER_VERSION=devel
+
+LABEL version="${SERVER_VERSION}" \
+    description="A cross-platform, high-performance and asynchronous web server for static files-serving." \
+    maintainer="Jose Quintana <joseluisq.net>"
+
+RUN set -eux \
+    && DEBIAN_FRONTEND=noninteractive apt-get update -qq \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -qq -y --no-install-recommends --no-install-suggests \
+         ca-certificates \
+         tzdata \
+    # Clean up local repository of retrieved packages and remove the package lists
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* \
+    && true
+
+COPY ./docker/devel/static-web-server /usr/local/bin/
+COPY ./docker/debian/entrypoint.sh /
+COPY ./docker/public /public
+
+EXPOSE 80
+
+STOPSIGNAL SIGQUIT
+
+ENTRYPOINT ["/entrypoint.sh"]
+
+CMD ["static-web-server"]
+
+# Metadata
+LABEL org.opencontainers.image.vendor="Jose Quintana" \
+    org.opencontainers.image.url="https://github.com/static-web-server/static-web-server" \
+    org.opencontainers.image.title="Static Web Server" \
+    org.opencontainers.image.description="A cross-platform, high-performance and asynchronous web server for static files-serving." \
+    org.opencontainers.image.version="${SERVER_VERSION}" \
+    org.opencontainers.image.documentation="https://github.com/static-web-server/static-web-server"

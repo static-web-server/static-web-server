@@ -1,8 +1,8 @@
 # Pre-compressed files serving
 
-**`SWS`** provides support to serve pre-compressed [`Gzip`](https://datatracker.ietf.org/doc/html/rfc1952) or [`Brotli`](https://www.ietf.org/rfc/rfc7932.txt) files directly from the disk.
+**`SWS`** provides support to serve pre-compressed [`Gzip`](https://datatracker.ietf.org/doc/html/rfc1952), [`Brotli`](https://www.ietf.org/rfc/rfc7932.txt) and [`Zstandard` (zstd)](https://datatracker.ietf.org/doc/html/rfc8878) files directly from the disk.
 
-SWS can look up existing pre-compressed file variants (`.gz` or `.br`) on disk and serve them directly.
+SWS can look up existing pre-compressed file variants (`.gz`, `.br` or `.zst`) on disk and serve them directly.
 
 The feature is disabled by default and can be controlled by the boolean `--compression-static` option or the equivalent [SERVER_COMPRESSION_STATIC](./../configuration/environment-variables.md#server_compression_static) env.
 
@@ -13,7 +13,6 @@ Otherwise, if the pre-compressed file is not found then SWS just continues the n
     The pre-compressed file type is determined by the [`Accept-Encoding`](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Accept-Encoding) header value.
 
 Here is an example:
-
 
 ```sh
 static-web-server -p=8787 -d=/var/www --compression-static=true -g=trace
@@ -34,4 +33,3 @@ Below are some relevant log entries to show how the feature works.
 2022-09-22T21:30:12.905965Z TRACE encode_headers: hyper::proto::h1::role: close time.busy=138µs time.idle=35.4µs
 2022-09-22T21:30:12.906236Z DEBUG hyper::proto::h1::io: flushed 242 bytes
 ```
-

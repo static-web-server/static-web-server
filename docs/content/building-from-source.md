@@ -6,7 +6,7 @@ Follow these instructions to either build **`SWS`** project from the source or t
 
 If you want to build **SWS** from the source, all you need is a [Rust 2021 Edition](https://blog.rust-lang.org/2021/05/11/edition-2021.html) installed.
 
-So make sure to install Rust [1.59.0](https://blog.rust-lang.org/2022/02/24/Rust-1.59.0.html) or higher (or nightly) along with [the toolchain(s)](https://rust-lang.github.io/rustup/concepts/toolchains.html) of your preference.
+So make sure to install Rust [1.70.0](https://blog.rust-lang.org/2023/06/01/Rust-1.70.0.html) or newer (or nightly) along with [the toolchain(s)](https://rust-lang.github.io/rustup/concepts/toolchains.html) of your preference.
 
 Then clone the repository and use [Cargo](https://doc.rust-lang.org/cargo/) to build the project from the source.
 
@@ -20,6 +20,60 @@ Finally, the release binary should be available at `target/release/static-web-se
 
 !!! info "Don't use the project's `Makefile`"
     Please don't use the project's `Makefile` since it's only intended for development and some on-demand tasks.
+
+## Cargo features
+
+When building from the source, all features are enabled by default.
+However, you can disable just the ones you don't need from the lists below.
+
+Feature | Description
+---------|------
+**Default** |
+`default` | Activates all features by default.
+[**HTTP2/TLS**](./features/http2-tls.md) |
+`http2` | Activates the HTTP2 and TLS feature.
+[**Compression**](./features/compression.md) |
+`compression` | Activates auto-compression and compression static with all supported algorithms.
+`compression-brotli` | Activates auto-compression/compression static with only the `brotli` algorithm.
+`compression-deflate` | Activates auto-compression/compression static with only the `deflate` algorithm.
+`compression-gzip` | Activates auto-compression/compression static with only the `gzip` algorithm.
+`compression-zstd` | Activates auto-compression/compression static with only the `zstd` algorithm.
+[**Directory Listing**](./features/directory-listing.md) |
+`directory-listing` | Activates the directory listing feature.
+[**Basic Authorization**](./features/basic-authentication.md) |
+`basic-auth` | Activates the Basic HTTP Authorization Schema feature.
+[**Fallback Page**](./features/error-pages.md#fallback-page-for-use-with-client-routers) |
+`fallback-page` | Activates the Fallback Page feature.
+
+### Disable all default features
+
+For example, if you want to run or build SWS without the default features like `compression`, `http2`, etc then just try:
+
+```sh
+# run
+cargo run --no-default-features -- -h
+# or build
+cargo build --release --no-default-features
+```
+
+## Cross-compiling
+
+If you want to cross-compile SWS then consider using [Zig](https://github.com/ziglang/zig) as [linker](https://andrewkelley.me/post/zig-cc-powerful-drop-in-replacement-gcc-clang.html) for [easier cross compiling](https://actually.fyi/posts/zig-makes-rust-cross-compilation-just-work/).
+
+Let's say, you want to cross-compile SWS from macOS to Linux. Then follow these steps.
+
+1. Add the necessary toolchain, for example just type: `rustup target add x86_64-unknown-linux-gnu` or `rustup target add x86_64-unknown-linux-musl` if a statically-linked binary is wanted.
+2. Install the latest [Zig](https://github.com/ziglang/zig) version via `brew install zig`
+3. Install [cargo-zigbuild](https://github.com/rust-cross/cargo-zigbuild) via `cargo install cargo-zigbuild`
+4. Finally, build SWS as follows:
+    ```sh
+    # dynamically-linked binary
+    cargo zigbuild --verbose --release --target=x86_64-unknown-linux-gnu
+    # or statically-linked binary
+    cargo zigbuild --verbose --release --target=x86_64-unknown-linux-musl
+    ```
+
+Built binaries can be found under the corresponding toolchain directory inside `target/`.
 
 ## Building documentation from source
 

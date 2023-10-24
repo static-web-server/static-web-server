@@ -1,5 +1,12 @@
-// Handles requests over TLS
-// -> Most of the file is borrowed from https://github.com/seanmonstar/warp/blob/master/src/tls.rs
+// SPDX-License-Identifier: MIT OR Apache-2.0
+// This file is part of Static Web Server.
+// See https://static-web-server.net/ for more information
+// Copyright (C) 2019-present Jose Quintana <joseluisq.net>
+
+//! The module handles requests over TLS via [Rustls](tokio_rustls::rustls).
+//!
+
+// Most of the file is borrowed from https://github.com/seanmonstar/warp/blob/master/src/tls.rs
 
 use futures_util::ready;
 use hyper::server::accept::Accept;
@@ -23,15 +30,16 @@ use crate::transport::Transport;
 /// Represents errors that can occur building the TlsConfig
 #[derive(Debug)]
 pub enum TlsConfigError {
+    /// Error type for I/O operations
     Io(io::Error),
     /// An Error parsing the Certificate
     CertParseError,
-    /// An Error parsing a Pkcs8 key
-    Pkcs8ParseError,
-    /// An Error parsing a Rsa key
-    RsaParseError,
+    /// Identity PEM is invalid
+    InvalidIdentityPem,
     /// An error from an empty key
     EmptyKey,
+    /// Unknown private key format
+    UnknownPrivateKeyFormat,
     /// An error from an invalid key
     InvalidKey(TlsError),
 }
@@ -41,10 +49,10 @@ impl std::fmt::Display for TlsConfigError {
         match self {
             TlsConfigError::Io(err) => err.fmt(f),
             TlsConfigError::CertParseError => write!(f, "certificate parse error"),
-            TlsConfigError::Pkcs8ParseError => write!(f, "pkcs8 parse error"),
-            TlsConfigError::RsaParseError => write!(f, "rsa parse error"),
+            TlsConfigError::InvalidIdentityPem => write!(f, "identity PEM is invalid"),
+            TlsConfigError::UnknownPrivateKeyFormat => write!(f, "unknown private key format"),
             TlsConfigError::EmptyKey => write!(f, "key contains no private key"),
-            TlsConfigError::InvalidKey(err) => write!(f, "key contains an invalid key, {}", err),
+            TlsConfigError::InvalidKey(err) => write!(f, "key contains an invalid key, {err}"),
         }
     }
 }
@@ -168,6 +176,7 @@ impl TlsConfigBuilder {
         self
     }
 
+    /// Builds TLS configuration.
     pub fn build(mut self) -> Result<ServerConfig, TlsConfigError> {
         let mut cert_rdr = BufReader::new(self.cert);
         let cert = rustls_pemfile::certs(&mut cert_rdr)
@@ -176,32 +185,31 @@ impl TlsConfigBuilder {
             .map(Certificate)
             .collect();
 
-        let key = {
-            // convert it to Vec<u8> to allow reading it again if key is RSA
-            let mut key_vec = Vec::new();
-            self.key
-                .read_to_end(&mut key_vec)
-                .map_err(TlsConfigError::Io)?;
+        // convert it to Vec<u8> to allow reading it again if key is RSA
+        let mut key_vec = Vec::new();
+        self.key
+            .read_to_end(&mut key_vec)
+            .map_err(TlsConfigError::Io)?;
 
-            if key_vec.is_empty() {
-                return Err(TlsConfigError::EmptyKey);
+        if key_vec.is_empty() {
+            return Err(TlsConfigError::EmptyKey);
+        }
+
+        let mut key = None;
+        let mut reader = std::io::Cursor::new(key_vec);
+        for item in rustls_pemfile::read_all(&mut reader)
+            .map_err(|_e| TlsConfigError::InvalidIdentityPem)?
+        {
+            match item {
+                rustls_pemfile::Item::RSAKey(k) => key = Some(PrivateKey(k)),
+                rustls_pemfile::Item::PKCS8Key(k) => key = Some(PrivateKey(k)),
+                rustls_pemfile::Item::ECKey(k) => key = Some(PrivateKey(k)),
+                _ => return Err(TlsConfigError::UnknownPrivateKeyFormat),
             }
-
-            let mut pkcs8 = rustls_pemfile::pkcs8_private_keys(&mut key_vec.as_slice())
-                .map_err(|_e| TlsConfigError::Pkcs8ParseError)?;
-
-            if !pkcs8.is_empty() {
-                PrivateKey(pkcs8.remove(0))
-            } else {
-                let mut rsa = rustls_pemfile::rsa_private_keys(&mut key_vec.as_slice())
-                    .map_err(|_e| TlsConfigError::RsaParseError)?;
-
-                if !rsa.is_empty() {
-                    PrivateKey(rsa.remove(0))
-                } else {
-                    return Err(TlsConfigError::EmptyKey);
-                }
-            }
+        }
+        let key = match key {
+            Some(k) => k,
+            _ => return Err(TlsConfigError::EmptyKey),
         };
 
         fn read_trust_anchor(
@@ -221,12 +229,13 @@ impl TlsConfigBuilder {
         }
 
         let client_auth = match self.client_auth {
-            TlsClientAuth::Off => NoClientAuth::new(),
+            TlsClientAuth::Off => NoClientAuth::boxed(),
             TlsClientAuth::Optional(trust_anchor) => {
                 AllowAnyAnonymousOrAuthenticatedClient::new(read_trust_anchor(trust_anchor)?)
+                    .boxed()
             }
             TlsClientAuth::Required(trust_anchor) => {
-                AllowAnyAuthenticatedClient::new(read_trust_anchor(trust_anchor)?)
+                AllowAnyAuthenticatedClient::new(read_trust_anchor(trust_anchor)?).boxed()
             }
         };
 
@@ -284,9 +293,10 @@ enum State {
     Streaming(tokio_rustls::server::TlsStream<AddrStream>),
 }
 
-// tokio_rustls::server::TlsStream doesn't expose constructor methods,
-// so we have to TlsAcceptor::accept and handshake to have access to it
-// TlsStream implements AsyncRead/AsyncWrite handshaking tokio_rustls::Accept first
+/// TlsStream implements AsyncRead/AsyncWrite handshaking tokio_rustls::Accept first.
+///
+/// tokio_rustls::server::TlsStream doesn't expose constructor methods,
+/// so we have to TlsAcceptor::accept and handshake to have access to it.
 pub struct TlsStream {
     state: State,
     remote_addr: SocketAddr,
@@ -359,12 +369,14 @@ impl AsyncWrite for TlsStream {
     }
 }
 
+/// Type to intercept Tls incoming connections.
 pub struct TlsAcceptor {
     config: Arc<ServerConfig>,
     incoming: AddrIncoming,
 }
 
 impl TlsAcceptor {
+    /// Creates a new Tls interceptor.
     pub fn new(config: ServerConfig, incoming: AddrIncoming) -> TlsAcceptor {
         TlsAcceptor {
             config: Arc::new(config),
@@ -407,6 +419,27 @@ mod tests {
     fn bytes_cert_key() {
         let cert = include_str!("../tests/tls/local.dev_cert.pem");
         let key = include_str!("../tests/tls/local.dev_key.pem");
+
+        TlsConfigBuilder::new()
+            .key(key.as_bytes())
+            .cert(cert.as_bytes())
+            .build()
+            .unwrap();
+    }
+
+    #[test]
+    fn file_cert_key_ecc() {
+        TlsConfigBuilder::new()
+            .cert_path("tests/tls/local.dev_cert.ecc.pem")
+            .key_path("tests/tls/local.dev_key.ecc.pem")
+            .build()
+            .unwrap();
+    }
+
+    #[test]
+    fn bytes_cert_key_ecc() {
+        let cert = include_str!("../tests/tls/local.dev_cert.ecc.pem");
+        let key = include_str!("../tests/tls/local.dev_key.ecc.pem");
 
         TlsConfigBuilder::new()
             .key(key.as_bytes())

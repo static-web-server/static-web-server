@@ -3,6 +3,7 @@
 #![deny(rust_2018_idioms)]
 #![deny(dead_code)]
 
+#[cfg(feature = "directory-listing")]
 #[cfg(test)]
 mod tests {
     use headers::HeaderMap;
@@ -47,6 +48,8 @@ mod tests {
                 dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: true,
                 compression_static: false,
+                ignore_hidden_files: false,
+                index_files: &[],
             })
             .await
             {
@@ -76,6 +79,8 @@ mod tests {
                 dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: true,
                 compression_static: false,
+                ignore_hidden_files: false,
+                index_files: &[],
             })
             .await
             {
@@ -115,6 +120,8 @@ mod tests {
                 dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: false,
                 compression_static: false,
+                ignore_hidden_files: false,
+                index_files: &[],
             })
             .await
             {
@@ -154,6 +161,8 @@ mod tests {
                 dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: false,
                 compression_static: false,
+                ignore_hidden_files: false,
+                index_files: &[],
             })
             .await
             {
@@ -183,6 +192,8 @@ mod tests {
                 dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: true,
                 compression_static: false,
+                ignore_hidden_files: false,
+                index_files: &[],
             })
             .await
             {
@@ -233,6 +244,8 @@ mod tests {
                 dir_listing_format: &DirListFmt::Json,
                 redirect_trailing_slash: true,
                 compression_static: false,
+                ignore_hidden_files: true,
+                index_files: &[],
             })
             .await
             {
@@ -247,19 +260,19 @@ mod tests {
 
                     if method == Method::GET {
                         let entries: Vec<FileEntry> = serde_json::from_str(body_str).unwrap();
-                        assert_eq!(entries.len(), 2);
+                        assert_eq!(entries.len(), 3);
 
                         let first_entry = entries.first().unwrap();
                         assert_eq!(first_entry.name, "spécial directöry");
                         assert_eq!(first_entry.typed, "directory");
-                        assert_eq!(first_entry.mtime.is_empty(), false);
+                        assert!(!first_entry.mtime.is_empty());
                         assert!(first_entry.size.is_none());
 
                         let last_entry = entries.last().unwrap();
-                        assert_eq!(last_entry.name, "index.html.gz");
+                        assert_eq!(last_entry.name, "index.htm");
                         assert_eq!(last_entry.typed, "file");
-                        assert_eq!(last_entry.mtime.is_empty(), false);
-                        assert!(last_entry.size.unwrap() > 300);
+                        assert!(!last_entry.mtime.is_empty());
+                        assert!(last_entry.size.unwrap() >= 36);
                     } else {
                         assert!(body_str.is_empty());
                     }
@@ -301,6 +314,8 @@ mod tests {
                 dir_listing_format: &DirListFmt::Json,
                 redirect_trailing_slash: true,
                 compression_static: false,
+                ignore_hidden_files: false,
+                index_files: &[],
             })
             .await
             {
@@ -316,6 +331,48 @@ mod tests {
                     if method == Method::GET {
                         let entries: Vec<FileEntry> = serde_json::from_str(body_str).unwrap();
                         assert!(entries.is_empty())
+                    } else {
+                        assert!(body_str.is_empty());
+                    }
+                }
+                Err(status) => {
+                    assert!(method != Method::GET && method != Method::HEAD);
+                    assert_eq!(status, StatusCode::METHOD_NOT_ALLOWED);
+                }
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn dir_listing_ignore_hidden_files() {
+        for method in METHODS {
+            match static_files::handle(&HandleOpts {
+                method: &method,
+                headers: &HeaderMap::new(),
+                base_path: &root_dir("tests/fixtures/public"),
+                uri_path: "/",
+                uri_query: None,
+                dir_listing: true,
+                dir_listing_order: 1,
+                dir_listing_format: &DirListFmt::Html,
+                redirect_trailing_slash: true,
+                compression_static: false,
+                ignore_hidden_files: true,
+                index_files: &[],
+            })
+            .await
+            {
+                Ok((mut res, _)) => {
+                    assert_eq!(res.status(), 200);
+                    assert_eq!(res.headers()["content-type"], "text/html; charset=utf-8");
+
+                    let body = hyper::body::to_bytes(res.body_mut())
+                        .await
+                        .expect("unexpected bytes error during `body` conversion");
+                    let body_str = std::str::from_utf8(&body).unwrap();
+
+                    if method == Method::GET {
+                        assert!(!body_str.contains(".dotfile"))
                     } else {
                         assert!(body_str.is_empty());
                     }

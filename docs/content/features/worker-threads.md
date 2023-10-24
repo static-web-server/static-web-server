@@ -2,6 +2,8 @@
 
 **SWS** allows customizing the number of worker threads powered by the [Tokio](https://tokio.rs/) runtime.
 
+See [Tokio ` worker_threads` API](https://docs.rs/tokio/latest/tokio/runtime/struct.Builder.html#method.worker_threads).
+
 This feature can be controlled by the numeric `-n, --threads-multiplier` option or the equivalent [SERVER_THREADS_MULTIPLIER](./../configuration/environment-variables.md#server_threads_multiplier) env.
 
 ## Worker threads multiplier
@@ -21,8 +23,11 @@ The formula used is the following:
 !!! tip "Tip"
     When the `--threads-multiplier` input value is `0` or `1` then one thread per core is used (default value).
 
+!!! info "WebAssembly"
+    We use `2` threads per core in [Wasm](https://webassembly.org/) and `1` in native environments by default.
+
 !!! warn "Warn"
-    The number of worker threads result should be a number between `1` and `32,768` though it is advised to keep this value on the smaller side. See [Tokio ` worker_threads` API](https://docs.rs/tokio/1.12.0/tokio/runtime/struct.Builder.html#method.worker_threads) for more details.
+    The number of worker threads resulted should be a number between `1` and `32,768` though it is advised to keep this value on the smaller side. See [Tokio ` worker_threads` API](https://docs.rs/tokio/latest/tokio/runtime/struct.Builder.html#method.worker_threads) for more details.
 
 Below is an example of how to adjust the number of worker threads.
 
