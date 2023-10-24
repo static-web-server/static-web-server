@@ -197,7 +197,7 @@ jobs:
 
     - name: Skip tests
       shell: bash
-      if: ${{ contains(fromJSON('["macos-arm64", "linux-android-arm64", "linux-android-armv7", "netbsd", "illumos", "ppc64", "s390x"]'), matrix.build) }}
+      if: ${{ contains(fromJSON('["macos-arm64", "linux-android-arm64", "linux-android-armv7", "netbsd", "illumos"]'), matrix.build) }}
       run: |
         # Can't run tests: cross-compiling
         echo "SKIP_TESTS=--no-run" >> $GITHUB_ENV
