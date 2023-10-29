@@ -136,6 +136,16 @@ Pre-compiled binaries grouped by CPU architectures.
 - [static-web-server-{{RELEASE_VERSION}}-armv7-unknown-linux-musleabihf.tar.gz](https://github.com/static-web-server/static-web-server/releases/download/{{RELEASE_VERSION}}/static-web-server-{{RELEASE_VERSION}}-armv7-unknown-linux-musleabihf.tar.gz)<br>
 <small>**SHA256SUM:** `{{armv7-unknown-linux-musleabihf.tar.gz}}`</small>
 
+## PowerPC
+
+- [static-web-server-{{RELEASE_VERSION}}-powerpc64le-unknown-linux-gnu.tar.gz](https://github.com/static-web-server/static-web-server/releases/download/{{RELEASE_VERSION}}/static-web-server-{{RELEASE_VERSION}}-powerpc64le-unknown-linux-gnu.tar.gz)<br>
+<small>**SHA256SUM:** `{{powerpc64le-unknown-linux-gnu.tar.gz}}`</small>
+
+## S390X
+
+- [static-web-server-{{RELEASE_VERSION}}-s390x-unknown-linux-gnu.tar.gz](https://github.com/static-web-server/static-web-server/releases/download/{{RELEASE_VERSION}}/static-web-server-{{RELEASE_VERSION}}-s390x-unknown-linux-gnu.tar.gz)<br>
+<small>**SHA256SUM:** `{{s390x-unknown-linux-gnu.tar.gz}}`</small>
+
 ## Source files
 
 - [static-web-server-{{RELEASE_VERSION_NUM}}.tar.gz](https://github.com/static-web-server/static-web-server/archive/refs/tags/{{RELEASE_VERSION}}.tar.gz)<br>

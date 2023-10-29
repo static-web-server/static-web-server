@@ -62,3 +62,11 @@ Currently, only the following platforms/architectures are supported.
 
 #### x86_64
   - `x86_64-unknown-illumos`
+
+## PowerPC
+
+- `powerpc64le-unknown-linux-gnu`
+
+## S390X
+
+- `s390x-unknown-linux-gnu`

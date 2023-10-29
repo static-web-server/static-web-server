@@ -74,7 +74,7 @@ Cross-platform and available for `Linux`, `macOS`, `Windows`, `FreeBSD`, `NetBSD
 - Available as a library crate with opt-in features.
 - First-class [Docker](https://docs.docker.com/get-started/overview/) support. [Scratch](https://hub.docker.com/_/scratch), latest [Alpine Linux](https://hub.docker.com/_/alpine) and [Debian](https://hub.docker.com/_/alpine) Docker images.
 - Ability to accept a socket listener as a file descriptor for sandboxing and on-demand applications (e.g. [systemd](http://0pointer.de/blog/projects/socket-activation.html)).
-- Cross-platform. Pre-compiled binaries for Linux, macOS, Windows, NetBSD, Android (`x86/x86_64`, `ARM/ARM64`) and WebAssembly (via [Warmer](https://wasmer.io/wasmer/static-web-server)).
+- Cross-platform. Pre-compiled binaries for Linux, macOS, Windows, FreeBSD, NetBSD, Android (`x86/x86_64`, `ARM/ARM64`) and WebAssembly (via [Warmer](https://wasmer.io/wasmer/static-web-server)).
 
 ## Benchmarks
 
