@@ -87,7 +87,6 @@ pub async fn handle<'a>(opts: &HandleOpts<'a>) -> Result<(Response<Body>, bool),
     }
 
     let headers_opt = opts.headers;
-    let compression_static_opt = opts.compression_static;
     let mut file_path = sanitize_path(opts.base_path, uri_path)?;
 
     let FileMetadata {
@@ -98,7 +97,7 @@ pub async fn handle<'a>(opts: &HandleOpts<'a>) -> Result<(Response<Body>, bool),
     } = composed_file_metadata(
         &mut file_path,
         headers_opt,
-        compression_static_opt,
+        opts.compression_static,
         opts.index_files,
     )
     .await?;
@@ -111,57 +110,55 @@ pub async fn handle<'a>(opts: &HandleOpts<'a>) -> Result<(Response<Body>, bool),
     // `is_precompressed` relates to `opts.compression_static` value
     let is_precompressed = precompressed_variant.is_some();
 
-    if is_dir {
-        // Check for a trailing slash on the current directory path
-        // and redirect if that path doesn't end with the slash char
-        if opts.redirect_trailing_slash && !uri_path.ends_with('/') {
-            let uri = [uri_path, "/"].concat();
-            let loc = match HeaderValue::from_str(uri.as_str()) {
-                Ok(val) => val,
-                Err(err) => {
-                    tracing::error!("invalid header value from current uri: {:?}", err);
-                    return Err(StatusCode::INTERNAL_SERVER_ERROR);
-                }
-            };
+    // Check for a trailing slash on the current directory path
+    // and redirect if that path doesn't end with the slash char
+    if is_dir && opts.redirect_trailing_slash && !uri_path.ends_with('/') {
+        let uri = [uri_path, "/"].concat();
+        let loc = match HeaderValue::from_str(uri.as_str()) {
+            Ok(val) => val,
+            Err(err) => {
+                tracing::error!("invalid header value from current uri: {:?}", err);
+                return Err(StatusCode::INTERNAL_SERVER_ERROR);
+            }
+        };
 
-            let mut resp = Response::new(Body::empty());
-            resp.headers_mut().insert(hyper::header::LOCATION, loc);
-            *resp.status_mut() = StatusCode::PERMANENT_REDIRECT;
+        let mut resp = Response::new(Body::empty());
+        resp.headers_mut().insert(hyper::header::LOCATION, loc);
+        *resp.status_mut() = StatusCode::PERMANENT_REDIRECT;
 
-            tracing::trace!("uri doesn't end with a slash so redirecting permanently");
-            return Ok((resp, is_precompressed));
-        }
+        tracing::trace!("uri doesn't end with a slash so redirecting permanently");
+        return Ok((resp, is_precompressed));
+    }
 
-        // Respond with the permitted communication options
-        if method.is_options() {
-            let mut resp = Response::new(Body::empty());
-            *resp.status_mut() = StatusCode::NO_CONTENT;
-            resp.headers_mut()
-                .typed_insert(headers::Allow::from_iter(HTTP_SUPPORTED_METHODS.clone()));
-            resp.headers_mut().typed_insert(AcceptRanges::bytes());
+    // Respond with the permitted communication methods
+    if method.is_options() {
+        let mut resp = Response::new(Body::empty());
+        *resp.status_mut() = StatusCode::NO_CONTENT;
+        resp.headers_mut()
+            .typed_insert(headers::Allow::from_iter(HTTP_SUPPORTED_METHODS.clone()));
+        resp.headers_mut().typed_insert(AcceptRanges::bytes());
 
-            return Ok((resp, is_precompressed));
-        }
+        return Ok((resp, is_precompressed));
+    }
 
-        // Directory listing
-        // Check if "directory listing" feature is enabled,
-        // if current path is a valid directory and
-        // if it does not contain an `index.html` file (if a proper auto index is generated)
-        #[cfg(feature = "directory-listing")]
-        if opts.dir_listing && !file_path.exists() {
-            let resp = directory_listing::auto_index(DirListOpts {
-                method,
-                current_path: uri_path,
-                uri_query: opts.uri_query,
-                filepath: file_path,
-                dir_listing_order: opts.dir_listing_order,
-                dir_listing_format: opts.dir_listing_format,
-                ignore_hidden_files: opts.ignore_hidden_files,
-            })
-            .await?;
+    // Directory listing
+    // Check if "directory listing" feature is enabled,
+    // if current path is a valid directory and
+    // if it does not contain an `index.html` file (if a proper auto index is generated)
+    #[cfg(feature = "directory-listing")]
+    if is_dir && opts.dir_listing && !file_path.exists() {
+        let resp = directory_listing::auto_index(DirListOpts {
+            method,
+            current_path: uri_path,
+            uri_query: opts.uri_query,
+            filepath: file_path,
+            dir_listing_order: opts.dir_listing_order,
+            dir_listing_format: opts.dir_listing_format,
+            ignore_hidden_files: opts.ignore_hidden_files,
+        })
+        .await?;
 
-            return Ok((resp, is_precompressed));
-        }
+        return Ok((resp, is_precompressed));
     }
 
     // Check for a pre-compressed file variant if present under the `opts.compression_static` context
