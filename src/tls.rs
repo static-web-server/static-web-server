@@ -21,8 +21,7 @@ use std::sync::Arc;
 use std::task::{Context, Poll};
 use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
 use tokio_rustls::rustls::{
-    server::{AllowAnyAnonymousOrAuthenticatedClient, AllowAnyAuthenticatedClient, NoClientAuth},
-    Certificate, Error as TlsError, PrivateKey, RootCertStore, ServerConfig,
+    server::NoClientAuth, Certificate, Error as TlsError, PrivateKey, ServerConfig,
 };
 
 use crate::transport::Transport;
@@ -59,22 +58,10 @@ impl std::fmt::Display for TlsConfigError {
 
 impl std::error::Error for TlsConfigError {}
 
-/// Tls client authentication configuration.
-pub enum TlsClientAuth {
-    /// No client auth.
-    Off,
-    /// Allow any anonymous or authenticated client.
-    Optional(Box<dyn Read + Send + Sync>),
-    /// Allow any authenticated client.
-    Required(Box<dyn Read + Send + Sync>),
-}
-
 /// Builder to set the configuration for the Tls server.
 pub struct TlsConfigBuilder {
     cert: Box<dyn Read + Send + Sync>,
     key: Box<dyn Read + Send + Sync>,
-    client_auth: TlsClientAuth,
-    ocsp_resp: Vec<u8>,
 }
 
 impl std::fmt::Debug for TlsConfigBuilder {
@@ -89,8 +76,6 @@ impl TlsConfigBuilder {
         TlsConfigBuilder {
             key: Box::new(io::empty()),
             cert: Box::new(io::empty()),
-            client_auth: TlsClientAuth::Off,
-            ocsp_resp: Vec::new(),
         }
     }
 
@@ -121,58 +106,6 @@ impl TlsConfigBuilder {
     /// sets the Tls certificate via bytes slice
     pub fn cert(mut self, cert: &[u8]) -> Self {
         self.cert = Box::new(Cursor::new(Vec::from(cert)));
-        self
-    }
-
-    /// Sets the trust anchor for optional Tls client authentication via file path.
-    ///
-    /// Anonymous and authenticated clients will be accepted. If no trust anchor is provided by any
-    /// of the `client_auth_` methods, then client authentication is disabled by default.
-    pub fn client_auth_optional_path(mut self, path: impl AsRef<Path>) -> Self {
-        let file = Box::new(LazyFile {
-            path: path.as_ref().into(),
-            file: None,
-        });
-        self.client_auth = TlsClientAuth::Optional(file);
-        self
-    }
-
-    /// Sets the trust anchor for optional Tls client authentication via bytes slice.
-    ///
-    /// Anonymous and authenticated clients will be accepted. If no trust anchor is provided by any
-    /// of the `client_auth_` methods, then client authentication is disabled by default.
-    pub fn client_auth_optional(mut self, trust_anchor: &[u8]) -> Self {
-        let cursor = Box::new(Cursor::new(Vec::from(trust_anchor)));
-        self.client_auth = TlsClientAuth::Optional(cursor);
-        self
-    }
-
-    /// Sets the trust anchor for required Tls client authentication via file path.
-    ///
-    /// Only authenticated clients will be accepted. If no trust anchor is provided by any of the
-    /// `client_auth_` methods, then client authentication is disabled by default.
-    pub fn client_auth_required_path(mut self, path: impl AsRef<Path>) -> Self {
-        let file = Box::new(LazyFile {
-            path: path.as_ref().into(),
-            file: None,
-        });
-        self.client_auth = TlsClientAuth::Required(file);
-        self
-    }
-
-    /// Sets the trust anchor for required Tls client authentication via bytes slice.
-    ///
-    /// Only authenticated clients will be accepted. If no trust anchor is provided by any of the
-    /// `client_auth_` methods, then client authentication is disabled by default.
-    pub fn client_auth_required(mut self, trust_anchor: &[u8]) -> Self {
-        let cursor = Box::new(Cursor::new(Vec::from(trust_anchor)));
-        self.client_auth = TlsClientAuth::Required(cursor);
-        self
-    }
-
-    /// sets the DER-encoded OCSP response
-    pub fn ocsp_resp(mut self, ocsp_resp: &[u8]) -> Self {
-        self.ocsp_resp = Vec::from(ocsp_resp);
         self
     }
 
@@ -212,37 +145,10 @@ impl TlsConfigBuilder {
             _ => return Err(TlsConfigError::EmptyKey),
         };
 
-        fn read_trust_anchor(
-            trust_anchor: Box<dyn Read + Send + Sync>,
-        ) -> Result<RootCertStore, TlsConfigError> {
-            let trust_anchors = {
-                let mut reader = BufReader::new(trust_anchor);
-                rustls_pemfile::certs(&mut reader).map_err(TlsConfigError::Io)?
-            };
-            let mut store = RootCertStore::empty();
-            let (added, _skipped) = store.add_parsable_certificates(&trust_anchors);
-            if added == 0 {
-                return Err(TlsConfigError::CertParseError);
-            }
-
-            Ok(store)
-        }
-
-        let client_auth = match self.client_auth {
-            TlsClientAuth::Off => NoClientAuth::boxed(),
-            TlsClientAuth::Optional(trust_anchor) => {
-                AllowAnyAnonymousOrAuthenticatedClient::new(read_trust_anchor(trust_anchor)?)
-                    .boxed()
-            }
-            TlsClientAuth::Required(trust_anchor) => {
-                AllowAnyAuthenticatedClient::new(read_trust_anchor(trust_anchor)?).boxed()
-            }
-        };
-
         let mut config = ServerConfig::builder()
             .with_safe_defaults()
-            .with_client_cert_verifier(client_auth)
-            .with_single_cert_with_ocsp_and_sct(cert, key, self.ocsp_resp, Vec::new())
+            .with_client_cert_verifier(NoClientAuth::boxed())
+            .with_single_cert_with_ocsp_and_sct(cert, key, Vec::new(), Vec::new())
             .map_err(TlsConfigError::InvalidKey)?;
         config.alpn_protocols = vec!["h2".into(), "http/1.1".into()];
         Ok(config)
