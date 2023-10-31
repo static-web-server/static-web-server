@@ -1,0 +1,71 @@
+name: Release Please
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - "v2.[0-9]+.[0-9]+"
+      - "v2.[0-9]+.[0-9]+-beta.[0-9]+"
+  repository_dispatch:
+
+env:
+  RUST_BACKTRACE: 1
+  GITHUB_TOKEN: ${{ github.token }}
+
+jobs:
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install release-please
+        run: npm install --global release-please@15.11
+      - name: Update the Release PR
+        run: |
+          release-please release-pr \
+            --debug \
+            --token=${{ secrets.RELEASE_PLEASE_GH_TOKEN }} \
+            --repo-url=${{ github.repositoryUrl }} \
+            --config-file=.github/release-please/config.json \
+            --manifest-file=.github/release-please/manifest.json
+      - name: Publish the GitHub Release
+        run: |
+          release-please github-release \
+            --debug \
+            --token=${{ secrets.RELEASE_PLEASE_GH_TOKEN }} \
+            --repo-url=${{ github.repositoryUrl }} \
+            --config-file=.github/release-please/config.json \
+            --manifest-file=.github/release-please/manifest.json
+
+  publish-static-web-server:
+    name: Publishing static-web-server to the Wasmer registry
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'v2')
+    needs:
+      - release
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup Rust
+        uses: dsherret/rust-toolchain-file@v1
+      - name: Setup Wasmer
+        uses: wasmerio/setup-wasmer@v2
+      - name: Install cargo-wasix
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-wasix
+      - name: Cargo Wasix Update Check
+        run: cargo wasix self update-check
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2
+      - name: Build
+        run: cargo wasix build --verbose --locked --release
+      - name: Publish package to wasmer.wtf
+        run: wasmer publish --registry="wasmer.wtf" --token=${{ secrets.WAPM_DEV_TOKEN }} --no-validate .
+      - name: Deploy app to wasmer.wtf
+        run: wasmer deploy --registry="https://registry.wasmer.wtf/graphql" --token=${{ secrets.WAPM_DEV_TOKEN }} --non-interactive --no-wait --no-persist-id
+      - name: Publish package to wasmer.io
+        run: wasmer publish --registry="wasmer.io" --token=${{ secrets.WASMER_CIUSER_PROD_TOKEN }} --no-validate .
+        continue-on-error: true
+      - name: Deploy app to wasmer.io
+        run: wasmer deploy --registry="https://registry.wasmer.io/graphql" --token=${{ secrets.WASMER_CIUSER_PROD_TOKEN }} --non-interactive --no-wait --no-persist-id
+        continue-on-error: true
