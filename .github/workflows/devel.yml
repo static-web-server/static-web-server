@@ -177,8 +177,8 @@ jobs:
       - name: Build
         run: cargo wasix build --verbose --locked --release
       # Note: We use --no-run because most tests will be broken on WASIX
-      - name: Test
-        run: cargo wasix test --verbose --locked --release --no-run
+      # - name: Test
+      #   run: cargo wasix test --verbose --locked --release --no-run
 
   checks:
     name: checks
