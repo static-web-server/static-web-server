@@ -168,7 +168,7 @@ jobs:
           echo "SKIP_TESTS=yes" >> $GITHUB_ENV
 
       - name: wasix specific items
-        if: matrix.build == 'wasm32-wasmer-wasi'
+        if: matrix.target == 'wasm32-wasmer-wasi'
         run: |
           # Can't run tests: cross-compiling
           echo "SKIP_TESTS=yes" >> $GITHUB_ENV
