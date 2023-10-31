@@ -27,7 +27,7 @@ jobs:
     strategy:
       matrix:
         build:
-          # - pinned
+          - pinned
           # - stable
           # - beta
           # - linux-musl
@@ -45,12 +45,11 @@ jobs:
           # - windows-msvc-i686
           # - windows-pc-gnu
           # - windows-msvc-arm64
-          - wasix
         include:
           # Specific Rust channels
-          # - build: pinned
-          #   os: ubuntu-20.04
-          #   rust: 1.66.0
+          - build: pinned
+            os: ubuntu-20.04
+            rust: 1.66.0
           # - build: stable
           #   os: ubuntu-20.04
           #   rust: stable
@@ -118,37 +117,19 @@ jobs:
           #   os: windows-2019
           #   rust: stable
           #   target: aarch64-pc-windows-msvc
-          - build: wasix
-            os: ubuntu-20.04
-            rust: stable
-            target: wasm32-wasmer-wasi
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      # If target is wasm32-wasmer-wasi, install Rust with linux
       - name: Install Rust
-        if: matrix.target != 'wasm32-wasmer-wasi'
         uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: ${{ matrix.rust }}
           target: ${{ matrix.target }}
 
-      - name: Install Rust
-        if: matrix.target == 'wasm32-wasmer-wasi'
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          toolchain: ${{ matrix.rust }}
-
-      # Install cargo-binstall and cargo-wasix if target is wasm32-wasmer-wasi
-      - name: Install cargo-wasix
-        uses: taiki-e/install-action@v2
-        with:
-          tool: cargo-wasix
-
       - name: Use Cross
-        if: matrix.target != '' && matrix.target != 'wasm32-wasmer-wasi'
+        if: matrix.target != ''
         run: |
           cargo install cross@^0.2
           echo "CARGO_BIN=cross" >> $GITHUB_ENV
@@ -167,23 +148,37 @@ jobs:
           # Can't run tests: cross-compiling
           echo "SKIP_TESTS=yes" >> $GITHUB_ENV
 
-      - name: wasix specific items
-        if: matrix.target == 'wasm32-wasmer-wasi'
-        run: |
-          # Can't run tests: cross-compiling
-          echo "SKIP_TESTS=yes" >> $GITHUB_ENV
-
       - name: Run tests
         if: env.SKIP_TESTS == ''
         run: ${{ env.CARGO_BIN }} test --verbose ${{ env.TARGET_FLAGS }}
 
       - name: Run build
-        if: matrix.target != 'wasm32-wasmer-wasi'
         run: ${{ env.CARGO_BIN }} build --verbose ${{ env.TARGET_FLAGS }}
 
-      - name: Run WASIX build
-        if: matrix.target == 'wasm32-wasmer-wasi'
-        run: ${{ env.CARGO_BIN }} wasix build --verbose
+  wasm:
+    name: Compile and Test (wasm)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup Rust
+        uses: dsherret/rust-toolchain-file@v1
+      - name: Install cargo-wasix
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-wasix
+      - name: Cargo Wasix Update Check
+        run: cargo wasix self update-check
+      - name: Setup Wasmer
+        uses: wasmerio/setup-wasmer@v2
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2
+      - name: Type Checking
+        run: cargo wasix check --verbose --locked --release
+      - name: Build
+        run: cargo wasix build --verbose --locked --release
+      # Note: We use --no-run because most tests will be broken on WASIX
+      - name: Test
+        run: cargo wasix test --verbose --locked --release --no-run
 
   checks:
     name: checks
