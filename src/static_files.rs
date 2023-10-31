@@ -141,9 +141,7 @@ pub async fn handle<'a>(opts: &HandleOpts<'a>) -> Result<(Response<Body>, bool),
 /// Returns the result of trying to append `.html` to the file path.
 /// * If the prefixed html path exists, it mutates the path to the prefixed one and returns the Metadata
 /// * If the prefixed html path doesn't exist, it reverts the path to it's original value
-fn prefix_file_html_metadata<'a>(
-    file_path: &'a mut PathBuf,
-) -> (&'a mut PathBuf, Option<Metadata>) {
+fn prefix_file_html_metadata(file_path: &mut PathBuf) -> (&mut PathBuf, Option<Metadata>) {
     tracing::debug!("file: appending .html to the path");
     if let Some(filename) = file_path.file_name() {
         let owned_filename = filename.to_os_string();
