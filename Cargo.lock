@@ -640,7 +640,7 @@ source = "git+https://github.com/wasix-org/libc.git?branch=master#682f9e91246c73
 [[package]]
 name = "libc"
 version = "0.2.139"
-source = "git+https://github.com/wasix-org/libc.git#682f9e91246c73b5b5c2beb09594ca2f74ca77d3"
+source = "git+https://github.com/wasix-org/libc.git#4c0c6c29378b68c4af7f0b1384a111ba3081b6bf"
 
 [[package]]
 name = "link-cplusplus"
@@ -1101,7 +1101,7 @@ checksum = "a507befe795404456341dfab10cef66ead4c041f62b8b11bbb92bffe5d0953e0"
 [[package]]
 name = "socket2"
 version = "0.4.7"
-source = "git+https://github.com/wasix-org/socket2.git?branch=v0.4.7#6852c76cd63c0b68a2f3506cebe1f1a4b7ee7bf1"
+source = "git+https://github.com/wasix-org/socket2.git?branch=v0.4.7#92baf46b640c6ee70bb3e41d9dada357970da02d"
 dependencies = [
  "libc 0.2.139 (git+https://github.com/wasix-org/libc.git)",
  "windows-sys 0.36.1",
@@ -1142,6 +1142,7 @@ dependencies = [
  "serde_repr",
  "signal-hook",
  "signal-hook-tokio",
+ "socket2",
  "structopt",
  "tikv-jemallocator",
  "time",
