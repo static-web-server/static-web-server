@@ -2,8 +2,8 @@ name: release
 on:
   push:
     tags:
-    - 'v2.[0-9]+.[0-9]+'
-    - 'v2.[0-9]+.[0-9]+-beta.[0-9]+'
+      - "v2.[0-9]+.[0-9]+"
+      - "v2.[0-9]+.[0-9]+-beta.[0-9]+"
 
 jobs:
   create-release:
@@ -34,7 +34,7 @@ jobs:
 
   build-release:
     name: build-release
-    needs: ['create-release']
+    needs: ["create-release"]
     runs-on: ${{ matrix.os }}
     env:
       # For some builds, we use cross to test on 32-bit and big-endian
@@ -65,125 +65,160 @@ jobs:
           - windows-pc-gnu
           # - windows-msvc-arm64
         include:
-        - build: linux-musl
-          os: ubuntu-20.04
-          rust: stable
-          target: x86_64-unknown-linux-musl
-        - build: linux-musl-i686
-          os: ubuntu-20.04
-          rust: stable
-          target: i686-unknown-linux-musl
-        - build: linux-musl-arm64
-          os: ubuntu-20.04
-          rust: stable
-          target: aarch64-unknown-linux-musl
-        - build: linux-gnu
-          os: ubuntu-20.04
-          rust: stable
-          target: x86_64-unknown-linux-gnu
-        - build: linux-gnu-i686
-          os: ubuntu-20.04
-          rust: stable
-          target: i686-unknown-linux-gnu
-        - build: linux-gnu-arm64
-          os: ubuntu-20.04
-          rust: stable
-          target: aarch64-unknown-linux-gnu
-        - build: linux-arm-gnueabihf
-          os: ubuntu-20.04
-          rust: stable
-          target: arm-unknown-linux-gnueabihf
-        - build: linux-musl-armv6
-          os: ubuntu-20.04
-          rust: stable
-          target: arm-unknown-linux-musleabihf
-        - build: linux-musl-armv7
-          os: ubuntu-20.04
-          rust: stable
-          target: armv7-unknown-linux-musleabihf
-        - build: macos
-          os: macos-11
-          rust: stable
-          target: x86_64-apple-darwin
-        - build: macos-arm64
-          os: macos-11
-          rust: stable
-          target: aarch64-apple-darwin
-        - build: windows-msvc
-          os: windows-2019
-          rust: stable
-          target: x86_64-pc-windows-msvc
-        - build: windows-msvc-i686
-          os: windows-2019
-          rust: stable
-          target: i686-pc-windows-msvc
-        - build: windows-pc-gnu
-          os: windows-2019
-          rust: stable-x86_64-gnu
-          target: x86_64-pc-windows-gnu
-        # - build: windows-msvc-arm64
-        #   os: windows-2019
-        #   rust: stable
-        #   target: aarch64-pc-windows-msvc
+          - build: linux-musl
+            os: ubuntu-20.04
+            rust: stable
+            target: x86_64-unknown-linux-musl
+          - build: linux-musl-i686
+            os: ubuntu-20.04
+            rust: stable
+            target: i686-unknown-linux-musl
+          - build: linux-musl-arm64
+            os: ubuntu-20.04
+            rust: stable
+            target: aarch64-unknown-linux-musl
+          - build: linux-gnu
+            os: ubuntu-20.04
+            rust: stable
+            target: x86_64-unknown-linux-gnu
+          - build: linux-gnu-i686
+            os: ubuntu-20.04
+            rust: stable
+            target: i686-unknown-linux-gnu
+          - build: linux-gnu-arm64
+            os: ubuntu-20.04
+            rust: stable
+            target: aarch64-unknown-linux-gnu
+          - build: linux-arm-gnueabihf
+            os: ubuntu-20.04
+            rust: stable
+            target: arm-unknown-linux-gnueabihf
+          - build: linux-musl-armv6
+            os: ubuntu-20.04
+            rust: stable
+            target: arm-unknown-linux-musleabihf
+          - build: linux-musl-armv7
+            os: ubuntu-20.04
+            rust: stable
+            target: armv7-unknown-linux-musleabihf
+          - build: macos
+            os: macos-11
+            rust: stable
+            target: x86_64-apple-darwin
+          - build: macos-arm64
+            os: macos-11
+            rust: stable
+            target: aarch64-apple-darwin
+          - build: windows-msvc
+            os: windows-2019
+            rust: stable
+            target: x86_64-pc-windows-msvc
+          - build: windows-msvc-i686
+            os: windows-2019
+            rust: stable
+            target: i686-pc-windows-msvc
+          - build: windows-pc-gnu
+            os: windows-2019
+            rust: stable-x86_64-gnu
+            target: x86_64-pc-windows-gnu
+          # - build: windows-msvc-arm64
+          #   os: windows-2019
+          #   rust: stable
+          #   target: aarch64-pc-windows-msvc
+          - build: wasix
+            os: ubuntu-20.04
+            rust: stable
+            target: wasm32-wasmer-wasi
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v2
-      with:
-        fetch-depth: 1
+      - name: Checkout repository
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 1
 
-    - name: Install Rust
-      uses: dtolnay/rust-toolchain@stable
-      with:
-        toolchain: ${{ matrix.rust }}
-        target: ${{ matrix.target }}
+      # If target is wasm32-wasmer-wasi, install Rust with linux
+      - name: Install Rust
+        if: matrix.target != 'wasm32-wasmer-wasi'
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ matrix.rust }}
+          target: ${{ matrix.target }}
 
-    - name: Use Cross
-      shell: bash
-      run: |
-        if [ "${{ matrix.os }}" = "ubuntu-20.04" ]; then
-          cargo install cross@^0.2
-          echo "CARGO_BIN=cross" >> $GITHUB_ENV
-        fi
-        echo "TARGET_FLAGS=--target ${{ matrix.target }}" >> $GITHUB_ENV
-        echo "TARGET_DIR=./target/${{ matrix.target }}" >> $GITHUB_ENV
+      - name: Install Rust
+        if: matrix.target == 'wasm32-wasmer-wasi'
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ matrix.rust }}
 
-    - name: Show command used for Cargo
-      run: |
-        echo "cargo command is: ${{ env.CARGO_BIN }}"
-        echo "target flag is: ${{ env.TARGET_FLAGS }}"
-        echo "target dir is: ${{ env.TARGET_DIR }}"
+      # Install cargo-binstall and cargo-wasix if target is wasm32-wasmer-wasi
+      - uses: taiki-e/install-action@v2
+        if: matrix.target == 'wasm32-wasmer-wasi'
+        with:
+          tool: cargo-binstall
 
-    - name: Build release binary
-      run: ${{ env.CARGO_BIN }} build --verbose --release ${{ env.TARGET_FLAGS }}
+      - name: Install cargo-wasix
+        if: matrix.target == 'wasm32-wasmer-wasi'
+        run: ${{ env.CARGO_BIN }} binstall cargo-wasix
 
-    - name: Build archive
-      shell: bash
-      run: |
-        staging="static-web-server-${{ needs.create-release.outputs.sws_version }}-${{ matrix.target }}"
-        mkdir -p "$staging/"
-        mkdir -p bin
+      - name: Use Cross
+        if: matrix.target != '' && matrix.target != 'wasm32-wasmer-wasi'
+        shell: bash
+        run: |
+          if [ "${{ matrix.os }}" = "ubuntu-20.04" ]; then
+            cargo install cross@^0.2
+            echo "CARGO_BIN=cross" >> $GITHUB_ENV
+          fi
+          echo "TARGET_FLAGS=--target ${{ matrix.target }}" >> $GITHUB_ENV
+          echo "TARGET_DIR=./target/${{ matrix.target }}" >> $GITHUB_ENV
 
-        cp {README.md,LICENSE-APACHE,LICENSE-MIT} "$staging/"
+      - name: Show command used for Cargo
+        run: |
+          echo "cargo command is: ${{ env.CARGO_BIN }}"
+          echo "target flag is: ${{ env.TARGET_FLAGS }}"
+          echo "target dir is: ${{ env.TARGET_DIR }}"
 
-        if [ "${{ matrix.os }}" = "windows-2019" ]; then
-          cp "target/${{ matrix.target }}/release/static-web-server.exe" "$staging/"
-          7z a "$staging.zip" "$staging"
-          echo "ASSET=$staging.zip" >> $GITHUB_ENV
-        else
-          # The man page is only generated on Unix systems.
-          cp "target/${{ matrix.target }}/release/static-web-server" "$staging/"
-          cp "$staging/static-web-server" bin/
-          tar czf "$staging.tar.gz" "$staging"
-          echo "ASSET=$staging.tar.gz" >> $GITHUB_ENV
-        fi
+      - name: Build release binary
+        if: matrix.target != 'wasm32-wasmer-wasi'
+        run: ${{ env.CARGO_BIN }} build --verbose --release ${{ env.TARGET_FLAGS }}
 
-    - name: Upload release archive
-      uses: actions/upload-release-asset@v1.0.1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ needs.create-release.outputs.upload_url }}
-        asset_path: ${{ env.ASSET }}
-        asset_name: ${{ env.ASSET }}
-        asset_content_type: application/octet-stream
+      - name: Build release binary
+        if: matrix.target == 'wasm32-wasmer-wasi'
+        run: ${{ env.CARGO_BIN }} wasix build --verbose --release
+
+      - name: Build archive
+        shell: bash
+        run: |
+          staging="static-web-server-${{ needs.create-release.outputs.sws_version }}-${{ matrix.target }}"
+          mkdir -p "$staging/"
+          mkdir -p bin
+
+          cp {README.md,LICENSE-APACHE,LICENSE-MIT} "$staging/"
+
+          if [ "${{ matrix.os }}" = "windows-2019" ]; then
+            cp "target/${{ matrix.target }}/release/static-web-server.exe" "$staging/"
+            7z a "$staging.zip" "$staging"
+            echo "ASSET=$staging.zip" >> $GITHUB_ENV
+          else
+            # The man page is only generated on Unix systems.
+            # Check if it's wasm32-wasmer-wasi then files are different
+            if [ "${{matrix.target}}" = "wasm32-wasmer-wasi" ]; then
+              cp "target/${{matrix.target}}/wasm32-wasmer-wasi/release/static-web-server.wasm" "$staging/"
+              cp "$staging/static-web-server" bin/
+            else
+              cp "target/${{ matrix.target }}/release/static-web-server" "$staging/"
+              cp "$staging/static-web-server" bin/
+            fi
+
+            tar czf "$staging.tar.gz" "$staging"
+            echo "ASSET=$staging.tar.gz" >> $GITHUB_ENV
+          fi
+
+      - name: Upload release archive
+        uses: actions/upload-release-asset@v1.0.1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create-release.outputs.upload_url }}
+          asset_path: ${{ env.ASSET }}
+          asset_name: ${{ env.ASSET }}
+          asset_content_type: application/octet-stream
