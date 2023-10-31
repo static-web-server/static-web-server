@@ -1,24 +1,19 @@
 [package]
 name = "wasmer/static-web-server"
-version = "2.14.2"
-description = "A blazing fast and asynchronous web server for static files-serving ⚡"
+version = "1.0.4"
+description = "Serves static files in response to HTTP GET and HEAD requests."
 license = "MIT"
 readme = "README.md"
-repository = "https://github.com/wasix-org/static-web-server"
+repository = "https://github.com/wasmerio/static-web-server"
 homepage = "https://wasmer.io/wasmer/static-web-server"
-
-# See more keys and definitions at https://docs.wasmer.io/registry/manifest
-
-[dependencies]
+wasmer-extra-flags = "--enable-threads --enable-bulk-memory"
 
 [[module]]
-name = "static-web-server"
-source = "target/wasm32-wasmer-wasi/release/static-web-server.wasm"
+name = "webserver"
+source = "web-server.wasm"
 abi = "wasi"
 
-[module.interfaces]
-wasi = "0.1.0-unstable"
-
-# [[command]]
-# name = "server"
-# module = "static-web-server"
+[[command]]
+name = "webserver"
+module = "webserver"
+runner = "wasi@unstable_"
