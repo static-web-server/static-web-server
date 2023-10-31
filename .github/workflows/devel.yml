@@ -142,14 +142,10 @@ jobs:
           toolchain: ${{ matrix.rust }}
 
       # Install cargo-binstall and cargo-wasix if target is wasm32-wasmer-wasi
-      - uses: taiki-e/install-action@v2
-        if: matrix.target == 'wasm32-wasmer-wasi'
-        with:
-          tool: cargo-binstall
-
       - name: Install cargo-wasix
-        if: matrix.target == 'wasm32-wasmer-wasi'
-        run: ${{ env.CARGO_BIN }} binstall cargo-wasix
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-wasix
 
       - name: Use Cross
         if: matrix.target != '' && matrix.target != 'wasm32-wasmer-wasi'
