@@ -150,10 +150,10 @@ jobs:
 
       - name: Run tests
         if: env.SKIP_TESTS == ''
-        run: ${{ env.CARGO_BIN }} test --verbose ${{ env.TARGET_FLAGS }}
+        run: ${{ env.CARGO_BIN }} test --verbose ${{ env.TARGET_FLAGS }} --locked
 
       - name: Run build
-        run: ${{ env.CARGO_BIN }} build --verbose ${{ env.TARGET_FLAGS }}
+        run: ${{ env.CARGO_BIN }} build --verbose ${{ env.TARGET_FLAGS }} --locked
 
   wasm:
     name: Compile and Test (wasm)
