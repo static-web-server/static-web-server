@@ -1,8 +1,8 @@
-use std::path::PathBuf;
 use globset::{Glob, GlobMatcher};
 use headers::HeaderMap;
 use http::Uri;
 use hyper::StatusCode;
+use std::path::PathBuf;
 use structopt::StructOpt;
 
 use crate::{Context, Result};
@@ -15,7 +15,7 @@ pub use cli::Commands;
 
 use cli::General;
 
-pub const DEFAULT_CONFIG_PATH: &'static str = "./cfg/config.toml";
+pub const DEFAULT_CONFIG_PATH: &str = "./cfg/config.toml";
 
 /// The `headers` file options.
 pub struct Headers {
@@ -120,13 +120,9 @@ impl Settings {
         if let Some(ref p) = opts.config_file {
             if p.is_file() {
                 #[cfg(target_family = "wasm")]
-                let path_resolved = p
-                    .canonicalize()
-                    .unwrap_or(p.clone());
+                let path_resolved = p.canonicalize().unwrap_or(p.clone());
                 #[cfg(not(target_family = "wasm"))]
-                let path_resolved = p
-                    .canonicalize()
-                    .unwrap_or(p.clone());
+                let path_resolved = p.canonicalize().unwrap_or(p.clone());
 
                 let settings = file::Settings::read(&path_resolved)
                     .with_context(|| {
