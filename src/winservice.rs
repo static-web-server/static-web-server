@@ -9,7 +9,7 @@
 use std::ffi::OsString;
 use std::thread;
 use std::time::Duration;
-use std::{env, path::PathBuf};
+use std::{env, path::Path};
 
 use windows_service::{
     define_windows_service,
@@ -174,7 +174,7 @@ pub fn run_server_as_service() -> Result {
 }
 
 /// Install a Windows Service for SWS.
-pub fn install_service(config_file: Option<PathBuf>) -> Result {
+pub fn install_service(config_file: &Path) -> Result {
     let manager_access = ServiceManagerAccess::CONNECT | ServiceManagerAccess::CREATE_SERVICE;
     let service_manager = ServiceManager::local_computer(None::<&str>, manager_access)?;
 
@@ -185,11 +185,9 @@ pub fn install_service(config_file: Option<PathBuf>) -> Result {
     let mut service_binary_arguments = vec![OsString::from("--windows-service=true")];
 
     // Append a `--config-file` path to the binary arguments if present
-    if let Some(f) = config_file {
-        let f = helpers::adjust_canonicalization(&f);
-        if !f.is_empty() {
-            service_binary_arguments.push(OsString::from(["--config-file=", &f].concat()));
-        }
+    let f = helpers::adjust_canonicalization(config_file);
+    if !f.is_empty() {
+        service_binary_arguments.push(OsString::from(["--config-file=", &f].concat()));
     }
 
     // Run the current service as `System` type

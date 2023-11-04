@@ -11,7 +11,7 @@ use globset::{Glob, GlobMatcher};
 use headers::HeaderMap;
 use hyper::StatusCode;
 use regex::Regex;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use crate::{helpers, logger, Context, Result};
 
@@ -161,11 +161,14 @@ impl Settings {
 
         // Handle "config file options" and set them when available
         // NOTE: All config file based options shouldn't be mandatory, therefore `Some()` wrapped
-        if let Some((settings, path_resolved)) = get_file_settings(opts.config_file)? {
-            config_file = Some(path_resolved);
+        if let Some((settings, config_file_resolved)) = read_file_settings(&opts.config_file)? {
+            config_file = config_file_resolved;
 
             // File-based "general" options
-            if let Some(general) = settings.general {
+            let has_general_settings = settings.general.is_some();
+            if has_general_settings {
+                let general = settings.general.unwrap();
+
                 if let Some(v) = general.host {
                     host = v
                 }
@@ -310,11 +313,20 @@ impl Settings {
                 }
             }
 
-            // Logging system initialization
+            // Logging system initialization in config file context
             if log_init {
                 logger::init(log_level.as_str())?;
             }
-            tracing::debug!("toml configuration file read successfully");
+
+            tracing::debug!("config file read successfully");
+            tracing::debug!("config file path provided: {}", opts.config_file.display());
+            tracing::debug!("config file path resolved: {}", config_file.display());
+
+            if !has_general_settings {
+                server_warn!(
+                    "config file empty or no `general` settings found, using default values"
+                );
+            }
 
             // File-based "advanced" options
             if let Some(advanced) = settings.advanced {
@@ -473,7 +485,7 @@ impl Settings {
                 });
             }
         } else if log_init {
-            // Logging system initialization
+            // Logging system initialization on demand
             logger::init(log_level.as_str())?;
         }
 
@@ -543,19 +555,17 @@ impl Settings {
     }
 }
 
-fn get_file_settings(file_path_opt: Option<PathBuf>) -> Result<Option<(FileSettings, PathBuf)>> {
-    if let Some(ref file_path) = file_path_opt {
-        if file_path.is_file() {
-            let file_path_resolved = file_path
-                .canonicalize()
-                .with_context(|| "error resolving toml config file path")?;
+fn read_file_settings(config_file: &Path) -> Result<Option<(FileSettings, PathBuf)>> {
+    if config_file.is_file() {
+        let file_path_resolved = config_file
+            .canonicalize()
+            .with_context(|| "unable to resolve toml config file path")?;
 
-            let settings = FileSettings::read(&file_path_resolved).with_context(|| {
-                "can not read toml config file because has invalid or unsupported format/options"
-            })?;
+        let settings = FileSettings::read(&file_path_resolved).with_context(|| {
+            "unable to read toml config file because has invalid format or unsupported options"
+        })?;
 
-            return Ok(Some((settings, file_path_resolved)));
-        }
+        return Ok(Some((settings, file_path_resolved)));
     }
     Ok(None)
 }

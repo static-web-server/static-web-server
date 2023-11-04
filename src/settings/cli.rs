@@ -11,6 +11,7 @@ use std::path::PathBuf;
 
 #[cfg(feature = "directory-listing")]
 use crate::directory_listing::DirListFmt;
+use crate::Result;
 
 /// General server configuration available in CLI and config file options.
 #[derive(Parser, Debug)]
@@ -344,9 +345,15 @@ pub struct General {
     /// Defines a grace period in seconds after a `SIGTERM` signal is caught which will delay the server before to shut it down gracefully. The maximum value is 255 seconds.
     pub grace_period: u8,
 
-    #[arg(long, short = 'w', env = "SERVER_CONFIG_FILE")]
+    #[arg(
+        long,
+        short = 'w',
+        default_value = "./config.toml",
+        value_parser = value_parser_pathbuf,
+        env = "SERVER_CONFIG_FILE"
+    )]
     /// Server TOML configuration file path.
-    pub config_file: Option<PathBuf>,
+    pub config_file: PathBuf,
 
     #[arg(
         long,
@@ -466,7 +473,7 @@ pub enum Commands {
     Uninstall {},
 }
 
-fn value_parser_pathbuf(s: &str) -> crate::Result<PathBuf, String> {
+fn value_parser_pathbuf(s: &str) -> Result<PathBuf, String> {
     Ok(PathBuf::from(s))
 }
 

@@ -25,7 +25,7 @@ fn main() -> Result {
         if let Some(commands) = opts.general.commands {
             match commands {
                 Commands::Install {} => {
-                    return winservice::install_service(opts.general.config_file);
+                    return winservice::install_service(&opts.general.config_file);
                 }
                 Commands::Uninstall {} => {
                     return winservice::uninstall_service();
