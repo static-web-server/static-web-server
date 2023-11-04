@@ -109,8 +109,14 @@ impl Server {
         server_info!("log level: {}", general.log_level);
 
         // Config file option
-        if let Some(config_file) = general.config_file {
-            server_info!("config file: {}", config_file.display());
+        let config_file = general.config_file;
+        if config_file.is_file() {
+            server_info!("config file used: {}", config_file.display());
+        } else {
+            tracing::debug!(
+                "config file path not found or not a regular file: {}",
+                config_file.display()
+            );
         }
 
         // Determine TCP listener either file descriptor or TCP socket
