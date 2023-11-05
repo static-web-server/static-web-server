@@ -22,13 +22,18 @@ pub fn get_response(
     file_path: &Path,
 ) -> Result<Response<Body>> {
     tracing::debug!("server has entered into maintenance mode");
+    tracing::debug!("maintenance mode file path to use: {}", file_path.display());
 
     let mut body_content = String::new();
-    if file_path.exists() {
+    if file_path.is_file() {
         body_content = String::from_utf8_lossy(&helpers::read_bytes_default(file_path))
             .to_string()
             .trim()
             .to_owned();
+    } else {
+        tracing::debug!(
+            "maintenance mode file path not found or not a regular file, using a default message"
+        );
     }
 
     if body_content.is_empty() {
