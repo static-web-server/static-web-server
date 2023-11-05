@@ -25,6 +25,9 @@ The value should be an existing local HTML file path. When not provided a generi
 !!! tip "Optional"
     Remember that either `--maintenance-mode-status` and `--maintenance-mode-file` are optional and can be omitted as needed.
 
+!!! info "Independent path"
+    The `--maintenance-mode-file` is an independent file path and not relative to the root.
+
 ## Example
 
 For instance, the server will respond with a `503 Service Unavailable` status code and a custom message.
