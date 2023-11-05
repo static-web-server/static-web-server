@@ -56,8 +56,8 @@ jobs:
           - macos-arm64
           - windows-msvc
           - windows-msvc-i686
+          - windows-msvc-arm64
           - windows-pc-gnu
-          # - windows-msvc-arm64
         include:
           # Specific Rust channels
           - build: pinned
@@ -148,13 +148,13 @@ jobs:
             os: windows-2022
             rust: stable
             target: i686-pc-windows-msvc
+          - build: windows-msvc-arm64
+            os: windows-2022
+            rust: stable
+            target: aarch64-pc-windows-msvc
           - build: windows-pc-gnu
             os: windows-2022
             rust: stable-x86_64-gnu
-          # - build: windows-msvc-arm64
-          #   os: windows-2022
-          #   rust: stable
-          #   target: aarch64-pc-windows-msvc
 
     steps:
     - name: Checkout repository
@@ -195,9 +195,15 @@ jobs:
         echo "target flag is: ${{ env.TARGET_FLAGS }}"
         echo "target dir is: ${{ env.TARGET_DIR }}"
 
+    - name: Setup Windows ARM64
+      if: ${{ contains(matrix.build, 'windows-msvc-arm64') }}
+      run: |
+        # ring crate: add Visual Studio Build Tools "VS 2022 C++ ARM64 build tools" and "clang" components
+        $env:Path += ";C:\Program Files (x86)\Microsoft Visual Studio\2022\Enterprise\VC\Tools\Llvm\x64\bin"
+
     - name: Skip tests
       shell: bash
-      if: ${{ contains(fromJSON('["macos-arm64", "linux-android-arm64", "linux-android-armv7", "netbsd", "illumos"]'), matrix.build) }}
+      if: ${{ contains(fromJSON('["macos-arm64", "linux-android-arm64", "linux-android-armv7", "netbsd", "illumos", "windows-msvc-arm64"]'), matrix.build) }}
       run: |
         # Can't run tests: cross-compiling
         echo "SKIP_TESTS=--no-run" >> $GITHUB_ENV
