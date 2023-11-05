@@ -43,7 +43,7 @@ Currently, only the following platforms/architectures are supported.
   - `x86_64-pc-windows-gnu`
 
 #### ARM64
-  - ~~`aarch64-pc-windows-msvc`~~ (temporarily disabled until [briansmith/ring#1167](https://github.com/briansmith/ring/issues/1167))
+  - `aarch64-pc-windows-msvc`
 
 ## FreeBSD
 

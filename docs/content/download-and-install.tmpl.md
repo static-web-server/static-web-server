@@ -115,6 +115,8 @@ Pre-compiled binaries grouped by CPU architectures.
 <small>**SHA256SUM:** `{{aarch64-apple-darwin.tar.gz}}`</small>
 - [static-web-server-{{RELEASE_VERSION}}-aarch64-linux-android.tar.gz](https://github.com/static-web-server/static-web-server/releases/download/{{RELEASE_VERSION}}/static-web-server-{{RELEASE_VERSION}}-aarch64-linux-android.tar.gz)<br>
 <small>**SHA256SUM:** `{{aarch64-linux-android.tar.gz}}`</small>
+- [static-web-server-{{RELEASE_VERSION}}-aarch64-pc-windows-msvc.zip](https://github.com/static-web-server/static-web-server/releases/download/{{RELEASE_VERSION}}/static-web-server-{{RELEASE_VERSION}}-aarch64-pc-windows-msvc.zip)<br>
+<small>**SHA256SUM:** `{{aarch64-pc-windows-msvc.zip}}`</small>
 
 ### x86
 
