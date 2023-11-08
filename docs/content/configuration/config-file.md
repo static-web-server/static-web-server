@@ -26,8 +26,9 @@ cache-control-headers = true
 compression = true
 
 #### Error pages
-page404 = "./public/404.html"
-page50x = "./public/50x.html"
+# Note: If a relative path is used then it will be resolved under the root directory.
+page404 = "./404.html"
+page50x = "./50x.html"
 
 #### HTTP/2 + TLS
 http2 = false

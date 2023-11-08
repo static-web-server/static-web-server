@@ -101,20 +101,16 @@ pub struct General {
     /// Root directory path of static files.
     pub root: PathBuf,
 
-    #[arg(
-        long,
-        default_value = "./public/50x.html",
-        env = "SERVER_ERROR_PAGE_50X"
-    )]
-    /// HTML file path for 50x errors. If the path is not specified or simply doesn't exist then the server will use a generic HTML error message.
+    #[arg(long, default_value = "./50x.html", env = "SERVER_ERROR_PAGE_50X")]
+    /// HTML file path for 50x errors. If the path is not specified or simply doesn't exist
+    /// then the server will use a generic HTML error message.
+    /// If a relative path is used then it will be resolved under the root directory.
     pub page50x: PathBuf,
 
-    #[arg(
-        long,
-        default_value = "./public/404.html",
-        env = "SERVER_ERROR_PAGE_404"
-    )]
-    /// HTML file path for 404 errors. If the path is not specified or simply doesn't exist then the server will use a generic HTML error message.
+    #[arg(long, default_value = "./404.html", env = "SERVER_ERROR_PAGE_404")]
+    /// HTML file path for 404 errors. If the path is not specified or simply doesn't exist
+    /// then the server will use a generic HTML error message.
+    /// If a relative path is used then it will be resolved under the root directory.
     pub page404: PathBuf,
 
     #[cfg(feature = "fallback-page")]
