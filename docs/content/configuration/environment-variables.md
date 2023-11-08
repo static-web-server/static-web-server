@@ -31,10 +31,12 @@ Specify a logging level in lower case. Possible values are `error`, `warn`, `inf
 Log incoming requests information along with its Remote Address (IP) if available using the `info` log level. Default `false`.
 
 ### SERVER_ERROR_PAGE_404
-HTML file path for 404 errors. If the path is not specified or simply doesn't exist then the server will use a generic HTML error message. Default `./public/404.html`.
+HTML file path for 404 errors. If the path is not specified or simply doesn't exist then the server will use a generic HTML error message.
+If a relative path is used then it will be resolved under the root directory. Default `./404.html`.
 
 ### SERVER_ERROR_PAGE_50X
-HTML file path for 50x errors. If the path is not specified or simply doesn't exist then the server will use a generic HTML error message. Default `./public/50x.html`
+HTML file path for 50x errors. If the path is not specified or simply doesn't exist then the server will use a generic HTML error message.
+If a relative path is used then it will be resolved under the root directory. Default `./50x.html`
 
 ### SERVER_FALLBACK_PAGE
 HTML file path that is used for `GET` requests when the requested path doesn't exist. The fallback page is served with a `200` status code, useful when using client routers (E.g `React Router`). If the path is not specified or simply doesn't exist then this feature will not be active.
@@ -110,10 +112,13 @@ Activate the health endpoint.
 
 ### SERVER_INDEX_FILES
 List of files that will be used as an index for requests ending with the slash character (‘/’). Files are checked in the specified order. Default `index.html`.
+
 ### SERVER_MAINTENANCE_MODE
 Enable the server's maintenance mode functionality.
+
 ### SERVER_MAINTENANCE_MODE_STATUS
 Provide a custom HTTP status code when entering into maintenance mode. Default `503`.
+
 ### SERVER_MAINTENANCE_MODE_FILE
 Provide a custom maintenance mode HTML file. If not provided then a generic message will be displayed.
 

@@ -28,9 +28,9 @@ Options:
   -d, --root <ROOT>
           Root directory path of static files [env: SERVER_ROOT=] [default: ./public]
       --page50x <PAGE50X>
-          HTML file path for 50x errors. If the path is not specified or simply doesn't exist then the server will use a generic HTML error message [env: SERVER_ERROR_PAGE_50X=] [default: ./public/50x.html]
+          HTML file path for 50x errors. If the path is not specified or simply doesn't exist then the server will use a generic HTML error message. If a relative path is used then it will be resolved under the root directory [env: SERVER_ERROR_PAGE_50X=] [default: ./50x.html]
       --page404 <PAGE404>
-          HTML file path for 404 errors. If the path is not specified or simply doesn't exist then the server will use a generic HTML error message [env: SERVER_ERROR_PAGE_404=] [default: ./public/404.html]
+          HTML file path for 404 errors. If the path is not specified or simply doesn't exist then the server will use a generic HTML error message. If a relative path is used then it will be resolved under the root directory [env: SERVER_ERROR_PAGE_404=] [default: ./404.html]
       --page-fallback <PAGE_FALLBACK>
           HTML file path that is used for GET requests when the requested path doesn't exist. The fallback page is served with a 200 status code, useful when using client routers. If the path is not specified or simply doesn't exist then this feature will not be active [env: SERVER_FALLBACK_PAGE=] [default: ]
   -g, --log-level <LOG_LEVEL>
@@ -76,7 +76,7 @@ Options:
   -q, --grace-period <GRACE_PERIOD>
           Defines a grace period in seconds after a `SIGTERM` signal is caught which will delay the server before to shut it down gracefully. The maximum value is 255 seconds [env: SERVER_GRACE_PERIOD=] [default: 0]
   -w, --config-file <CONFIG_FILE>
-          Server TOML configuration file path [env: SERVER_CONFIG_FILE=]
+          Server TOML configuration file path [env: SERVER_CONFIG_FILE=] [default: ./config.toml]
       --log-remote-address[=<LOG_REMOTE_ADDRESS>]
           Log incoming requests information along with its remote address if available using the `info` log level [env: SERVER_LOG_REMOTE_ADDRESS=] [default: false] [possible values: true, false]
       --redirect-trailing-slash[=<REDIRECT_TRAILING_SLASH>]

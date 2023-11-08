@@ -59,9 +59,9 @@ pub struct RequestHandlerOpts {
     /// Cache control headers feature.
     pub cache_control_headers: bool,
     /// Page for 404 errors.
-    pub page404: Vec<u8>,
+    pub page404: PathBuf,
     /// Page for 50x errors.
-    pub page50x: Vec<u8>,
+    pub page50x: PathBuf,
     /// Page fallback feature.
     #[cfg(feature = "fallback-page")]
     #[cfg_attr(docsrs, doc(cfg(feature = "fallback-page")))]

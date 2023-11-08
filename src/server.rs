@@ -159,9 +159,28 @@ impl Server {
         let root_dir = helpers::get_valid_dirpath(&general.root)
             .with_context(|| "root directory was not found or inaccessible")?;
 
-        // Custom error pages content
-        let page404 = helpers::read_bytes_default(&general.page404);
-        let page50x = helpers::read_bytes_default(&general.page50x);
+        // Custom HTML error page files
+        // NOTE: in the case of relative paths, they're joined to the root directory
+        let mut page404 = general.page404;
+        if page404.is_relative() && !page404.starts_with(&root_dir) {
+            page404 = root_dir.join(page404);
+        }
+        if !page404.is_file() {
+            tracing::debug!(
+                "404 file path not found or not a regular file: {}",
+                page404.display()
+            );
+        }
+        let mut page50x = general.page50x;
+        if page50x.is_relative() && !page50x.starts_with(&root_dir) {
+            page50x = root_dir.join(page50x);
+        }
+        if !page50x.is_file() {
+            tracing::debug!(
+                "50x file path not found or not a regular file: {}",
+                page50x.display()
+            );
+        }
 
         // Fallback page option
         #[cfg(feature = "fallback-page")]
