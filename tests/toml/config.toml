@@ -15,8 +15,8 @@ cache-control-headers = true
 compression = true
 
 #### Error pages
-page404 = "docker/public/404.html"
-page50x = "docker/public/50x.html"
+page404 = "./404.html"
+page50x = "./50x.html"
 
 #### HTTP/2 + TLS
 http2 = false

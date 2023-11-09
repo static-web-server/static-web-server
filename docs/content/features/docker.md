@@ -15,6 +15,8 @@ All Docker images are [Multi-Arch](https://www.docker.com/blog/how-to-rapidly-bu
 - `linux/arm/v6`
 - `linux/arm/v7`
 - `linux/arm64`
+- `linux/ppc64le`
+- `linux/s390x`
 
 !!! tip "SWS statically-linked binary"
     All the Docker images use the SWS statically-linked binary, meaning that the binary is highly optimized, performant, and dependency-free thanks to [musl libc](https://www.musl-libc.org/).

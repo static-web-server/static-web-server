@@ -19,7 +19,7 @@ See also [the release history](https://github.com/static-web-server/static-web-s
 
 ### Binary installer (Linux/BSDs)
 
-Use our binary installer if your package manager is not supported.
+Use the binary installer if your package manager is not supported.
 
 ```sh
 curl --proto '=https' --tlsv1.2 -sSfL https://get.static-web-server.net | sh
