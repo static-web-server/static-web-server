@@ -12,7 +12,7 @@ jobs:
   docker-image-debian:
     runs-on: ubuntu-22.04
     environment: docker-publish-manual  
-    if: ${{ github.event.label.name == 'docker:publish:v2' }}
+    if: contains(github.event.label.name, 'docker:publish:v2.')
     steps:
       -
         name: Checkout repository
@@ -26,7 +26,8 @@ jobs:
         name: Prepare Docker envs
         shell: bash
         run: |
-          echo "SEMVER=${SERVER_VERSION#*v}" >> $GITHUB_ENV
+          version=${{ github.event.label.name }}
+          echo "SEMVER=${version#*docker:publish:v}" >> $GITHUB_ENV
           echo "SEMVER_MAJOR=${SEMVER%.*.*}" >> $GITHUB_ENV
           echo "SEMVER_MINOR=${SEMVER%.*}" >> $GITHUB_ENV
       -
@@ -41,9 +42,9 @@ jobs:
             latest=false
             suffix=-debian
           tags: |
-            type=raw,value=${{ env.SEMVER }}-debian
-            type=raw,value=${{ env.SEMVER_MAJOR }}-debian
-            type=raw,value=${{ env.SEMVER_MINOR }}-debian
+            type=raw,value=${{ env.SEMVER }}
+            type=raw,value=${{ env.SEMVER_MAJOR }}
+            type=raw,value=${{ env.SEMVER_MINOR }}
       -
         name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
