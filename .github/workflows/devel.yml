@@ -1,6 +1,13 @@
 name: devel
 on:
   pull_request:
+    paths:
+      - .github/workflows/devel.yml
+      - .cargo/config.toml
+      - Cargo.lock
+      - Cargo.toml
+      - src/**
+      - tests/**
   push:
     branches:
     - master

@@ -37,8 +37,14 @@ RUN set -ex \
     && uname -a \
     && cat /etc/os-release \
     && echo VERSION_NUMBER=$(cat /etc/debian_version) \
-    && static-web-server --version \
-    && static-web-server --help \
+    && case "$TARGETPLATFORM" in \
+        **ppc64*|*s390x*) \
+            echo "warn: can not run sws binary on $TARGETPLATFORM architecture" ;; \
+        *) \
+            static-web-server --version; \
+            static-web-server --help; \
+        ;; \
+    esac \
     && file /usr/local/bin/static-web-server \
     && true
 

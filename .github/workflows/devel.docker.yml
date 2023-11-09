@@ -1,14 +1,20 @@
 name: devel-docker
 on:
   pull_request:
-  push:
-    branches:
-    - master
-    - staging
-    - trying
     paths:
       - docker/**/Dockerfile
       - scripts/ci/**/*.sh
+      - .github/workflows/devel.docker.yml
+  push:
+    branches:
+      - master
+      - staging
+      - trying
+    paths:
+      - docker/**/Dockerfile
+      - scripts/ci/**/*.sh
+      - .github/workflows/devel.docker.yml
+
 env:
   DOCKER_IMAGE: localhost:5000/github.com/static-web-server/static-web-server
 
