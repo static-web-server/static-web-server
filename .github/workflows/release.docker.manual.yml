@@ -40,11 +40,11 @@ jobs:
             ghcr.io/static-web-server/static-web-server
           flavor: |
             latest=false
-            suffix=-debian
           tags: |
-            type=raw,value=${{ env.SEMVER }}
-            type=raw,value=${{ env.SEMVER_MAJOR }}
-            type=raw,value=${{ env.SEMVER_MINOR }}
+            type=raw,value=debian
+            type=raw,value=${{ env.SEMVER }}-debian
+            type=raw,value=${{ env.SEMVER_MAJOR }}-debian
+            type=raw,value=${{ env.SEMVER_MINOR }}-debian
       -
         name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
