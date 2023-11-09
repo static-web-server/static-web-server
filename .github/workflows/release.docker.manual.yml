@@ -27,9 +27,10 @@ jobs:
         shell: bash
         run: |
           version=${{ github.event.label.name }}
-          echo "SEMVER=${version#*docker:publish:v}" >> $GITHUB_ENV
-          echo "SEMVER_MAJOR=${SEMVER%.*.*}" >> $GITHUB_ENV
-          echo "SEMVER_MINOR=${SEMVER%.*}" >> $GITHUB_ENV
+          semver=${version#*docker:publish:v}
+          echo "SEMVER=$semver" >> $GITHUB_ENV
+          echo "SEMVER_MAJOR=${semver%.*.*}" >> $GITHUB_ENV
+          echo "SEMVER_MINOR=${semver%.*}" >> $GITHUB_ENV
       -
         name: Docker meta debian
         id: meta_debian
