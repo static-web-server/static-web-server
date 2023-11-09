@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _**Note:** See changelog for v1 under the [1.x](https://github.com/static-web-server/static-web-server/blob/1.x/CHANGELOG.md) branch._
 
+## v2.24.0 - 2023-11-09
+
+This new `v2.24.0` release brings dependency security updates and bug fixes. It introduces three new targets (PowerPC (PPC64LE), S390x and Windows ARM64). Features like automatic TOML configuration file detection at startup and 404/50x error pages loading at runtime as well as several improvements.
+
+__Fixes__
+
+- [e767938](https://github.com/static-web-server/static-web-server/commit/e767938) Bugfix/security dependency updates including ring, rustls, regex, clap, serde, futures, brotli and other crates (also [b0c0775](https://github.com/static-web-server/static-web-server/commit/b0c0775)).
+- [4fa09ab](https://github.com/static-web-server/static-web-server/commit/4fa09ab) CI: `cross` does not build when using `libc` 0.2.149+ on NetBSD.
+
+__Features__
+
+- [e89ce29](https://github.com/static-web-server/static-web-server/commit/e89ce29) Automatic TOML configuration file detection at startup. PR [#281](https://github.com/static-web-server/static-web-server/pull/281). See [docs](https://static-web-server.net/configuration/config-file/).
+- [fd4bfd4](https://github.com/static-web-server/static-web-server/commit/fd4bfd4) Linux PowerPC (PPC64LE) and S390x targets (also Docker images). PR [#159](https://github.com/static-web-server/static-web-server/pull/159). See [docs](https://static-web-server.net/platforms-architectures/#powerpc).
+- [02c6d3e](https://github.com/static-web-server/static-web-server/commit/02c6d3e) Windows ARM64 target. PR [#283](https://github.com/static-web-server/static-web-server/pull/283). See [docs](https://static-web-server.net/platforms-architectures/#arm64_2).
+- [1fa9261](https://github.com/static-web-server/static-web-server/commit/1fa9261) Load 404 and 50x error pages at runtime. PR [#284](https://github.com/static-web-server/static-web-server/pull/284) resolves [#98](https://github.com/static-web-server/static-web-server/issues/98) reported by [@Dexus](https://github.com/Dexus).
+
+__Refactorings__
+
+- [4de9acd](https://github.com/static-web-server/static-web-server/commit/4de9acd) Allowed methods response for `OPTIONS` file requests. PR [#278](https://github.com/static-web-server/static-web-server/pull/278).
+- [d06ad0f](https://github.com/static-web-server/static-web-server/commit/d06ad0f) Remove some unused TLS configuration APIs and use defaults directly. PR [#279](https://github.com/static-web-server/static-web-server/pull/279).
+- [ab16187](https://github.com/static-web-server/static-web-server/commit/ab16187) Improve the server maintenance mode debug logs. PR [#282](https://github.com/static-web-server/static-web-server/pull/282).
+
+__Docs__
+
+- [2798725](https://github.com/static-web-server/static-web-server/commit/2798725) Linux PowerPC (PPC64LE) and S390x targets information. See [docs](https://static-web-server.net/download-and-install/#powerpc).
+
 ## v2.23.0 - 2023-10-15
 
 This new `v2.23.0` release brings several dependency updates and bug fixes. New features like multiple index files and maintenance mode support, more performance and resource optimizations (~15% less memory usage), a bug fix for the directory listing, documentation for using SWS in WebAssembly and TrueNAS SCALE and other improvements.
