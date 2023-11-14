@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _**Note:** See changelog for v1 under the [1.x](https://github.com/static-web-server/static-web-server/blob/1.x/CHANGELOG.md) branch._
 
+## v2.24.1 - 2023-11-15
+
+This new `v2.24.1` release brings dependency security updates and bug fixes. In particular, it fixes an issue when executing the previous Windows ARM64 build and other improvements.
+
+__Fixes__
+
+- [c0c88f1](https://github.com/static-web-server/static-web-server/commit/c0c88f1) Bugfix/security dependency updates including tokio, http, rustls-pemfile, tracing, clap and other crates.
+- [f4e9142](https://github.com/static-web-server/static-web-server/commit/f4e9142) Windows ARM64 binary does not execute due to missing DLLs. PR [#290](https://github.com/static-web-server/static-web-server/pull/290).
+
+__Refactorings__
+
+- [990bb7c](https://github.com/static-web-server/static-web-server/commit/990bb7c) Statically link the C runtime for Windows MSVC x86 (32-bit) build. PR [#291](https://github.com/static-web-server/static-web-server/pull/291).
+
+__Docs__
+
+- [e99d989](https://github.com/static-web-server/static-web-server/commit/e99d989) Fix typos in README file. PR [#287](https://github.com/static-web-server/static-web-server/pull/287) by [@dynamite-bud](https://github.com/dynamite-bud) (also [a987e37](https://github.com/static-web-server/static-web-server/commit/a987e37)).
+
+__Misc__
+
+- [3099dba](https://github.com/static-web-server/static-web-server/commit/3099dba) CI: Manual Docker build CI workflow for testing. PR [#286](https://github.com/static-web-server/static-web-server/pull/286).
+- [680323c](https://github.com/static-web-server/static-web-server/commit/680323c) CI: Manual release build CI workflow for testing. PR [#288](https://github.com/static-web-server/static-web-server/pull/288).
+
 ## v2.24.0 - 2023-11-09
 
 This new `v2.24.0` release brings dependency security updates and bug fixes. It introduces three new targets (PowerPC (PPC64LE), S390x and Windows ARM64). Features like automatic TOML configuration file detection at startup and 404/50x error pages loading at runtime as well as several improvements.
