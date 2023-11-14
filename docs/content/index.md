@@ -36,7 +36,7 @@ It is focused on **lightness and easy-to-use** principles while keeping [high pe
 
 Written on top of [Hyper](https://github.com/hyperium/hyper) and [Tokio](https://github.com/tokio-rs/tokio) runtime, it provides [concurrent and asynchronous networking abilities](https://rust-lang.github.io/async-book/01_getting_started/02_why_async.html) and the latest HTTP/1 - HTTP/2 implementations.
 
-Cross-platform and available for `Linux`, `macOS`, `Windows`, `FreeBSD`, `NetBSD`, `Android`, `Docker` and `Wasm` (via [Warmer](https://wasmer.io/wasmer/static-web-server)).
+Cross-platform and available for `Linux`, `macOS`, `Windows`, `FreeBSD`, `NetBSD`, `Android`, `Docker` and `Wasm` (via [Wasmer](https://wasmer.io/wasmer/static-web-server)).
 
 ![static-web-server running](https://github.com/static-web-server/static-web-server/assets/1700322/102bef12-1f30-4054-a1bc-30c650d4ffa7)
 
@@ -74,7 +74,7 @@ Cross-platform and available for `Linux`, `macOS`, `Windows`, `FreeBSD`, `NetBSD
 - Available as a library crate with opt-in features.
 - First-class [Docker](https://docs.docker.com/get-started/overview/) support. [Scratch](https://hub.docker.com/_/scratch), latest [Alpine Linux](https://hub.docker.com/_/alpine) and [Debian](https://hub.docker.com/_/alpine) Docker images.
 - Ability to accept a socket listener as a file descriptor for sandboxing and on-demand applications (e.g. [systemd](http://0pointer.de/blog/projects/socket-activation.html)).
-- Cross-platform. Pre-compiled binaries for Linux, macOS, Windows, FreeBSD, NetBSD, Android (`x86/x86_64`, `ARM/ARM64`) and WebAssembly (via [Warmer](https://wasmer.io/wasmer/static-web-server)).
+- Cross-platform. Pre-compiled binaries for Linux, macOS, Windows, FreeBSD, NetBSD, Android (`x86/x86_64`, `ARM/ARM64`) and WebAssembly (via [Wasmer](https://wasmer.io/wasmer/static-web-server)).
 
 ## Benchmarks
 
