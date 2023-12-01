@@ -25,7 +25,9 @@ body:
         - Linux (E.g. Arch Linux, Debian, Alpine, etc)
         - macOS
         - Windows / Windows Service
-        - Docker/Kubernetes
+        - Performance
+        - Security / Vulnerability
+        - Docker / Kubernetes
         - Build target (binary)
         - Libary (crate)
         - Script installer
@@ -33,7 +35,10 @@ body:
         - Usability / User Experience
         - CLI
         - Configuration (e.g. TOML)
-        - Other
+        - Regression of existing functionality
+        - Other (specify below)
+    validations:
+      required: true
   - type: textarea
     id: describe-bug
     attributes:
@@ -67,8 +72,8 @@ body:
   - type: dropdown
     id: build-target
     attributes:
-      label: Build target used
-      description: Specify the SWS pre-compiled build (binary) target that you use.
+      label: Build target
+      description: Specify the SWS target involved in this issue.
       options:
         - aarch64-apple-darwin
         - aarch64-linux-android
@@ -92,6 +97,13 @@ body:
         - x86_64-unknown-linux-gnu
         - x86_64-unknown-linux-musl
         - x86_64-unknown-netbsd
+        - Docker linux/386
+        - Docker linux/amd64
+        - Docker linux/arm/v6
+        - Docker linux/arm/v7
+        - Docker linux/arm64
+        - Docker linux/ppc64le
+        - Docker linux/s390x
         - Built from source (specify below)
     validations:
       required: true

@@ -1,5 +1,5 @@
 name: "Feature request or improvement"
-description: "Suggest an idea for the project"
+description: "Suggest an idea or improvement for the project."
 labels: ["enhancement", "help wanted", "v2"]
 body:
   - type: markdown
@@ -22,12 +22,17 @@ body:
         - Completely new feature
         - Improve existing functionality
         - Target/OS/arch/platform
-        - Build target (binary)
         - Libary/API (crate)
         - Configuration (e.g. TOML) or CLI/env option
+        - Build target (release binary)
         - Usability / User Experience
-        - Documentation
+        - Documentation / Resources
+        - Performance
+        - Security
+        - Project/structure/CI-CD/process
         - Other (specify below)
+    validations:
+      required: true
   - type: textarea
     id: feature-related
     attributes:
@@ -85,6 +90,13 @@ body:
         - x86_64-unknown-linux-gnu
         - x86_64-unknown-linux-musl
         - x86_64-unknown-netbsd
+        - Docker linux/386
+        - Docker linux/amd64
+        - Docker linux/arm/v6
+        - Docker linux/arm/v7
+        - Docker linux/arm64
+        - Docker linux/ppc64le
+        - Docker linux/s390x
     validations:
       required: true
   - type: textarea
