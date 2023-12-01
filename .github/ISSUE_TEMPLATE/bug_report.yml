@@ -1,0 +1,118 @@
+name: "Bug Report"
+description: "Create a bug report to help us improve."
+labels: ["bug", "v2"]
+assignees:
+  - joseluisq
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Thanks for taking the time to file a bug report! Please fill out this form as completely as possible.**
+  - type: checkboxes
+    id: search-duplicate
+    attributes:
+      label: Search for duplicate issues
+      options:
+        - label: I already searched, and this issue is not a duplicate.
+          required: true
+  - type: dropdown
+    id: issue-scope
+    attributes:
+      label: Issue scope
+      description: What is the scope of this issue?
+      options:
+        - BSD (E.g. FreeBSD, NetBSD, illumos)
+        - Linux (E.g. Arch Linux, Debian, Alpine, etc)
+        - macOS
+        - Windows / Windows Service
+        - Docker/Kubernetes
+        - Build target (binary)
+        - Libary (crate)
+        - Script installer
+        - Documentation
+        - Usability / User Experience
+        - CLI
+        - Configuration (e.g. TOML)
+        - Other
+  - type: textarea
+    id: describe-bug
+    attributes:
+      label: Describe the bug
+      description: A clear and concise description of what the bug is.
+    validations:
+      required: true
+  - type: textarea
+    id: how-reproduce
+    attributes:
+      label: How to reproduce it
+      description: Steps to reproduce the issue.
+      placeholder: |
+        1. First step...
+    validations:
+      required: true
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: Expected behavior
+      description: A clear and concise description of what you expected to happen.
+    validations:
+      required: true
+  - type: textarea
+    id: complementary-info
+    attributes:
+      label: Complementary information
+      description: If applicable, add logs, screenshots or a video to help explain your problem.
+    validations:
+      required: false
+  - type: dropdown
+    id: build-target
+    attributes:
+      label: Build target used
+      description: Specify the SWS pre-compiled build (binary) target that you use.
+      options:
+        - aarch64-apple-darwin
+        - aarch64-linux-android
+        - aarch64-pc-windows-msvc
+        - aarch64-unknown-linux-gnu
+        - aarch64-unknown-linux-musl
+        - arm-unknown-linux-gnueabihf
+        - arm-unknown-linux-musleabihf
+        - armv7-unknown-linux-musleabihf
+        - i686-pc-windows-msvc
+        - i686-unknown-freebsd
+        - i686-unknown-linux-gnu
+        - i686-unknown-linux-musl
+        - powerpc64le-unknown-linux-gnu
+        - s390x-unknown-linux-gnu
+        - x86_64-apple-darwin
+        - x86_64-pc-windows-gnu
+        - x86_64-pc-windows-msvc
+        - x86_64-unknown-freebsd
+        - x86_64-unknown-illumos
+        - x86_64-unknown-linux-gnu
+        - x86_64-unknown-linux-musl
+        - x86_64-unknown-netbsd
+        - Built from source (specify below)
+    validations:
+      required: true
+  - type: textarea
+    id: environment-specs
+    attributes:
+      label: Environment and specs
+      description: Provide information about your environment and specs.
+      value: |
+        - [ ] **static-web-server:** [e.g. v1.24.1]
+        - [ ] **OS:** [e.g. Debian 12.2, Macos 14.1.2, Windows 11, etc]
+        - [ ] **Arch:** [e.g. x86_64 (64-bit), ARM (32-bit), ARM64 (64-bit), i686 (32-bit), etc]
+        - [ ] **Docker:** [e.g. 20.10.7]
+        - [ ] **Client:** [e.g. Chrome 91.0.4472.114, Firefox 119.0.1, curl, etc]
+        - [ ] Specify others
+    validations:
+      required: true
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional context
+      description: Add any other context information about the problem here if needed.
+    validations:
+      required: false
