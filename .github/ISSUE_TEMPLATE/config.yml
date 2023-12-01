@@ -1,0 +1,10 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Static Web Server - Website
+    url: https://static-web-server.net
+    about: |
+      Refer to official website for details about installation, usage, features and examples.
+  - name: Static Web Server - Community Support
+    url: https://github.com/orgs/static-web-server/discussions
+    about: |
+      Please use the discussions page if you have questions or need help.
