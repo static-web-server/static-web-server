@@ -8,8 +8,7 @@
 
 use chrono::{DateTime, Local, NaiveDateTime, Utc};
 use clap::ValueEnum;
-use futures_util::future::Either;
-use futures_util::{future, FutureExt};
+use futures_util::{future, future::Either, FutureExt};
 use headers::{ContentLength, ContentType, HeaderMapExt};
 use humansize::FormatSize;
 use hyper::{Body, Method, Response, StatusCode};

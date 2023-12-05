@@ -7,8 +7,7 @@
 //!
 
 use bcrypt::verify as bcrypt_verify;
-use headers::{authorization::Basic, Authorization, HeaderMapExt};
-use http::HeaderMap;
+use headers::{authorization::Basic, Authorization, HeaderMap, HeaderMapExt};
 use hyper::StatusCode;
 
 /// Check for a `Basic` HTTP Authorization Schema of an incoming request

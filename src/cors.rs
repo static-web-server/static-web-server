@@ -9,8 +9,8 @@
 // Part of the file is borrowed from https://github.com/seanmonstar/warp/blob/master/src/filters/cors.rs
 
 use headers::{
-    AccessControlAllowHeaders, AccessControlAllowMethods, AccessControlExposeHeaders, HeaderMapExt,
-    HeaderName, HeaderValue, Origin,
+    AccessControlAllowHeaders, AccessControlAllowMethods, AccessControlExposeHeaders, HeaderMap,
+    HeaderMapExt, HeaderName, HeaderValue, Origin,
 };
 use http::header;
 use std::{collections::HashSet, convert::TryFrom};
@@ -252,8 +252,8 @@ impl Configured {
     pub fn check_request(
         &self,
         method: &http::Method,
-        headers: &http::HeaderMap,
-    ) -> Result<(http::HeaderMap, Validated), Forbidden> {
+        headers: &HeaderMap,
+    ) -> Result<(HeaderMap, Validated), Forbidden> {
         match (headers.get(header::ORIGIN), method) {
             (Some(origin), &http::Method::OPTIONS) => {
                 // OPTIONS requests are preflight CORS requests...
@@ -282,7 +282,7 @@ impl Configured {
                     }
                 }
 
-                let mut headers = http::HeaderMap::new();
+                let mut headers = HeaderMap::new();
                 self.append_preflight_headers(&mut headers);
                 headers.insert(header::ACCESS_CONTROL_ALLOW_ORIGIN, origin.into());
 
@@ -293,7 +293,7 @@ impl Configured {
                 tracing::trace!("cors origin header: {:?}", origin);
 
                 if self.is_origin_allowed(origin) {
-                    let mut headers = http::HeaderMap::new();
+                    let mut headers = HeaderMap::new();
                     self.append_preflight_headers(&mut headers);
                     headers.insert(header::ACCESS_CONTROL_ALLOW_ORIGIN, origin.into());
 
@@ -304,7 +304,7 @@ impl Configured {
             }
             (None, _) => {
                 // No `ORIGIN` header means this isn't CORS!
-                Ok((http::HeaderMap::new(), Validated::NotCors))
+                Ok((HeaderMap::new(), Validated::NotCors))
             }
         }
     }
@@ -329,7 +329,7 @@ impl Configured {
         }
     }
 
-    fn append_preflight_headers(&self, headers: &mut http::HeaderMap) {
+    fn append_preflight_headers(&self, headers: &mut HeaderMap) {
         headers.typed_insert(self.allowed_headers.clone());
         headers.typed_insert(self.exposed_headers.clone());
         headers.typed_insert(self.methods_header.clone());

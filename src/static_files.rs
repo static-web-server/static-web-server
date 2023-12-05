@@ -10,14 +10,16 @@
 // https://github.com/seanmonstar/warp/blob/master/src/filters/fs.rs
 
 use bytes::{Bytes, BytesMut};
-use futures_util::future::{Either, Future};
-use futures_util::{future, Stream};
+use futures_util::{
+    future,
+    future::{Either, Future},
+    Stream,
+};
 use headers::{
     AcceptRanges, ContentLength, ContentRange, ContentType, HeaderMap, HeaderMapExt, HeaderValue,
     IfModifiedSince, IfRange, IfUnmodifiedSince, LastModified, Range,
 };
-use http::header::CONTENT_LENGTH;
-use hyper::{header::CONTENT_ENCODING, Body, Method, Response, StatusCode};
+use hyper::{header::CONTENT_ENCODING, header::CONTENT_LENGTH, Body, Method, Response, StatusCode};
 use percent_encoding::percent_decode_str;
 use std::fs::{File, Metadata};
 use std::io::{self, BufReader, Read, Seek, SeekFrom};

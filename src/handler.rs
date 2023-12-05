@@ -6,7 +6,7 @@
 //! Request handler module intended to manage incoming HTTP requests.
 //!
 
-use headers::{ContentType, HeaderMapExt, HeaderValue};
+use headers::{ContentType, HeaderMap, HeaderMapExt, HeaderValue};
 use hyper::{Body, Request, Response, StatusCode};
 use std::{future::Future, net::IpAddr, net::SocketAddr, path::PathBuf, sync::Arc};
 
@@ -124,7 +124,7 @@ impl RequestHandler {
         let health = self.opts.health;
         let index_files: Vec<&str> = self.opts.index_files.iter().map(|s| s.as_str()).collect();
 
-        let mut cors_headers: Option<http::HeaderMap> = None;
+        let mut cors_headers: Option<HeaderMap> = None;
 
         let health_request =
             health && uri_path == "/health" && (method.is_get() || method.is_head());
@@ -417,7 +417,7 @@ impl RequestHandler {
                     if self.opts.compression || compression_static {
                         resp.headers_mut().append(
                             hyper::header::VARY,
-                            hyper::header::HeaderValue::from_name(hyper::header::ACCEPT_ENCODING),
+                            HeaderValue::from_name(hyper::header::ACCEPT_ENCODING),
                         );
                     }
 
@@ -485,9 +485,7 @@ impl RequestHandler {
                         if self.opts.compression || compression_static {
                             resp.headers_mut().append(
                                 hyper::header::VARY,
-                                hyper::header::HeaderValue::from_name(
-                                    hyper::header::ACCEPT_ENCODING,
-                                ),
+                                HeaderValue::from_name(hyper::header::ACCEPT_ENCODING),
                             );
                         }
 

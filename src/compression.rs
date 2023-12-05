@@ -19,9 +19,9 @@ use async_compression::tokio::bufread::ZstdEncoder;
 
 use bytes::Bytes;
 use futures_util::Stream;
-use headers::{AcceptEncoding, ContentCoding, ContentType, HeaderMap, HeaderMapExt};
+use headers::{AcceptEncoding, ContentCoding, ContentType, HeaderMap, HeaderMapExt, HeaderValue};
 use hyper::{
-    header::{HeaderValue, CONTENT_ENCODING, CONTENT_LENGTH},
+    header::{CONTENT_ENCODING, CONTENT_LENGTH},
     Body, Method, Response,
 };
 use mime_guess::Mime;
