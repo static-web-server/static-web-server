@@ -1,4 +1,4 @@
-FROM --platform=$BUILDPLATFORM alpine:3.17.5 as build
+FROM --platform=$BUILDPLATFORM alpine:3.17.6 as build
 
 ARG TARGETPLATFORM
 ARG SERVER_VERSION=0.0.0
@@ -22,7 +22,7 @@ RUN set -ex; \
     rm -rf /tmp/static-web-server.tar.gz static-web-server-v${SERVER_VERSION}-${target}; \
     chmod +x /usr/local/bin/static-web-server
 
-FROM alpine:3.17.5
+FROM alpine:3.17.6
 
 ARG SERVER_VERSION=0.0.0
 ENV SERVER_VERSION=${SERVER_VERSION}
