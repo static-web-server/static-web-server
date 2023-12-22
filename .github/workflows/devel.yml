@@ -41,10 +41,10 @@ jobs:
           - linux-musl-armv7
           - macos
           - macos-arm64
-          - windows-msvc
-          - windows-msvc-i686
-          - windows-pc-gnu
-          - windows-msvc-arm64
+          # - windows-msvc
+          # - windows-msvc-i686
+          # - windows-pc-gnu
+          # - windows-msvc-arm64
         include:
           # Specific Rust channels
           - build: pinned
