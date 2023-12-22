@@ -635,7 +635,7 @@ checksum = "e2abad23fbc42b3700f2f279844dc832adb2b2eb069b2df918f455c4e18cc646"
 [[package]]
 name = "libc"
 version = "0.2.139"
-source = "git+https://github.com/wasix-org/libc.git?branch=master#682f9e91246c73b5b5c2beb09594ca2f74ca77d3"
+source = "git+https://github.com/wasix-org/libc.git?branch=master#4c0c6c29378b68c4af7f0b1384a111ba3081b6bf"
 
 [[package]]
 name = "libc"
@@ -868,9 +868,9 @@ dependencies = [
 
 [[package]]
 name = "proc-macro2"
-version = "1.0.56"
+version = "1.0.71"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2b63bdb0cd06f1f4dedf69b254734f9b45af66e4a031e42a7480257d9898b435"
+checksum = "75cb1540fadbd5b8fbccc4dddad2734eba435053f725621c070711a14bb5f4b8"
 dependencies = [
  "unicode-ident",
 ]
@@ -1135,6 +1135,7 @@ dependencies = [
  "num_cpus",
  "percent-encoding",
  "pin-project",
+ "proc-macro2",
  "rustls-pemfile",
  "serde",
  "serde_ignored",
@@ -1275,7 +1276,7 @@ dependencies = [
 [[package]]
 name = "tokio"
 version = "1.24.2"
-source = "git+https://github.com/wasix-org/tokio.git?branch=wasix-1.24.2#630188516ed54ead1f441ecc65d8be6dc490c8d8"
+source = "git+https://github.com/wasix-org/tokio.git?branch=wasix-1.24.2#4bc57b23581a281338a59524b967e807773c7cd3"
 dependencies = [
  "autocfg",
  "bytes",
@@ -1294,7 +1295,7 @@ dependencies = [
 [[package]]
 name = "tokio-macros"
 version = "1.8.0"
-source = "git+https://github.com/wasix-org/tokio.git?branch=wasix-1.24.2#630188516ed54ead1f441ecc65d8be6dc490c8d8"
+source = "git+https://github.com/wasix-org/tokio.git?branch=wasix-1.24.2#4bc57b23581a281338a59524b967e807773c7cd3"
 dependencies = [
  "proc-macro2",
  "quote",

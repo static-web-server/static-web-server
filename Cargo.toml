@@ -92,6 +92,7 @@ tracing-subscriber = { version = "0.3", default-features = false, features = [
     "tracing-log",
 ] }
 time = { version = "0.1", default-features = false }
+proc-macro2 = { version = "=1.0.71", features = ["span-locations"] }
 
 [target.'cfg(all(target_env = "musl", target_pointer_width = "64"))'.dependencies.tikv-jemallocator]
 version = "0.5"
