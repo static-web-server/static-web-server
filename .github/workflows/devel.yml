@@ -7,8 +7,8 @@ on:
       - staging
       - trying
       - wasix
-  schedule:
-    - cron: "30 01 * * *" # Every day at 01:30 UTC
+  # schedule:
+  #   - cron: "30 01 * * *" # Every day at 01:30 UTC
 
 jobs:
   test:
