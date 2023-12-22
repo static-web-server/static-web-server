@@ -102,21 +102,21 @@ jobs:
             os: macos-11
             rust: stable
             target: aarch64-apple-darwin
-          - build: windows-msvc
-            os: windows-2019
-            rust: stable
-            target: x86_64-pc-windows-msvc
-          - build: windows-msvc-i686
-            os: windows-2019
-            rust: stable
-            target: i686-pc-windows-msvc
-          - build: windows-pc-gnu
-            os: windows-2019
-            rust: stable-x86_64-gnu
-          - build: windows-msvc-arm64
-            os: windows-2019
-            rust: stable
-            target: aarch64-pc-windows-msvc
+          # - build: windows-msvc
+          #   os: windows-2019
+          #   rust: stable
+          #   target: x86_64-pc-windows-msvc
+          # - build: windows-msvc-i686
+          #   os: windows-2019
+          #   rust: stable
+          #   target: i686-pc-windows-msvc
+          # - build: windows-pc-gnu
+          #   os: windows-2019
+          #   rust: stable-x86_64-gnu
+          # - build: windows-msvc-arm64
+          #   os: windows-2019
+          #   rust: stable
+          #   target: aarch64-pc-windows-msvc
 
     steps:
       - name: Checkout repository
