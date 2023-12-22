@@ -150,7 +150,12 @@ jobs:
         with:
           toolchain: ${{ matrix.rust }}
 
+      # If the target is wasm32-wasmer-wasi, install Wasmer and cargo-wasix
+      - name: Setup Wasmer
+        if: matrix.target == 'wasm32-wasmer-wasi'
+        uses: wasmerio/setup-wasmer@v2
       - name: Install cargo-wasix
+        if: matrix.target == 'wasm32-wasmer-wasi'
         uses: taiki-e/install-action@v2
         with:
           tool: cargo-wasix
@@ -217,3 +222,7 @@ jobs:
           asset_path: ${{ env.ASSET }}
           asset_name: ${{ env.ASSET }}
           asset_content_type: application/octet-stream
+
+      - name: Publish to Wasmer registry
+        if: matrix.target == 'wasm32-wasmer-wasi'
+        run: wasmer publish --registry https://registry.wasmer.io/graphql --token=${{ secrets.WASMER_CIUSER_PROD_TOKEN }} --non-interactive
