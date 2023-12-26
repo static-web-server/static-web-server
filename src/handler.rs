@@ -31,6 +31,8 @@ use crate::{
 #[cfg(feature = "directory-listing")]
 use crate::directory_listing::DirListFmt;
 
+use prometheus::Encoder;
+
 /// It defines options for a request handler.
 pub struct RequestHandlerOpts {
     // General options
@@ -80,6 +82,8 @@ pub struct RequestHandlerOpts {
     pub ignore_hidden_files: bool,
     /// Health endpoint feature.
     pub health: bool,
+    /// Metrics endpoint feature.
+    pub metrics: bool,
     /// Maintenance mode feature.
     pub maintenance_mode: bool,
     /// Custom HTTP status for when entering into maintenance mode.
@@ -122,12 +126,16 @@ impl RequestHandler {
         let compression_static = self.opts.compression_static;
         let ignore_hidden_files = self.opts.ignore_hidden_files;
         let health = self.opts.health;
+        let metrics = self.opts.metrics;
         let index_files: Vec<&str> = self.opts.index_files.iter().map(|s| s.as_str()).collect();
 
         let mut cors_headers: Option<HeaderMap> = None;
 
         let health_request =
             health && uri_path == "/health" && (method.is_get() || method.is_head());
+
+        let metrics_request =
+            metrics && uri_path == "/metrics" && (method.is_get() || method.is_head());
 
         // Log request information with its remote address if available
         let mut remote_addr_str = String::new();
@@ -173,6 +181,24 @@ impl RequestHandler {
                 };
                 let mut resp = Response::new(body);
                 resp.headers_mut().typed_insert(ContentType::html());
+                return Ok(resp);
+            }
+
+            // Metrics endpoint check
+            if metrics_request {
+                let body = if method.is_get() {
+                    let encoder = prometheus::TextEncoder::new();
+                    let mut buffer = Vec::new();
+                    encoder
+                        .encode(&prometheus::default_registry().gather(), &mut buffer)
+                        .unwrap();
+                    let data = String::from_utf8(buffer.clone()).unwrap();
+
+                    Body::from(data)
+                } else {
+                    Body::empty()
+                };
+                let resp = Response::new(body);
                 return Ok(resp);
             }
 

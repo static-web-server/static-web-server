@@ -292,6 +292,17 @@ impl Server {
         let health = general.health;
         server_info!("health endpoint: enabled={}", health);
 
+        // Metrics endpoint option
+        let metrics = general.metrics;
+        server_info!("metrics endpoint: enabled={}", metrics);
+        if metrics {
+            prometheus::default_registry()
+                .register(Box::new(
+                    tokio_metrics_collector::default_runtime_collector(),
+                ))
+                .unwrap();
+        }
+
         // Maintenance mode option
         let maintenance_mode = general.maintenance_mode;
         let maintenance_mode_status = general.maintenance_mode_status;
@@ -332,6 +343,7 @@ impl Server {
                 ignore_hidden_files,
                 index_files,
                 health,
+                metrics,
                 maintenance_mode,
                 maintenance_mode_status,
                 maintenance_mode_file,

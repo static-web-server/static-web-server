@@ -237,6 +237,9 @@ pub struct General {
     /// Health endpoint feature.
     pub health: Option<bool>,
 
+    /// Metrics endpoint feature.
+    pub metrics: Option<bool>,
+
     /// Maintenance mode feature.
     pub maintenance_mode: Option<bool>,
 

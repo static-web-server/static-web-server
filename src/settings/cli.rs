@@ -407,6 +407,18 @@ pub struct General {
         num_args(0..=1),
         require_equals(true),
         action = clap::ArgAction::Set,
+        env = "SERVER_METRICS",
+    )]
+    /// Add a /metrics endpoint that returns a Prometheus metrics response.
+    pub metrics: bool,
+
+    #[arg(
+        long,
+        default_value = "false",
+        default_missing_value("true"),
+        num_args(0..=1),
+        require_equals(true),
+        action = clap::ArgAction::Set,
         env = "SERVER_MAINTENANCE_MODE"
     )]
     /// Enable the server's maintenance mode functionality.
