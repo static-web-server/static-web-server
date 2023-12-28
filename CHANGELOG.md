@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _**Note:** See changelog for v1 under the [1.x](https://github.com/static-web-server/static-web-server/blob/1.x/CHANGELOG.md) branch._
 
+## v2.24.2 - 2023-12-28
+
+This new `v2.24.2` release brings general dependency security updates, bug fixes and improvements.
+
+__Fixes__
+
+- [5554522](https://github.com/static-web-server/static-web-server/commit/5554522) Bugfix/security dependency updates including hyper, tokio, rustls/ring, h2, tracing, regex, toml, futures, serde and other crates.
+  - Other commit updates: [16f4afd](https://github.com/static-web-server/static-web-server/commit/16f4afd), [76dc853](https://github.com/static-web-server/static-web-server/commit/76dc853), [12dfb56](https://github.com/static-web-server/static-web-server/commit/12dfb56)
+- [8cdb305](https://github.com/static-web-server/static-web-server/commit/8cdb305) Docker: Debian 12.4 update.
+- [af203ca](https://github.com/static-web-server/static-web-server/commit/af203ca) Docker: Alpine 3.17.6 update.
+
+__Refactorings__
+
+- [96ec477](https://github.com/static-web-server/static-web-server/commit/96ec477) Consistency when importing several types.
+- [ab67bd7](https://github.com/static-web-server/static-web-server/commit/ab67bd7) Misc: GitHub issue and pull request template improvements. PR [#294](https://github.com/static-web-server/static-web-server/pull/294). Also [a9d509e](https://github.com/static-web-server/static-web-server/commit/a9d509e).
+
 ## v2.24.1 - 2023-11-15
 
 This new `v2.24.1` release brings dependency security updates and bug fixes. In particular, it fixes an issue when executing the previous Windows ARM64 build and other improvements.
