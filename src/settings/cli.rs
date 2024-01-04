@@ -401,13 +401,13 @@ pub struct General {
     pub health: bool,
 
     #[arg(
-        long,
+        long = "experimental-metrics",
         default_value = "false",
         default_missing_value("true"),
         num_args(0..=1),
         require_equals(true),
         action = clap::ArgAction::Set,
-        env = "SERVER_METRICS",
+        env = "SERVER_EXPERIMENTAL_METRICS",
     )]
     /// Add a /metrics endpoint that returns a Prometheus metrics response.
     pub metrics: bool,

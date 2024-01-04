@@ -294,7 +294,7 @@ impl Server {
 
         // Metrics endpoint option
         let metrics = general.metrics;
-        server_info!("metrics endpoint: enabled={}", metrics);
+        server_info!("experimental metrics endpoint: enabled={}", metrics);
         if metrics {
             prometheus::default_registry()
                 .register(Box::new(
