@@ -296,6 +296,8 @@ impl Server {
         let metrics = general.metrics;
         server_info!("experimental metrics endpoint: enabled={}", metrics);
         if metrics {
+            // not yet supported on Windows
+            #[cfg(not(windows))]
             prometheus::default_registry()
                 .register(Box::new(
                     tokio_metrics_collector::default_runtime_collector(),
