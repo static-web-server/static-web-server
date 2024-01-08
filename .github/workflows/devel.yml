@@ -167,11 +167,7 @@ jobs:
       uses: actions/cache@v3
       with:
         path: |
-          ~/.cargo/bin/
-          ~/.cargo/registry/index/
-          ~/.cargo/registry/cache/
-          ~/.cargo/git/db/
-          ~/.rustup
+          ~/.cargo
           **/target
         key: rust-${{ matrix.build }}-${{ matrix.target }}-${{ hashFiles('**/Cargo.lock') }}
         restore-keys: |
@@ -195,8 +191,22 @@ jobs:
         if [[ "${{ matrix.build }}" == "linux-android-armv7" ]] || [[ "${{ matrix.build }}" == "linux-android-arm64" ]]; then
           echo "CARGO_BIN=scripts/ci/cargo.sh" >> $GITHUB_ENV
         else
-          cargo install --force cross@^0.2
-          echo "CARGO_BIN=cross" >> $GITHUB_ENV
+          target=''
+          case "${{ matrix.os }}" in
+            *macos*)
+              target=x86_64-apple-darwin
+            ;;
+            *)
+              target=x86_64-unknown-linux-musl
+            ;;
+          esac
+
+          echo "Installing cross..."
+          curl -sSL \
+            "https://github.com/cross-rs/cross/releases/download/v0.2.5/cross-$target.tar.gz" \
+            | sudo tar zxf - -C /usr/local/bin/ cross cross-util
+          cross -V
+          echo "CARGO_BIN=/usr/local/bin/cross" >> $GITHUB_ENV
         fi
 
     - name: Setup Cargo
