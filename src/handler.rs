@@ -163,6 +163,11 @@ impl RequestHandler {
             );
         }
 
+        let host = headers
+            .get(http::header::HOST)
+            .and_then(|v| v.to_str().ok())
+            .unwrap_or("");
+
         async move {
             // Health endpoint check
             if health_request {
@@ -252,7 +257,12 @@ impl RequestHandler {
             // Advanced options
             if let Some(advanced) = &self.opts.advanced_opts {
                 // Redirects
+                let mut uri_host = uri.host().unwrap_or(host).to_owned();
+                if let Some(uri_port) = uri.port_u16() {
+                    uri_host.push_str(&format!(":{}", uri_port));
+                }
                 if let Some(redirects) = redirects::get_redirection(
+                    &uri_host,
                     uri_path.clone().as_str(),
                     advanced.redirects.as_deref(),
                 ) {

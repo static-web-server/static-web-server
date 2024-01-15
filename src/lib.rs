@@ -157,6 +157,8 @@ pub mod error;
 // Private modules
 #[doc(hidden)]
 mod helpers;
+#[doc(hidden)]
+pub mod testing;
 
 // Re-exports
 pub use error::*;

@@ -1,0 +1,17 @@
+[general]
+
+root = "docker/public"
+
+[advanced]
+
+### URL Redirects
+[[advanced.redirects]]
+host = "127.0.0.1:1234"
+source = "/{*}"
+destination = "http://localhost:1234/$1"
+kind = 301
+
+[[advanced.redirects]]
+source = "**/{*}.{*}"
+destination = "http://localhost:1234/files/$1.$2"
+kind = 302
