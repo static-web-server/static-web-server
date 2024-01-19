@@ -20,9 +20,7 @@ use std::pin::Pin;
 use std::sync::Arc;
 use std::task::{Context, Poll};
 use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
-use tokio_rustls::rustls::{
-    server::NoClientAuth, Certificate, Error as TlsError, PrivateKey, ServerConfig,
-};
+use tokio_rustls::rustls::{pki_types::PrivateKeyDer, Error as TlsError, ServerConfig};
 
 use crate::transport::Transport;
 
@@ -113,42 +111,42 @@ impl TlsConfigBuilder {
     pub fn build(mut self) -> Result<ServerConfig, TlsConfigError> {
         let mut cert_rdr = BufReader::new(self.cert);
         let cert = rustls_pemfile::certs(&mut cert_rdr)
-            .map_err(|_e| TlsConfigError::CertParseError)?
-            .into_iter()
-            .map(Certificate)
-            .collect();
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|_e| TlsConfigError::CertParseError)?;
 
         // convert it to Vec<u8> to allow reading it again if key is RSA
-        let mut key_vec = Vec::new();
+        let mut key_buf = Vec::new();
         self.key
-            .read_to_end(&mut key_vec)
+            .read_to_end(&mut key_buf)
             .map_err(TlsConfigError::Io)?;
 
-        if key_vec.is_empty() {
+        if key_buf.is_empty() {
             return Err(TlsConfigError::EmptyKey);
         }
 
-        let mut key = None;
-        let mut reader = std::io::Cursor::new(key_vec);
-        for item in rustls_pemfile::read_all(&mut reader)
-            .map_err(|_e| TlsConfigError::InvalidIdentityPem)?
-        {
-            match item {
-                rustls_pemfile::Item::RSAKey(k) => key = Some(PrivateKey(k)),
-                rustls_pemfile::Item::PKCS8Key(k) => key = Some(PrivateKey(k)),
-                rustls_pemfile::Item::ECKey(k) => key = Some(PrivateKey(k)),
+        let mut key: Option<PrivateKeyDer<'_>> = None;
+        let mut reader = Cursor::new(key_buf);
+        for item in std::iter::from_fn(|| rustls_pemfile::read_one(&mut reader).transpose()) {
+            match item.map_err(|_e| TlsConfigError::InvalidIdentityPem)? {
+                // rsa pkcs1 key
+                rustls_pemfile::Item::Pkcs1Key(k) => key = Some(k.into()),
+                // pkcs8 key
+                rustls_pemfile::Item::Pkcs8Key(k) => key = Some(k.into()),
+                // sec1 ec key
+                rustls_pemfile::Item::Sec1Key(k) => key = Some(k.into()),
+                // unknown format
                 _ => return Err(TlsConfigError::UnknownPrivateKeyFormat),
             }
         }
+
         let key = match key {
             Some(k) => k,
             _ => return Err(TlsConfigError::EmptyKey),
         };
 
         let mut config = ServerConfig::builder()
-            .with_safe_defaults()
-            .with_client_cert_verifier(NoClientAuth::boxed())
-            .with_single_cert_with_ocsp_and_sct(cert, key, Vec::new(), Vec::new())
+            .with_no_client_auth()
+            .with_single_cert(cert, key)
             .map_err(TlsConfigError::InvalidKey)?;
         config.alpn_protocols = vec!["h2".into(), "http/1.1".into()];
         Ok(config)
@@ -313,18 +311,18 @@ mod tests {
     use super::*;
 
     #[test]
-    fn file_cert_key() {
+    fn file_cert_key_rsa_pkcs1() {
         TlsConfigBuilder::new()
-            .cert_path("tests/tls/local.dev_cert.pem")
-            .key_path("tests/tls/local.dev_key.pem")
+            .cert_path("tests/tls/local.dev_cert.rsa_pkcs1.pem")
+            .key_path("tests/tls/local.dev_key.rsa_pkcs1.pem")
             .build()
             .unwrap();
     }
 
     #[test]
-    fn bytes_cert_key() {
-        let cert = include_str!("../tests/tls/local.dev_cert.pem");
-        let key = include_str!("../tests/tls/local.dev_key.pem");
+    fn bytes_cert_key_rsa_pkcs1() {
+        let cert = include_str!("../tests/tls/local.dev_cert.rsa_pkcs1.pem");
+        let key = include_str!("../tests/tls/local.dev_key.rsa_pkcs1.pem");
 
         TlsConfigBuilder::new()
             .key(key.as_bytes())
@@ -334,18 +332,39 @@ mod tests {
     }
 
     #[test]
-    fn file_cert_key_ecc() {
+    fn file_cert_key_pkcs8() {
         TlsConfigBuilder::new()
-            .cert_path("tests/tls/local.dev_cert.ecc.pem")
-            .key_path("tests/tls/local.dev_key.ecc.pem")
+            .cert_path("tests/tls/local.dev_cert.pkcs8.pem")
+            .key_path("tests/tls/local.dev_key.pkcs8.pem")
             .build()
             .unwrap();
     }
 
     #[test]
-    fn bytes_cert_key_ecc() {
-        let cert = include_str!("../tests/tls/local.dev_cert.ecc.pem");
-        let key = include_str!("../tests/tls/local.dev_key.ecc.pem");
+    fn bytes_cert_key_pkcs8() {
+        let cert = include_str!("../tests/tls/local.dev_cert.pkcs8.pem");
+        let key = include_str!("../tests/tls/local.dev_key.pkcs8.pem");
+
+        TlsConfigBuilder::new()
+            .key(key.as_bytes())
+            .cert(cert.as_bytes())
+            .build()
+            .unwrap();
+    }
+
+    #[test]
+    fn file_cert_key_sec1_ec() {
+        TlsConfigBuilder::new()
+            .cert_path("tests/tls/local.dev_cert.sec1_ec.pem")
+            .key_path("tests/tls/local.dev_key.sec1_ec.pem")
+            .build()
+            .unwrap();
+    }
+
+    #[test]
+    fn bytes_cert_key_sec1_ec() {
+        let cert = include_str!("../tests/tls/local.dev_cert.sec1_ec.pem");
+        let key = include_str!("../tests/tls/local.dev_key.sec1_ec.pem");
 
         TlsConfigBuilder::new()
             .key(key.as_bytes())
