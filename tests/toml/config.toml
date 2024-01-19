@@ -20,8 +20,8 @@ page50x = "./50x.html"
 
 #### HTTP/2 + TLS
 http2 = false
-http2-tls-cert = "tests/tls/local.dev_cert.ecc.pem"
-http2-tls-key = "tests/tls/local.dev_key.ecc.pem"
+http2-tls-cert = "tests/tls/local.dev_cert.sec1_ec.pem"
+http2-tls-key = "tests/tls/local.dev_key.sec1_ec.pem"
 https-redirect = false
 https-redirect-host = "localhost"
 https-redirect-from-port = 80
