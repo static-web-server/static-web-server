@@ -138,12 +138,12 @@ Pre-compiled binaries grouped by CPU architectures.
 - [static-web-server-v2.24.2-armv7-unknown-linux-musleabihf.tar.gz](https://github.com/static-web-server/static-web-server/releases/download/v2.24.2/static-web-server-v2.24.2-armv7-unknown-linux-musleabihf.tar.gz)<br>
 <small>**SHA256SUM:** `a002de02d18422e096870736ebbc7f24404c37328d18a19068c67dbdd7c95d24`</small>
 
-## PowerPC
+### PowerPC
 
 - [static-web-server-v2.24.2-powerpc64le-unknown-linux-gnu.tar.gz](https://github.com/static-web-server/static-web-server/releases/download/v2.24.2/static-web-server-v2.24.2-powerpc64le-unknown-linux-gnu.tar.gz)<br>
 <small>**SHA256SUM:** `3f3efb24e55239193c703c6b5c2e81260ef0706c59b89ce324721848665bef3f`</small>
 
-## S390X
+### S390X
 
 - [static-web-server-v2.24.2-s390x-unknown-linux-gnu.tar.gz](https://github.com/static-web-server/static-web-server/releases/download/v2.24.2/static-web-server-v2.24.2-s390x-unknown-linux-gnu.tar.gz)<br>
 <small>**SHA256SUM:** `6de01c70ba0dec6fc55ddc3bf4ded3b62b1d778b8daa7776c802700f60907d18`</small>

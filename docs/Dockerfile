@@ -3,6 +3,7 @@ FROM squidfunk/mkdocs-material
 RUN set -eux \
     && apk upgrade --update-cache -a \
     && pip3 install \
+        mkdocs-material \
         mkdocs-git-revision-date-localized-plugin \
     && true
 
