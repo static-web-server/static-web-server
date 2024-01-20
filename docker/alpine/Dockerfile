@@ -1,10 +1,11 @@
-FROM --platform=$BUILDPLATFORM alpine:3.17.6 as build
+FROM --platform=$BUILDPLATFORM alpine:3.18.5 as build
 
 ARG TARGETPLATFORM
 ARG SERVER_VERSION=0.0.0
 ENV SERVER_VERSION=${SERVER_VERSION}
 
-RUN apk --no-cache add ca-certificates tzdata
+RUN apk --no-cache add ca-certificates tzdata file
+
 RUN set -ex; \
     case "$TARGETPLATFORM" in \
         "linux/amd64") target='x86_64-unknown-linux-musl' ;; \
@@ -22,7 +23,22 @@ RUN set -ex; \
     rm -rf /tmp/static-web-server.tar.gz static-web-server-v${SERVER_VERSION}-${target}; \
     chmod +x /usr/local/bin/static-web-server
 
-FROM alpine:3.17.6
+RUN set -ex \
+    && echo "Testing Docker image..." \
+    && uname -a \
+    && cat /etc/os-release \
+    && case "$TARGETPLATFORM" in \
+        **ppc64*|*s390x*) \
+            echo "warn: can not run sws binary on $TARGETPLATFORM architecture" ;; \
+        *) \
+            static-web-server --version; \
+            static-web-server --help; \
+        ;; \
+    esac \
+    && file /usr/local/bin/static-web-server \
+    && true
+
+FROM alpine:3.18.5
 
 ARG SERVER_VERSION=0.0.0
 ENV SERVER_VERSION=${SERVER_VERSION}
