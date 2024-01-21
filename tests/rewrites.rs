@@ -10,12 +10,12 @@ pub mod tests {
     use static_web_server::testing::fixtures::{fixture_req_handler, REMOTE_ADDR};
 
     #[tokio::test]
-    async fn redirects_skipped() {
-        let req_handler = fixture_req_handler("toml/redirects.toml");
+    async fn rewrites_skipped() {
+        let req_handler = fixture_req_handler("toml/rewrites.toml");
         let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
 
         let mut req = Request::default();
-        *req.uri_mut() = "http://localhost".parse().unwrap();
+        *req.uri_mut() = "http://development".parse().unwrap();
 
         match req_handler.handle(&mut req, remote_addr).await {
             Ok(res) => {
@@ -29,17 +29,23 @@ pub mod tests {
     }
 
     #[tokio::test]
-    async fn redirects_host() {
-        let req_handler = fixture_req_handler("toml/redirects.toml");
+    async fn rewrites_glob_groups_1() {
+        let req_handler = fixture_req_handler("toml/rewrites.toml");
         let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
 
         let mut req = Request::default();
-        *req.uri_mut() = "http://127.0.0.1:1234".parse().unwrap();
+        *req.uri_mut() = "http://localhost/some/error-page.html".parse().unwrap();
 
         match req_handler.handle(&mut req, remote_addr).await {
-            Ok(res) => {
-                assert_eq!(res.status(), 301);
-                assert_eq!(res.headers()["location"], "http://localhost:1234/");
+            Ok(mut res) => {
+                assert_eq!(res.status(), 200);
+                assert_eq!(res.headers()["content-type"], "text/html");
+
+                let body = hyper::body::to_bytes(res.body_mut())
+                    .await
+                    .expect("unexpected bytes error during `body` conversion");
+                let body_str = std::str::from_utf8(&body).unwrap();
+                assert!(body_str.contains("404 Content"))
             }
             Err(err) => {
                 panic!("unexpected error: {err}")
@@ -48,20 +54,23 @@ pub mod tests {
     }
 
     #[tokio::test]
-    async fn redirects_glob_groups_1() {
-        let req_handler = fixture_req_handler("toml/redirects.toml");
+    async fn rewrites_glob_groups_2() {
+        let req_handler = fixture_req_handler("toml/rewrites.toml");
         let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
 
         let mut req = Request::default();
-        *req.uri_mut() = "http://localhost/assets/main.css".parse().unwrap();
+        *req.uri_mut() = "http://localhost/error-page/50x.html".parse().unwrap();
 
         match req_handler.handle(&mut req, remote_addr).await {
-            Ok(res) => {
-                assert_eq!(res.status(), 301);
-                assert_eq!(
-                    res.headers()["location"],
-                    "http://localhost/new-styles/style.css"
-                );
+            Ok(mut res) => {
+                assert_eq!(res.status(), 200);
+                assert_eq!(res.headers()["content-type"], "text/html");
+
+                let body = hyper::body::to_bytes(res.body_mut())
+                    .await
+                    .expect("unexpected bytes error during `body` conversion");
+                let body_str = std::str::from_utf8(&body).unwrap();
+                assert!(body_str.contains("50x Service Unavailable"))
             }
             Err(err) => {
                 panic!("unexpected error: {err}")
@@ -70,20 +79,23 @@ pub mod tests {
     }
 
     #[tokio::test]
-    async fn redirects_glob_groups_2() {
-        let req_handler = fixture_req_handler("toml/redirects.toml");
+    async fn rewrites_glob_groups_3() {
+        let req_handler = fixture_req_handler("toml/rewrites.toml");
         let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
 
         let mut req = Request::default();
-        *req.uri_mut() = "http://localhost/style.css".parse().unwrap();
+        *req.uri_mut() = "http://localhost/errors/50x.html".parse().unwrap();
 
         match req_handler.handle(&mut req, remote_addr).await {
-            Ok(res) => {
-                assert_eq!(res.status(), 301);
-                assert_eq!(
-                    res.headers()["location"],
-                    "http://localhost/new-styles/style.min.css"
-                );
+            Ok(mut res) => {
+                assert_eq!(res.status(), 200);
+                assert_eq!(res.headers()["content-type"], "text/html");
+
+                let body = hyper::body::to_bytes(res.body_mut())
+                    .await
+                    .expect("unexpected bytes error during `body` conversion");
+                let body_str = std::str::from_utf8(&body).unwrap();
+                assert!(body_str.contains("50x Service Unavailable"))
             }
             Err(err) => {
                 panic!("unexpected error: {err}")
@@ -92,19 +104,63 @@ pub mod tests {
     }
 
     #[tokio::test]
-    async fn redirects_glob_groups_3() {
-        let req_handler = fixture_req_handler("toml/redirects.toml");
+    async fn rewrites_glob_groups_4() {
+        let req_handler = fixture_req_handler("toml/rewrites.toml");
         let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
 
         let mut req = Request::default();
-        *req.uri_mut() = "http://localhost/rust-lang.rs".parse().unwrap();
+        *req.uri_mut() = "http://localhost/scripts/main.js".parse().unwrap();
+
+        match req_handler.handle(&mut req, remote_addr).await {
+            Ok(mut res) => {
+                assert_eq!(res.status(), 200);
+                assert_eq!(res.headers()["content-type"], "application/javascript");
+
+                let body = hyper::body::to_bytes(res.body_mut())
+                    .await
+                    .expect("unexpected bytes error during `body` conversion");
+                let body_str = std::str::from_utf8(&body).unwrap();
+                assert!(body_str.contains("Static Web Server"))
+            }
+            Err(err) => {
+                panic!("unexpected error: {err}")
+            }
+        };
+    }
+
+    #[tokio::test]
+    async fn rewrites_glob_groups_5() {
+        let req_handler = fixture_req_handler("toml/rewrites.toml");
+        let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
+
+        let mut req = Request::default();
+        *req.uri_mut() = "http://localhost/images/icon.ico".parse().unwrap();
+
+        match req_handler.handle(&mut req, remote_addr).await {
+            Ok(res) => {
+                assert_eq!(res.status(), 302);
+                assert_eq!(res.headers()["location"], "/assets/favicon.ico");
+            }
+            Err(err) => {
+                panic!("unexpected error: {err}")
+            }
+        };
+    }
+
+    #[tokio::test]
+    async fn rewrites_glob_groups_6() {
+        let req_handler = fixture_req_handler("toml/rewrites.toml");
+        let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
+
+        let mut req = Request::default();
+        *req.uri_mut() = "http://localhost/fonts/text.ttf".parse().unwrap();
 
         match req_handler.handle(&mut req, remote_addr).await {
             Ok(res) => {
                 assert_eq!(res.status(), 302);
                 assert_eq!(
                     res.headers()["location"],
-                    "http://localhost/new-languages/rust.lang.rs"
+                    "http://localhost/new-fonts/fonts/text.woff"
                 );
             }
             Err(err) => {
@@ -114,74 +170,8 @@ pub mod tests {
     }
 
     #[tokio::test]
-    async fn redirects_glob_groups_4() {
-        let req_handler = fixture_req_handler("toml/redirects.toml");
-        let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
-
-        let mut req = Request::default();
-        *req.uri_mut() = "http://localhost/assets/main.js".parse().unwrap();
-
-        match req_handler.handle(&mut req, remote_addr).await {
-            Ok(res) => {
-                assert_eq!(res.status(), 302);
-                assert_eq!(
-                    res.headers()["location"],
-                    "http://localhost/new-scripts/main.js"
-                );
-            }
-            Err(err) => {
-                panic!("unexpected error: {err}")
-            }
-        };
-    }
-
-    #[tokio::test]
-    async fn redirects_glob_groups_5() {
-        let req_handler = fixture_req_handler("toml/redirects.toml");
-        let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
-
-        let mut req = Request::default();
-        *req.uri_mut() = "http://localhost/images/avatar.jpeg".parse().unwrap();
-
-        match req_handler.handle(&mut req, remote_addr).await {
-            Ok(res) => {
-                assert_eq!(res.status(), 302);
-                assert_eq!(
-                    res.headers()["location"],
-                    "http://localhost/new-images/images/avatar.jpeg"
-                );
-            }
-            Err(err) => {
-                panic!("unexpected error: {err}")
-            }
-        };
-    }
-
-    #[tokio::test]
-    async fn redirects_glob_groups_6() {
-        let req_handler = fixture_req_handler("toml/redirects.toml");
-        let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
-
-        let mut req = Request::default();
-        *req.uri_mut() = "http://localhost/fonts/title.ttf".parse().unwrap();
-
-        match req_handler.handle(&mut req, remote_addr).await {
-            Ok(res) => {
-                assert_eq!(res.status(), 302);
-                assert_eq!(
-                    res.headers()["location"],
-                    "http://localhost/new-fonts/fonts/title.woff"
-                );
-            }
-            Err(err) => {
-                panic!("unexpected error: {err}")
-            }
-        };
-    }
-
-    #[tokio::test]
-    async fn redirects_glob_groups_generic_1() {
-        let req_handler = fixture_req_handler("toml/redirects.toml");
+    async fn rewrites_glob_groups_generic_1() {
+        let req_handler = fixture_req_handler("toml/rewrites.toml");
         let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
 
         let mut req = Request::default();

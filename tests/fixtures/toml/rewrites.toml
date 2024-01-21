@@ -1,0 +1,43 @@
+[general]
+
+root = "docker/public"
+
+[advanced]
+
+# Glob groups 1
+[[advanced.rewrites]]
+source = "**/error-page.{html}"
+destination = "/404.$2"
+
+# Glob groups 2
+[[advanced.rewrites]]
+source = "/error-page/{404,50x}.html"
+destination = "/$1.html"
+
+# Glob groups 3
+[[advanced.rewrites]]
+source = "/errors/{50}x.html"
+destination = "/$1x.html"
+
+# Glob groups 4
+[[advanced.rewrites]]
+source = "/scripts/{*}.{js,mjs}"
+destination = "/assets/$1.$2"
+
+# Glob groups 5 (redirect)
+[[advanced.rewrites]]
+source = "**/{*}.{ico}"
+destination = "/assets/favicon.$3"
+redirect = 302
+
+# Glob groups 6 (redirect)
+[[advanced.rewrites]]
+source = "**/{*}.{ttf,otf,woff}"
+destination = "http://localhost/new-fonts/$2.woff"
+redirect = 302
+
+# Glob groups generic 1 (redirect)
+[[advanced.rewrites]]
+source = "**/{*}.{*}"
+destination = "http://localhost/new-generic/$2.$3"
+redirect = 301
