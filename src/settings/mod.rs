@@ -379,6 +379,8 @@ impl Settings {
                                 .regex()
                                 .trim_start_matches("(?-u)")
                                 .replace("?:.*", ".*")
+                                .replace("?:", "")
+                                .replace(".*.*", ".*")
                                 .to_owned();
                             tracing::debug!(
                                 "url rewrites glob pattern: {}",
@@ -425,6 +427,8 @@ impl Settings {
                                 .regex()
                                 .trim_start_matches("(?-u)")
                                 .replace("?:.*", ".*")
+                                .replace("?:", "")
+                                .replace(".*.*", ".*")
                                 .to_owned();
                             tracing::debug!(
                                 "url redirects glob pattern: {}",

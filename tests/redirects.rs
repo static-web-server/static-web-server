@@ -10,23 +10,20 @@ pub mod tests {
     use static_web_server::testing::fixtures::{fixture_req_handler, REMOTE_ADDR};
 
     #[tokio::test]
-    async fn redirects_default() {
+    async fn redirects_skipped() {
         let req_handler = fixture_req_handler("toml/redirects.toml");
         let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
 
         let mut req = Request::default();
-        *req.uri_mut() = "http://localhost:1234/assets/favicon.ico".parse().unwrap();
+        *req.uri_mut() = "http://localhost".parse().unwrap();
 
         match req_handler.handle(&mut req, remote_addr).await {
             Ok(res) => {
-                assert_eq!(res.status(), 302);
-                assert_eq!(
-                    res.headers()["location"],
-                    "http://localhost:1234/files/assets/favicon.ico"
-                );
+                assert_eq!(res.status(), 200);
+                assert_eq!(res.headers()["content-type"], "text/html");
             }
             Err(status) => {
-                panic!("expected a status 302 but got {status}")
+                panic!("expected a status 200 but got {status}")
             }
         };
     }
@@ -51,20 +48,133 @@ pub mod tests {
     }
 
     #[tokio::test]
-    async fn redirects_skipped() {
+    async fn redirects_glob_groups_1() {
         let req_handler = fixture_req_handler("toml/redirects.toml");
         let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
 
         let mut req = Request::default();
-        *req.uri_mut() = "http://localhost:1234".parse().unwrap();
+        *req.uri_mut() = "http://localhost/assets/main.css".parse().unwrap();
 
         match req_handler.handle(&mut req, remote_addr).await {
             Ok(res) => {
-                assert_eq!(res.status(), 200);
-                assert_eq!(res.headers()["content-type"], "text/html");
+                assert_eq!(res.status(), 301);
+                assert_eq!(
+                    res.headers()["location"],
+                    "http://localhost/new-styles/style.css"
+                );
             }
             Err(status) => {
-                panic!("expected a status 200 but got {status}")
+                panic!("expected a status 301 but got {status}")
+            }
+        };
+    }
+
+    #[tokio::test]
+    async fn redirects_glob_groups_2() {
+        let req_handler = fixture_req_handler("toml/redirects.toml");
+        let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
+
+        let mut req = Request::default();
+        *req.uri_mut() = "http://localhost/style.css".parse().unwrap();
+
+        match req_handler.handle(&mut req, remote_addr).await {
+            Ok(res) => {
+                assert_eq!(res.status(), 301);
+                assert_eq!(
+                    res.headers()["location"],
+                    "http://localhost/new-styles/style.min.css"
+                );
+            }
+            Err(status) => {
+                panic!("expected a status 301 but got {status}")
+            }
+        };
+    }
+
+    #[tokio::test]
+    async fn redirects_glob_groups_3() {
+        let req_handler = fixture_req_handler("toml/redirects.toml");
+        let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
+
+        let mut req = Request::default();
+        *req.uri_mut() = "http://localhost/assets/main.js".parse().unwrap();
+
+        match req_handler.handle(&mut req, remote_addr).await {
+            Ok(res) => {
+                assert_eq!(res.status(), 302);
+                assert_eq!(
+                    res.headers()["location"],
+                    "http://localhost/new-scripts/main.js"
+                );
+            }
+            Err(status) => {
+                panic!("expected a status 302 but got {status}")
+            }
+        };
+    }
+
+    #[tokio::test]
+    async fn redirects_glob_groups_4() {
+        let req_handler = fixture_req_handler("toml/redirects.toml");
+        let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
+
+        let mut req = Request::default();
+        *req.uri_mut() = "http://localhost/images/avatar.jpeg".parse().unwrap();
+
+        match req_handler.handle(&mut req, remote_addr).await {
+            Ok(res) => {
+                assert_eq!(res.status(), 302);
+                assert_eq!(
+                    res.headers()["location"],
+                    "http://localhost/new-images/images/avatar.jpeg"
+                );
+            }
+            Err(status) => {
+                panic!("expected a status 302 but got {status}")
+            }
+        };
+    }
+
+    #[tokio::test]
+    async fn redirects_glob_groups_5() {
+        let req_handler = fixture_req_handler("toml/redirects.toml");
+        let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
+
+        let mut req = Request::default();
+        *req.uri_mut() = "http://localhost/fonts/title.ttf".parse().unwrap();
+
+        match req_handler.handle(&mut req, remote_addr).await {
+            Ok(res) => {
+                assert_eq!(res.status(), 302);
+                assert_eq!(
+                    res.headers()["location"],
+                    "http://localhost/new-fonts/fonts/title.woff"
+                );
+            }
+            Err(status) => {
+                panic!("expected a status 302 but got {status}")
+            }
+        };
+    }
+
+    #[tokio::test]
+    async fn redirects_glob_groups_generic_1() {
+        let req_handler = fixture_req_handler("toml/redirects.toml");
+        let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
+
+        let mut req = Request::default();
+        *req.uri_mut() = "http://localhost/generic-page.html".parse().unwrap();
+
+        match req_handler.handle(&mut req, remote_addr).await {
+            Ok(res) => {
+                assert_eq!(res.status(), 301);
+                assert_eq!(
+                    res.headers()["location"],
+                    "http://localhost/new-generic/generic-page.html"
+                );
+            }
+            Err(status) => {
+                panic!("expected a status 301 but got {status}")
             }
         };
     }
