@@ -25,17 +25,23 @@ kind = 301
 
 # Glob groups 3
 [[advanced.redirects]]
+source = "/{rust,go,c}-lang.{rs,go,c}"
+destination = "http://localhost/new-languages/$1.lang.$2"
+kind = 302
+
+# Glob groups 4
+[[advanced.redirects]]
 source = "/assets/{*}.{js,mjs}"
 destination = "http://localhost/new-scripts/$1.$2"
 kind = 302
 
-# Glob groups 4
+# Glob groups 5
 [[advanced.redirects]]
 source = "**/{*}.{jpg,jpeg}"
 destination = "http://localhost/new-images/$2.$3"
 kind = 302
 
-# Glob groups 5
+# Glob groups 6
 [[advanced.redirects]]
 source = "**/{*}.{ttf,otf,woff}"
 destination = "http://localhost/new-fonts/$2.woff"
