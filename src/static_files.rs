@@ -663,7 +663,6 @@ async fn response_body(
     }
 }
 
-#[derive(Debug)]
 struct BadRange;
 
 fn bytes_range(range: Option<Range>, max_len: u64) -> Result<(u64, u64), BadRange> {
