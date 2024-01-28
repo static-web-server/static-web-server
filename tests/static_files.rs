@@ -830,16 +830,16 @@ mod tests {
             .await
             {
                 Ok((mut res, _)) => {
-                    assert_eq!(res.status(), 416);
+                    assert_eq!(res.status(), 206);
                     assert_eq!(
                         res.headers()["content-range"],
-                        format!("bytes */{}", buf.len())
+                        format!("bytes 100-{}/{}", buf.len() - 1, buf.len())
                     );
-                    assert_eq!(res.headers().get("content-length"), None);
+                    assert!(res.headers().get("content-length").is_some());
                     let body = hyper::body::to_bytes(res.body_mut())
                         .await
                         .expect("unexpected bytes error during `body` conversion");
-                    assert_eq!(body, "");
+                    assert!(body.len() > 400);
                 }
                 Err(_) => {
                     panic!("expected a normal response rather than a status error")
@@ -1038,6 +1038,54 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn handle_byte_ranges_bad_non_numeric() {
+        let mut headers = HeaderMap::new();
+        headers.insert("range", "bytes=xyx-abc".parse().unwrap());
+
+        let buf = fs::read(root_dir().join("index.html"))
+            .expect("unexpected error during index.html reading");
+        let buf = Bytes::from(buf);
+
+        for method in [Method::HEAD, Method::GET] {
+            match static_files::handle(&HandleOpts {
+                method: &method,
+                headers: &headers,
+                base_path: &root_dir(),
+                uri_path: "index.html",
+                uri_query: None,
+                #[cfg(feature = "directory-listing")]
+                dir_listing: false,
+                #[cfg(feature = "directory-listing")]
+                dir_listing_order: 6,
+                #[cfg(feature = "directory-listing")]
+                dir_listing_format: &DirListFmt::Html,
+                redirect_trailing_slash: true,
+                compression_static: false,
+                ignore_hidden_files: false,
+                index_files: &[],
+            })
+            .await
+            {
+                Ok((mut res, _)) => {
+                    assert_eq!(res.status(), 416);
+                    assert_eq!(
+                        res.headers()["content-range"],
+                        format!("bytes */{}", buf.len())
+                    );
+                    assert!(res.headers().get("content-length").is_none());
+                    let body = hyper::body::to_bytes(res.body_mut())
+                        .await
+                        .expect("unexpected bytes error during `body` conversion");
+                    assert!(body.is_empty());
+                }
+                Err(_) => {
+                    panic!("expected a normal response rather than a status error")
+                }
+            }
+        }
+    }
+
+    #[tokio::test]
     async fn handle_byte_ranges_bad_2() {
         let buf = fs::read(root_dir().join("index.html"))
             .expect("unexpected error during index.html reading");
@@ -1070,16 +1118,12 @@ mod tests {
             .await
             {
                 Ok((mut res, _)) => {
-                    assert_eq!(res.status(), 416);
-                    assert_eq!(
-                        res.headers()["content-range"],
-                        format!("bytes */{}", buf.len())
-                    );
-                    assert_eq!(res.headers().get("content-length"), None);
+                    assert_eq!(res.status(), 200);
+                    assert!(res.headers().get("content-length").is_some());
                     let body = hyper::body::to_bytes(res.body_mut())
                         .await
                         .expect("unexpected bytes error during `body` conversion");
-                    assert_eq!(body, "");
+                    assert!(body.len() > 500);
                 }
                 Err(_) => {
                     panic!("expected a normal response rather than a status error")
@@ -1090,10 +1134,6 @@ mod tests {
 
     #[tokio::test]
     async fn handle_byte_ranges_bad_3() {
-        let buf = fs::read(root_dir().join("index.html"))
-            .expect("unexpected error during index.html reading");
-        let buf = Bytes::from(buf);
-
         let mut headers = HeaderMap::new();
         // Range::Unbounded for beginning and end
         headers.insert("range", "bytes=".parse().unwrap());
@@ -1118,12 +1158,8 @@ mod tests {
             })
             .await
             {
-                Ok((mut res, _)) => {
-                    assert_eq!(res.status(), 200);
-                    let body = hyper::body::to_bytes(res.body_mut())
-                        .await
-                        .expect("unexpected bytes error during `body` conversion");
-                    assert_eq!(body, buf);
+                Ok((res, _)) => {
+                    assert_eq!(res.status(), 416);
                 }
                 Err(_) => {
                     panic!("expected a normal response rather than a status error")
