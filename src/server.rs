@@ -292,12 +292,12 @@ impl Server {
         let health = general.health;
         server_info!("health endpoint: enabled={}", health);
 
-        // Metrics endpoint option
+        // Metrics endpoint option (experimental)
         let metrics = general.metrics;
-        server_info!("experimental metrics endpoint: enabled={}", metrics);
+        server_info!("metrics endpoint (experimental): enabled={}", metrics);
+
+        #[cfg(unix)]
         if metrics {
-            // not yet supported on Windows
-            #[cfg(not(windows))]
             prometheus::default_registry()
                 .register(Box::new(
                     tokio_metrics_collector::default_runtime_collector(),
@@ -345,6 +345,7 @@ impl Server {
                 ignore_hidden_files,
                 index_files,
                 health,
+                #[cfg(unix)]
                 metrics,
                 maintenance_mode,
                 maintenance_mode_status,

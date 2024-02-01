@@ -400,6 +400,7 @@ pub struct General {
     /// This is especially useful with Kubernetes liveness and readiness probes.
     pub health: bool,
 
+    #[cfg(unix)]
     #[arg(
         long = "experimental-metrics",
         default_value = "false",

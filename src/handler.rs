@@ -31,8 +31,6 @@ use crate::{
 #[cfg(feature = "directory-listing")]
 use crate::directory_listing::DirListFmt;
 
-use prometheus::Encoder;
-
 /// It defines options for a request handler.
 pub struct RequestHandlerOpts {
     // General options
@@ -82,7 +80,7 @@ pub struct RequestHandlerOpts {
     pub ignore_hidden_files: bool,
     /// Health endpoint feature.
     pub health: bool,
-    /// Metrics endpoint feature.
+    /// Metrics endpoint feature (experimental).
     pub metrics: bool,
     /// Maintenance mode feature.
     pub maintenance_mode: bool,
@@ -134,6 +132,7 @@ impl RequestHandler {
         let health_request =
             health && uri_path == "/health" && (method.is_get() || method.is_head());
 
+        #[cfg(unix)]
         let metrics_request =
             metrics && uri_path == "/metrics" && (method.is_get() || method.is_head());
 
@@ -189,8 +188,22 @@ impl RequestHandler {
                 return Ok(resp);
             }
 
+            // Reject in case of incoming HTTP request method is not allowed
+            if !method.is_allowed() {
+                return error_page::error_response(
+                    uri,
+                    method,
+                    &StatusCode::METHOD_NOT_ALLOWED,
+                    &self.opts.page404,
+                    &self.opts.page50x,
+                );
+            }
+
             // Metrics endpoint check
+            #[cfg(unix)]
             if metrics_request {
+                use prometheus::Encoder;
+
                 let body = if method.is_get() {
                     let encoder = prometheus::TextEncoder::new();
                     let mut buffer = Vec::new();
@@ -203,19 +216,10 @@ impl RequestHandler {
                 } else {
                     Body::empty()
                 };
-                let resp = Response::new(body);
+                let mut resp = Response::new(body);
+                resp.headers_mut()
+                    .typed_insert(ContentType::from(mime_guess::mime::TEXT_PLAIN));
                 return Ok(resp);
-            }
-
-            // Reject in case of incoming HTTP request method is not allowed
-            if !method.is_allowed() {
-                return error_page::error_response(
-                    uri,
-                    method,
-                    &StatusCode::METHOD_NOT_ALLOWED,
-                    &self.opts.page404,
-                    &self.opts.page50x,
-                );
             }
 
             // CORS

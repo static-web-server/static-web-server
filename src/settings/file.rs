@@ -239,7 +239,8 @@ pub struct General {
     /// Health endpoint feature.
     pub health: Option<bool>,
 
-    /// Metrics endpoint feature.
+    #[cfg(unix)]
+    /// Metrics endpoint feature (experimental).
     pub metrics: Option<bool>,
 
     /// Maintenance mode feature.

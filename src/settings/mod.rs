@@ -149,6 +149,7 @@ impl Settings {
         let mut ignore_hidden_files = opts.ignore_hidden_files;
         let mut index_files = opts.index_files;
         let mut health = opts.health;
+        #[cfg(unix)]
         let mut metrics = opts.metrics;
 
         let mut maintenance_mode = opts.maintenance_mode;
@@ -295,6 +296,7 @@ impl Settings {
                 if let Some(v) = general.health {
                     health = v
                 }
+                #[cfg(unix)]
                 if let Some(v) = general.metrics {
                     metrics = v
                 }
@@ -551,6 +553,7 @@ impl Settings {
                 ignore_hidden_files,
                 index_files,
                 health,
+                #[cfg(unix)]
                 metrics,
                 maintenance_mode,
                 maintenance_mode_status,
