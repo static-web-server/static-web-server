@@ -1,0 +1,5 @@
+[general]
+
+root = "docker/public"
+
+experimental-metrics = true

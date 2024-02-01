@@ -150,7 +150,7 @@ impl Settings {
         let mut index_files = opts.index_files;
         let mut health = opts.health;
         #[cfg(unix)]
-        let mut metrics = opts.metrics;
+        let mut experimental_metrics = opts.experimental_metrics;
 
         let mut maintenance_mode = opts.maintenance_mode;
         let mut maintenance_mode_status = opts.maintenance_mode_status;
@@ -297,8 +297,8 @@ impl Settings {
                     health = v
                 }
                 #[cfg(unix)]
-                if let Some(v) = general.metrics {
-                    metrics = v
+                if let Some(v) = general.experimental_metrics {
+                    experimental_metrics = v
                 }
                 if let Some(v) = general.index_files {
                     index_files = v
@@ -554,7 +554,7 @@ impl Settings {
                 index_files,
                 health,
                 #[cfg(unix)]
-                metrics,
+                experimental_metrics,
                 maintenance_mode,
                 maintenance_mode_status,
                 maintenance_mode_file,

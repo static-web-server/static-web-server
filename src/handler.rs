@@ -81,7 +81,8 @@ pub struct RequestHandlerOpts {
     /// Health endpoint feature.
     pub health: bool,
     /// Metrics endpoint feature (experimental).
-    pub metrics: bool,
+    #[cfg(unix)]
+    pub experimental_metrics: bool,
     /// Maintenance mode feature.
     pub maintenance_mode: bool,
     /// Custom HTTP status for when entering into maintenance mode.
@@ -124,7 +125,8 @@ impl RequestHandler {
         let compression_static = self.opts.compression_static;
         let ignore_hidden_files = self.opts.ignore_hidden_files;
         let health = self.opts.health;
-        let metrics = self.opts.metrics;
+        #[cfg(unix)]
+        let experimental_metrics = self.opts.experimental_metrics;
         let index_files: Vec<&str> = self.opts.index_files.iter().map(|s| s.as_str()).collect();
 
         let mut cors_headers: Option<HeaderMap> = None;
@@ -134,7 +136,7 @@ impl RequestHandler {
 
         #[cfg(unix)]
         let metrics_request =
-            metrics && uri_path == "/metrics" && (method.is_get() || method.is_head());
+            experimental_metrics && uri_path == "/metrics" && (method.is_get() || method.is_head());
 
         // Log request information with its remote address if available
         let mut remote_addr_str = String::new();
@@ -210,15 +212,14 @@ impl RequestHandler {
                     encoder
                         .encode(&prometheus::default_registry().gather(), &mut buffer)
                         .unwrap();
-                    let data = String::from_utf8(buffer.clone()).unwrap();
-
+                    let data = String::from_utf8(buffer).unwrap();
                     Body::from(data)
                 } else {
                     Body::empty()
                 };
                 let mut resp = Response::new(body);
                 resp.headers_mut()
-                    .typed_insert(ContentType::from(mime_guess::mime::TEXT_PLAIN));
+                    .typed_insert(ContentType::from(mime_guess::mime::TEXT_PLAIN_UTF_8));
                 return Ok(resp);
             }
 

@@ -241,7 +241,7 @@ pub struct General {
 
     #[cfg(unix)]
     /// Metrics endpoint feature (experimental).
-    pub metrics: Option<bool>,
+    pub experimental_metrics: Option<bool>,
 
     /// Maintenance mode feature.
     pub maintenance_mode: Option<bool>,

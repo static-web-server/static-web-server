@@ -411,7 +411,7 @@ pub struct General {
         env = "SERVER_EXPERIMENTAL_METRICS",
     )]
     /// Add a /metrics endpoint that returns a Prometheus metrics response.
-    pub metrics: bool,
+    pub experimental_metrics: bool,
 
     #[arg(
         long,
