@@ -20,8 +20,8 @@ page50x = "./50x.html"
 
 #### HTTP/2 + TLS
 http2 = false
-http2-tls-cert = "tests/tls/local.dev_cert.ecc.pem"
-http2-tls-key = "tests/tls/local.dev_key.ecc.pem"
+http2-tls-cert = "tests/tls/local.dev_cert.sec1_ec.pem"
+http2-tls-key = "tests/tls/local.dev_key.sec1_ec.pem"
 https-redirect = false
 https-redirect-host = "localhost"
 https-redirect-from-port = 80
@@ -103,6 +103,11 @@ headers.Strict-Transport-Security = "max-age=63072000; includeSubDomains; preloa
 
 
 ### URL Redirects
+[[advanced.redirects]]
+host = "127.0.0.1:4433"
+source = "/{*}"
+destination = "https://localhost:4433/$1"
+kind = 301
 
 [[advanced.redirects]]
 source = "**/{*}.{jpg,jpeg}"

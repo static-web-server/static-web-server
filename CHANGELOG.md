@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _**Note:** See changelog for v1 under the [1.x](https://github.com/static-web-server/static-web-server/blob/1.x/CHANGELOG.md) branch._
 
+## v2.25.0 - 2024-01-23
+
+This new `v2.25.0` release brings several dependency security updates and bug fixes. An optional `Host` URI support for the URL Redirects feature, a bug fix when capturing a Glob pattern using brace expansion for URL Rewrites/Redirects as well as other improvements.
+
+__Fixes__
+
+- [477ed00](https://github.com/static-web-server/static-web-server/commit/477ed00) Bugfix/security dependency updates including rustls, h2, regex, chrono, libc, async-compression, serde and other crates. Also [32e86aa](https://github.com/static-web-server/static-web-server/commit/32e86aa)
+- [42f52e8](https://github.com/static-web-server/static-web-server/commit/42f52e8) Fix wrong Glob brace expansion capture in URL Rewrites/Redirects. PR [#304](https://github.com/static-web-server/static-web-server/pull/304).
+- [9f2a4f0](https://github.com/static-web-server/static-web-server/commit/9f2a4f0) Docker: Alpine 3.18.5 update.
+
+__Features__
+
+- [8c6ab53](https://github.com/static-web-server/static-web-server/commit/8c6ab53) Optional `Host` URI support for the URL Redirects feature. PR [#301](https://github.com/static-web-server/static-web-server/pull/301).
+  This will allow users for example to perform www to non-www redirects or vice versa. See [docs](https://static-web-server.net/features/url-redirects/#host).
+
+__Refactorings__
+
+- [83e4277](https://github.com/static-web-server/static-web-server/commit/83e4277) Migrate TLS module to use `tokio-rustls` 0.25. PR [#303](https://github.com/static-web-server/static-web-server/pull/303).
+- [1bbc703](https://github.com/static-web-server/static-web-server/commit/1bbc703) CI: Cache Rust toolchain and Cargo directories for CI devel workflow. PR [#300](https://github.com/static-web-server/static-web-server/pull/300).
+- [67a2403](https://github.com/static-web-server/static-web-server/commit/67a2403) CI: Prefer `cross` precompiled binary on CI devel workflow.
+- [ef9876a](https://github.com/static-web-server/static-web-server/commit/ef9876a) CI: Prefer `cross` precompiled binary on CI release workflow.
+
+__Docs__
+
+- [3076d08](https://github.com/static-web-server/static-web-server/commit/3076d08) Optional `Host` uri support for URL Redirects feature. See [docs](https://static-web-server.net/features/url-redirects/#host).
+- [dedefc5](https://github.com/static-web-server/static-web-server/commit/dedefc5) Fix a few page typos.
+
 ## v2.24.2 - 2023-12-28
 
 This new `v2.24.2` release brings general dependency security updates, bug fixes and improvements.

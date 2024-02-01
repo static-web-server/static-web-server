@@ -1,0 +1,54 @@
+[general]
+
+root = "docker/public"
+
+[advanced]
+
+# Host tests
+[[advanced.redirects]]
+host = "127.0.0.1:1234"
+source = "/{*}"
+destination = "http://localhost:1234/$1"
+kind = 301
+
+# Glob groups 1
+[[advanced.redirects]]
+source = "**/main.{css}"
+destination = "http://localhost/new-styles/style.$2"
+kind = 301
+
+# Glob groups 2
+[[advanced.redirects]]
+source = "/{main,style}.css"
+destination = "http://localhost/new-styles/$1.min.css"
+kind = 301
+
+# Glob groups 3
+[[advanced.redirects]]
+source = "/{rust,go,c}-lang.{rs,go,c}"
+destination = "http://localhost/new-languages/$1.lang.$2"
+kind = 302
+
+# Glob groups 4
+[[advanced.redirects]]
+source = "/assets/{*}.{js,mjs}"
+destination = "http://localhost/new-scripts/$1.$2"
+kind = 302
+
+# Glob groups 5
+[[advanced.redirects]]
+source = "**/{*}.{jpg,jpeg}"
+destination = "http://localhost/new-images/$2.$3"
+kind = 302
+
+# Glob groups 6
+[[advanced.redirects]]
+source = "**/{*}.{ttf,otf,woff}"
+destination = "http://localhost/new-fonts/$2.woff"
+kind = 302
+
+# Glob groups generic 1
+[[advanced.redirects]]
+source = "**/{*}.{*}"
+destination = "http://localhost/new-generic/$2.$3"
+kind = 301

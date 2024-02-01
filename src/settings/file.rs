@@ -70,6 +70,8 @@ pub enum RedirectsKind {
 #[serde(rename_all = "kebab-case")]
 /// Represents redirects types.
 pub struct Redirects {
+    /// Optional host to match against an incoming URI host if specified
+    pub host: Option<String>,
     /// Source of the redirect.
     pub source: String,
     /// Redirect destination.

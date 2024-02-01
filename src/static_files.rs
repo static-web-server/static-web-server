@@ -672,35 +672,60 @@ fn bytes_range(range: Option<Range>, max_len: u64) -> Result<(u64, u64), BadRang
         return Ok((0, max_len));
     };
 
-    let res = range
+    let resp = range
         .iter()
         .map(|(start, end)| {
+            tracing::trace!("range request received, {:?}-{:?}-{}", start, end, max_len);
+
             let (start, end) = match (start, end) {
                 (Bound::Unbounded, Bound::Unbounded) => (0, max_len),
                 (Bound::Included(a), Bound::Included(b)) => {
+                    // `start` can not be greater than `end`
+                    if a > b {
+                        return Err(BadRange);
+                    }
                     // For the special case where b == the file size
                     (a, if b == max_len { b } else { b + 1 })
                 }
                 (Bound::Included(a), Bound::Unbounded) => (a, max_len),
                 (Bound::Unbounded, Bound::Included(b)) => {
                     if b > max_len {
-                        return Err(BadRange);
+                        // `Range` request out of bounds, return only what's available
+                        tracing::trace!("unsatisfiable byte range: -{}/{}", b, max_len);
+                        tracing::trace!("returning only what's available: 0-{}", max_len);
+                        (0, max_len)
+                    } else {
+                        (max_len - b, max_len)
                     }
-                    (max_len - b, max_len)
                 }
                 _ => unreachable!(),
             };
 
             if start < end && end <= max_len {
-                Ok((start, end))
-            } else {
-                tracing::trace!("unsatisfiable byte range: {}-{}/{}", start, end, max_len);
-                Err(BadRange)
+                tracing::trace!("range request to return: {}-{}/{}", start, end, max_len);
+                return Ok((start, end));
             }
+
+            tracing::trace!("unsatisfiable byte range: {}-{}/{}", start, end, max_len);
+
+            if start < end && start <= max_len {
+                // `Range` request out of bounds, return only what's available
+                tracing::trace!(
+                    "returning only what's available: {}-{}/{}",
+                    start,
+                    max_len,
+                    max_len
+                );
+                return Ok((start, max_len));
+            }
+
+            Err(BadRange)
         })
         .next()
-        .unwrap_or(Ok((0, max_len)));
-    res
+        // NOTE: default to `BadRange` in case of wrong `Range` bytes format
+        .unwrap_or(Err(BadRange));
+
+    resp
 }
 
 #[cfg(test)]

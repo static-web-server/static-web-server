@@ -45,6 +45,8 @@ pub struct Rewrites {
 
 /// The `Redirects` file options.
 pub struct Redirects {
+    /// Optional host to match against an incoming URI host if specified
+    pub host: Option<String>,
     /// Source pattern Regex matcher
     pub source: Regex,
     /// A local file that must exist
@@ -381,6 +383,8 @@ impl Settings {
                                 .regex()
                                 .trim_start_matches("(?-u)")
                                 .replace("?:.*", ".*")
+                                .replace("?:", "")
+                                .replace(".*.*", ".*")
                                 .to_owned();
                             tracing::debug!(
                                 "url rewrites glob pattern: {}",
@@ -427,6 +431,8 @@ impl Settings {
                                 .regex()
                                 .trim_start_matches("(?-u)")
                                 .replace("?:.*", ".*")
+                                .replace("?:", "")
+                                .replace(".*.*", ".*")
                                 .to_owned();
                             tracing::debug!(
                                 "url redirects glob pattern: {}",
@@ -443,6 +449,7 @@ impl Settings {
 
                             let status_code = redirects_entry.kind.to_owned() as u16;
                             redirects_vec.push(Redirects {
+                                host: redirects_entry.host.to_owned(),
                                 source,
                                 destination: redirects_entry.destination.to_owned(),
                                 kind: StatusCode::from_u16(status_code).with_context(|| {
