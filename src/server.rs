@@ -293,7 +293,9 @@ impl Server {
         server_info!("health endpoint: enabled={}", health);
 
         // Metrics endpoint option (experimental)
+        #[cfg(unix)]
         let experimental_metrics = general.experimental_metrics;
+        #[cfg(unix)]
         server_info!(
             "metrics endpoint (experimental): enabled={}",
             experimental_metrics

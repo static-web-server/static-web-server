@@ -8,7 +8,7 @@ freebsd_instance:
 task:
   only_if: $CIRRUS_TAG == ''
   env:
-    RUSTFLAGS: -Dwarnings
+    RUSTFLAGS: -Dwarnings --cfg tokio_unstable
   matrix:
     - name: freebsd-amd64-test
       env:
@@ -21,6 +21,7 @@ task:
     - curl https://sh.rustup.rs -sSf --output rustup.sh
     - sh rustup.sh -y --profile minimal --default-toolchain stable
     - . $HOME/.cargo/env
+    - cp -r .cargo/config.toml $HOME/.cargo/
     - rustc --version
   toolchain_script:
     - . $HOME/.cargo/env
@@ -41,7 +42,7 @@ task:
 task:
   only_if: $CIRRUS_TAG != ''
   env:
-    RUSTFLAGS: -Dwarnings
+    RUSTFLAGS: -Dwarnings --cfg tokio_unstable
     GITHUB_TOKEN: ENCRYPTED[d1766ef328d83729917d2ffb875d64c35d1c0177edf8f32e66ec464daf5c1b7b145d65fc6c044a73fffe2235d3b38349]
   matrix:
     - name: freebsd-amd64-release
@@ -55,6 +56,7 @@ task:
     - curl https://sh.rustup.rs -sSf --output rustup.sh
     - sh rustup.sh -y --profile minimal --default-toolchain stable
     - . $HOME/.cargo/env
+    - cp -r .cargo/config.toml $HOME/.cargo/
     - rustc --version
   toolchain_script:
     - . $HOME/.cargo/env
