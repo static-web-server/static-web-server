@@ -84,8 +84,6 @@ tokio-util = { version = "0.7", default-features = false, features = ["io"] }
 toml = "0.8"
 tracing = { version = "0.1", default-features = false, features = ["std"] }
 tracing-subscriber = { version = "0.3", default-features = false, features = ["smallvec", "registry", "parking_lot", "fmt", "ansi", "tracing-log"] }
-tokio-metrics-collector = "0.2.1"
-prometheus = "0.13.3"
 
 [target.'cfg(all(target_env = "musl", target_pointer_width = "64"))'.dependencies.tikv-jemallocator]
 version = "0.5"
@@ -93,6 +91,8 @@ version = "0.5"
 [target.'cfg(unix)'.dependencies]
 signal-hook = { version = "0.3", features = ["extended-siginfo"] }
 signal-hook-tokio = { version = "0.3", features = ["futures-v0_3"], default-features = false }
+tokio-metrics-collector = "0.2"
+prometheus = "0.13"
 
 [target.'cfg(windows)'.dependencies]
 windows-service = "0.6"
