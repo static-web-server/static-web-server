@@ -52,6 +52,8 @@ pub mod fixtures {
             ignore_hidden_files: opts.general.ignore_hidden_files,
             index_files: vec![opts.general.index_files],
             health: opts.general.health,
+            #[cfg(unix)]
+            experimental_metrics: opts.general.experimental_metrics,
             maintenance_mode: opts.general.maintenance_mode,
             maintenance_mode_status: opts.general.maintenance_mode_status,
             maintenance_mode_file: opts.general.maintenance_mode_file,

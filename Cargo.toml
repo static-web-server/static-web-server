@@ -91,6 +91,8 @@ version = "0.5"
 [target.'cfg(unix)'.dependencies]
 signal-hook = { version = "0.3", features = ["extended-siginfo"] }
 signal-hook-tokio = { version = "0.3", features = ["futures-v0_3"], default-features = false }
+tokio-metrics-collector = "0.2"
+prometheus = "0.13"
 
 [target.'cfg(windows)'.dependencies]
 windows-service = "0.6"
