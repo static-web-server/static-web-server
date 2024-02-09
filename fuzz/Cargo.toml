@@ -1,0 +1,22 @@
+[package]
+name = "static-web-server-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2021"
+rust-version = "1.70.0"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+arbitrary = { version = "1",  features = ["derive"] }
+libfuzzer-sys = { version = "0.4", features = ["arbitrary-derive"] }
+static-web-server = { path = ".." }
+hyper = { version = "0.14", features = ["stream", "http1", "http2", "tcp", "server"] }
+
+[profile.release]
+debug = 1
+
+[[bin]]
+name = "static_files"
+path = "src/static_files.rs"

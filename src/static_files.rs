@@ -751,6 +751,18 @@ mod tests {
             sanitize_path(base_dir, "/../foo.html").unwrap(),
             root_dir().join("foo.html"),
         );
+        assert_eq!(
+            sanitize_path(base_dir, "/../W�foo.html").unwrap(),
+            root_dir().join("W�foo.html"),
+        );
+        assert_eq!(
+            sanitize_path(base_dir, "/%EF%BF%BD/../bar.html").unwrap(),
+            root_dir().join("�/bar.html"),
+        );
+        assert_eq!(
+            sanitize_path(base_dir, "àí/é%20/öüñ").unwrap(),
+            root_dir().join("àí/é /öüñ"),
+        );
 
         #[cfg(unix)]
         let expected_path = root_dir().join("C:\\/foo.html");
