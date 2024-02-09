@@ -13,3 +13,8 @@ hyper = { version = "0.14", features = ["stream", "http1", "http2", "tcp", "serv
 name = "control_headers"
 path = "control_headers.rs"
 harness = false
+
+[[bench]]
+name = "static_files"
+path = "static_files.rs"
+harness = false
