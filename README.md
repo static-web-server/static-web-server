@@ -21,6 +21,9 @@
     <a href="https://github.com/static-web-server/static-web-server/blob/master/LICENSE-APACHE" title="static-web-server license">
       <img src="https://img.shields.io/crates/l/static-web-server">
     </a>
+    <a href="https://discord.gg/VWvtZeWAA7" title="Static Web Server Community on Discord">
+      <img src="https://img.shields.io/discord/1086203405225164842?logo=discord&label=discord">
+    </a>
   </div>
 </div>
 
@@ -98,6 +101,10 @@ For more details see [benchmarks repository](https://github.com/static-web-serve
 Unless you explicitly state otherwise, any contribution you intentionally submitted for inclusion in current work, as defined in the Apache-2.0 license, shall be dual licensed as described below, without any additional terms or conditions.
 
 Feel free to submit a [pull request](https://github.com/static-web-server/static-web-server/pulls) or file an [issue](https://github.com/static-web-server/static-web-server/issues).
+
+## Community
+
+[SWS Community on Discord](https://discord.gg/VWvtZeWAA7)
 
 ## License
 

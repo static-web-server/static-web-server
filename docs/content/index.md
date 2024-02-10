@@ -21,6 +21,9 @@
     <a href="https://github.com/static-web-server/static-web-server/blob/master/LICENSE-APACHE" title="static-web-server license">
       <img src="https://img.shields.io/crates/l/static-web-server">
     </a>
+    <a href="https://discord.gg/VWvtZeWAA7" title="Static Web Server Community on Discord">
+      <img src="https://img.shields.io/discord/1086203405225164842?logo=discord&label=discord">
+    </a>
   </div>
 </div>
 
@@ -83,3 +86,7 @@ Cross-platform and available for `Linux`, `macOS`, `Windows`, `FreeBSD`, `NetBSD
 For more details see [the benchmarks repository](https://github.com/static-web-server/benchmarks).
 
 For feedback or questions feel free to reach us on [the discussions page](https://github.com/static-web-server/static-web-server/discussions).
+
+## Community
+
+[SWS Community on Discord](https://discord.gg/VWvtZeWAA7)
