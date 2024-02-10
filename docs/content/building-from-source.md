@@ -6,7 +6,7 @@ Follow these instructions to either build **`SWS`** project from the source or t
 
 If you want to build **SWS** from the source, all you need is a [Rust 2021 Edition](https://blog.rust-lang.org/2021/05/11/edition-2021.html) installed.
 
-So make sure to install Rust [1.70.0](https://blog.rust-lang.org/2023/06/01/Rust-1.70.0.html) or newer (or nightly) along with [the toolchain(s)](https://rust-lang.github.io/rustup/concepts/toolchains.html) of your preference.
+So make sure to install Rust [1.74.0](https://blog.rust-lang.org/2023/11/16/Rust-1.74.0.html) or newer (or nightly) along with [the toolchain(s)](https://rust-lang.github.io/rustup/concepts/toolchains.html) of your preference.
 
 Then clone the repository and use [Cargo](https://doc.rust-lang.org/cargo/) to build the project from the source.
 

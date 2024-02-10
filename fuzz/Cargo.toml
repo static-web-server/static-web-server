@@ -3,7 +3,6 @@ name = "static-web-server-fuzz"
 version = "0.0.0"
 publish = false
 edition = "2021"
-rust-version = "1.70.0"
 
 [package.metadata]
 cargo-fuzz = true
