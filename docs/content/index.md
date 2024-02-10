@@ -18,9 +18,7 @@
     <a href="https://hub.docker.com/r/joseluisq/static-web-server/" title="Docker Image"><img src="https://img.shields.io/docker/pulls/joseluisq/static-web-server.svg"></a> 
     <a href="https://crates.io/crates/static-web-server" title="static-web-server crate"><img src="https://img.shields.io/crates/v/static-web-server.svg"></a> 
     <a href="https://docs.rs/static-web-server" title="static-web-server crate docs"><img src="https://img.shields.io/docsrs/static-web-server/latest?label=docs.rs"></a> 
-    <a href="https://github.com/static-web-server/static-web-server/blob/master/LICENSE-APACHE" title="static-web-server license">
-      <img src="https://img.shields.io/crates/l/static-web-server">
-    </a>
+    <a href="https://github.com/static-web-server/static-web-server/blob/master/LICENSE-APACHE" title="static-web-server license"><img src="https://img.shields.io/crates/l/static-web-server"></a> 
     <a href="https://discord.gg/VWvtZeWAA7" title="Static Web Server Community on Discord">
       <img src="https://img.shields.io/discord/1086203405225164842?logo=discord&label=discord">
     </a>

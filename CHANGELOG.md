@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _**Note:** See changelog for v1 under the [1.x](https://github.com/static-web-server/static-web-server/blob/1.x/CHANGELOG.md) branch._
 
+## v2.26.0 - 2024-02-10
+
+This new `v2.26.0` release brings several dependency security updates and bug fixes. Support for `Range` requests out of bounds, experimental Tokio Runtime metrics for Prometheus, new Discord server as well as other improvements.
+
+__Fixes__
+
+- [80af0aa](https://github.com/static-web-server/static-web-server/commit/80af0aa) Bugfix/security dependency updates including tokio, regex, chrono, libc, toml, serde and other crates. Also [1d4f423](https://github.com/static-web-server/static-web-server/commit/1d4f423)
+- [5623799](https://github.com/static-web-server/static-web-server/commit/5623799) Docker: Alpine 3.18.6 update.
+
+__Features__
+
+- [71dd54f](https://github.com/static-web-server/static-web-server/commit/71dd54f) Support for `Range` requests out of bounds. PR [#306](https://github.com/static-web-server/static-web-server/pull/306) resolves [#295](https://github.com/static-web-server/static-web-server/issues/295)  suggested by [@bjornharrtell](https://github.com/bjornharrtell).
+- [d4427eb](https://github.com/static-web-server/static-web-server/commit/d4427eb) Experimental Tokio Runtime metrics for Prometheus via the new `--experimental-metrics` option. PR [#306](https://github.com/static-web-server/static-web-server/pull/306) by [@pl4nty](https://github.com/pl4nty).
+- [fd15914](https://github.com/static-web-server/static-web-server/commit/fd15914) [SWS on Discord](https://discord.gg/VWvtZeWAA7) link.
+
+__Refactorings__
+
+- [a7dc6ac](https://github.com/static-web-server/static-web-server/commit/a7dc6ac) Docker: Drop support for the `linux/ppc64le` and `linux/s390x` of the Alpine Scratch images. Prefer the Debian image variant for those targets instead. PR [#309](https://github.com/static-web-server/static-web-server/pull/309).
+- [563367c](https://github.com/static-web-server/static-web-server/commit/563367c) Minimum Rust stable version 1.74.0.
+- [370d288](https://github.com/static-web-server/static-web-server/commit/370d288) Misc: Base fuzz and micro-benchmark testing for static files module. PR [#310](https://github.com/static-web-server/static-web-server/pull/310).
+
+**Acknowledgments**
+
+Thanks to our new donor [@c0m4r](https://github.com/c0m4r) for supporting the project.
+
 ## v2.25.0 - 2024-01-23
 
 This new `v2.25.0` release brings several dependency security updates and bug fixes. An optional `Host` URI support for the URL Redirects feature, a bug fix when capturing a Glob pattern using brace expansion for URL Rewrites/Redirects as well as other improvements.
@@ -33,6 +58,10 @@ __Docs__
 
 - [3076d08](https://github.com/static-web-server/static-web-server/commit/3076d08) Optional `Host` uri support for URL Redirects feature. See [docs](https://static-web-server.net/features/url-redirects/#host).
 - [dedefc5](https://github.com/static-web-server/static-web-server/commit/dedefc5) Fix a few page typos.
+
+**Acknowledgments**
+
+Thanks to our new donors for supporting the project.
 
 ## v2.24.2 - 2023-12-28
 
