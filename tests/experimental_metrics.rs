@@ -3,7 +3,7 @@
 #![deny(rust_2018_idioms)]
 #![deny(dead_code)]
 
-#[cfg(unix)]
+#[cfg(all(unix, feature = "experimental"))]
 pub mod tests {
     use hyper::Request;
     use std::net::SocketAddr;

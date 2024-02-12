@@ -38,6 +38,8 @@ jobs:
       RUST_BACKTRACE: 1
       # Skip tests
       SKIP_TESTS: ""
+      # SWS features for Cargo build
+      CARGO_FEATURES: "--features=all"
     strategy:
       matrix:
         build:
@@ -236,12 +238,12 @@ jobs:
     - name: Run tests
       shell: bash
       run: |
-        ${{ env.CARGO_BIN }} test --verbose ${{ env.TARGET_FLAGS }} ${{ env.SKIP_TESTS }}
+        ${{ env.CARGO_BIN }} test --verbose ${{ env.CARGO_FEATURES }} ${{ env.TARGET_FLAGS }} ${{ env.SKIP_TESTS }}
 
     - name: Run build
       shell: bash
       run: |
-        ${{ env.CARGO_BIN }} rustc --bin static-web-server --verbose ${{ env.TARGET_FLAGS }}
+        ${{ env.CARGO_BIN }} build --bin static-web-server -vv ${{ env.CARGO_FEATURES }} ${{ env.TARGET_FLAGS }}
 
     - name: Run executable
       shell: bash

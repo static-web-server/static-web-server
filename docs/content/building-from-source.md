@@ -29,7 +29,9 @@ However, you can disable just the ones you don't need from the lists below.
 Feature | Description
 ---------|------
 **Default** |
-`default` | Activates all features by default.
+`default` | Activates the default features by omission.
+`all` | Activates all available features including the `experimental` feature. This is the default feature used when building SWS binaries.
+`experimental` | Activates all SWS experimental features. Make sure to also provide the required `RUSTFLAGS` if the feature requires so.
 [**HTTP2/TLS**](./features/http2-tls.md) |
 `http2` | Activates the HTTP2 and TLS feature.
 [**Compression**](./features/compression.md) |
@@ -52,8 +54,13 @@ For example, if you want to run or build SWS without the default features like `
 ```sh
 # run
 cargo run --no-default-features -- -h
+
 # or build
 cargo build --release --no-default-features
+
+# or including all features (example)
+RUSTFLAGS="--cfg tokio_unstable" \
+    cargo build -vv --release --features all 
 ```
 
 ## Cross-compiling
@@ -74,6 +81,17 @@ Let's say, you want to cross-compile SWS from macOS to Linux. Then follow these 
     ```
 
 Built binaries can be found under the corresponding toolchain directory inside `target/`.
+
+## Testing
+
+```sh
+# run tests for default features
+cargo test
+# or run tests for all features including experimental ones
+RUSTFLAGS="--cfg tokio_unstable" cargo test --features all
+# or run specific tests
+cargo test --test rewrites
+```
 
 ## Building documentation from source
 
