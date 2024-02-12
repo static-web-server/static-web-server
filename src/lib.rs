@@ -75,7 +75,9 @@
 //! Feature | Description
 //! ---------|------
 //! **Default** |
-//! `default` | Activates all features by default.
+//! `default` | Activates the default features.
+//! `all` | Activates all features including the default and experimental ones. E.g. this feature is used when building the SWS binaries.
+//! `experimental` | Activates all unstable features.
 //! [**HTTP2/TLS**](https://static-web-server.net/features/http2-tls/) |
 //! `http2` | Activates the HTTP2 and TLS feature.
 //! [**Compression**](https://static-web-server.net/features/compression/) |

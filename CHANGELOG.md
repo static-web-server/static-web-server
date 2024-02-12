@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _**Note:** See changelog for v1 under the [1.x](https://github.com/static-web-server/static-web-server/blob/1.x/CHANGELOG.md) branch._
 
+## v2.27.0 - 2024-02-13
+
+This new `v2.27.0` release brings a few dependency updates and bug fixes. Two new Cargo feature flags and fixes a regression introduced by the previous release when building SWS from source.
+
+__Fixes__
+
+- [ec93d6c](https://github.com/static-web-server/static-web-server/commit/ec93d6c) Bugfix/security dependency updates including chrono, indexmap, indexmap and other crates.
+
+__Features__
+
+- [1a6caa4](https://github.com/static-web-server/static-web-server/commit/1a6caa4) Crate: New `all` and `experimental` Cargo feature flags. PR [#313](https://github.com/static-web-server/static-web-server/pull/313) also fixes [#312](https://github.com/static-web-server/static-web-server/issues/312) reported by [@mattfbacon](https://github.com/mattfbacon). See [docs](https://static-web-server.net/building-from-source/#cargo-features).
+
 ## v2.26.0 - 2024-02-10
 
 This new `v2.26.0` release brings several dependency security updates and bug fixes. Support for `Range` requests out of bounds, experimental Tokio Runtime metrics for Prometheus, new Discord server as well as other improvements.
@@ -15,16 +27,17 @@ __Fixes__
 
 - [80af0aa](https://github.com/static-web-server/static-web-server/commit/80af0aa) Bugfix/security dependency updates including tokio, regex, chrono, libc, toml, serde and other crates. Also [1d4f423](https://github.com/static-web-server/static-web-server/commit/1d4f423)
 - [5623799](https://github.com/static-web-server/static-web-server/commit/5623799) Docker: Alpine 3.18.6 update.
+- [a7dc6ac](https://github.com/static-web-server/static-web-server/commit/a7dc6ac) Docker: linux/s590x and linux/ppc64le images are missing dependencies. PR [#309](https://github.com/static-web-server/static-web-server/pull/309) resolves [#308](https://github.com/static-web-server/static-web-server/issues/308) reported by [@glehmann](https://github.com/glehmann).
+  - It is solved by dropping support for the `linux/ppc64le` and `linux/s390x` of the Alpine Scratch images because those binaries provided are not static-linked. Prefer the Debian image variant for those targets instead.
 
 __Features__
 
-- [71dd54f](https://github.com/static-web-server/static-web-server/commit/71dd54f) Support for `Range` requests out of bounds. PR [#306](https://github.com/static-web-server/static-web-server/pull/306) resolves [#295](https://github.com/static-web-server/static-web-server/issues/295)  suggested by [@bjornharrtell](https://github.com/bjornharrtell).
+- [71dd54f](https://github.com/static-web-server/static-web-server/commit/71dd54f) Support for `Range` requests out of bounds. PR [#306](https://github.com/static-web-server/static-web-server/pull/306) resolves [#295](https://github.com/static-web-server/static-web-server/issues/295) suggested by [@bjornharrtell](https://github.com/bjornharrtell).
 - [d4427eb](https://github.com/static-web-server/static-web-server/commit/d4427eb) Experimental Tokio Runtime metrics for Prometheus via the new `--experimental-metrics` option. PR [#306](https://github.com/static-web-server/static-web-server/pull/306) by [@pl4nty](https://github.com/pl4nty).
 - [fd15914](https://github.com/static-web-server/static-web-server/commit/fd15914) [SWS on Discord](https://discord.gg/VWvtZeWAA7) link.
 
 __Refactorings__
 
-- [a7dc6ac](https://github.com/static-web-server/static-web-server/commit/a7dc6ac) Docker: Drop support for the `linux/ppc64le` and `linux/s390x` of the Alpine Scratch images. Prefer the Debian image variant for those targets instead. PR [#309](https://github.com/static-web-server/static-web-server/pull/309).
 - [563367c](https://github.com/static-web-server/static-web-server/commit/563367c) Minimum Rust stable version 1.74.0.
 - [370d288](https://github.com/static-web-server/static-web-server/commit/370d288) Misc: Base fuzz and micro-benchmark testing for static files module. PR [#310](https://github.com/static-web-server/static-web-server/pull/310).
 

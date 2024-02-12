@@ -1,6 +1,6 @@
 [package]
 name = "static-web-server"
-version = "2.26.0"
+version = "2.27.0"
 edition = "2021"
 rust-version = "1.74.0"
 authors = ["Jose Quintana <https://joseluisq.net>"]
@@ -37,6 +37,7 @@ doc = false
 [features]
 # All features enabled by default
 default = ["compression", "http2", "directory-listing", "basic-auth", "fallback-page"]
+# Include all features (used when building SWS binaries)
 all = ["default", "experimental"]
 # HTTP2
 http2 = ["tokio-rustls", "rustls-pemfile"]
