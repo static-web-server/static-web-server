@@ -37,6 +37,7 @@ doc = false
 [features]
 # All features enabled by default
 default = ["compression", "http2", "directory-listing", "basic-auth", "fallback-page"]
+all = ["default", "experimental"]
 # HTTP2
 http2 = ["tokio-rustls", "rustls-pemfile"]
 # Compression
@@ -51,6 +52,9 @@ directory-listing = ["humansize", "chrono"]
 basic-auth = ["bcrypt"]
 # Fallback Page
 fallback-page = []
+# Experimental features
+# --experimental-metrics
+experimental = ["tokio-metrics-collector", "prometheus"]
 
 [dependencies]
 aho-corasick = "1.1"
@@ -91,8 +95,8 @@ version = "0.5"
 [target.'cfg(unix)'.dependencies]
 signal-hook = { version = "0.3", features = ["extended-siginfo"] }
 signal-hook-tokio = { version = "0.3", features = ["futures-v0_3"], default-features = false }
-tokio-metrics-collector = "0.2"
-prometheus = "0.13"
+tokio-metrics-collector = { version = "0.2", optional = true }
+prometheus = { version = "0.13", optional = true }
 
 [target.'cfg(windows)'.dependencies]
 windows-service = "0.6"

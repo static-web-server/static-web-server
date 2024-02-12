@@ -46,6 +46,8 @@ jobs:
       TARGET_DIR: ./target
       # Emit backtraces on panics.
       RUST_BACKTRACE: 1
+      # SWS features for Cargo build
+      CARGO_FEATURES: "--features=all"
     strategy:
       matrix:
         build:
@@ -214,7 +216,7 @@ jobs:
         echo "target dir is: ${{ env.TARGET_DIR }}"
 
     - name: Build release binary
-      run: ${{ env.CARGO_BIN }} rustc --bin static-web-server --verbose --release ${{ env.TARGET_FLAGS }}
+      run: ${{ env.CARGO_BIN }} build --bin static-web-server -vv --release ${{ env.CARGO_FEATURES }} ${{ env.TARGET_FLAGS }}
 
     - name: Build archive
       shell: bash

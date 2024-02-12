@@ -239,7 +239,7 @@ pub struct General {
     /// Health endpoint feature.
     pub health: Option<bool>,
 
-    #[cfg(unix)]
+    #[cfg(all(unix, feature = "experimental"))]
     /// Metrics endpoint feature (experimental).
     pub experimental_metrics: Option<bool>,
 

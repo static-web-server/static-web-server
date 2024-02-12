@@ -81,7 +81,7 @@ pub struct RequestHandlerOpts {
     /// Health endpoint feature.
     pub health: bool,
     /// Metrics endpoint feature (experimental).
-    #[cfg(unix)]
+    #[cfg(all(unix, feature = "experimental"))]
     pub experimental_metrics: bool,
     /// Maintenance mode feature.
     pub maintenance_mode: bool,
@@ -125,7 +125,7 @@ impl RequestHandler {
         let compression_static = self.opts.compression_static;
         let ignore_hidden_files = self.opts.ignore_hidden_files;
         let health = self.opts.health;
-        #[cfg(unix)]
+        #[cfg(all(unix, feature = "experimental"))]
         let experimental_metrics = self.opts.experimental_metrics;
         let index_files: Vec<&str> = self.opts.index_files.iter().map(|s| s.as_str()).collect();
 
@@ -134,7 +134,7 @@ impl RequestHandler {
         let health_request =
             health && uri_path == "/health" && (method.is_get() || method.is_head());
 
-        #[cfg(unix)]
+        #[cfg(all(unix, feature = "experimental"))]
         let metrics_request =
             experimental_metrics && uri_path == "/metrics" && (method.is_get() || method.is_head());
 
@@ -202,7 +202,7 @@ impl RequestHandler {
             }
 
             // Metrics endpoint check
-            #[cfg(unix)]
+            #[cfg(all(unix, feature = "experimental"))]
             if metrics_request {
                 use prometheus::Encoder;
 

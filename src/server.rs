@@ -293,15 +293,15 @@ impl Server {
         server_info!("health endpoint: enabled={}", health);
 
         // Metrics endpoint option (experimental)
-        #[cfg(unix)]
+        #[cfg(all(unix, feature = "experimental"))]
         let experimental_metrics = general.experimental_metrics;
-        #[cfg(unix)]
+        #[cfg(all(unix, feature = "experimental"))]
         server_info!(
             "metrics endpoint (experimental): enabled={}",
             experimental_metrics
         );
 
-        #[cfg(unix)]
+        #[cfg(all(unix, feature = "experimental"))]
         if experimental_metrics {
             prometheus::default_registry()
                 .register(Box::new(
@@ -350,7 +350,7 @@ impl Server {
                 ignore_hidden_files,
                 index_files,
                 health,
-                #[cfg(unix)]
+                #[cfg(all(unix, feature = "experimental"))]
                 experimental_metrics,
                 maintenance_mode,
                 maintenance_mode_status,
