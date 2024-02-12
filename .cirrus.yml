@@ -9,6 +9,7 @@ task:
   only_if: $CIRRUS_TAG == ''
   env:
     RUSTFLAGS: -Dwarnings --cfg tokio_unstable
+    CARGO_FEATURES: "--features=all"
   matrix:
     - name: freebsd-amd64-test
       env:
@@ -32,17 +33,18 @@ task:
   test_script:
     - . $HOME/.cargo/env
     - |
-      cargo test --all --target="$BINARY_ARCH-unknown-freebsd"
+      cargo test --all --target="$BINARY_ARCH-unknown-freebsd" $CARGO_FEATURES
   build_test_script:
     - . $HOME/.cargo/env
     - |
-      cargo rustc --bin static-web-server --verbose --target="$BINARY_ARCH-unknown-freebsd"
+      cargo build --bin static-web-server -vv --target="$BINARY_ARCH-unknown-freebsd" $CARGO_FEATURES
       target/$BINARY_ARCH-unknown-freebsd/debug/static-web-server -h
 
 task:
   only_if: $CIRRUS_TAG != ''
   env:
     RUSTFLAGS: -Dwarnings --cfg tokio_unstable
+    CARGO_FEATURES: "--features=all"
     GITHUB_TOKEN: ENCRYPTED[d1766ef328d83729917d2ffb875d64c35d1c0177edf8f32e66ec464daf5c1b7b145d65fc6c044a73fffe2235d3b38349]
   matrix:
     - name: freebsd-amd64-release
@@ -66,7 +68,7 @@ task:
     - rustup show
   build_script: |
     . $HOME/.cargo/env
-    cargo rustc --bin static-web-server --verbose --release --target="$BINARY_ARCH-unknown-freebsd"
+    cargo build --bin static-web-server -vv --release --target="$BINARY_ARCH-unknown-freebsd" $CARGO_FEATURES
   archive_script: |
     staging="static-web-server-$CIRRUS_TAG-$BINARY_ARCH-unknown-freebsd"
     mkdir -p "$staging/"
