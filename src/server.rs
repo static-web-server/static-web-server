@@ -3,14 +3,14 @@
 // See https://static-web-server.net/ for more information
 // Copyright (C) 2019-present Jose Quintana <joseluisq.net>
 
-//! Server module intended to construct a multi-thread HTTP or HTTP/2 web server.
+//! Server module intended to construct a multi-threaded HTTP or HTTP/2 web server.
 //!
 
 use hyper::server::Server as HyperServer;
 use listenfd::ListenFd;
 use std::net::{IpAddr, SocketAddr, TcpListener};
 use std::sync::Arc;
-use tokio::sync::watch::Receiver;
+use tokio::sync::{watch::Receiver, Mutex};
 
 use crate::handler::{RequestHandler, RequestHandlerOpts};
 #[cfg(any(unix, windows))]
@@ -27,7 +27,7 @@ use {
 use crate::{cors, helpers, Settings};
 use crate::{service::RouterService, Context, Result};
 
-/// Define a multi-thread HTTP or HTTP/2 web server.
+/// Define a multi-threaded HTTP or HTTP/2 web server.
 pub struct Server {
     opts: Settings,
     worker_threads: usize,
@@ -35,7 +35,7 @@ pub struct Server {
 }
 
 impl Server {
-    /// Create new multi-thread server instance.
+    /// Create a new multi-threaded server instance.
     pub fn new(opts: Settings) -> Result<Server> {
         // Configure number of worker threads
         let cpus = num_cpus::get();
@@ -52,14 +52,25 @@ impl Server {
         })
     }
 
-    /// Run the multi-thread `Server` as standalone.
-    /// It is a top-level function of [run_server_on_rt](#method.run_server_on_rt).
-    pub fn run_standalone(self) -> Result {
-        self.run_server_on_rt(None, || {})
+    /// Run the multi-threaded `Server` as standalone.
+    /// This is a top-level function of [run_server_on_rt](#method.run_server_on_rt).
+    ///
+    /// It accepts an optional [`cancel`] parameter to shut down the server
+    /// gracefully on demand as a complement to the termination signals handling.
+    ///
+    /// [`cancel`]: <https://docs.rs/tokio/latest/tokio/sync/watch/struct.Receiver.html>
+    pub fn run_standalone(self, cancel: Option<Receiver<()>>) -> Result {
+        self.run_server_on_rt(cancel, || {})
     }
 
-    /// Run the multi-thread `Server` which will be used by a Windows service.
-    /// It is a top-level function of [run_server_on_rt](#method.run_server_on_rt).
+    /// Run the multi-threaded `Server` which will be used by a Windows service.
+    /// This is a top-level function of [run_server_on_rt](#method.run_server_on_rt).
+    ///
+    /// It accepts an optional [`cancel`] parameter to shut down the server
+    /// gracefully on demand and an optional `cancel_fn` that will be executed
+    /// right after the server is shut down.
+    ///
+    /// [`cancel`]: <https://docs.rs/tokio/latest/tokio/sync/watch/struct.Receiver.html>
     #[cfg(windows)]
     pub fn run_as_service<F>(self, cancel: Option<Receiver<()>>, cancel_fn: F) -> Result
     where
@@ -68,12 +79,12 @@ impl Server {
         self.run_server_on_rt(cancel, cancel_fn)
     }
 
-    /// Build and run the multi-thread `Server` on the Tokio runtime.
+    /// Build and run the multi-threaded `Server` on the Tokio runtime.
     pub fn run_server_on_rt<F>(self, cancel_recv: Option<Receiver<()>>, cancel_fn: F) -> Result
     where
         F: FnOnce(),
     {
-        tracing::debug!(%self.worker_threads, "initializing tokio runtime with multi-thread scheduler");
+        tracing::debug!(%self.worker_threads, "initializing tokio runtime with multi-threaded scheduler");
 
         tokio::runtime::Builder::new_multi_thread()
             .worker_threads(self.worker_threads)
@@ -431,16 +442,24 @@ impl Server {
                 HyperServer::builder(TlsAcceptor::new(tls, incoming)).serve(router_service);
 
             #[cfg(unix)]
-            let http2_server = http2_server
-                .with_graceful_shutdown(signals::wait_for_signals(signals, grace_period));
+            let http2_cancel_recv = Arc::new(Mutex::new(_cancel_recv));
+            #[cfg(unix)]
+            let redirect_cancel_recv = http2_cancel_recv.clone();
+
+            #[cfg(unix)]
+            let http2_server = http2_server.with_graceful_shutdown(signals::wait_for_signals(
+                signals,
+                grace_period,
+                http2_cancel_recv,
+            ));
 
             #[cfg(windows)]
-            let http2_cancel_recv = Arc::new(tokio::sync::Mutex::new(_cancel_recv));
+            let http2_cancel_recv = Arc::new(Mutex::new(_cancel_recv));
             #[cfg(windows)]
             let redirect_cancel_recv = http2_cancel_recv.clone();
 
             #[cfg(windows)]
-            let http2_ctrlc_recv = Arc::new(tokio::sync::Mutex::new(Some(receiver)));
+            let http2_ctrlc_recv = Arc::new(Mutex::new(Some(receiver)));
             #[cfg(windows)]
             let redirect_ctrlc_recv = http2_ctrlc_recv.clone();
 
@@ -530,7 +549,7 @@ impl Server {
 
                 #[cfg(unix)]
                 let server_redirect = server_redirect.with_graceful_shutdown(
-                    signals::wait_for_signals(redirect_signals, grace_period),
+                    signals::wait_for_signals(redirect_signals, grace_period, redirect_cancel_recv),
                 );
                 #[cfg(windows)]
                 let server_redirect = server_redirect.with_graceful_shutdown(async move {
@@ -599,13 +618,19 @@ impl Server {
             .serve(router_service);
 
         #[cfg(unix)]
-        let http1_server =
-            http1_server.with_graceful_shutdown(signals::wait_for_signals(signals, grace_period));
+        let http1_cancel_recv = Arc::new(Mutex::new(_cancel_recv));
+
+        #[cfg(unix)]
+        let http1_server = http1_server.with_graceful_shutdown(signals::wait_for_signals(
+            signals,
+            grace_period,
+            http1_cancel_recv,
+        ));
 
         #[cfg(windows)]
-        let http1_cancel_recv = Arc::new(tokio::sync::Mutex::new(_cancel_recv));
+        let http1_cancel_recv = Arc::new(Mutex::new(_cancel_recv));
         #[cfg(windows)]
-        let http1_ctrlc_recv = Arc::new(tokio::sync::Mutex::new(Some(receiver)));
+        let http1_ctrlc_recv = Arc::new(Mutex::new(Some(receiver)));
 
         #[cfg(windows)]
         let http1_server = http1_server.with_graceful_shutdown(async move {
