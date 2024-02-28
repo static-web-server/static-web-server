@@ -6,6 +6,8 @@
 //! The module provides signals support like `SIGTERM`, `SIGINT` and `SIGQUIT`.
 //!
 
+use std::sync::Arc;
+use tokio::sync::{watch::Receiver, Mutex};
 use tokio::time::{sleep, Duration};
 
 #[cfg(unix)]
@@ -13,9 +15,6 @@ use {
     crate::Result, futures_util::stream::StreamExt, signal_hook::consts::signal::*,
     signal_hook_tokio::Signals,
 };
-
-#[cfg(windows)]
-use {std::sync::Arc, tokio::sync::watch::Receiver, tokio::sync::Mutex};
 
 #[cfg(unix)]
 #[cfg_attr(docsrs, doc(cfg(unix)))]
@@ -26,21 +25,42 @@ pub fn create_signals() -> Result<Signals> {
 
 #[cfg(unix)]
 /// It waits for a specific type of incoming signals included `ctrl+c`.
-pub async fn wait_for_signals(signals: Signals, grace_period_secs: u8) {
-    let mut signals = signals.fuse();
-    while let Some(signal) = signals.next().await {
-        match signal {
-            SIGHUP => {
-                // NOTE: for now we don't do something for SIGHUPs
-                tracing::debug!("SIGHUP caught, nothing to do about")
+pub async fn wait_for_signals(
+    signals: Signals,
+    grace_period_secs: u8,
+    cancel_recv: Arc<Mutex<Option<Receiver<()>>>>,
+) {
+    let (first_tx, mut base_rx) = tokio::sync::mpsc::channel(1);
+    let last_tx = first_tx.clone();
+
+    tokio::spawn(async move {
+        let mut signals = signals.fuse();
+        while let Some(signal) = signals.next().await {
+            match signal {
+                SIGHUP => {
+                    // NOTE: for now we don't do something for SIGHUPs
+                    tracing::debug!("SIGHUP caught, nothing to do about")
+                }
+                SIGTERM | SIGINT | SIGQUIT => {
+                    tracing::info!("SIGTERM, SIGINT or SIGQUIT signal caught");
+                    first_tx.send(()).await.ok();
+                    break;
+                }
+                _ => unreachable!(),
             }
-            SIGTERM | SIGINT | SIGQUIT => {
-                tracing::info!("SIGTERM, SIGINT or SIGQUIT signal caught");
-                break;
-            }
-            _ => unreachable!(),
         }
-    }
+    });
+
+    tokio::spawn(async move {
+        if let Some(recv) = &mut *cancel_recv.lock().await {
+            recv.changed().await.ok();
+            last_tx.send(()).await.ok();
+            tracing::info!("signals interrupted manually by cancel_recv");
+        }
+    });
+
+    base_rx.recv().await.take();
+
     // NOTE: once loop above is done then an upstream graceful shutdown should come next.
     delay_graceful_shutdown(grace_period_secs).await;
     tracing::info!("delegating server's graceful shutdown");

@@ -37,7 +37,7 @@ fn main() -> Result {
     }
 
     // Run the server by default
-    static_web_server::Server::new(opts)?.run_standalone()?;
+    static_web_server::Server::new(opts)?.run_standalone(None)?;
 
     Ok(())
 }
