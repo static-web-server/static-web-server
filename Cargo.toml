@@ -119,6 +119,12 @@ strip = true
 [package.metadata.docs.rs]
 all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
+default-target = "x86_64-unknown-linux-gnu"
+targets = [
+   "x86_64-unknown-linux-gnu",
+   "x86_64-apple-darwin",
+   "x86_64-pc-windows-msvc"
+]
 
 # workaround for https://github.com/cross-rs/cross/issues/1345
 [package.metadata.cross.target.x86_64-unknown-netbsd]
