@@ -13,7 +13,7 @@ use headers::{
     HeaderMapExt, HeaderName, HeaderValue, Origin,
 };
 use http::header;
-use std::{collections::HashSet, convert::TryFrom};
+use std::collections::HashSet;
 
 /// It defines CORS instance.
 #[derive(Clone, Debug)]
