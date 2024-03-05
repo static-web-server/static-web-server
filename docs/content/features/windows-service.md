@@ -20,6 +20,19 @@ To either install or uninstall the SWS Windows service requires *administrator* 
 
 We recommend a Powershell session with administrator privileges.
 
+## Windows Firewall
+
+You can serve content with SWS in a Windows network. However, if you face issues running SWS it could be due to missing firewall configuration. So you probably have to define an `inbound rule` to allow inbound network traffic on a specified TCP port of your choice.
+
+Follow the steps below to adjust your firewall:
+
+1. Configure an [Inbound Port Rule](https://docs.microsoft.com/en-us/windows/security/threat-protection/windows-firewall/create-an-inbound-port-rule) in your Windows firewall so clients can reach the server's port.
+2. In your SWS config file, use the server IP as a host or a non-routable address like `0.0.0.0` if you prefer.
+3. Create a Windows Service following https://sws.joseluisq.net/features/windows-service/ and start it.
+4. Finally, restart the service to apply the changes.
+
+Note that the steps above are general and you have to adjust your firewall rule(s) according to your needs.
+
 ## Install the service
 
 To install the SWS service use the `install` command along with a [configuration file](../configuration/config-file.md) for further SWS options customization.
