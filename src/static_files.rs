@@ -9,31 +9,26 @@
 // Part of the file is borrowed and adapted at a convenience from
 // https://github.com/seanmonstar/warp/blob/master/src/filters/fs.rs
 
-use bytes::{Bytes, BytesMut};
 use futures_util::{
     future,
     future::{Either, Future},
-    Stream,
 };
-use headers::{
-    AcceptRanges, ContentLength, ContentRange, ContentType, HeaderMap, HeaderMapExt, HeaderValue,
-    IfModifiedSince, IfRange, IfUnmodifiedSince, LastModified, Range,
-};
+use headers::{AcceptRanges, HeaderMap, HeaderMapExt, HeaderValue};
 use hyper::{header::CONTENT_ENCODING, header::CONTENT_LENGTH, Body, Method, Response, StatusCode};
-use percent_encoding::percent_decode_str;
 use std::fs::{File, Metadata};
-use std::io::{self, BufReader, Read, Seek, SeekFrom};
-use std::ops::Bound;
-use std::path::{Component, Path, PathBuf};
-use std::pin::Pin;
-use std::task::{Context, Poll};
+use std::io;
+use std::path::{Path, PathBuf};
+
+use crate::conditional_headers::ConditionalHeaders;
+use crate::file_path::{sanitize_path, PathExt};
+use crate::Result;
+use crate::{
+    file_response::response_body,
+    http_ext::{MethodExt, HTTP_SUPPORTED_METHODS},
+};
 
 #[cfg(feature = "compression")]
 use crate::compression_static;
-
-use crate::exts::http::{MethodExt, HTTP_SUPPORTED_METHODS};
-use crate::exts::path::PathExt;
-use crate::Result;
 
 #[cfg(feature = "directory-listing")]
 use crate::{
@@ -96,7 +91,7 @@ pub async fn handle<'a>(opts: &HandleOpts<'a>) -> Result<(Response<Body>, bool),
         metadata,
         is_dir,
         precompressed_variant,
-    } = composed_file_metadata(
+    } = get_composed_file_metadata(
         &mut file_path,
         headers_opt,
         opts.compression_static,
@@ -196,31 +191,10 @@ struct FileMetadata<'a> {
     pub precompressed_variant: Option<(PathBuf, &'a str)>,
 }
 
-/// Returns the result of trying to append a `.html` to the file path.
-/// * If the suffixed html path exists, it mutates the path to the suffixed one and returns the `Metadata`
-/// * If the suffixed html path doesn't exist, it reverts the path to it's original value
-fn suffix_file_html_metadata(file_path: &mut PathBuf) -> (&mut PathBuf, Option<Metadata>) {
-    tracing::debug!("file: appending .html to the path");
-    if let Some(filename) = file_path.file_name() {
-        let owned_filename = filename.to_os_string();
-        let mut owned_filename_with_html = owned_filename.clone();
-        owned_filename_with_html.push(".html");
-        file_path.set_file_name(owned_filename_with_html);
-        if let Ok(meta_res) = file_metadata(file_path) {
-            let (meta, _) = meta_res;
-            return (file_path, Some(meta));
-        } else {
-            // We roll-back to the previous filename
-            file_path.set_file_name(owned_filename);
-        }
-    }
-    (file_path, None)
-}
-
 /// Returns the final composed metadata containing
 /// the current `file_path` with its file metadata
 /// as well as its optional pre-compressed variant.
-async fn composed_file_metadata<'a>(
+async fn get_composed_file_metadata<'a>(
     mut file_path: &'a mut PathBuf,
     _headers: &'a HeaderMap<HeaderValue>,
     _compression_static: bool,
@@ -263,16 +237,16 @@ async fn composed_file_metadata<'a>(
                         (metadata, _) = meta_res;
                         index_found = true;
                         break;
-                    } else {
-                        // We remove only the appended index file
-                        file_path.pop();
-                        let new_meta: Option<Metadata>;
-                        (file_path, new_meta) = suffix_file_html_metadata(file_path);
-                        if let Some(new_meta) = new_meta {
-                            metadata = new_meta;
-                            index_found = true;
-                            break;
-                        }
+                    }
+
+                    // We remove only the appended index file
+                    file_path.pop();
+                    let new_meta: Option<Metadata>;
+                    (file_path, new_meta) = suffix_file_html_metadata(file_path);
+                    if let Some(new_meta) = new_meta {
+                        metadata = new_meta;
+                        index_found = true;
+                        break;
                     }
                 }
 
@@ -395,8 +369,7 @@ fn file_reply<'a>(
     meta: &'a Metadata,
     path_precompressed: Option<PathBuf>,
 ) -> impl Future<Output = Result<Response<Body>, StatusCode>> + Send + 'a {
-    let conditionals = get_conditional_headers(headers);
-
+    let conditionals = ConditionalHeaders::new(headers);
     let file_path = path_precompressed.as_ref().unwrap_or(path);
 
     match File::open(file_path) {
@@ -421,356 +394,26 @@ fn file_reply<'a>(
     }
 }
 
-fn get_conditional_headers(header_list: &HeaderMap<HeaderValue>) -> Conditionals {
-    let if_modified_since = header_list.typed_get::<IfModifiedSince>();
-    let if_unmodified_since = header_list.typed_get::<IfUnmodifiedSince>();
-    let if_range = header_list.typed_get::<IfRange>();
-    let range = header_list.typed_get::<Range>();
+/// Returns the result of trying to append a `.html` to the file path.
+/// * If the suffixed html path exists, it mutates the path to the suffixed one and returns the `Metadata`
+/// * If the suffixed html path doesn't exist, it reverts the path to it's original value
+fn suffix_file_html_metadata(file_path: &mut PathBuf) -> (&mut PathBuf, Option<Metadata>) {
+    tracing::debug!("file: appending .html to the path");
 
-    Conditionals {
-        if_modified_since,
-        if_unmodified_since,
-        if_range,
-        range,
-    }
-}
+    if let Some(filename) = file_path.file_name() {
+        let owned_filename = filename.to_os_string();
+        let mut owned_filename_with_html = owned_filename.clone();
 
-/// Sanitizes a base/tail paths and then it returns an unified one.
-fn sanitize_path(base: &Path, tail: &str) -> Result<PathBuf, StatusCode> {
-    let path_decoded = match percent_decode_str(tail.trim_start_matches('/')).decode_utf8() {
-        Ok(p) => p,
-        Err(err) => {
-            tracing::debug!("dir: failed to decode route={:?}: {:?}", tail, err);
-            return Err(StatusCode::UNSUPPORTED_MEDIA_TYPE);
-        }
-    };
+        owned_filename_with_html.push(".html");
+        file_path.set_file_name(owned_filename_with_html);
 
-    let path_decoded = Path::new(&*path_decoded);
-    let mut full_path = base.to_path_buf();
-    tracing::trace!("dir: base={:?}, route={:?}", full_path, path_decoded);
-
-    for component in path_decoded.components() {
-        match component {
-            Component::Normal(comp) => {
-                // Protect against paths like `/foo/c:/bar/baz`
-                // https://github.com/seanmonstar/warp/issues/937
-                if Path::new(&comp)
-                    .components()
-                    .all(|c| matches!(c, Component::Normal(_)))
-                {
-                    full_path.push(comp)
-                } else {
-                    tracing::debug!("dir: skipping segment with invalid prefix");
-                }
-            }
-            Component::CurDir => {}
-            Component::Prefix(_) | Component::RootDir | Component::ParentDir => {
-                tracing::debug!(
-                    "dir: skipping segment containing invalid prefix, dots or backslashes"
-                );
-            }
-        }
-    }
-    Ok(full_path)
-}
-
-#[derive(Debug)]
-struct Conditionals {
-    if_modified_since: Option<IfModifiedSince>,
-    if_unmodified_since: Option<IfUnmodifiedSince>,
-    if_range: Option<IfRange>,
-    range: Option<Range>,
-}
-
-enum Cond {
-    NoBody(Response<Body>),
-    WithBody(Option<Range>),
-}
-
-impl Conditionals {
-    fn check(self, last_modified: Option<LastModified>) -> Cond {
-        if let Some(since) = self.if_unmodified_since {
-            let precondition = last_modified
-                .map(|time| since.precondition_passes(time.into()))
-                .unwrap_or(false);
-
-            tracing::trace!(
-                "if-unmodified-since? {:?} vs {:?} = {}",
-                since,
-                last_modified,
-                precondition
-            );
-            if !precondition {
-                let mut res = Response::new(Body::empty());
-                *res.status_mut() = StatusCode::PRECONDITION_FAILED;
-                return Cond::NoBody(res);
-            }
+        if let Ok(meta_res) = file_metadata(file_path) {
+            let (meta, _) = meta_res;
+            return (file_path, Some(meta));
         }
 
-        if let Some(since) = self.if_modified_since {
-            tracing::trace!(
-                "if-modified-since? header = {:?}, file = {:?}",
-                since,
-                last_modified
-            );
-            let unmodified = last_modified
-                .map(|time| !since.is_modified(time.into()))
-                // no last_modified means its always modified
-                .unwrap_or(false);
-            if unmodified {
-                let mut res = Response::new(Body::empty());
-                *res.status_mut() = StatusCode::NOT_MODIFIED;
-                return Cond::NoBody(res);
-            }
-        }
-
-        if let Some(if_range) = self.if_range {
-            tracing::trace!("if-range? {:?} vs {:?}", if_range, last_modified);
-            let can_range = !if_range.is_modified(None, last_modified.as_ref());
-            if !can_range {
-                return Cond::WithBody(None);
-            }
-        }
-
-        Cond::WithBody(self.range)
-    }
-}
-
-#[cfg(unix)]
-const DEFAULT_READ_BUF_SIZE: usize = 4_096;
-
-#[cfg(not(unix))]
-const DEFAULT_READ_BUF_SIZE: usize = 8_192;
-
-fn optimal_buf_size(metadata: &Metadata) -> usize {
-    let block_size = get_block_size(metadata);
-
-    // If file length is smaller than block size,
-    // don't waste space reserving a bigger-than-needed buffer.
-    std::cmp::min(block_size as u64, metadata.len()) as usize
-}
-
-#[cfg(unix)]
-fn get_block_size(metadata: &Metadata) -> usize {
-    use std::os::unix::fs::MetadataExt;
-    // TODO: blksize() returns u64, should handle bad cast...
-    // (really, a block size bigger than 4gb?)
-
-    // Use device blocksize unless it's really small.
-    std::cmp::max(metadata.blksize() as usize, DEFAULT_READ_BUF_SIZE)
-}
-
-#[cfg(not(unix))]
-fn get_block_size(_metadata: &Metadata) -> usize {
-    DEFAULT_READ_BUF_SIZE
-}
-
-#[derive(Debug)]
-struct FileStream<T> {
-    reader: T,
-    buf_size: usize,
-}
-
-impl<T: Read + Unpin> Stream for FileStream<T> {
-    type Item = Result<Bytes>;
-
-    fn poll_next(self: Pin<&mut Self>, _: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        let mut buf = BytesMut::zeroed(self.buf_size);
-        match Pin::into_inner(self).reader.read(&mut buf[..]) {
-            Ok(n) => {
-                if n == 0 {
-                    Poll::Ready(None)
-                } else {
-                    buf.truncate(n);
-                    Poll::Ready(Some(Ok(buf.freeze())))
-                }
-            }
-            Err(err) => Poll::Ready(Some(Err(anyhow::Error::from(err)))),
-        }
-    }
-}
-
-async fn response_body(
-    mut file: File,
-    path: &PathBuf,
-    meta: &Metadata,
-    conditionals: Conditionals,
-) -> Result<Response<Body>, StatusCode> {
-    let mut len = meta.len();
-    let modified = meta.modified().ok().map(LastModified::from);
-
-    match conditionals.check(modified) {
-        Cond::NoBody(resp) => Ok(resp),
-        Cond::WithBody(range) => {
-            let buf_size = optimal_buf_size(meta);
-            bytes_range(range, len)
-                .map(|(start, end)| {
-                    match file.seek(SeekFrom::Start(start)) {
-                        Ok(_) => (),
-                        Err(err) => {
-                            tracing::error!("seek file from start error: {:?}", err);
-                            return Err(StatusCode::INTERNAL_SERVER_ERROR);
-                        }
-                    };
-
-                    let sub_len = end - start;
-                    let reader = BufReader::new(file).take(sub_len);
-                    let stream = FileStream { reader, buf_size };
-
-                    let body = Body::wrap_stream(stream);
-                    let mut resp = Response::new(body);
-
-                    if sub_len != len {
-                        *resp.status_mut() = StatusCode::PARTIAL_CONTENT;
-                        resp.headers_mut().typed_insert(
-                            match ContentRange::bytes(start..end, len) {
-                                Ok(range) => range,
-                                Err(err) => {
-                                    tracing::error!("invalid content range error: {:?}", err);
-                                    let mut resp = Response::new(Body::empty());
-                                    *resp.status_mut() = StatusCode::RANGE_NOT_SATISFIABLE;
-                                    resp.headers_mut()
-                                        .typed_insert(ContentRange::unsatisfied_bytes(len));
-                                    return Ok(resp);
-                                }
-                            },
-                        );
-
-                        len = sub_len;
-                    }
-
-                    let mime = mime_guess::from_path(path).first_or_octet_stream();
-
-                    resp.headers_mut().typed_insert(ContentLength(len));
-                    resp.headers_mut().typed_insert(ContentType::from(mime));
-                    resp.headers_mut().typed_insert(AcceptRanges::bytes());
-
-                    if let Some(last_modified) = modified {
-                        resp.headers_mut().typed_insert(last_modified);
-                    }
-
-                    Ok(resp)
-                })
-                .unwrap_or_else(|BadRange| {
-                    // bad byte range
-                    let mut resp = Response::new(Body::empty());
-                    *resp.status_mut() = StatusCode::RANGE_NOT_SATISFIABLE;
-                    resp.headers_mut()
-                        .typed_insert(ContentRange::unsatisfied_bytes(len));
-                    Ok(resp)
-                })
-        }
-    }
-}
-
-struct BadRange;
-
-fn bytes_range(range: Option<Range>, max_len: u64) -> Result<(u64, u64), BadRange> {
-    let range = if let Some(range) = range {
-        range
-    } else {
-        return Ok((0, max_len));
-    };
-
-    let resp = range
-        .iter()
-        .map(|(start, end)| {
-            tracing::trace!("range request received, {:?}-{:?}-{}", start, end, max_len);
-
-            let (start, end) = match (start, end) {
-                (Bound::Unbounded, Bound::Unbounded) => (0, max_len),
-                (Bound::Included(a), Bound::Included(b)) => {
-                    // `start` can not be greater than `end`
-                    if a > b {
-                        return Err(BadRange);
-                    }
-                    // For the special case where b == the file size
-                    (a, if b == max_len { b } else { b + 1 })
-                }
-                (Bound::Included(a), Bound::Unbounded) => (a, max_len),
-                (Bound::Unbounded, Bound::Included(b)) => {
-                    if b > max_len {
-                        // `Range` request out of bounds, return only what's available
-                        tracing::trace!("unsatisfiable byte range: -{}/{}", b, max_len);
-                        tracing::trace!("returning only what's available: 0-{}", max_len);
-                        (0, max_len)
-                    } else {
-                        (max_len - b, max_len)
-                    }
-                }
-                _ => unreachable!(),
-            };
-
-            if start < end && end <= max_len {
-                tracing::trace!("range request to return: {}-{}/{}", start, end, max_len);
-                return Ok((start, end));
-            }
-
-            tracing::trace!("unsatisfiable byte range: {}-{}/{}", start, end, max_len);
-
-            if start < end && start <= max_len {
-                // `Range` request out of bounds, return only what's available
-                tracing::trace!(
-                    "returning only what's available: {}-{}/{}",
-                    start,
-                    max_len,
-                    max_len
-                );
-                return Ok((start, max_len));
-            }
-
-            Err(BadRange)
-        })
-        .next()
-        // NOTE: default to `BadRange` in case of wrong `Range` bytes format
-        .unwrap_or(Err(BadRange));
-
-    resp
-}
-
-#[cfg(test)]
-mod tests {
-    use super::sanitize_path;
-    use std::path::PathBuf;
-
-    fn root_dir() -> PathBuf {
-        PathBuf::from("docker/public/")
+        file_path.set_file_name(owned_filename);
     }
 
-    #[test]
-    fn test_sanitize_path() {
-        let base_dir = &PathBuf::from("docker/public");
-
-        assert_eq!(
-            sanitize_path(base_dir, "/index.html").unwrap(),
-            root_dir().join("index.html")
-        );
-
-        // bad paths
-        assert_eq!(
-            sanitize_path(base_dir, "/../foo.html").unwrap(),
-            root_dir().join("foo.html"),
-        );
-        assert_eq!(
-            sanitize_path(base_dir, "/../W�foo.html").unwrap(),
-            root_dir().join("W�foo.html"),
-        );
-        assert_eq!(
-            sanitize_path(base_dir, "/%EF%BF%BD/../bar.html").unwrap(),
-            root_dir().join("�/bar.html"),
-        );
-        assert_eq!(
-            sanitize_path(base_dir, "àí/é%20/öüñ").unwrap(),
-            root_dir().join("àí/é /öüñ"),
-        );
-
-        #[cfg(unix)]
-        let expected_path = root_dir().join("C:\\/foo.html");
-        #[cfg(windows)]
-        let expected_path = PathBuf::from("docker/public/\\foo.html");
-        assert_eq!(
-            sanitize_path(base_dir, "/C:\\/foo.html").unwrap(),
-            expected_path
-        );
-    }
+    (file_path, None)
 }

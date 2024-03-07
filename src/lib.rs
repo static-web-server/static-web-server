@@ -124,7 +124,6 @@ pub mod custom_headers;
 #[cfg_attr(docsrs, doc(cfg(feature = "directory-listing")))]
 pub mod directory_listing;
 pub mod error_page;
-pub mod exts;
 #[cfg(feature = "fallback-page")]
 #[cfg_attr(docsrs, doc(cfg(feature = "fallback-page")))]
 pub mod fallback_page;
@@ -134,6 +133,11 @@ pub mod handler;
 pub mod https_redirect;
 #[macro_use]
 pub mod logger;
+pub(crate) mod conditional_headers;
+pub(crate) mod file_path;
+pub(crate) mod file_response;
+pub(crate) mod file_stream;
+pub(crate) mod http_ext;
 pub mod maintenance_mode;
 pub mod redirects;
 pub mod rewrites;

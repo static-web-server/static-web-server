@@ -20,7 +20,7 @@ use std::io;
 use std::path::Path;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use crate::{exts::http::MethodExt, Context, Result};
+use crate::{http_ext::MethodExt, Context, Result};
 
 #[derive(Debug, Serialize, Deserialize, Clone, ValueEnum)]
 #[serde(rename_all = "lowercase")]
