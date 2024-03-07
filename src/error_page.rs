@@ -11,7 +11,7 @@ use hyper::{Body, Method, Response, StatusCode, Uri};
 use mime_guess::mime;
 use std::path::Path;
 
-use crate::{exts::http::MethodExt, helpers, Result};
+use crate::{helpers, http_ext::MethodExt, Result};
 
 /// It returns a HTTP error response which also handles available `404` or `50x` HTML content.
 pub fn error_response(

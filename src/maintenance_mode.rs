@@ -11,7 +11,7 @@ use hyper::{Body, Method, Response, StatusCode};
 use mime_guess::mime;
 use std::path::Path;
 
-use crate::{exts::http::MethodExt, helpers, Result};
+use crate::{helpers, http_ext::MethodExt, Result};
 
 const DEFAULT_BODY_CONTENT: &str = "The server is under maintenance mode";
 

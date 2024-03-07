@@ -21,7 +21,7 @@ use crate::fallback_page;
 
 use crate::{
     control_headers, cors, custom_headers, error_page,
-    exts::http::MethodExt,
+    http_ext::MethodExt,
     maintenance_mode, redirects, rewrites, security_headers,
     settings::{file::RedirectsKind, Advanced},
     static_files::{self, HandleOpts},

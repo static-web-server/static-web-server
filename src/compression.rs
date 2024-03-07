@@ -30,7 +30,7 @@ use std::pin::Pin;
 use std::task::{Context, Poll};
 use tokio_util::io::{ReaderStream, StreamReader};
 
-use crate::{exts::http::MethodExt, Result};
+use crate::{http_ext::MethodExt, Result};
 
 /// Contains a fixed list of common text-based MIME types in order to apply compression.
 pub const TEXT_MIME_TYPES: [&str; 24] = [
