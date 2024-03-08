@@ -4,7 +4,7 @@
 
 It is provided in three Docker image variants such as [Scratch](https://hub.docker.com/_/scratch), [Alpine](https://hub.docker.com/_/alpine) and [Debian](https://hub.docker.com/_/debian) images.
 
-All images are available on [Docker Hub](https://hub.docker.com/r/joseluisq/static-web-server/) and [GitHub Container Registry](https://github.com/static-web-server/static-web-server/pkgs/container/static-web-server)
+All images are available on [Docker Hub](https://hub.docker.com/r/joseluisq/static-web-server/) and [GitHub Container Registry](https://github.com/static-web-server/static-web-server/pkgs/container/static-web-server).
 
 ## OS/Arch
 
@@ -88,31 +88,107 @@ FROM ghcr.io/static-web-server/static-web-server:2-debian
 
 ## Docker Compose
 
-Below is a [Docker Compose](https://docs.docker.com/compose/) example using the [Traefik Proxy](https://traefik.io/traefik/).
+Example using [Docker Compose](https://docs.docker.com/compose/).
 
 ```yaml
 version: "3.3"
 
 services:
-  web:
+  website:
+    image: joseluisq/static-web-server:2-alpine
+    container_name: "website"
+    ports:
+      - 80:80
+    restart: unless-stopped
+    environment:
+      # Note: those envs are customizable but also optional
+      - SERVER_ROOT=/var/public
+      - SERVER_CONFIG_FILE=/etc/config.toml
+    volumes:
+      - ./public:/var/public
+      - ./config.toml:/etc/config.toml
+```
+
+## Traefik Proxy
+
+Example using [Docker Swarm](https://docs.docker.com/engine/swarm/) and [Traefik Proxy](https://traefik.io/traefik/).
+
+1. Create an external `traefik_net` Docker attachable network for Traefik:
+    - `docker network create --driver=overlay --attachable traefik_net`
+2. Map a host directory like `/var/www/website` to the service container or create an external `website_data` Docker volume if you prefer:
+    - `docker volume create website_data`
+
+```yaml
+version: "3.3"
+
+services:
+  traefik:
+    image: "traefik:v2.11"
+    command:
+      #- "--log.level=DEBUG"
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+    ports:
+      - "80:80"
+      - "8080:8080"
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+
+  website:
     image: joseluisq/static-web-server:2
     environment:
       # Note: those envs are customizable but also optional
-      - SERVER_HOST=127.0.0.1
-      - SERVER_PORT=80
       - SERVER_ROOT=/public
     volumes:
-      - ./some-dir-path:/public
+      - /var/www/website:/public
+      # Or use an existing Docker volume
+      # - website_data:/public
     labels:
       - "traefik.enable=true"
-      - "traefik.frontend.entryPoints=https"
-      - "traefik.backend=localhost_dev"
-      - "traefik.frontend.rule=Host:localhost.dev"
-      - "traefik.port=80"
+      - "traefik.docker.network=traefik_net"
+      - "traefik.http.routers.website.entrypoints=web"
+      - "traefik.http.routers.website.rule=Host(`website.localhost`)"
+      - "traefik.http.routers.website.priority=1"
+      - "traefik.http.services.website.loadbalancer.server.port=80"
     networks:
       - traefik_net
+
+# volumes:
+#   website_data:
+#     external: true
 
 networks:
   traefik_net:
     external: true
 ```
+
+## Kubernetes
+
+Example using [Kubernetes](https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/) pod with liveness probe.
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: website
+spec:
+  containers:
+    - name: sws
+      image: ghcr.io/static-web-server/static-web-server
+      command:
+        - static-web-server
+        - --root=/public
+        - --health
+      ports:
+      - containerPort: 80
+      livenessProbe:
+        httpGet:
+          path: /health
+          port: http
+```
+
+## TrueNAS SCALE
+
+If you use Kubernetes with [TrueNAS SCALE](https://www.truenas.com/truenas-scale/) then check out the [TrueCharts Community Website](https://truecharts.org/charts/stable/static-web-server/) and its [Introduction to SCALE](https://truecharts.org/manual/SCALE/guides/scale-intro) page to deploy an SWS application in your instance.  
