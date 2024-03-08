@@ -6,7 +6,7 @@
 //! It provides directory listig and auto-index support.
 //!
 
-use chrono::{DateTime, Local, NaiveDateTime, Utc};
+use chrono::{DateTime, Local, Utc};
 use clap::ValueEnum;
 use futures_util::{future, future::Either, FutureExt};
 use headers::{ContentLength, ContentType, HeaderMapExt};
@@ -534,14 +534,9 @@ fn parse_last_modified(modified: SystemTime) -> Result<DateTime<Local>> {
     // the modification time of a file with greater than second
     // precision appears to be something that only is possible to
     // do on Linux.
-
-    let utc_dt =
-        NaiveDateTime::from_timestamp_opt(since_epoch.as_secs() as i64, since_epoch.subsec_nanos());
-
+    let utc_dt = DateTime::from_timestamp(since_epoch.as_secs() as i64, since_epoch.subsec_nanos());
     match utc_dt {
-        Some(utc_dt) => {
-            Ok(DateTime::<Utc>::from_naive_utc_and_offset(utc_dt, Utc).with_timezone(&Local))
-        }
+        Some(utc_dt) => Ok(utc_dt.with_timezone(&Local)),
         None => Err(anyhow!(
             "out-of-range number of seconds and/or invalid nanosecond"
         )),
