@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _**Note:** See changelog for v1 under the [1.x](https://github.com/static-web-server/static-web-server/blob/1.x/CHANGELOG.md) branch._
 
+## v2.28.0 - 2024-03-09
+
+This new `v2.28.0` release brings several dependency updates and bug fixes. Cancellation ability to shut down the server gracefully on demand when using the library, Docker examples and Windows Firewall instructions as well as other improvements.
+
+__Fixes__
+
+- [769daf1](https://github.com/static-web-server/static-web-server/commit/769daf1) Bugfix/security dependency updates including mio, ring, http, rustls-pemfile, regex, chrono, clap and other crates (also [a97cc77](https://github.com/static-web-server/static-web-server/commit/a97cc77)).
+- [e031a7d](https://github.com/static-web-server/static-web-server/commit/e031a7d) Docker: Debian 12.5 image update.
+- [b6444f4](https://github.com/static-web-server/static-web-server/commit/b6444f4) Crate: `TryFrom` imported redundantly in Rust nightly. PR [#318](https://github.com/static-web-server/static-web-server/pull/318) by [@yonas](https://github.com/yonas).
+
+__Features__
+
+- [afd6a87](https://github.com/static-web-server/static-web-server/commit/afd6a87) Crate: Cancellation ability for `server::Server::run_server_on_rt` and `server::Server::run_standalone` functions in Linux/BSDs. PR [#319](https://github.com/static-web-server/static-web-server/pull/319) resolves [#315](https://github.com/orgs/static-web-server/discussions/315) suggested by [@hanaTsuk1](https://github.com/hanaTsuk1).
+
+__Refactorings__
+
+- [a68349c](https://github.com/static-web-server/static-web-server/commit/a68349c) Crate: Add targets to Crate docs metadata.
+- [afa8575](https://github.com/static-web-server/static-web-server/commit/afa8575) Misc: Refactor the static files module and delegate functionality to separated files. PR [#329](https://github.com/static-web-server/static-web-server/pull/329).
+
+__Docs__
+
+- [9fb2111](https://github.com/static-web-server/static-web-server/commit/9fb2111) Windows Firewall rule instructions for the Windows service feature. See [docs](https://static-web-server.net/features/windows-service/#windows-firewall).
+- [668ecfe](https://github.com/static-web-server/static-web-server/commit/668ecfe) Docker and related examples. It resolves [#323](https://github.com/static-web-server/static-web-server/issues/323) suggested by [@hanscees](https://github.com/hanscees). See [docs](https://static-web-server.net/features/docker/#dockerfile).
+
 ## v2.27.0 - 2024-02-13
 
 This new `v2.27.0` release brings a few dependency updates and bug fixes. Two new Cargo feature flags and fixes a regression introduced by the previous release when building SWS from source.
