@@ -35,4 +35,5 @@ jobs:
       - name: Publish workspace packages
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_TOKEN }}
-        run: cargo publish -p static-web-server
+          RUSTDOCFLAGS: '--cfg=docsrs --deny=warnings'
+        run: cargo publish --all-features --package static-web-server

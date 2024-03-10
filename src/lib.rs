@@ -99,7 +99,7 @@
 #![deny(warnings)]
 #![deny(rust_2018_idioms)]
 #![deny(dead_code)]
-#![cfg_attr(docsrs, feature(doc_cfg))]
+#![cfg_attr(docsrs, feature(doc_cfg, doc_auto_cfg))]
 
 // Extern crates
 #[macro_use]
