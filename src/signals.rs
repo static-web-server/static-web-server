@@ -18,6 +18,7 @@ use {
 
 #[cfg(unix)]
 #[cfg_attr(docsrs, doc(cfg(unix)))]
+#[inline]
 /// It creates a common list of signals stream for `SIGTERM`, `SIGINT` and `SIGQUIT` to be observed.
 pub fn create_signals() -> Result<Signals> {
     Ok(Signals::new([SIGHUP, SIGTERM, SIGINT, SIGQUIT])?)
@@ -66,6 +67,7 @@ pub async fn wait_for_signals(
     tracing::info!("delegating server's graceful shutdown");
 }
 
+#[inline]
 /// Function intended to delay the server's graceful shutdown providing a grace period in seconds.
 async fn delay_graceful_shutdown(grace_period_secs: u8) {
     if grace_period_secs > 0 {

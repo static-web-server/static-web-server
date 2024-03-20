@@ -7,7 +7,10 @@
 
 use hyper::StatusCode;
 use percent_encoding::percent_decode_str;
-use std::path::{Component, Path, PathBuf};
+use std::{
+    borrow::Cow,
+    path::{Component, Path, PathBuf},
+};
 
 /// SWS Path extensions trait.
 pub(crate) trait PathExt {
@@ -27,16 +30,20 @@ impl PathExt for Path {
     }
 }
 
-/// Sanitizes a base/tail paths and then it returns an unified one.
-pub(crate) fn sanitize_path(base: &Path, tail: &str) -> Result<PathBuf, StatusCode> {
-    let path_decoded = match percent_decode_str(tail.trim_start_matches('/')).decode_utf8() {
-        Ok(p) => p,
+#[inline]
+fn decode_tail_path(tail: &str) -> Result<Cow<'_, str>, StatusCode> {
+    match percent_decode_str(tail.trim_start_matches('/')).decode_utf8() {
+        Ok(p) => Ok(p),
         Err(err) => {
             tracing::debug!("dir: failed to decode route={:?}: {:?}", tail, err);
-            return Err(StatusCode::UNSUPPORTED_MEDIA_TYPE);
+            Err(StatusCode::UNSUPPORTED_MEDIA_TYPE)
         }
-    };
+    }
+}
 
+/// Sanitizes a base/tail paths and then it returns an unified one.
+pub(crate) fn sanitize_path(base: &Path, tail: &str) -> Result<PathBuf, StatusCode> {
+    let path_decoded = decode_tail_path(tail)?;
     let path_decoded = Path::new(&*path_decoded);
     let mut full_path = base.to_path_buf();
     tracing::trace!("dir: base={:?}, route={:?}", full_path, path_decoded);

@@ -24,17 +24,7 @@ const CACHE_EXT_ONE_YEAR: [&str; 32] = [
 
 /// It appends a `Cache-Control` header to a response if that one is part of a set of file types.
 pub fn append_headers(uri: &str, resp: &mut Response<Body>) {
-    // Default max-age value in seconds (one day)
-    let mut max_age = MAX_AGE_ONE_DAY;
-
-    if let Some(extension) = uri_file_extension(uri) {
-        if CACHE_EXT_ONE_HOUR.binary_search(&extension).is_ok() {
-            max_age = MAX_AGE_ONE_HOUR;
-        } else if CACHE_EXT_ONE_YEAR.binary_search(&extension).is_ok() {
-            max_age = MAX_AGE_ONE_YEAR;
-        }
-    }
-
+    let max_age = get_max_age(uri);
     resp.headers_mut().insert(
         "cache-control",
         format!(
@@ -50,8 +40,24 @@ pub fn append_headers(uri: &str, resp: &mut Response<Body>) {
 /// Gets the file extension for a URI.
 ///
 /// This assumes the extension contains a single dot. e.g. for "/file.tar.gz" it returns "gz".
-fn uri_file_extension(uri: &str) -> Option<&str> {
+#[inline]
+fn get_file_extension(uri: &str) -> Option<&str> {
     uri.rsplit_once('.').map(|(_, rest)| rest)
+}
+
+#[inline]
+fn get_max_age(uri: &str) -> u64 {
+    // Default max-age value in seconds (one day)
+    let mut max_age = MAX_AGE_ONE_DAY;
+
+    if let Some(extension) = get_file_extension(uri) {
+        if CACHE_EXT_ONE_HOUR.binary_search(&extension).is_ok() {
+            max_age = MAX_AGE_ONE_HOUR;
+        } else if CACHE_EXT_ONE_YEAR.binary_search(&extension).is_ok() {
+            max_age = MAX_AGE_ONE_YEAR;
+        }
+    }
+    max_age
 }
 
 #[cfg(test)]
@@ -59,7 +65,7 @@ mod tests {
     use hyper::{Body, Response, StatusCode};
 
     use super::{
-        append_headers, uri_file_extension, CACHE_EXT_ONE_HOUR, CACHE_EXT_ONE_YEAR,
+        append_headers, get_file_extension, CACHE_EXT_ONE_HOUR, CACHE_EXT_ONE_YEAR,
         MAX_AGE_ONE_DAY, MAX_AGE_ONE_HOUR, MAX_AGE_ONE_YEAR,
     };
 
@@ -114,8 +120,8 @@ mod tests {
 
     #[test]
     fn find_uri_extension() {
-        assert_eq!(uri_file_extension("/potato.zip"), Some("zip"));
-        assert_eq!(uri_file_extension("/potato."), Some(""));
-        assert_eq!(uri_file_extension("/"), None);
+        assert_eq!(get_file_extension("/potato.zip"), Some("zip"));
+        assert_eq!(get_file_extension("/potato."), Some(""));
+        assert_eq!(get_file_extension("/"), None);
     }
 }

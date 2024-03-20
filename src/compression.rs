@@ -200,6 +200,7 @@ pub fn create_encoding_header(existing: Option<HeaderValue>, coding: ContentCodi
 }
 
 /// Try to get the prefered `content-encoding` via the `accept-encoding` header.
+#[inline]
 pub fn get_prefered_encoding(headers: &HeaderMap<HeaderValue>) -> Option<ContentCoding> {
     if let Some(ref accept_encoding) = headers.typed_get::<AcceptEncoding>() {
         return accept_encoding.prefered_encoding();
@@ -236,6 +237,7 @@ where
 }
 
 impl From<Body> for CompressableBody<Body, hyper::Error> {
+    #[inline]
     fn from(body: Body) -> Self {
         CompressableBody { body }
     }

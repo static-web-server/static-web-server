@@ -46,6 +46,7 @@ impl<T: Read + Unpin> Stream for FileStream<T> {
     }
 }
 
+#[inline]
 pub(crate) fn optimal_buf_size(metadata: &Metadata) -> usize {
     let block_size = get_block_size(metadata);
     // If file length is smaller than block size,
@@ -54,6 +55,7 @@ pub(crate) fn optimal_buf_size(metadata: &Metadata) -> usize {
 }
 
 #[cfg(unix)]
+#[inline]
 fn get_block_size(metadata: &Metadata) -> usize {
     use std::os::unix::fs::MetadataExt;
     // TODO: blksize() returns u64, should handle bad cast...
@@ -64,6 +66,7 @@ fn get_block_size(metadata: &Metadata) -> usize {
 }
 
 #[cfg(not(unix))]
+#[inline]
 fn get_block_size(_metadata: &Metadata) -> usize {
     DEFAULT_READ_BUF_SIZE
 }

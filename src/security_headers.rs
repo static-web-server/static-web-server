@@ -13,6 +13,7 @@ use hyper::{Body, Response};
 
 /// It appends security headers like `Strict-Transport-Security: max-age=63072000; includeSubDomains; preload` (2 years max-age),
 ///`X-Frame-Options: DENY` and `Content-Security-Policy: frame-ancestors 'self'`.
+#[inline]
 pub fn append_headers(resp: &mut Response<Body>) {
     // Strict-Transport-Security (HSTS)
     resp.headers_mut().insert(

@@ -11,6 +11,7 @@ use hyper::{Body, Response};
 use crate::settings::Headers;
 
 /// Append custom HTTP headers to current response.
+#[inline]
 pub fn append_headers(uri_path: &str, headers_opts: Option<&[Headers]>, resp: &mut Response<Body>) {
     if let Some(headers_vec) = headers_opts {
         for headers_entry in headers_vec.iter() {

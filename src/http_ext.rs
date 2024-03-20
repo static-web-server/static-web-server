@@ -24,21 +24,25 @@ pub trait MethodExt {
 
 impl MethodExt for Method {
     /// Checks if the HTTP method is allowed (supported) by SWS.
+    #[inline]
     fn is_allowed(&self) -> bool {
         HTTP_SUPPORTED_METHODS.iter().any(|h| self == h)
     }
 
     /// Checks if the HTTP method is `GET`.
+    #[inline]
     fn is_get(&self) -> bool {
         self == Method::GET
     }
 
     /// Checks if the HTTP method is `HEAD`.
+    #[inline]
     fn is_head(&self) -> bool {
         self == Method::HEAD
     }
 
     /// Checks if the HTTP method is `OPTIONS`.
+    #[inline]
     fn is_options(&self) -> bool {
         self == Method::OPTIONS
     }
