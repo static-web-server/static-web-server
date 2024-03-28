@@ -73,6 +73,15 @@ maintenance-mode = false
 # maintenance-mode-status = 503 
 # maintenance-mode-file = "maintenance.html"
 
+#### In-Memory cache
+memory-cache = false
+# Maximum number of file entries in the cache (defaut `512` entries).
+# memory-cache-max-size = 512
+# Maximum size in megabytes per file to be cached (default `8MB`).
+# memory-cache-file-max-size = 8
+# TTL (Time-to-live) expiration in seconds per file in the cache. (default `60min`).
+# memory-cache-file-ttl = 3600
+
 ### Windows Only
 
 #### Run the web server as a Windows Service

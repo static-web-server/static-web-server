@@ -14,13 +14,17 @@ use futures_util::{
     future::{Either, Future},
 };
 use headers::{AcceptRanges, HeaderMap, HeaderMapExt, HeaderValue};
-use hyper::{header::CONTENT_ENCODING, header::CONTENT_LENGTH, Body, Method, Response, StatusCode};
+use hyper::{
+    header::{CONTENT_ENCODING, CONTENT_LENGTH},
+    Body, Method, Response, StatusCode,
+};
 use std::fs::{File, Metadata};
 use std::io;
 use std::path::{Path, PathBuf};
 
 use crate::conditional_headers::ConditionalHeaders;
 use crate::file_path::{sanitize_path, PathExt};
+use crate::mem_cache::{MemCacheOpts, CACHE_STORE};
 use crate::Result;
 use crate::{
     file_response::response_body,
@@ -42,6 +46,8 @@ const DEFAULT_INDEX_FILES: &[&str; 1] = &["index.html"];
 pub struct HandleOpts<'a> {
     /// Request method.
     pub method: &'a Method,
+    /// In-memory files cache feature.
+    pub memory_cache: Option<&'a MemCacheOpts>,
     /// Request headers.
     pub headers: &'a HeaderMap<HeaderValue>,
     /// Request base path.
@@ -85,6 +91,42 @@ pub async fn handle<'a>(opts: &HandleOpts<'a>) -> Result<(Response<Body>, bool),
 
     let headers_opt = opts.headers;
     let mut file_path = sanitize_path(opts.base_path, uri_path)?;
+    let memory_cache = opts.memory_cache;
+
+    // In-memory file cache feature with eviction policy
+    if memory_cache.is_some() {
+        if let Some(path_str) = file_path.to_str() {
+            if let Ok(mut cache) = CACHE_STORE.get().unwrap().lock() {
+                match cache.get(path_str) {
+                    Some(mem_file) => {
+                        if !mem_file.has_expired() {
+                            tracing::debug!(
+                                "file `{}` found in the in-memory cache store and valid, returning it immediately",
+                                path_str
+                            );
+                            let resp = mem_file.response_body(headers_opt)?;
+                            let is_precompressed = false;
+                            return Ok((resp, is_precompressed));
+                        }
+
+                        // Otherwise, if the file has expired due to TTL
+                        // then remove it from the cache and continue
+                        cache.remove(path_str);
+                        tracing::debug!(
+                            "file `{}` found in the in-memory cache store but TTL has expired, removed",
+                            path_str
+                        );
+                    }
+                    _ => {
+                        tracing::debug!(
+                            "file `{}` was not found in the in-memory cache store, continuing",
+                            path_str
+                        );
+                    }
+                }
+            }
+        }
+    }
 
     let FileMetadata {
         file_path,
@@ -161,7 +203,14 @@ pub async fn handle<'a>(opts: &HandleOpts<'a>) -> Result<(Response<Body>, bool),
     // Check for a pre-compressed file variant if present under the `opts.compression_static` context
     if let Some(precompressed_meta) = precompressed_variant {
         let (precomp_path, precomp_ext) = precompressed_meta;
-        let mut resp = file_reply(headers_opt, file_path, &metadata, Some(precomp_path)).await?;
+        let mut resp = file_reply(
+            headers_opt,
+            file_path,
+            &metadata,
+            Some(precomp_path),
+            memory_cache,
+        )
+        .await?;
 
         // Prepare corresponding headers to let know how to decode the payload
         resp.headers_mut().remove(CONTENT_LENGTH);
@@ -171,7 +220,7 @@ pub async fn handle<'a>(opts: &HandleOpts<'a>) -> Result<(Response<Body>, bool),
         return Ok((resp, is_precompressed));
     }
 
-    let resp = file_reply(headers_opt, file_path, &metadata, None).await?;
+    let resp = file_reply(headers_opt, file_path, &metadata, None, memory_cache).await?;
 
     Ok((resp, is_precompressed))
 }
@@ -327,6 +376,7 @@ async fn get_composed_file_metadata<'a>(
                     }
                 }
             }
+
             #[cfg(not(feature = "compression"))]
             if let Some(new_meta) = new_meta {
                 return Ok(FileMetadata {
@@ -368,12 +418,13 @@ fn file_reply<'a>(
     path: &'a PathBuf,
     meta: &'a Metadata,
     path_precompressed: Option<PathBuf>,
+    memory_cache: Option<&'a MemCacheOpts>,
 ) -> impl Future<Output = Result<Response<Body>, StatusCode>> + Send + 'a {
     let conditionals = ConditionalHeaders::new(headers);
     let file_path = path_precompressed.as_ref().unwrap_or(path);
 
     match File::open(file_path) {
-        Ok(file) => Either::Left(response_body(file, path, meta, conditionals)),
+        Ok(file) => Either::Left(response_body(file, path, meta, conditionals, memory_cache)),
         Err(err) => {
             let status = match err.kind() {
                 io::ErrorKind::NotFound => {

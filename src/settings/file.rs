@@ -252,6 +252,15 @@ pub struct General {
     /// Custom maintenance mode HTML file.
     pub maintenance_mode_file: Option<PathBuf>,
 
+    /// In-memory files cache feature.
+    pub memory_cache: Option<bool>,
+    /// Maximum number of file entries in the cache (defaut `512` entries).
+    pub memory_cache_max_size: Option<usize>,
+    /// Maximum size in megabytes per file to be cached (default `8MB`).
+    pub memory_cache_file_max_size: Option<u64>,
+    /// TTL (Time-to-live) expiration in seconds per file in the cache. (default `60min`).
+    pub memory_cache_file_ttl: Option<u64>,
+
     #[cfg(windows)]
     /// windows service feature.
     pub windows_service: Option<bool>,

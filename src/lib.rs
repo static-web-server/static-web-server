@@ -139,6 +139,7 @@ pub(crate) mod file_response;
 pub(crate) mod file_stream;
 pub(crate) mod http_ext;
 pub mod maintenance_mode;
+pub mod mem_cache;
 pub mod redirects;
 pub mod rewrites;
 pub mod security_headers;

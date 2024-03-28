@@ -445,6 +445,45 @@ pub struct General {
     /// Provide a custom maintenance mode HTML file. If not provided then a generic message will be displayed.
     pub maintenance_mode_file: PathBuf,
 
+    #[arg(
+        long,
+        default_value = "false",
+        default_missing_value("true"),
+        num_args(0..=1),
+        require_equals(true),
+        action = clap::ArgAction::Set,
+        env = "SERVER_MEMORY_CACHE"
+    )]
+    /// Enable in-memory cache files functionality using the `SIEVE` eviction algorithm with TTL support.
+    pub memory_cache: bool,
+
+    #[arg(
+        long,
+        requires_if("true", "memory_cache"),
+        default_value = "512",
+        env = "SERVER_MEMORY_CACHE_MAX_SIZE"
+    )]
+    /// Maximum number of file entries in the cache (defaut `512` entries).
+    pub memory_cache_max_size: usize,
+
+    #[arg(
+        long,
+        requires_if("true", "memory_cache"),
+        default_value = "8",
+        env = "SERVER_MEMORY_CACHE_FILE_MAX_SIZE"
+    )]
+    /// Maximum size in megabytes per file to be cached (default `8MB`).
+    pub memory_cache_file_max_size: u64,
+
+    #[arg(
+        long,
+        requires_if("true", "memory_cache"),
+        default_value = "3600",
+        env = "SERVER_MEMORY_CACHE_FILE_TTL"
+    )]
+    /// TTL (Time-to-live) expiration in seconds per file in the cache. (default `60min`).
+    pub memory_cache_file_ttl: u64,
+
     //
     // Windows specific arguments and commands
     //
