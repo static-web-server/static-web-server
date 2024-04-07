@@ -24,7 +24,7 @@ mod tests {
 
     #[tokio::test]
     async fn handle_file() {
-        let (mut res, _) = static_files::handle(&HandleOpts {
+        let result = static_files::handle(&HandleOpts {
             method: &Method::GET,
             headers: &HeaderMap::new(),
             base_path: &root_dir(),
@@ -43,6 +43,7 @@ mod tests {
         })
         .await
         .expect("unexpected error response on `handle` function");
+        let mut res = result.resp;
 
         let buf = fs::read(root_dir().join("index.html"))
             .expect("unexpected error during index.html reading");
@@ -66,7 +67,7 @@ mod tests {
 
     #[tokio::test]
     async fn handle_file_head() {
-        let (mut res, _) = static_files::handle(&HandleOpts {
+        let result = static_files::handle(&HandleOpts {
             method: &Method::HEAD,
             headers: &HeaderMap::new(),
             base_path: &root_dir(),
@@ -85,6 +86,7 @@ mod tests {
         })
         .await
         .expect("unexpected error response on `handle` function");
+        let mut res = result.resp;
 
         let buf = fs::read(root_dir().join("index.html"))
             .expect("unexpected error during index.html reading");
@@ -140,7 +142,7 @@ mod tests {
 
     #[tokio::test]
     async fn handle_trailing_slash_redirection() {
-        let (mut res, _) = static_files::handle(&HandleOpts {
+        let result = static_files::handle(&HandleOpts {
             method: &Method::GET,
             headers: &HeaderMap::new(),
             base_path: &root_dir(),
@@ -159,6 +161,7 @@ mod tests {
         })
         .await
         .expect("unexpected error response on `handle` function");
+        let mut res = result.resp;
 
         assert_eq!(res.status(), 308);
         assert_eq!(res.headers()["location"], "assets/");
@@ -191,7 +194,8 @@ mod tests {
         })
         .await
         {
-            Ok((res, _)) => {
+            Ok(result) => {
+                let res = result.resp;
                 assert_eq!(res.status(), 308);
                 assert_eq!(res.headers()["location"], "assets/");
             }
@@ -222,7 +226,8 @@ mod tests {
         })
         .await
         {
-            Ok((res, _)) => {
+            Ok(result) => {
+                let res = result.resp;
                 assert_eq!(res.status(), 200);
             }
             Err(status) => {
@@ -258,7 +263,8 @@ mod tests {
                 })
                 .await
                 {
-                    Ok((mut res, _)) => {
+                    Ok(result) => {
+                        let mut res = result.resp;
                         if uri.is_empty() {
                             // it should redirect permanently
                             assert_eq!(res.status(), 308);
@@ -309,7 +315,8 @@ mod tests {
             })
             .await
             {
-                Ok((res, _)) => {
+                Ok(result) => {
+                    let res = result.resp;
                     assert_eq!(res.status(), 200);
                     assert_eq!(res.headers()["content-length"], buf.len().to_string());
                 }
@@ -378,7 +385,8 @@ mod tests {
             })
             .await
             {
-                Ok((res, _)) => {
+                Ok(result) => {
+                    let res = result.resp;
                     assert_eq!(res.status(), 200);
                     assert_eq!(res.headers()["content-length"], buf.len().to_string());
                     res
@@ -414,7 +422,8 @@ mod tests {
             })
             .await
             {
-                Ok((mut res, _)) => {
+                Ok(result) => {
+                    let mut res = result.resp;
                     assert_eq!(res.status(), 304);
                     assert_eq!(res.headers().get("content-length"), None);
                     let body = hyper::body::to_bytes(res.body_mut())
@@ -453,7 +462,8 @@ mod tests {
             })
             .await
             {
-                Ok((mut res, _)) => {
+                Ok(result) => {
+                    let mut res = result.resp;
                     assert_eq!(res.status(), 200);
                     let body = hyper::body::to_bytes(res.body_mut())
                         .await
@@ -490,7 +500,8 @@ mod tests {
             })
             .await
             {
-                Ok((res, _)) => {
+                Ok(result) => {
+                    let res = result.resp;
                     assert_eq!(res.status(), 200);
                     res
                 }
@@ -525,7 +536,8 @@ mod tests {
             })
             .await
             {
-                Ok((res, _)) => {
+                Ok(result) => {
+                    let res = result.resp;
                     assert_eq!(res.status(), 200);
                 }
                 Err(_) => {
@@ -559,7 +571,8 @@ mod tests {
             })
             .await
             {
-                Ok((mut res, _)) => {
+                Ok(result) => {
+                    let mut res = result.resp;
                     assert_eq!(res.status(), 412);
 
                     let body = hyper::body::to_bytes(res.body_mut())
@@ -607,9 +620,10 @@ mod tests {
             })
             .await
             {
-                Ok((mut res, _)) => match method {
+                Ok(result) => match method {
                     // The handle only accepts HEAD or GET request methods
                     Method::GET | Method::HEAD => {
+                        let mut res = result.resp;
                         let buf = fs::read(root_dir().join("index.html"))
                             .expect("unexpected error during index.html reading");
                         let buf = Bytes::from(buf);
@@ -669,7 +683,8 @@ mod tests {
             })
             .await
             {
-                Ok((res, _)) => {
+                Ok(result) => {
+                    let res = result.resp;
                     let res = compression::auto(method, &headers, res)
                         .expect("unexpected bytes error during body compression");
 
@@ -733,7 +748,8 @@ mod tests {
             })
             .await
             {
-                Ok((mut res, _)) => {
+                Ok(result) => {
+                    let mut res = result.resp;
                     assert_eq!(res.status(), 206);
                     assert_eq!(
                         res.headers()["content-range"],
@@ -781,7 +797,8 @@ mod tests {
             })
             .await
             {
-                Ok((mut res, _)) => {
+                Ok(result) => {
+                    let mut res = result.resp;
                     assert_eq!(res.status(), 206);
                     assert_eq!(
                         res.headers()["content-range"],
@@ -829,7 +846,8 @@ mod tests {
             })
             .await
             {
-                Ok((mut res, _)) => {
+                Ok(result) => {
+                    let mut res = result.resp;
                     assert_eq!(res.status(), 206);
                     assert_eq!(
                         res.headers()["content-range"],
@@ -878,7 +896,8 @@ mod tests {
             })
             .await
             {
-                Ok((res, _)) => {
+                Ok(result) => {
+                    let res = result.resp;
                     assert_eq!(res.status(), 200);
                     assert_eq!(res.headers()["content-length"], buf.len().to_string());
                     assert_eq!(res.headers().get("content-range"), None);
@@ -919,7 +938,8 @@ mod tests {
             })
             .await
             {
-                Ok((mut res, _)) => {
+                Ok(result) => {
+                    let mut res = result.resp;
                     assert_eq!(res.status(), 206);
                     assert_eq!(
                         res.headers()["content-range"],
@@ -970,7 +990,8 @@ mod tests {
             })
             .await
             {
-                Ok((mut res, _)) => {
+                Ok(result) => {
+                    let mut res = result.resp;
                     assert_eq!(res.status(), 206);
                     assert_eq!(
                         res.headers()["content-range"],
@@ -1018,7 +1039,8 @@ mod tests {
             })
             .await
             {
-                Ok((mut res, _)) => {
+                Ok(result) => {
+                    let mut res = result.resp;
                     assert_eq!(res.status(), 416);
                     assert_eq!(
                         res.headers()["content-range"],
@@ -1066,7 +1088,8 @@ mod tests {
             })
             .await
             {
-                Ok((mut res, _)) => {
+                Ok(result) => {
+                    let mut res = result.resp;
                     assert_eq!(res.status(), 416);
                     assert_eq!(
                         res.headers()["content-range"],
@@ -1117,7 +1140,8 @@ mod tests {
             })
             .await
             {
-                Ok((mut res, _)) => {
+                Ok(result) => {
+                    let mut res = result.resp;
                     assert_eq!(res.status(), 200);
                     assert!(res.headers().get("content-length").is_some());
                     let body = hyper::body::to_bytes(res.body_mut())
@@ -1158,7 +1182,8 @@ mod tests {
             })
             .await
             {
-                Ok((res, _)) => {
+                Ok(result) => {
+                    let res = result.resp;
                     assert_eq!(res.status(), 416);
                 }
                 Err(_) => {
@@ -1198,7 +1223,8 @@ mod tests {
             })
             .await
             {
-                Ok((mut res, _)) => {
+                Ok(result) => {
+                    let mut res = result.resp;
                     assert_eq!(res.status(), 206);
                     assert_eq!(
                         res.headers()["content-range"],
@@ -1253,7 +1279,8 @@ mod tests {
             })
             .await
             {
-                Ok((mut res, _)) => {
+                Ok(result) => {
+                    let mut res = result.resp;
                     assert_eq!(res.status(), 206);
                     assert_eq!(
                         res.headers()["content-range"],
@@ -1339,7 +1366,8 @@ mod tests {
             })
             .await
             {
-                Ok((mut res, _)) => {
+                Ok(result) => {
+                    let mut res = result.resp;
                     assert_eq!(res.status(), 200);
                     assert_eq!(res.headers()["content-length"], format!("{}", buf.len()));
                     let body = hyper::body::to_bytes(res.body_mut())

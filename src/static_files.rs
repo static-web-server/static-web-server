@@ -72,9 +72,19 @@ pub struct HandleOpts<'a> {
     pub ignore_hidden_files: bool,
 }
 
+/// Static file response with additional data.
+pub struct StaticFileResponse {
+    /// Inner HTTP response.
+    pub resp: Response<Body>,
+    /// If the inner HTTP response is already pre-compressed.
+    pub is_precompressed: bool,
+    /// The file path of the inner HTTP response.
+    pub file_path: PathBuf,
+}
+
 /// The server entry point to handle incoming requests which map to specific files
 /// on file system and return a file response.
-pub async fn handle<'a>(opts: &HandleOpts<'a>) -> Result<(Response<Body>, bool), StatusCode> {
+pub async fn handle<'a>(opts: &HandleOpts<'a>) -> Result<StaticFileResponse, StatusCode> {
     let method = opts.method;
     let uri_path = opts.uri_path;
 
@@ -104,6 +114,8 @@ pub async fn handle<'a>(opts: &HandleOpts<'a>) -> Result<(Response<Body>, bool),
         return Err(StatusCode::NOT_FOUND);
     }
 
+    let resp_file_path = file_path.to_owned();
+
     // `is_precompressed` relates to `opts.compression_static` value
     let is_precompressed = precompressed_variant.is_some();
 
@@ -124,7 +136,11 @@ pub async fn handle<'a>(opts: &HandleOpts<'a>) -> Result<(Response<Body>, bool),
         *resp.status_mut() = StatusCode::PERMANENT_REDIRECT;
 
         tracing::trace!("uri doesn't end with a slash so redirecting permanently");
-        return Ok((resp, is_precompressed));
+        return Ok(StaticFileResponse {
+            resp,
+            is_precompressed,
+            file_path: resp_file_path,
+        });
     }
 
     // Respond with the permitted communication methods
@@ -135,7 +151,11 @@ pub async fn handle<'a>(opts: &HandleOpts<'a>) -> Result<(Response<Body>, bool),
             .typed_insert(headers::Allow::from_iter(HTTP_SUPPORTED_METHODS.clone()));
         resp.headers_mut().typed_insert(AcceptRanges::bytes());
 
-        return Ok((resp, is_precompressed));
+        return Ok(StaticFileResponse {
+            resp,
+            is_precompressed,
+            file_path: resp_file_path,
+        });
     }
 
     // Directory listing
@@ -155,7 +175,11 @@ pub async fn handle<'a>(opts: &HandleOpts<'a>) -> Result<(Response<Body>, bool),
         })
         .await?;
 
-        return Ok((resp, is_precompressed));
+        return Ok(StaticFileResponse {
+            resp,
+            is_precompressed,
+            file_path: resp_file_path,
+        });
     }
 
     // Check for a pre-compressed file variant if present under the `opts.compression_static` context
@@ -168,12 +192,20 @@ pub async fn handle<'a>(opts: &HandleOpts<'a>) -> Result<(Response<Body>, bool),
         resp.headers_mut()
             .insert(CONTENT_ENCODING, precomp_ext.parse().unwrap());
 
-        return Ok((resp, is_precompressed));
+        return Ok(StaticFileResponse {
+            resp,
+            is_precompressed,
+            file_path: resp_file_path,
+        });
     }
 
     let resp = file_reply(headers_opt, file_path, &metadata, None).await?;
 
-    Ok((resp, is_precompressed))
+    Ok(StaticFileResponse {
+        resp,
+        is_precompressed,
+        file_path: resp_file_path,
+    })
 }
 
 /// It defines a composed file metadata structure containing the current file
