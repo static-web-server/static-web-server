@@ -18,6 +18,7 @@ use {
 
 #[cfg(unix)]
 #[cfg_attr(docsrs, doc(cfg(unix)))]
+#[inline]
 /// It creates a common list of signals stream for `SIGTERM`, `SIGINT` and `SIGQUIT` to be observed.
 pub fn create_signals() -> Result<Signals> {
     Ok(Signals::new([SIGHUP, SIGTERM, SIGINT, SIGQUIT])?)
