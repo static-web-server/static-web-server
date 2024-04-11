@@ -442,7 +442,10 @@ impl RequestHandler {
             })
             .await
             {
-                Ok((mut resp, _is_precompressed)) => {
+                Ok(result) => {
+                    let _is_precompressed = result.is_precompressed;
+                    let mut resp = result.resp;
+
                     // Append CORS headers if they are present
                     if let Some(cors_headers) = cors_headers {
                         if !cors_headers.is_empty() {
@@ -496,6 +499,7 @@ impl RequestHandler {
                             uri_path,
                             advanced.headers.as_deref(),
                             &mut resp,
+                            Some(&result.file_path),
                         )
                     }
 
@@ -564,6 +568,7 @@ impl RequestHandler {
                                 uri_path,
                                 advanced.headers.as_deref(),
                                 &mut resp,
+                                None,
                             )
                         }
 
