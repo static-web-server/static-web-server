@@ -72,7 +72,7 @@ pub struct HandleOpts<'a> {
     pub ignore_hidden_files: bool,
 }
 
-/// Static file response with additional data.
+/// Static file response type with additional data.
 pub struct StaticFileResponse {
     /// Inner HTTP response.
     pub resp: Response<Body>,

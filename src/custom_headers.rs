@@ -20,7 +20,7 @@ pub fn append_headers(
 ) {
     if let Some(headers_vec) = headers_opts {
         let mut uri_path_auto_index = None;
-        if uri_path.ends_with('/') && file_path.is_some() {
+        if file_path.is_some() && uri_path.ends_with('/') {
             if let Some(name) = file_path.unwrap().file_name().and_then(OsStr::to_str) {
                 if uri_path == "/" {
                     uri_path_auto_index = Some([uri_path, name].concat())
@@ -31,7 +31,7 @@ pub fn append_headers(
         }
 
         let uri_path = match uri_path_auto_index {
-            Some(ref v) => v.as_str(),
+            Some(ref s) => s.as_str(),
             _ => uri_path,
         };
 
