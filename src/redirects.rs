@@ -10,7 +10,6 @@ use crate::settings::Redirects;
 
 /// It returns a redirect's destination path and status code if the current request uri
 /// matches against the provided redirect's array.
-#[inline]
 pub fn get_redirection<'a>(
     uri_host: &'a str,
     uri_path: &'a str,

@@ -21,7 +21,6 @@ pub(crate) struct ConditionalHeaders {
 }
 
 impl ConditionalHeaders {
-    #[inline]
     pub(crate) fn new(headers: &HeaderMap<HeaderValue>) -> Self {
         let if_modified_since = headers.typed_get::<IfModifiedSince>();
         let if_unmodified_since = headers.typed_get::<IfUnmodifiedSince>();

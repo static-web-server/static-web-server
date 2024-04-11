@@ -22,7 +22,6 @@ pub struct RouterService {
 }
 
 impl RouterService {
-    #[inline]
     /// Creates a new router service.
     pub fn new(handler: RequestHandler) -> Self {
         Self {
@@ -36,12 +35,10 @@ impl<T: Transport + Send + 'static> Service<&T> for RouterService {
     type Error = Infallible;
     type Future = Ready<Result<Self::Response, Self::Error>>;
 
-    #[inline]
     fn poll_ready(&mut self, _: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         Poll::Ready(Ok(()))
     }
 
-    #[inline]
     fn call(&mut self, conn: &T) -> Self::Future {
         ready(Ok(self.builder.build(conn.remote_addr())))
     }
@@ -58,12 +55,10 @@ impl Service<Request<Body>> for RequestService {
     type Error = Error;
     type Future = Pin<Box<dyn Future<Output = Result<Response<Body>, Error>> + Send + 'static>>;
 
-    #[inline]
     fn poll_ready(&mut self, _: &mut Context<'_>) -> Poll<Result<(), Error>> {
         Poll::Ready(Ok(()))
     }
 
-    #[inline]
     fn call(&mut self, mut req: Request<Body>) -> Self::Future {
         let handler = self.handler.clone();
         let remote_addr = self.remote_addr;
@@ -78,7 +73,6 @@ pub struct RequestServiceBuilder {
 
 impl RequestServiceBuilder {
     /// Initializes a new request service builder.
-    #[inline]
     pub fn new(handler: RequestHandler) -> Self {
         Self {
             handler: Arc::new(handler),
@@ -86,7 +80,6 @@ impl RequestServiceBuilder {
     }
 
     /// Build a new request service.
-    #[inline]
     pub fn build(&self, remote_addr: Option<SocketAddr>) -> RequestService {
         RequestService {
             handler: self.handler.clone(),

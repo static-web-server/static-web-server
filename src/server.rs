@@ -36,7 +36,6 @@ pub struct Server {
 
 impl Server {
     /// Create a new multi-threaded server instance.
-    #[inline]
     pub fn new(opts: Settings) -> Result<Server> {
         // Configure number of worker threads
         let cpus = num_cpus::get();
@@ -60,7 +59,6 @@ impl Server {
     /// gracefully on demand as a complement to the termination signals handling.
     ///
     /// [`cancel`]: <https://docs.rs/tokio/latest/tokio/sync/watch/struct.Receiver.html>
-    #[inline]
     pub fn run_standalone(self, cancel: Option<Receiver<()>>) -> Result {
         self.run_server_on_rt(cancel, || {})
     }
@@ -74,7 +72,6 @@ impl Server {
     ///
     /// [`cancel`]: <https://docs.rs/tokio/latest/tokio/sync/watch/struct.Receiver.html>
     #[cfg(windows)]
-    #[inline]
     pub fn run_as_service<F>(self, cancel: Option<Receiver<()>>, cancel_fn: F) -> Result
     where
         F: FnOnce(),

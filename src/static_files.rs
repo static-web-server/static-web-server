@@ -374,7 +374,6 @@ async fn get_composed_file_metadata<'a>(
     }
 }
 
-#[inline]
 /// Try to find the file system metadata for the given file path or returns an `Not Found` error.
 pub fn file_metadata(file_path: &Path) -> Result<(Metadata, bool), StatusCode> {
     match std::fs::metadata(file_path) {

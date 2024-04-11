@@ -10,7 +10,6 @@ use crate::settings::Rewrites;
 
 /// It returns a rewrite's destination path if the current request uri
 /// matches against the provided rewrites array.
-#[inline]
 pub fn rewrite_uri_path<'a>(
     uri_path: &'a str,
     rewrites_opts: Option<&'a [Rewrites]>,

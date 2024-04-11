@@ -399,7 +399,6 @@ fn json_auto_index(entries: &mut [FileEntry], order_code: u8) -> Result<String> 
 }
 
 /// Quotes a string value.
-#[inline]
 fn json_quote_str(s: &str) -> String {
     let mut r = String::from("\"");
     for c in s.chars() {
@@ -524,7 +523,6 @@ fn sort_file_entries(files: &mut [FileEntry], order_code: u8) -> SortingAttr<'_>
 }
 
 /// Return the last modified `DateTime` in local timescale.
-#[inline]
 fn parse_last_modified(modified: SystemTime) -> Result<DateTime<Local>> {
     let since_epoch = modified.duration_since(UNIX_EPOCH)?;
     // HTTP times don't have nanosecond precision, so we truncate

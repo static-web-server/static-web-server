@@ -12,7 +12,6 @@ use std::{ffi::OsStr, path::PathBuf};
 use crate::settings::Headers;
 
 /// Append custom HTTP headers to current response.
-#[inline]
 pub fn append_headers(
     uri_path: &str,
     headers_opts: Option<&[Headers]>,

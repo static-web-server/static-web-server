@@ -83,7 +83,6 @@ pub fn new(
 
 impl Cors {
     /// Creates a new Cors instance.
-    #[inline]
     pub fn new() -> Self {
         Self {
             origins: None,
@@ -118,7 +117,6 @@ impl Cors {
     ///
     /// This can allow websites you didn't intend to access this resource,
     /// it is usually better to set an explicit list.
-    #[inline]
     pub fn allow_any_origin(mut self) -> Self {
         self.origins = None;
         self
@@ -244,7 +242,6 @@ pub enum Forbidden {
 }
 
 impl Default for Forbidden {
-    #[inline]
     fn default() -> Self {
         Self::Origin
     }
@@ -324,7 +321,6 @@ impl Configured {
             .unwrap_or(false)
     }
 
-    #[inline]
     fn is_origin_allowed(&self, origin: &HeaderValue) -> bool {
         if let Some(ref allowed) = self.cors.origins {
             allowed.contains(origin)
