@@ -245,7 +245,7 @@ impl RequestHandler {
 
             #[cfg(feature = "basic-auth")]
             // `Basic` HTTP Authorization Schema
-            if !self.opts.basic_auth.is_empty() {
+            if !self.opts.basic_auth.is_empty() && !method.is_options() {
                 if let Some((user_id, password)) = self.opts.basic_auth.split_once(':') {
                     if let Err(err) = basic_auth::check_request(headers, user_id, password) {
                         tracing::warn!("basic authentication failed {:?}", err);
