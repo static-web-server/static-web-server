@@ -40,12 +40,12 @@ pub fn append_headers(uri: &str, resp: &mut Response<Body>) {
 /// Gets the file extension for a URI.
 ///
 /// This assumes the extension contains a single dot. e.g. for "/file.tar.gz" it returns "gz".
-#[inline]
+#[inline(always)]
 fn get_file_extension(uri: &str) -> Option<&str> {
     uri.rsplit_once('.').map(|(_, rest)| rest)
 }
 
-#[inline]
+#[inline(always)]
 fn get_max_age(uri: &str) -> u64 {
     // Default max-age value in seconds (one day)
     let mut max_age = MAX_AGE_ONE_DAY;

@@ -18,3 +18,8 @@ harness = false
 name = "static_files"
 path = "static_files.rs"
 harness = false
+
+[[bench]]
+name = "http_ext"
+path = "http_ext.rs"
+harness = false

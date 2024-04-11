@@ -30,7 +30,6 @@ impl PathExt for Path {
     }
 }
 
-#[inline]
 fn decode_tail_path(tail: &str) -> Result<Cow<'_, str>, StatusCode> {
     match percent_decode_str(tail.trim_start_matches('/')).decode_utf8() {
         Ok(p) => Ok(p),
