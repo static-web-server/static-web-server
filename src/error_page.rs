@@ -51,10 +51,9 @@ pub fn error_response(
             // Extra check for 404 status code and its HTML content
             if status_code == &StatusCode::NOT_FOUND {
                 if page404.is_file() {
-                    page_content = String::from_utf8_lossy(&helpers::read_bytes_default(page404))
-                        .to_string()
+                    String::from_utf8_lossy(&helpers::read_bytes_default(page404))
                         .trim()
-                        .to_owned();
+                        .clone_into(&mut page_content);
                 } else {
                     tracing::debug!(
                         "page404 file path not found or not a regular file: {}",
@@ -76,10 +75,9 @@ pub fn error_response(
         | &StatusCode::LOOP_DETECTED => {
             // HTML content check for status codes 50x
             if page50x.is_file() {
-                page_content = String::from_utf8_lossy(&helpers::read_bytes_default(page50x))
-                    .to_string()
+                String::from_utf8_lossy(&helpers::read_bytes_default(page50x))
                     .trim()
-                    .to_owned();
+                    .clone_into(&mut page_content);
             } else {
                 tracing::debug!(
                     "page50x file path not found or not a regular file: {}",

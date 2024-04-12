@@ -35,7 +35,7 @@ pub fn append_headers(
             _ => uri_path,
         };
 
-        for headers_entry in headers_vec.iter() {
+        for headers_entry in headers_vec {
             // Match header glob pattern against request uri
             if headers_entry.source.is_match(uri_path) {
                 // Add/update headers if uri matches
