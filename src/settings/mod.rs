@@ -245,13 +245,13 @@ impl Settings {
                     security_headers = v
                 }
                 if let Some(ref v) = general.cors_allow_origins {
-                    cors_allow_origins = v.to_owned()
+                    v.clone_into(&mut cors_allow_origins)
                 }
                 if let Some(ref v) = general.cors_allow_headers {
-                    cors_allow_headers = v.to_owned()
+                    v.clone_into(&mut cors_allow_headers)
                 }
                 if let Some(ref v) = general.cors_expose_headers {
-                    cors_expose_headers = v.to_owned()
+                    v.clone_into(&mut cors_expose_headers)
                 }
                 #[cfg(feature = "directory-listing")]
                 if let Some(v) = general.directory_listing {
@@ -267,7 +267,7 @@ impl Settings {
                 }
                 #[cfg(feature = "basic-auth")]
                 if let Some(ref v) = general.basic_auth {
-                    basic_auth = v.to_owned()
+                    v.clone_into(&mut basic_auth)
                 }
                 if let Some(v) = general.fd {
                     fd = Some(v)

@@ -32,7 +32,7 @@ mod tests {
         std::fs::copy(&index_gz_path, &index_gz_path_public)
             .expect("unexpected error copying fixture file");
 
-        let (mut resp, _) = static_files::handle(&HandleOpts {
+        let result = static_files::handle(&HandleOpts {
             method: &Method::GET,
             headers: &headers,
             base_path: &public_dir(),
@@ -52,6 +52,7 @@ mod tests {
         })
         .await
         .expect("unexpected error response on `handle` function");
+        let mut res = result.resp;
 
         let index_gz_buf =
             std::fs::read(&index_gz_path).expect("unexpected error when reading index.html.gz");
@@ -59,9 +60,9 @@ mod tests {
 
         std::fs::remove_file(index_gz_path_public).unwrap();
 
-        let headers = resp.headers();
+        let headers = res.headers();
 
-        assert_eq!(resp.status(), 200);
+        assert_eq!(res.status(), 200);
         assert!(!headers.contains_key("content-length"));
         assert_eq!(headers["content-encoding"], "gzip");
         assert_eq!(headers["accept-ranges"], "bytes");
@@ -71,7 +72,7 @@ mod tests {
             "content-type is not html"
         );
 
-        let body = hyper::body::to_bytes(resp.body_mut())
+        let body = hyper::body::to_bytes(res.body_mut())
             .await
             .expect("unexpected bytes error during `body` conversion");
 
@@ -91,7 +92,7 @@ mod tests {
 
         let index_path_public = public_dir().join("assets/index.html");
 
-        let (mut resp, _) = static_files::handle(&HandleOpts {
+        let result = static_files::handle(&HandleOpts {
             method: &Method::GET,
             headers: &headers,
             base_path: &public_dir().join("assets/"),
@@ -111,14 +112,15 @@ mod tests {
         })
         .await
         .expect("unexpected error response on `handle` function");
+        let mut res = result.resp;
 
         let index_buf =
             std::fs::read(&index_path_public).expect("unexpected error when reading index.html");
         let index_buf = Bytes::from(index_buf);
 
-        let headers = resp.headers();
+        let headers = res.headers();
 
-        assert_eq!(resp.status(), 200);
+        assert_eq!(res.status(), 200);
         assert!(headers.contains_key("content-length"));
         assert_eq!(headers["accept-ranges"], "bytes");
         assert!(!headers["last-modified"].is_empty());
@@ -127,7 +129,7 @@ mod tests {
             "content-type is not html"
         );
 
-        let body = hyper::body::to_bytes(resp.body_mut())
+        let body = hyper::body::to_bytes(res.body_mut())
             .await
             .expect("unexpected bytes error during `body` conversion");
 
@@ -148,7 +150,7 @@ mod tests {
 
         let base_path = PathBuf::from(".");
 
-        let (_resp, _) = static_files::handle(&HandleOpts {
+        static_files::handle(&HandleOpts {
             method: &Method::GET,
             headers: &headers,
             base_path: &base_path,

@@ -16,7 +16,7 @@ pub fn get_redirection<'a>(
     redirects_opts: Option<&'a [Redirects]>,
 ) -> Option<&'a Redirects> {
     if let Some(redirects_vec) = redirects_opts {
-        for redirect_entry in redirects_vec.iter() {
+        for redirect_entry in redirects_vec {
             // Match `host` redirect against `uri_host` if specified
             if let Some(host) = &redirect_entry.host {
                 tracing::debug!(

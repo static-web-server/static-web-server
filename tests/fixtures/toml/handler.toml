@@ -1,0 +1,9 @@
+[general]
+
+root = "docker/public"
+
+[advanced]
+
+[[advanced.headers]]
+source = "**/*.{html,htm}"
+headers = { Server = "Static Web Server" }

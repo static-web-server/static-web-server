@@ -7,13 +7,35 @@
 //!
 
 use hyper::{Body, Response};
+use std::{ffi::OsStr, path::PathBuf};
 
 use crate::settings::Headers;
 
 /// Append custom HTTP headers to current response.
-pub fn append_headers(uri_path: &str, headers_opts: Option<&[Headers]>, resp: &mut Response<Body>) {
+pub fn append_headers(
+    uri_path: &str,
+    headers_opts: Option<&[Headers]>,
+    resp: &mut Response<Body>,
+    file_path: Option<&PathBuf>,
+) {
     if let Some(headers_vec) = headers_opts {
-        for headers_entry in headers_vec.iter() {
+        let mut uri_path_auto_index = None;
+        if file_path.is_some() && uri_path.ends_with('/') {
+            if let Some(name) = file_path.unwrap().file_name().and_then(OsStr::to_str) {
+                if uri_path == "/" {
+                    uri_path_auto_index = Some([uri_path, name].concat())
+                } else {
+                    uri_path_auto_index = Some([uri_path, "/", name].concat())
+                }
+            }
+        }
+
+        let uri_path = match uri_path_auto_index {
+            Some(ref s) => s.as_str(),
+            _ => uri_path,
+        };
+
+        for headers_entry in headers_vec {
             // Match header glob pattern against request uri
             if headers_entry.source.is_match(uri_path) {
                 // Add/update headers if uri matches

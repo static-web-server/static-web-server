@@ -53,7 +53,8 @@ mod tests {
             })
             .await
             {
-                Ok((res, _)) => {
+                Ok(result) => {
+                    let res = result.resp;
                     assert_eq!(res.status(), 308);
                     assert_eq!(res.headers()["location"], "/assets/");
                 }
@@ -84,7 +85,8 @@ mod tests {
             })
             .await
             {
-                Ok((mut res, _)) => {
+                Ok(result) => {
+                    let mut res = result.resp;
                     assert_eq!(res.status(), 200);
                     assert_eq!(res.headers()["content-type"], "text/html; charset=utf-8");
 
@@ -125,7 +127,8 @@ mod tests {
             })
             .await
             {
-                Ok((mut res, _)) => {
+                Ok(result) => {
+                    let mut res = result.resp;
                     assert_eq!(res.status(), 200);
                     assert_eq!(res.headers()["content-type"], "text/html; charset=utf-8");
 
@@ -166,7 +169,8 @@ mod tests {
             })
             .await
             {
-                Ok((res, _)) => {
+                Ok(result) => {
+                    let res = result.resp;
                     assert_eq!(res.status(), 200);
                     assert_eq!(res.headers()["content-type"], "text/markdown");
                 }
@@ -197,7 +201,8 @@ mod tests {
             })
             .await
             {
-                Ok((mut res, _)) => {
+                Ok(result) => {
+                    let mut res = result.resp;
                     assert_eq!(res.status(), 200);
                     assert_eq!(res.headers()["content-type"], "text/html; charset=utf-8");
 
@@ -249,7 +254,8 @@ mod tests {
             })
             .await
             {
-                Ok((mut res, _)) => {
+                Ok(result) => {
+                    let mut res = result.resp;
                     assert_eq!(res.status(), 200);
                     assert_eq!(res.headers()["content-type"], "application/json");
 
@@ -319,7 +325,8 @@ mod tests {
             })
             .await
             {
-                Ok((mut res, _)) => {
+                Ok(result) => {
+                    let mut res = result.resp;
                     assert_eq!(res.status(), 200);
                     assert_eq!(res.headers()["content-type"], "application/json");
 
@@ -362,7 +369,8 @@ mod tests {
             })
             .await
             {
-                Ok((mut res, _)) => {
+                Ok(result) => {
+                    let mut res = result.resp;
                     assert_eq!(res.status(), 200);
                     assert_eq!(res.headers()["content-type"], "text/html; charset=utf-8");
 

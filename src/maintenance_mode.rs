@@ -26,10 +26,9 @@ pub fn get_response(
 
     let mut body_content = String::new();
     if file_path.is_file() {
-        body_content = String::from_utf8_lossy(&helpers::read_bytes_default(file_path))
-            .to_string()
+        String::from_utf8_lossy(&helpers::read_bytes_default(file_path))
             .trim()
-            .to_owned();
+            .clone_into(&mut body_content);
     } else {
         tracing::debug!(
             "maintenance mode file path not found or not a regular file, using a default message"
