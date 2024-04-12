@@ -135,7 +135,7 @@ pub struct General {
     #[arg(
         long,
         short = 'j',
-        default_value = "origin, content-type",
+        default_value = "origin, content-type, authorization",
         env = "SERVER_CORS_ALLOW_HEADERS"
     )]
     /// Specify an optional CORS list of allowed headers separated by commas. Default "origin, content-type". It requires `--cors-allow-origins` to be used along with.
