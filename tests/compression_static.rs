@@ -3,7 +3,14 @@
 #![deny(rust_2018_idioms)]
 #![deny(dead_code)]
 
-#[cfg(feature = "compression")]
+#[cfg(any(
+    feature = "compression",
+    feature = "compression-deflate",
+    feature = "compression-gzip",
+    feature = "compression-deflate",
+    feature = "compression-brotli",
+    feature = "compression-zstd"
+))]
 #[cfg(test)]
 mod tests {
     use bytes::Bytes;
@@ -45,7 +52,14 @@ mod tests {
             #[cfg(feature = "directory-listing")]
             dir_listing_format: &DirListFmt::Html,
             redirect_trailing_slash: true,
-            #[cfg(feature = "compression")]
+            #[cfg(any(
+                feature = "compression",
+                feature = "compression-deflate",
+                feature = "compression-gzip",
+                feature = "compression-deflate",
+                feature = "compression-brotli",
+                feature = "compression-zstd"
+            ))]
             compression_static: true,
             ignore_hidden_files: false,
             index_files: &[],
@@ -105,7 +119,14 @@ mod tests {
             #[cfg(feature = "directory-listing")]
             dir_listing_format: &DirListFmt::Html,
             redirect_trailing_slash: true,
-            #[cfg(feature = "compression")]
+            #[cfg(any(
+                feature = "compression",
+                feature = "compression-deflate",
+                feature = "compression-gzip",
+                feature = "compression-deflate",
+                feature = "compression-brotli",
+                feature = "compression-zstd"
+            ))]
             compression_static: true,
             ignore_hidden_files: false,
             index_files: &[],

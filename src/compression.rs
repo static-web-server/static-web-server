@@ -8,13 +8,13 @@
 
 // Part of the file is borrowed from <https://github.com/seanmonstar/warp/pull/513>*
 
-#[cfg(feature = "compression-brotli")]
+#[cfg(any(feature = "compression", feature = "compression-brotli"))]
 use async_compression::tokio::bufread::BrotliEncoder;
-#[cfg(feature = "compression-deflate")]
+#[cfg(any(feature = "compression", feature = "compression-deflate"))]
 use async_compression::tokio::bufread::DeflateEncoder;
-#[cfg(feature = "compression-gzip")]
+#[cfg(any(feature = "compression", feature = "compression-gzip"))]
 use async_compression::tokio::bufread::GzipEncoder;
-#[cfg(feature = "compression-zstd")]
+#[cfg(any(feature = "compression", feature = "compression-zstd"))]
 use async_compression::tokio::bufread::ZstdEncoder;
 
 use bytes::Bytes;
@@ -61,7 +61,7 @@ pub const TEXT_MIME_TYPES: [&str; 24] = [
 ];
 
 /// Create a wrapping handler that compresses the Body of a [`hyper::Response`]
-/// using `gzip`, `deflate`, `brotli` or `zstd` if is specified in the `Accept-Encoding` header, adding
+/// using gzip, `deflate`, `brotli` or `zstd` if is specified in the `Accept-Encoding` header, adding
 /// `content-encoding: <coding>` to the Response's [`HeaderMap`].
 /// It also provides the ability to apply compression for text-based MIME types only.
 pub fn auto(
@@ -76,6 +76,11 @@ pub fn auto(
 
     // Compress response based on Accept-Encoding header
     if let Some(encoding) = get_prefered_encoding(headers) {
+        tracing::trace!(
+            "prefered encoding selected from the accept-ecoding header: {:?}",
+            encoding
+        );
+
         // Skip compression for non-text-based MIME types
         if let Some(content_type) = resp.headers().typed_get::<ContentType>() {
             let mime = Mime::from(content_type);
@@ -84,29 +89,31 @@ pub fn auto(
             }
         }
 
-        #[cfg(feature = "compression-gzip")]
+        #[cfg(any(feature = "compression", feature = "compression-gzip"))]
         if encoding == ContentCoding::GZIP {
             let (head, body) = resp.into_parts();
             return Ok(gzip(head, body.into()));
         }
 
-        #[cfg(feature = "compression-deflate")]
+        #[cfg(any(feature = "compression", feature = "compression-deflate"))]
         if encoding == ContentCoding::DEFLATE {
             let (head, body) = resp.into_parts();
             return Ok(deflate(head, body.into()));
         }
 
-        #[cfg(feature = "compression-brotli")]
+        #[cfg(any(feature = "compression", feature = "compression-brotli"))]
         if encoding == ContentCoding::BROTLI {
             let (head, body) = resp.into_parts();
             return Ok(brotli(head, body.into()));
         }
 
-        #[cfg(feature = "compression-zstd")]
+        #[cfg(any(feature = "compression", feature = "compression-zstd"))]
         if encoding == ContentCoding::ZSTD {
             let (head, body) = resp.into_parts();
             return Ok(zstd(head, body.into()));
         }
+
+        tracing::trace!("no compression feature matched the prefered encoding, probably not enabled or unsupported");
     }
 
     Ok(resp)
@@ -114,13 +121,16 @@ pub fn auto(
 
 /// Create a wrapping handler that compresses the Body of a [`Response`].
 /// using gzip, adding `content-encoding: gzip` to the Response's [`HeaderMap`].
-#[cfg(feature = "compression-gzip")]
-#[cfg_attr(docsrs, doc(cfg(feature = "compression-gzip")))]
+#[cfg(any(feature = "compression", feature = "compression-gzip"))]
+#[cfg_attr(
+    docsrs,
+    doc(cfg(any(feature = "compression", feature = "compression-gzip")))
+)]
 pub fn gzip(
     mut head: http::response::Parts,
     body: CompressableBody<Body, hyper::Error>,
 ) -> Response<Body> {
-    tracing::trace!("compressing response body on the fly using gzip");
+    tracing::trace!("compressing response body on the fly using GZIP");
 
     let body = Body::wrap_stream(ReaderStream::new(GzipEncoder::new(StreamReader::new(body))));
     let header = create_encoding_header(head.headers.remove(CONTENT_ENCODING), ContentCoding::GZIP);
@@ -131,13 +141,16 @@ pub fn gzip(
 
 /// Create a wrapping handler that compresses the Body of a [`Response`].
 /// using deflate, adding `content-encoding: deflate` to the Response's [`HeaderMap`].
-#[cfg(feature = "compression-deflate")]
-#[cfg_attr(docsrs, doc(cfg(feature = "compression-deflate")))]
+#[cfg(any(feature = "compression", feature = "compression-deflate"))]
+#[cfg_attr(
+    docsrs,
+    doc(cfg(any(feature = "compression", feature = "compression-deflate")))
+)]
 pub fn deflate(
     mut head: http::response::Parts,
     body: CompressableBody<Body, hyper::Error>,
 ) -> Response<Body> {
-    tracing::trace!("compressing response body on the fly using deflate");
+    tracing::trace!("compressing response body on the fly using DEFLATE");
 
     let body = Body::wrap_stream(ReaderStream::new(DeflateEncoder::new(StreamReader::new(
         body,
@@ -153,13 +166,16 @@ pub fn deflate(
 
 /// Create a wrapping handler that compresses the Body of a [`Response`].
 /// using brotli, adding `content-encoding: br` to the Response's [`HeaderMap`].
-#[cfg(feature = "compression-brotli")]
-#[cfg_attr(docsrs, doc(cfg(feature = "compression-brotli")))]
+#[cfg(any(feature = "compression", feature = "compression-brotli"))]
+#[cfg_attr(
+    docsrs,
+    doc(cfg(any(feature = "compression", feature = "compression-brotli")))
+)]
 pub fn brotli(
     mut head: http::response::Parts,
     body: CompressableBody<Body, hyper::Error>,
 ) -> Response<Body> {
-    tracing::trace!("compressing response body on the fly using brotli");
+    tracing::trace!("compressing response body on the fly using BROTLI");
 
     let body = Body::wrap_stream(ReaderStream::new(BrotliEncoder::new(StreamReader::new(
         body,
@@ -173,13 +189,16 @@ pub fn brotli(
 
 /// Create a wrapping handler that compresses the Body of a [`Response`].
 /// using zstd, adding `content-encoding: zstd` to the Response's [`HeaderMap`].
-#[cfg(feature = "compression-zstd")]
-#[cfg_attr(docsrs, doc(cfg(feature = "compression-zstd")))]
+#[cfg(any(feature = "compression", feature = "compression-zstd"))]
+#[cfg_attr(
+    docsrs,
+    doc(cfg(any(feature = "compression", feature = "compression-zstd")))
+)]
 pub fn zstd(
     mut head: http::response::Parts,
     body: CompressableBody<Body, hyper::Error>,
 ) -> Response<Body> {
-    tracing::trace!("compressing response body on the fly using zstd");
+    tracing::trace!("compressing response body on the fly using ZSTD");
 
     let body = Body::wrap_stream(ReaderStream::new(ZstdEncoder::new(StreamReader::new(body))));
     let header = create_encoding_header(head.headers.remove(CONTENT_ENCODING), ContentCoding::ZSTD);
@@ -203,7 +222,46 @@ pub fn create_encoding_header(existing: Option<HeaderValue>, coding: ContentCodi
 #[inline(always)]
 pub fn get_prefered_encoding(headers: &HeaderMap<HeaderValue>) -> Option<ContentCoding> {
     if let Some(ref accept_encoding) = headers.typed_get::<AcceptEncoding>() {
-        return accept_encoding.prefered_encoding();
+        tracing::trace!("request with accept-ecoding header: {:?}", accept_encoding);
+
+        let encoding = accept_encoding.prefered_encoding();
+        if let Some(prefered_enc) = encoding {
+            let mut feature_formats = Vec::<ContentCoding>::with_capacity(5);
+            if cfg!(feature = "compression-deflate") {
+                feature_formats.push(ContentCoding::DEFLATE);
+            }
+            if cfg!(feature = "compression-gzip") {
+                feature_formats.push(ContentCoding::GZIP);
+            }
+            if cfg!(feature = "compression-brotli") {
+                feature_formats.push(ContentCoding::BROTLI);
+            }
+            if cfg!(feature = "compression-zstd") {
+                feature_formats.push(ContentCoding::ZSTD);
+            }
+
+            // If there is only one Cargo compression feature enabled
+            // then re-evaluate the prefered encoding and return
+            // that feature compression algorithm as `ContentCoding` only
+            // if was contained in the `AcceptEncoding` value.
+            if feature_formats.len() == 1 {
+                let feature_enc = *feature_formats.first().unwrap();
+                if feature_enc != prefered_enc
+                    && accept_encoding
+                        .sorted_encodings()
+                        .any(|enc| enc == feature_enc)
+                {
+                    tracing::trace!(
+                        "prefered encoding {:?} is re-evalated to {:?} because is the only compression feature enabled that matches the `accept-encoding` header",
+                        prefered_enc,
+                        feature_enc
+                    );
+                    return Some(feature_enc);
+                }
+            }
+
+            return encoding;
+        }
     }
     None
 }

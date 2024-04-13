@@ -26,10 +26,43 @@ pub mod fixtures {
         std::env::set_var("SERVER_CONFIG_FILE", f);
         let opts = Settings::get(false).unwrap();
 
+        #[cfg(not(any(
+            feature = "compression",
+            feature = "compression-gzip",
+            feature = "compression-brotli",
+            feature = "compression-zstd",
+            feature = "compression-deflate"
+        )))]
+        let compression = false;
+        #[cfg(not(any(
+            feature = "compression",
+            feature = "compression-gzip",
+            feature = "compression-brotli",
+            feature = "compression-zstd",
+            feature = "compression-deflate"
+        )))]
+        let compression_static = false;
+        #[cfg(any(
+            feature = "compression",
+            feature = "compression-gzip",
+            feature = "compression-brotli",
+            feature = "compression-zstd",
+            feature = "compression-deflate"
+        ))]
+        let compression = opts.general.compression;
+        #[cfg(any(
+            feature = "compression",
+            feature = "compression-gzip",
+            feature = "compression-brotli",
+            feature = "compression-zstd",
+            feature = "compression-deflate"
+        ))]
+        let compression_static = opts.general.compression_static;
+
         let req_handler_opts = RequestHandlerOpts {
             root_dir: opts.general.root,
-            compression: opts.general.compression,
-            compression_static: opts.general.compression_static,
+            compression,
+            compression_static,
             #[cfg(feature = "directory-listing")]
             dir_listing: opts.general.directory_listing,
             #[cfg(feature = "directory-listing")]
