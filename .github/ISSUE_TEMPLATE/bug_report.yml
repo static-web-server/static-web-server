@@ -29,7 +29,7 @@ body:
         - Security / Vulnerability
         - Docker / Kubernetes
         - Build target (binary)
-        - Libary (crate)
+        - Library (crate)
         - Script installer
         - Documentation
         - Usability / User Experience
