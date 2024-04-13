@@ -111,11 +111,41 @@ extern crate serde;
 #[cfg(feature = "basic-auth")]
 #[cfg_attr(docsrs, doc(cfg(feature = "basic-auth")))]
 pub mod basic_auth;
-#[cfg(feature = "compression")]
-#[cfg_attr(docsrs, doc(cfg(feature = "compression")))]
+#[cfg(any(
+    feature = "compression",
+    feature = "compression-gzip",
+    feature = "compression-brotli",
+    feature = "compression-zstd",
+    feature = "compression-deflate"
+))]
+#[cfg_attr(
+    docsrs,
+    doc(cfg(any(
+        feature = "compression",
+        feature = "compression-gzip",
+        feature = "compression-brotli",
+        feature = "compression-zstd",
+        feature = "compression-deflate"
+    )))
+)]
 pub mod compression;
-#[cfg(feature = "compression")]
-#[cfg_attr(docsrs, doc(cfg(feature = "compression")))]
+#[cfg(any(
+    feature = "compression",
+    feature = "compression-gzip",
+    feature = "compression-brotli",
+    feature = "compression-zstd",
+    feature = "compression-deflate"
+))]
+#[cfg_attr(
+    docsrs,
+    doc(cfg(any(
+        feature = "compression",
+        feature = "compression-gzip",
+        feature = "compression-brotli",
+        feature = "compression-zstd",
+        feature = "compression-deflate"
+    )))
+)]
 pub mod compression_static;
 pub mod control_headers;
 pub mod cors;

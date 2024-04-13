@@ -98,9 +98,21 @@ impl Settings {
         let mut config_file = opts.config_file.clone();
         let mut cache_control_headers = opts.cache_control_headers;
 
-        #[cfg(feature = "compression")]
+        #[cfg(any(
+            feature = "compression",
+            feature = "compression-gzip",
+            feature = "compression-brotli",
+            feature = "compression-zstd",
+            feature = "compression-deflate"
+        ))]
         let mut compression = opts.compression;
-        #[cfg(feature = "compression")]
+        #[cfg(any(
+            feature = "compression",
+            feature = "compression-gzip",
+            feature = "compression-brotli",
+            feature = "compression-zstd",
+            feature = "compression-deflate"
+        ))]
         let mut compression_static = opts.compression_static;
 
         let mut page404 = opts.page404;
@@ -189,11 +201,23 @@ impl Settings {
                 if let Some(v) = general.cache_control_headers {
                     cache_control_headers = v
                 }
-                #[cfg(feature = "compression")]
+                #[cfg(any(
+                    feature = "compression",
+                    feature = "compression-gzip",
+                    feature = "compression-brotli",
+                    feature = "compression-zstd",
+                    feature = "compression-deflate"
+                ))]
                 if let Some(v) = general.compression {
                     compression = v
                 }
-                #[cfg(feature = "compression")]
+                #[cfg(any(
+                    feature = "compression",
+                    feature = "compression-gzip",
+                    feature = "compression-brotli",
+                    feature = "compression-zstd",
+                    feature = "compression-deflate"
+                ))]
                 if let Some(v) = general.compression_static {
                     compression_static = v
                 }
@@ -511,9 +535,21 @@ impl Settings {
                 log_level,
                 config_file,
                 cache_control_headers,
-                #[cfg(feature = "compression")]
+                #[cfg(any(
+                    feature = "compression",
+                    feature = "compression-gzip",
+                    feature = "compression-brotli",
+                    feature = "compression-zstd",
+                    feature = "compression-deflate"
+                ))]
                 compression,
-                #[cfg(feature = "compression")]
+                #[cfg(any(
+                    feature = "compression",
+                    feature = "compression-gzip",
+                    feature = "compression-brotli",
+                    feature = "compression-zstd",
+                    feature = "compression-deflate"
+                ))]
                 compression_static,
                 page404,
                 page50x,

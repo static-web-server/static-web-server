@@ -11,7 +11,14 @@ mod tests {
     use std::fs;
     use std::path::PathBuf;
 
-    #[cfg(feature = "compression")]
+    #[cfg(any(
+        feature = "compression",
+        feature = "compression-deflate",
+        feature = "compression-gzip",
+        feature = "compression-deflate",
+        feature = "compression-brotli",
+        feature = "compression-zstd"
+    ))]
     use static_web_server::compression;
 
     #[cfg(feature = "directory-listing")]
@@ -654,7 +661,14 @@ mod tests {
         }
     }
 
-    #[cfg(feature = "compression")]
+    #[cfg(any(
+        feature = "compression",
+        feature = "compression-deflate",
+        feature = "compression-gzip",
+        feature = "compression-deflate",
+        feature = "compression-brotli",
+        feature = "compression-zstd"
+    ))]
     #[tokio::test]
     async fn handle_file_compressions() {
         let encodings = ["gzip", "deflate", "br", "zstd", "xyz"];
