@@ -110,7 +110,7 @@ impl Default for RequestHandlerOpts {
             #[cfg(feature = "directory-listing")]
             dir_listing: false,
             #[cfg(feature = "directory-listing")]
-            dir_listing_order: 0,   // name
+            dir_listing_order: 0, // name
             #[cfg(feature = "directory-listing")]
             dir_listing_format: DirListFmt::Html,
             cors: None,
