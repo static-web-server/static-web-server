@@ -106,33 +106,33 @@ pub struct RequestHandlerOpts {
 impl Default for RequestHandlerOpts {
     fn default() -> Self {
         Self {
-            root_dir: PathBuf::new(),
-            compression: false,
+            root_dir: PathBuf::from("./public"),
+            compression: true,
             compression_static: false,
             #[cfg(feature = "directory-listing")]
             dir_listing: false,
             #[cfg(feature = "directory-listing")]
-            dir_listing_order: 0, // name
+            dir_listing_order: 6, // unordered
             #[cfg(feature = "directory-listing")]
             dir_listing_format: DirListFmt::Html,
             cors: None,
             security_headers: false,
-            cache_control_headers: false,
-            page404: PathBuf::new(),
-            page50x: PathBuf::new(),
+            cache_control_headers: true,
+            page404: PathBuf::from("./404.html"),
+            page50x: PathBuf::from("./50x.html"),
             #[cfg(feature = "fallback-page")]
             page_fallback: Vec::new(),
             #[cfg(feature = "basic-auth")]
             basic_auth: String::new(),
-            index_files: Vec::new(),
+            index_files: vec!["index.html".into()],
             log_remote_address: false,
             redirect_trailing_slash: true,
-            ignore_hidden_files: true,
+            ignore_hidden_files: false,
             health: false,
             #[cfg(all(unix, feature = "experimental"))]
             experimental_metrics: false,
             maintenance_mode: false,
-            maintenance_mode_status: StatusCode::OK,
+            maintenance_mode_status: StatusCode::SERVICE_UNAVAILABLE,
             maintenance_mode_file: PathBuf::new(),
             advanced_opts: None,
         }
