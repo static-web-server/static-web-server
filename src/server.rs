@@ -217,21 +217,67 @@ impl Server {
         let security_headers = general.security_headers;
         server_info!("security headers: enabled={}", security_headers);
 
-        // Auto compression based on the `Accept-Encoding` header
-        #[cfg(not(feature = "compression"))]
+        #[cfg(not(any(
+            feature = "compression",
+            feature = "compression-deflate",
+            feature = "compression-gzip",
+            feature = "compression-deflate",
+            feature = "compression-brotli",
+            feature = "compression-zstd",
+        )))]
         let compression = false;
-        #[cfg(feature = "compression")]
+        // Auto compression based on the `Accept-Encoding` header
+        #[cfg(any(
+            feature = "compression",
+            feature = "compression-deflate",
+            feature = "compression-gzip",
+            feature = "compression-deflate",
+            feature = "compression-brotli",
+            feature = "compression-zstd",
+        ))]
         let compression = general.compression;
-        #[cfg(feature = "compression")]
-        server_info!("auto compression: enabled={}", compression);
+
+        #[allow(unused_mut)]
+        let mut compression_formats = Vec::<&str>::with_capacity(5);
+        #[cfg(any(feature = "compression", feature = "compression-deflate"))]
+        compression_formats.push("deflate");
+        #[cfg(any(feature = "compression", feature = "compression-gzip"))]
+        compression_formats.push("gzip");
+        #[cfg(any(feature = "compression", feature = "compression-brotli"))]
+        compression_formats.push("brotli");
+        #[cfg(any(feature = "compression", feature = "compression-zstd"))]
+        compression_formats.push("zstd");
+        let compression_format = compression_formats.join(",");
+        server_info!(
+            "auto compression: enabled={}, formats={}",
+            compression,
+            compression_format
+        );
 
         // Check pre-compressed files based on the `Accept-Encoding` header
-        #[cfg(not(feature = "compression"))]
+        #[cfg(not(any(
+            feature = "compression",
+            feature = "compression-deflate",
+            feature = "compression-gzip",
+            feature = "compression-deflate",
+            feature = "compression-brotli",
+            feature = "compression-zstd",
+        )))]
         let compression_static = false;
-        #[cfg(feature = "compression")]
+        #[cfg(any(
+            feature = "compression",
+            feature = "compression-deflate",
+            feature = "compression-gzip",
+            feature = "compression-deflate",
+            feature = "compression-brotli",
+            feature = "compression-zstd",
+        ))]
         let compression_static = general.compression_static;
-        #[cfg(feature = "compression")]
-        server_info!("compression static: enabled={}", compression_static);
+        server_info!(
+            "compression static: enabled={}, formats={}",
+            compression_static,
+            compression_format
+        );
 
         // Directory listing options
         #[cfg(feature = "directory-listing")]

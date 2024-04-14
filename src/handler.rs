@@ -10,7 +10,13 @@ use headers::{ContentType, HeaderMap, HeaderMapExt, HeaderValue};
 use hyper::{Body, Request, Response, StatusCode};
 use std::{future::Future, net::IpAddr, net::SocketAddr, path::PathBuf, sync::Arc};
 
-#[cfg(feature = "compression")]
+#[cfg(any(
+    feature = "compression",
+    feature = "compression-gzip",
+    feature = "compression-brotli",
+    feature = "compression-zstd",
+    feature = "compression-deflate"
+))]
 use crate::compression;
 
 #[cfg(feature = "basic-auth")]
@@ -457,7 +463,13 @@ impl RequestHandler {
                     }
 
                     // Compression content encoding varies so use a `Vary` header
-                    #[cfg(feature = "compression")]
+                    #[cfg(any(
+                        feature = "compression",
+                        feature = "compression-gzip",
+                        feature = "compression-brotli",
+                        feature = "compression-zstd",
+                        feature = "compression-deflate"
+                    ))]
                     if self.opts.compression || compression_static {
                         resp.headers_mut().append(
                             hyper::header::VARY,
@@ -466,7 +478,13 @@ impl RequestHandler {
                     }
 
                     // Auto compression based on the `Accept-Encoding` header
-                    #[cfg(feature = "compression")]
+                    #[cfg(any(
+                        feature = "compression",
+                        feature = "compression-gzip",
+                        feature = "compression-brotli",
+                        feature = "compression-zstd",
+                        feature = "compression-deflate"
+                    ))]
                     if self.opts.compression && !_is_precompressed {
                         resp = match compression::auto(method, headers, resp) {
                             Ok(res) => res,
@@ -526,7 +544,13 @@ impl RequestHandler {
                         }
 
                         // Compression content encoding varies so use a `Vary` header
-                        #[cfg(feature = "compression")]
+                        #[cfg(any(
+                            feature = "compression",
+                            feature = "compression-gzip",
+                            feature = "compression-brotli",
+                            feature = "compression-zstd",
+                            feature = "compression-deflate"
+                        ))]
                         if self.opts.compression || compression_static {
                             resp.headers_mut().append(
                                 hyper::header::VARY,
@@ -535,7 +559,13 @@ impl RequestHandler {
                         }
 
                         // Auto compression based on the `Accept-Encoding` header
-                        #[cfg(feature = "compression")]
+                        #[cfg(any(
+                            feature = "compression",
+                            feature = "compression-gzip",
+                            feature = "compression-brotli",
+                            feature = "compression-zstd",
+                            feature = "compression-deflate"
+                        ))]
                         if self.opts.compression {
                             resp = match compression::auto(method, headers, resp) {
                                 Ok(res) => res,

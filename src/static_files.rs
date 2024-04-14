@@ -27,7 +27,14 @@ use crate::{
     http_ext::{MethodExt, HTTP_SUPPORTED_METHODS},
 };
 
-#[cfg(feature = "compression")]
+#[cfg(any(
+    feature = "compression",
+    feature = "compression-deflate",
+    feature = "compression-gzip",
+    feature = "compression-deflate",
+    feature = "compression-brotli",
+    feature = "compression-zstd"
+))]
 use crate::compression_static;
 
 #[cfg(feature = "directory-listing")]
@@ -248,7 +255,14 @@ async fn get_composed_file_metadata<'a>(
                     file_path.push(index);
 
                     // Pre-compressed variant check for the autoindex
-                    #[cfg(feature = "compression")]
+                    #[cfg(any(
+                        feature = "compression",
+                        feature = "compression-deflate",
+                        feature = "compression-gzip",
+                        feature = "compression-deflate",
+                        feature = "compression-brotli",
+                        feature = "compression-zstd"
+                    ))]
                     if _compression_static {
                         if let Some(p) =
                             compression_static::precompressed_variant(file_path, _headers).await
@@ -289,7 +303,14 @@ async fn get_composed_file_metadata<'a>(
                 }
             } else {
                 // Fallback pre-compressed variant check for the specific file
-                #[cfg(feature = "compression")]
+                #[cfg(any(
+                    feature = "compression",
+                    feature = "compression-deflate",
+                    feature = "compression-gzip",
+                    feature = "compression-deflate",
+                    feature = "compression-brotli",
+                    feature = "compression-zstd"
+                ))]
                 if _compression_static {
                     if let Some(p) =
                         compression_static::precompressed_variant(file_path, _headers).await
@@ -313,7 +334,14 @@ async fn get_composed_file_metadata<'a>(
         }
         Err(err) => {
             // Pre-compressed variant check for the file not found
-            #[cfg(feature = "compression")]
+            #[cfg(any(
+                feature = "compression",
+                feature = "compression-deflate",
+                feature = "compression-gzip",
+                feature = "compression-deflate",
+                feature = "compression-brotli",
+                feature = "compression-zstd"
+            ))]
             if _compression_static {
                 if let Some(p) =
                     compression_static::precompressed_variant(file_path, _headers).await
@@ -333,7 +361,14 @@ async fn get_composed_file_metadata<'a>(
             let new_meta: Option<Metadata>;
             (file_path, new_meta) = suffix_file_html_metadata(file_path);
 
-            #[cfg(feature = "compression")]
+            #[cfg(any(
+                feature = "compression",
+                feature = "compression-deflate",
+                feature = "compression-gzip",
+                feature = "compression-deflate",
+                feature = "compression-brotli",
+                feature = "compression-zstd"
+            ))]
             match new_meta {
                 Some(new_meta) => {
                     return Ok(FileMetadata {

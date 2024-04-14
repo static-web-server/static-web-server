@@ -229,8 +229,23 @@ pub struct General {
     /// Files are checked in the specified order.
     pub index_files: String,
 
-    #[cfg(feature = "compression")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "compression")))]
+    #[cfg(any(
+        feature = "compression",
+        feature = "compression-gzip",
+        feature = "compression-brotli",
+        feature = "compression-zstd",
+        feature = "compression-deflate"
+    ))]
+    #[cfg_attr(
+        docsrs,
+        doc(cfg(any(
+            feature = "compression",
+            feature = "compression-gzip",
+            feature = "compression-brotli",
+            feature = "compression-zstd",
+            feature = "compression-deflate"
+        )))
+    )]
     #[arg(
         long,
         short = 'x',
@@ -243,9 +258,23 @@ pub struct General {
     )]
     /// Gzip, Deflate, Brotli or Zstd compression on demand determined by the Accept-Encoding header and applied to text-based web file types only.
     pub compression: bool,
-
-    #[cfg(feature = "compression")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "compression")))]
+    #[cfg(any(
+        feature = "compression",
+        feature = "compression-gzip",
+        feature = "compression-brotli",
+        feature = "compression-zstd",
+        feature = "compression-deflate"
+    ))]
+    #[cfg_attr(
+        docsrs,
+        doc(cfg(any(
+            feature = "compression",
+            feature = "compression-gzip",
+            feature = "compression-brotli",
+            feature = "compression-zstd",
+            feature = "compression-deflate"
+        )))
+    )]
     #[arg(
         long,
         default_value = "false",

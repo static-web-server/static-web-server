@@ -135,13 +135,43 @@ pub struct General {
     pub cache_control_headers: Option<bool>,
 
     /// Compression.
-    #[cfg(feature = "compression")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "compression")))]
+    #[cfg(any(
+        feature = "compression",
+        feature = "compression-gzip",
+        feature = "compression-brotli",
+        feature = "compression-zstd",
+        feature = "compression-deflate"
+    ))]
+    #[cfg_attr(
+        docsrs,
+        doc(cfg(any(
+            feature = "compression",
+            feature = "compression-gzip",
+            feature = "compression-brotli",
+            feature = "compression-zstd",
+            feature = "compression-deflate"
+        )))
+    )]
     pub compression: Option<bool>,
 
     /// Check for a pre-compressed file on disk.
-    #[cfg(feature = "compression")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "compression")))]
+    #[cfg(any(
+        feature = "compression",
+        feature = "compression-gzip",
+        feature = "compression-brotli",
+        feature = "compression-zstd",
+        feature = "compression-deflate"
+    ))]
+    #[cfg_attr(
+        docsrs,
+        doc(cfg(any(
+            feature = "compression",
+            feature = "compression-gzip",
+            feature = "compression-brotli",
+            feature = "compression-zstd",
+            feature = "compression-deflate"
+        )))
+    )]
     pub compression_static: Option<bool>,
 
     /// Error 404 pages.
