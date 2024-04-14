@@ -345,7 +345,7 @@ impl Server {
         }
         server_info!("index files: {}", general.index_files);
 
-        // Request handler options, to be filled
+        // Request handler options, some settings will be filled in by modules
         let mut handler_opts = RequestHandlerOpts {
             root_dir,
             compression,
