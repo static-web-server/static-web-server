@@ -12,7 +12,8 @@ use hyper::{Body, Request, Response};
 use crate::{handler::RequestHandlerOpts, http_ext::MethodExt, server_info, Error};
 
 /// Initializes the health endpoint.
-pub fn init(enabled: bool) {
+pub fn init(enabled: bool, handler_opts: &mut RequestHandlerOpts) {
+    handler_opts.health = enabled;
     server_info!("health endpoint: enabled={enabled}");
 }
 
