@@ -29,8 +29,7 @@ use crate::fallback_page;
 use headers::{ContentType, HeaderMapExt};
 
 use crate::{
-    control_headers, cors, custom_headers, error_page,
-    health::HealthHandler,
+    control_headers, cors, custom_headers, error_page, health,
     http_ext::MethodExt,
     maintenance_mode, redirects, rewrites, security_headers,
     settings::{file::RedirectsKind, Advanced},
@@ -189,7 +188,7 @@ impl RequestHandler {
         }
 
         async move {
-            if let Some(result) = HealthHandler::pre_process(&self.opts, req, &remote_addr_str) {
+            if let Some(result) = health::pre_process(&self.opts, req, &remote_addr_str) {
                 return result;
             }
 
@@ -200,7 +199,7 @@ impl RequestHandler {
             let mut uri_path = uri.path().to_owned();
             let uri_query = uri.query();
 
-            // Health requests aren't logged here but in HealthHandler.
+            // Health requests aren't logged here but in health module.
             tracing::info!(
                 "incoming request: method={} uri={}{}",
                 method,

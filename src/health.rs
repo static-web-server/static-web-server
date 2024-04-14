@@ -11,57 +11,52 @@ use hyper::{Body, Request, Response};
 
 use crate::{handler::RequestHandlerOpts, http_ext::MethodExt, server_info, Error};
 
-/// Encapsulates functionality required for the health handler.
-pub struct HealthHandler {}
+/// Initializes the health endpoint.
+pub fn init(enabled: bool) {
+    server_info!("health endpoint: enabled={enabled}");
+}
 
-impl HealthHandler {
-    /// Initializes the health endpoint.
-    pub fn init(enabled: bool) {
-        server_info!("health endpoint: enabled={enabled}");
+/// Handles health requests
+pub fn pre_process(
+    opts: &RequestHandlerOpts,
+    req: &Request<Body>,
+    remote_addr_str: &str,
+) -> Option<Result<Response<Body>, Error>> {
+    if !opts.health {
+        return None;
     }
 
-    /// Handles health requests
-    pub fn pre_process(
-        opts: &RequestHandlerOpts,
-        req: &Request<Body>,
-        remote_addr_str: &str,
-    ) -> Option<Result<Response<Body>, Error>> {
-        if !opts.health {
-            return None;
-        }
-
-        let uri = req.uri();
-        if uri.path() != "/health" {
-            return None;
-        }
-
-        let method = req.method();
-        if !method.is_get() && !method.is_head() {
-            return None;
-        }
-
-        tracing::debug!(
-            "incoming request: method={} uri={}{}",
-            method,
-            uri,
-            remote_addr_str,
-        );
-
-        let body = if method.is_get() {
-            Body::from("OK")
-        } else {
-            Body::empty()
-        };
-
-        let mut resp = Response::new(body);
-        resp.headers_mut().typed_insert(ContentType::html());
-        Some(Ok(resp))
+    let uri = req.uri();
+    if uri.path() != "/health" {
+        return None;
     }
+
+    let method = req.method();
+    if !method.is_get() && !method.is_head() {
+        return None;
+    }
+
+    tracing::debug!(
+        "incoming request: method={} uri={}{}",
+        method,
+        uri,
+        remote_addr_str,
+    );
+
+    let body = if method.is_get() {
+        Body::from("OK")
+    } else {
+        Body::empty()
+    };
+
+    let mut resp = Response::new(body);
+    resp.headers_mut().typed_insert(ContentType::html());
+    Some(Ok(resp))
 }
 
 #[cfg(test)]
 mod tests {
-    use super::HealthHandler;
+    use super::pre_process;
     use crate::handler::RequestHandlerOpts;
     use hyper::{Body, Request};
 
@@ -75,7 +70,7 @@ mod tests {
 
     #[test]
     fn test_health_disabled() {
-        assert!(HealthHandler::pre_process(
+        assert!(pre_process(
             &RequestHandlerOpts {
                 health: false,
                 ..Default::default()
@@ -88,7 +83,7 @@ mod tests {
 
     #[test]
     fn test_wrong_uri() {
-        assert!(HealthHandler::pre_process(
+        assert!(pre_process(
             &RequestHandlerOpts {
                 health: true,
                 ..Default::default()
@@ -101,7 +96,7 @@ mod tests {
 
     #[test]
     fn test_wrong_method() {
-        assert!(HealthHandler::pre_process(
+        assert!(pre_process(
             &RequestHandlerOpts {
                 health: true,
                 ..Default::default()
@@ -114,7 +109,7 @@ mod tests {
 
     #[test]
     fn test_correct_request() {
-        assert!(HealthHandler::pre_process(
+        assert!(pre_process(
             &RequestHandlerOpts {
                 health: true,
                 ..Default::default()

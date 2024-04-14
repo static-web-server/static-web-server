@@ -24,7 +24,7 @@ use {
     hyper::service::{make_service_fn, service_fn},
 };
 
-use crate::{cors, health::HealthHandler, helpers, Settings};
+use crate::{cors, health, helpers, Settings};
 use crate::{service::RouterService, Context, Result};
 
 /// Define a multi-threaded HTTP or HTTP/2 web server.
@@ -346,8 +346,7 @@ impl Server {
         server_info!("index files: {}", general.index_files);
 
         // Health endpoint option
-        let health = general.health;
-        HealthHandler::init(health);
+        health::init(general.health);
 
         // Metrics endpoint option (experimental)
         #[cfg(all(unix, feature = "experimental"))]
@@ -406,7 +405,7 @@ impl Server {
                 redirect_trailing_slash,
                 ignore_hidden_files,
                 index_files,
-                health,
+                health: general.health,
                 #[cfg(all(unix, feature = "experimental"))]
                 experimental_metrics,
                 maintenance_mode,
