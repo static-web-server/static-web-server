@@ -15,6 +15,8 @@ use headers::{
 use http::header;
 use std::collections::HashSet;
 
+use crate::server_info;
+
 /// It defines CORS instance.
 #[derive(Clone, Debug)]
 pub struct Cors {
@@ -68,8 +70,8 @@ pub fn new(
         };
 
         if cors_res.is_some() {
-            tracing::info!(
-                    "enabled=true, allow_methods=[GET,HEAD,OPTIONS], allow_origins={}, allow_headers=[{}], expose_headers=[{}]",
+            server_info!(
+                    "cors enabled=true, allow_methods=[GET,HEAD,OPTIONS], allow_origins={}, allow_headers=[{}], expose_headers=[{}]",
                     origins_str,
                     allow_headers_str,
                     expose_headers_str,
@@ -267,16 +269,30 @@ impl Configured {
                         return Err(Forbidden::Method);
                     }
                 } else {
-                    tracing::trace!(
-                        "cors: preflight request missing access-control-request-method header"
+                    tracing::warn!(
+                        "cors: preflight request missing `access-control-request-method` header"
                     );
                     return Err(Forbidden::Method);
                 }
 
                 if let Some(req_headers) = headers.get(header::ACCESS_CONTROL_REQUEST_HEADERS) {
-                    let headers = req_headers.to_str().map_err(|_| Forbidden::Header)?;
+                    let headers = match req_headers.to_str() {
+                        Ok(val) => val,
+                        Err(err) => {
+                            tracing::error!(
+                                "cors: error parsing header `access-control-request-headers` value: {:?}",
+                                err,
+                            );
+                            return Err(Forbidden::Header);
+                        }
+                    };
+
                     for header in headers.split(',') {
-                        if !self.is_header_allowed(header.trim()) {
+                        let h = header.trim();
+                        if !self.is_header_allowed(h) {
+                            tracing::error!(
+                                "cors: header `{}` is not allowed because is missing in `cors_allow_headers` server option", h
+                            );
                             return Err(Forbidden::Header);
                         }
                     }
@@ -316,12 +332,18 @@ impl Configured {
     }
 
     fn is_header_allowed(&self, header: &str) -> bool {
+        if header.is_empty() {
+            return false;
+        }
         HeaderName::from_bytes(header.as_bytes())
             .map(|header| self.cors.allowed_headers.contains(&header))
             .unwrap_or(false)
     }
 
     fn is_origin_allowed(&self, origin: &HeaderValue) -> bool {
+        if origin.is_empty() {
+            return false;
+        }
         if let Some(ref allowed) = self.cors.origins {
             allowed.contains(origin)
         } else {
