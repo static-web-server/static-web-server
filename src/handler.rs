@@ -25,7 +25,7 @@ use {crate::basic_auth, hyper::header::WWW_AUTHENTICATE};
 #[cfg(feature = "fallback-page")]
 use crate::fallback_page;
 
-#[cfg(feature = "experimental")]
+#[cfg(all(unix, feature = "experimental"))]
 use headers::{ContentType, HeaderMapExt};
 
 use crate::{
