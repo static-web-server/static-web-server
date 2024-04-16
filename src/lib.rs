@@ -108,6 +108,8 @@ extern crate anyhow;
 extern crate serde;
 
 // Public modules
+#[macro_use]
+pub mod logger;
 #[cfg(feature = "basic-auth")]
 #[cfg_attr(docsrs, doc(cfg(feature = "basic-auth")))]
 pub mod basic_auth;
@@ -147,6 +149,7 @@ pub mod compression;
     )))
 )]
 pub mod compression_static;
+pub(crate) mod conditional_headers;
 pub mod control_headers;
 pub mod cors;
 pub mod custom_headers;
@@ -157,19 +160,18 @@ pub mod error_page;
 #[cfg(feature = "fallback-page")]
 #[cfg_attr(docsrs, doc(cfg(feature = "fallback-page")))]
 pub mod fallback_page;
-pub mod handler;
-pub(crate) mod health;
-#[cfg(feature = "http2")]
-#[cfg_attr(docsrs, doc(cfg(feature = "http2")))]
-pub mod https_redirect;
-#[macro_use]
-pub mod logger;
-pub(crate) mod conditional_headers;
 pub(crate) mod file_path;
 pub(crate) mod file_response;
 pub(crate) mod file_stream;
+pub mod handler;
+pub(crate) mod health;
 pub(crate) mod http_ext;
+#[cfg(feature = "http2")]
+#[cfg_attr(docsrs, doc(cfg(feature = "http2")))]
+pub mod https_redirect;
 pub mod maintenance_mode;
+#[cfg(all(unix, feature = "experimental"))]
+pub(crate) mod metrics;
 pub mod redirects;
 pub mod rewrites;
 pub mod security_headers;
