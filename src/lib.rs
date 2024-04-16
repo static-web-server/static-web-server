@@ -158,7 +158,7 @@ pub mod error_page;
 #[cfg_attr(docsrs, doc(cfg(feature = "fallback-page")))]
 pub mod fallback_page;
 pub mod handler;
-pub mod health;
+pub(crate) mod health;
 #[cfg(feature = "http2")]
 #[cfg_attr(docsrs, doc(cfg(feature = "http2")))]
 pub mod https_redirect;
