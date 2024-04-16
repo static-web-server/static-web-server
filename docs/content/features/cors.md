@@ -26,7 +26,7 @@ The server also supports a list of [CORS allowed headers](https://developer.mozi
 This feature depends on `--cors-allow-origins` to be used along with this feature. It can be controlled by the string `-j, --cors-allow-headers` option or the equivalent [SERVER_CORS_ALLOW_HEADERS](../configuration/environment-variables.md#server_cors_allow_headers) env.
 
 !!! info "Tips"
-    - The default allowed headers value is `origin, content-type`.
+    - The default allowed headers value is `origin, content-type, authorization`.
     - The server also supports [preflight requests](https://developer.mozilla.org/en-US/docs/Glossary/Preflight_request) via the `OPTIONS` method. See [Preflighted requests in CORS](./http-methods.md#preflighted-requests-in-cors).
 
 Below is an example of how to CORS.
