@@ -24,7 +24,7 @@ use {
     hyper::service::{make_service_fn, service_fn},
 };
 
-use crate::{cors, helpers, Settings};
+use crate::{cors, health, helpers, Settings};
 use crate::{service::RouterService, Context, Result};
 
 /// Define a multi-threaded HTTP or HTTP/2 web server.
@@ -345,75 +345,75 @@ impl Server {
         }
         server_info!("index files: {}", general.index_files);
 
+        // Request handler options, some settings will be filled in by modules
+        let mut handler_opts = RequestHandlerOpts {
+            root_dir,
+            compression,
+            compression_static,
+            #[cfg(feature = "directory-listing")]
+            dir_listing,
+            #[cfg(feature = "directory-listing")]
+            dir_listing_order,
+            #[cfg(feature = "directory-listing")]
+            dir_listing_format,
+            cors,
+            security_headers,
+            cache_control_headers,
+            page404: page404.clone(),
+            page50x: page50x.clone(),
+            #[cfg(feature = "fallback-page")]
+            page_fallback,
+            #[cfg(feature = "basic-auth")]
+            basic_auth,
+            log_remote_address,
+            redirect_trailing_slash,
+            ignore_hidden_files,
+            index_files,
+            advanced_opts,
+            ..Default::default()
+        };
+
         // Health endpoint option
-        let health = general.health;
-        server_info!("health endpoint: enabled={}", health);
+        health::init(general.health, &mut handler_opts);
 
         // Metrics endpoint option (experimental)
         #[cfg(all(unix, feature = "experimental"))]
-        let experimental_metrics = general.experimental_metrics;
-        #[cfg(all(unix, feature = "experimental"))]
-        server_info!(
-            "metrics endpoint (experimental): enabled={}",
-            experimental_metrics
-        );
+        {
+            handler_opts.experimental_metrics = general.experimental_metrics;
+            server_info!(
+                "metrics endpoint (experimental): enabled={}",
+                handler_opts.experimental_metrics
+            );
 
-        #[cfg(all(unix, feature = "experimental"))]
-        if experimental_metrics {
-            prometheus::default_registry()
-                .register(Box::new(
-                    tokio_metrics_collector::default_runtime_collector(),
-                ))
-                .unwrap();
+            if handler_opts.experimental_metrics {
+                prometheus::default_registry()
+                    .register(Box::new(
+                        tokio_metrics_collector::default_runtime_collector(),
+                    ))
+                    .unwrap();
+            }
         }
 
         // Maintenance mode option
-        let maintenance_mode = general.maintenance_mode;
-        let maintenance_mode_status = general.maintenance_mode_status;
-        let maintenance_mode_file = general.maintenance_mode_file;
-        server_info!("maintenance mode: enabled={}", maintenance_mode);
+        handler_opts.maintenance_mode = general.maintenance_mode;
+        handler_opts.maintenance_mode_status = general.maintenance_mode_status;
+        handler_opts.maintenance_mode_file = general.maintenance_mode_file;
+        server_info!(
+            "maintenance mode: enabled={}",
+            handler_opts.maintenance_mode
+        );
         server_info!(
             "maintenance mode status: {}",
-            maintenance_mode_status.as_str()
+            handler_opts.maintenance_mode_status.as_str()
         );
         server_info!(
             "maintenance mode file: \"{}\"",
-            maintenance_mode_file.display()
+            handler_opts.maintenance_mode_file.display()
         );
 
         // Create a service router for Hyper
         let router_service = RouterService::new(RequestHandler {
-            opts: Arc::from(RequestHandlerOpts {
-                root_dir,
-                compression,
-                compression_static,
-                #[cfg(feature = "directory-listing")]
-                dir_listing,
-                #[cfg(feature = "directory-listing")]
-                dir_listing_order,
-                #[cfg(feature = "directory-listing")]
-                dir_listing_format,
-                cors,
-                security_headers,
-                cache_control_headers,
-                page404: page404.clone(),
-                page50x: page50x.clone(),
-                #[cfg(feature = "fallback-page")]
-                page_fallback,
-                #[cfg(feature = "basic-auth")]
-                basic_auth,
-                log_remote_address,
-                redirect_trailing_slash,
-                ignore_hidden_files,
-                index_files,
-                health,
-                #[cfg(all(unix, feature = "experimental"))]
-                experimental_metrics,
-                maintenance_mode,
-                maintenance_mode_status,
-                maintenance_mode_file,
-                advanced_opts,
-            }),
+            opts: Arc::from(handler_opts),
         });
 
         #[cfg(windows)]

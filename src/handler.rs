@@ -6,7 +6,7 @@
 //! Request handler module intended to manage incoming HTTP requests.
 //!
 
-use headers::{ContentType, HeaderMap, HeaderMapExt, HeaderValue};
+use headers::{HeaderMap, HeaderValue};
 use hyper::{Body, Request, Response, StatusCode};
 use std::{future::Future, net::IpAddr, net::SocketAddr, path::PathBuf, sync::Arc};
 
@@ -25,8 +25,11 @@ use {crate::basic_auth, hyper::header::WWW_AUTHENTICATE};
 #[cfg(feature = "fallback-page")]
 use crate::fallback_page;
 
+#[cfg(all(unix, feature = "experimental"))]
+use headers::{ContentType, HeaderMapExt};
+
 use crate::{
-    control_headers, cors, custom_headers, error_page,
+    control_headers, cors, custom_headers, error_page, health,
     http_ext::MethodExt,
     maintenance_mode, redirects, rewrites, security_headers,
     settings::{file::RedirectsKind, Advanced},
@@ -100,6 +103,42 @@ pub struct RequestHandlerOpts {
     pub advanced_opts: Option<Advanced>,
 }
 
+impl Default for RequestHandlerOpts {
+    fn default() -> Self {
+        Self {
+            root_dir: PathBuf::from("./public"),
+            compression: true,
+            compression_static: false,
+            #[cfg(feature = "directory-listing")]
+            dir_listing: false,
+            #[cfg(feature = "directory-listing")]
+            dir_listing_order: 6, // unordered
+            #[cfg(feature = "directory-listing")]
+            dir_listing_format: DirListFmt::Html,
+            cors: None,
+            security_headers: false,
+            cache_control_headers: true,
+            page404: PathBuf::from("./404.html"),
+            page50x: PathBuf::from("./50x.html"),
+            #[cfg(feature = "fallback-page")]
+            page_fallback: Vec::new(),
+            #[cfg(feature = "basic-auth")]
+            basic_auth: String::new(),
+            index_files: vec!["index.html".into()],
+            log_remote_address: false,
+            redirect_trailing_slash: true,
+            ignore_hidden_files: false,
+            health: false,
+            #[cfg(all(unix, feature = "experimental"))]
+            experimental_metrics: false,
+            maintenance_mode: false,
+            maintenance_mode_status: StatusCode::SERVICE_UNAVAILABLE,
+            maintenance_mode_file: PathBuf::new(),
+            advanced_opts: None,
+        }
+    }
+}
+
 /// It defines the main request handler used by the Hyper service request.
 pub struct RequestHandler {
     /// Request handler options.
@@ -113,13 +152,7 @@ impl RequestHandler {
         req: &'a mut Request<Body>,
         remote_addr: Option<SocketAddr>,
     ) -> impl Future<Output = Result<Response<Body>, Error>> + Send + 'a {
-        let method = req.method();
-        let headers = req.headers();
-        let uri = req.uri();
-
         let mut base_path = &self.opts.root_dir;
-        let mut uri_path = uri.path().to_owned();
-        let uri_query = uri.query();
         #[cfg(feature = "directory-listing")]
         let dir_listing = self.opts.dir_listing;
         #[cfg(feature = "directory-listing")]
@@ -130,19 +163,11 @@ impl RequestHandler {
         let redirect_trailing_slash = self.opts.redirect_trailing_slash;
         let compression_static = self.opts.compression_static;
         let ignore_hidden_files = self.opts.ignore_hidden_files;
-        let health = self.opts.health;
         #[cfg(all(unix, feature = "experimental"))]
         let experimental_metrics = self.opts.experimental_metrics;
         let index_files: Vec<&str> = self.opts.index_files.iter().map(|s| s.as_str()).collect();
 
         let mut cors_headers: Option<HeaderMap> = None;
-
-        let health_request =
-            health && uri_path == "/health" && (method.is_get() || method.is_head());
-
-        #[cfg(all(unix, feature = "experimental"))]
-        let metrics_request =
-            experimental_metrics && uri_path == "/metrics" && (method.is_get() || method.is_head());
 
         // Log request information with its remote address if available
         let mut remote_addr_str = String::new();
@@ -150,7 +175,8 @@ impl RequestHandler {
             remote_addr_str.push_str(" remote_addr=");
             remote_addr_str.push_str(&remote_addr.map_or("".to_owned(), |v| v.to_string()));
 
-            if let Some(client_ip_address) = headers
+            if let Some(client_ip_address) = req
+                .headers()
                 .get("X-Forwarded-For")
                 .and_then(|v| v.to_str().ok())
                 .and_then(|s| s.split(',').next())
@@ -161,40 +187,25 @@ impl RequestHandler {
             }
         }
 
-        // Health endpoint logs
-        if health_request {
-            tracing::debug!(
-                "incoming request: method={} uri={}{}",
-                method,
-                uri,
-                remote_addr_str,
-            );
-        } else {
+        async move {
+            if let Some(result) = health::pre_process(&self.opts, req, &remote_addr_str) {
+                return result;
+            }
+
+            let method = req.method();
+            let headers = req.headers();
+            let uri = req.uri();
+
+            let mut uri_path = uri.path().to_owned();
+            let uri_query = uri.query();
+
+            // Health requests aren't logged here but in health module.
             tracing::info!(
                 "incoming request: method={} uri={}{}",
                 method,
                 uri,
                 remote_addr_str,
             );
-        }
-
-        let host = headers
-            .get(http::header::HOST)
-            .and_then(|v| v.to_str().ok())
-            .unwrap_or("");
-
-        async move {
-            // Health endpoint check
-            if health_request {
-                let body = if method.is_get() {
-                    Body::from("OK")
-                } else {
-                    Body::empty()
-                };
-                let mut resp = Response::new(body);
-                resp.headers_mut().typed_insert(ContentType::html());
-                return Ok(resp);
-            }
 
             // Reject in case of incoming HTTP request method is not allowed
             if !method.is_allowed() {
@@ -208,6 +219,11 @@ impl RequestHandler {
             }
 
             // Metrics endpoint check
+            #[cfg(all(unix, feature = "experimental"))]
+            let metrics_request = experimental_metrics
+                && uri_path == "/metrics"
+                && (method.is_get() || method.is_head());
+
             #[cfg(all(unix, feature = "experimental"))]
             if metrics_request {
                 use prometheus::Encoder;
@@ -294,6 +310,11 @@ impl RequestHandler {
             // Advanced options
             if let Some(advanced) = &self.opts.advanced_opts {
                 // Redirects
+                let host = req
+                    .headers()
+                    .get(http::header::HOST)
+                    .and_then(|v| v.to_str().ok())
+                    .unwrap_or("");
                 let mut uri_host = uri.host().unwrap_or(host).to_owned();
                 if let Some(uri_port) = uri.port_u16() {
                     uri_host.push_str(&format!(":{}", uri_port));
