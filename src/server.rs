@@ -24,6 +24,9 @@ use {
     hyper::service::{make_service_fn, service_fn},
 };
 
+#[cfg(feature = "basic-auth")]
+use crate::basic_auth;
+
 use crate::{cors, health, helpers, Settings};
 use crate::{service::RouterService, Context, Result};
 
@@ -306,15 +309,6 @@ impl Server {
             general.cors_expose_headers.trim(),
         );
 
-        #[cfg(feature = "basic-auth")]
-        // `Basic` HTTP Authentication Schema option
-        let basic_auth = general.basic_auth.trim().to_owned();
-        #[cfg(feature = "basic-auth")]
-        server_info!(
-            "basic authentication: enabled={}",
-            !general.basic_auth.is_empty()
-        );
-
         // Log remote address option
         let log_remote_address = general.log_remote_address;
         server_info!("log remote address: enabled={}", log_remote_address);
@@ -363,8 +357,6 @@ impl Server {
             page50x: page50x.clone(),
             #[cfg(feature = "fallback-page")]
             page_fallback,
-            #[cfg(feature = "basic-auth")]
-            basic_auth,
             log_remote_address,
             redirect_trailing_slash,
             ignore_hidden_files,
@@ -393,6 +385,10 @@ impl Server {
                     .unwrap();
             }
         }
+
+        // `Basic` HTTP Authentication Schema option
+        #[cfg(feature = "basic-auth")]
+        basic_auth::init(&general.basic_auth, &mut handler_opts);
 
         // Maintenance mode option
         handler_opts.maintenance_mode = general.maintenance_mode;
