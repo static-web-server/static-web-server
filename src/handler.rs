@@ -20,7 +20,7 @@ use std::{future::Future, net::IpAddr, net::SocketAddr, path::PathBuf, sync::Arc
 use crate::compression;
 
 #[cfg(feature = "basic-auth")]
-use {crate::basic_auth, hyper::header::WWW_AUTHENTICATE};
+use crate::basic_auth;
 
 #[cfg(feature = "fallback-page")]
 use crate::fallback_page;
@@ -242,37 +242,10 @@ impl RequestHandler {
                 };
             }
 
-            #[cfg(feature = "basic-auth")]
             // `Basic` HTTP Authorization Schema
-            if !self.opts.basic_auth.is_empty() && !method.is_options() {
-                if let Some((user_id, password)) = self.opts.basic_auth.split_once(':') {
-                    if let Err(err) = basic_auth::check_request(headers, user_id, password) {
-                        tracing::warn!("basic authentication failed {:?}", err);
-                        let mut resp = error_page::error_response(
-                            uri,
-                            method,
-                            &StatusCode::UNAUTHORIZED,
-                            &self.opts.page404,
-                            &self.opts.page50x,
-                        )?;
-                        resp.headers_mut().insert(
-                            WWW_AUTHENTICATE,
-                            "Basic realm=\"Static Web Server\", charset=\"UTF-8\""
-                                .parse()
-                                .unwrap(),
-                        );
-                        return Ok(resp);
-                    }
-                } else {
-                    tracing::error!("invalid basic authentication `user_id:password` pairs");
-                    return error_page::error_response(
-                        uri,
-                        method,
-                        &StatusCode::INTERNAL_SERVER_ERROR,
-                        &self.opts.page404,
-                        &self.opts.page50x,
-                    );
-                }
+            #[cfg(feature = "basic-auth")]
+            if let Some(response) = basic_auth::pre_process(&self.opts, req) {
+                return response;
             }
 
             // Maintenance Mode

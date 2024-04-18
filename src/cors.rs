@@ -15,8 +15,6 @@ use headers::{
 use http::header;
 use std::collections::HashSet;
 
-use crate::server_info;
-
 /// It defines CORS instance.
 #[derive(Clone, Debug)]
 pub struct Cors {
