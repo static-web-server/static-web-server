@@ -26,7 +26,7 @@ use crate::basic_auth;
 use crate::fallback_page;
 
 #[cfg(all(unix, feature = "experimental"))]
-use headers::{ContentType, HeaderMapExt};
+use crate::metrics;
 
 use crate::{
     control_headers, cors, custom_headers, error_page, health,
@@ -163,8 +163,6 @@ impl RequestHandler {
         let redirect_trailing_slash = self.opts.redirect_trailing_slash;
         let compression_static = self.opts.compression_static;
         let ignore_hidden_files = self.opts.ignore_hidden_files;
-        #[cfg(all(unix, feature = "experimental"))]
-        let experimental_metrics = self.opts.experimental_metrics;
         let index_files: Vec<&str> = self.opts.index_files.iter().map(|s| s.as_str()).collect();
 
         let mut cors_headers: Option<HeaderMap> = None;
@@ -220,29 +218,8 @@ impl RequestHandler {
 
             // Metrics endpoint check
             #[cfg(all(unix, feature = "experimental"))]
-            let metrics_request = experimental_metrics
-                && uri_path == "/metrics"
-                && (method.is_get() || method.is_head());
-
-            #[cfg(all(unix, feature = "experimental"))]
-            if metrics_request {
-                use prometheus::Encoder;
-
-                let body = if method.is_get() {
-                    let encoder = prometheus::TextEncoder::new();
-                    let mut buffer = Vec::new();
-                    encoder
-                        .encode(&prometheus::default_registry().gather(), &mut buffer)
-                        .unwrap();
-                    let data = String::from_utf8(buffer).unwrap();
-                    Body::from(data)
-                } else {
-                    Body::empty()
-                };
-                let mut resp = Response::new(body);
-                resp.headers_mut()
-                    .typed_insert(ContentType::from(mime_guess::mime::TEXT_PLAIN_UTF_8));
-                return Ok(resp);
+            if let Some(result) = metrics::pre_process(&self.opts, req) {
+                return result;
             }
 
             // CORS
