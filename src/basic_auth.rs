@@ -10,7 +10,7 @@ use bcrypt::verify as bcrypt_verify;
 use headers::{authorization::Basic, Authorization, HeaderMap, HeaderMapExt};
 use hyper::{header::WWW_AUTHENTICATE, Body, Request, Response, StatusCode};
 
-use crate::{error_page, handler::RequestHandlerOpts, http_ext::MethodExt, server_info, Error};
+use crate::{error_page, handler::RequestHandlerOpts, http_ext::MethodExt, Error};
 
 /// Initializes `Basic` HTTP Authorization handling
 pub(crate) fn init(credentials: &str, handler_opts: &mut RequestHandlerOpts) {
