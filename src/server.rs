@@ -13,6 +13,8 @@ use std::sync::Arc;
 use tokio::sync::{watch::Receiver, Mutex};
 
 use crate::handler::{RequestHandler, RequestHandlerOpts};
+#[cfg(all(unix, feature = "experimental"))]
+use crate::metrics;
 #[cfg(any(unix, windows))]
 use crate::signals;
 
@@ -378,21 +380,7 @@ impl Server {
 
         // Metrics endpoint option (experimental)
         #[cfg(all(unix, feature = "experimental"))]
-        {
-            handler_opts.experimental_metrics = general.experimental_metrics;
-            server_info!(
-                "metrics endpoint (experimental): enabled={}",
-                handler_opts.experimental_metrics
-            );
-
-            if handler_opts.experimental_metrics {
-                prometheus::default_registry()
-                    .register(Box::new(
-                        tokio_metrics_collector::default_runtime_collector(),
-                    ))
-                    .unwrap();
-            }
-        }
+        metrics::init(general.experimental_metrics, &mut handler_opts);
 
         // Maintenance mode option
         handler_opts.maintenance_mode = general.maintenance_mode;
