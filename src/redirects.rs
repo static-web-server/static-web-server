@@ -44,7 +44,7 @@ pub(crate) fn pre_process(
         let caps_range = 0..regex_caps.len();
         let caps = caps_range
             .clone()
-            .filter_map(|i| regex_caps.get(i).map(|s| s.as_str()))
+            .map(|i| regex_caps.get(i).map(|s| s.as_str()).unwrap_or(""))
             .collect::<Vec<&str>>();
 
         let patterns = caps_range
@@ -171,8 +171,8 @@ mod tests {
             },
             Redirects {
                 host: Some("example.info".into()),
-                source: Regex::new(r"/(source3)/(.*)").unwrap(),
-                destination: "/destination3/$1/$2".into(),
+                source: Regex::new(r"/(prefix/)?(source3)/(.*)").unwrap(),
+                destination: "/destination3/$2/$3".into(),
                 kind: StatusCode::MOVED_PERMANENTLY,
             },
         ]
