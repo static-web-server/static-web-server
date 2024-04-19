@@ -6,10 +6,27 @@
 //! Module to append custom HTTP headers via TOML config file.
 //!
 
-use hyper::{Body, Response};
+use hyper::{Body, Request, Response};
 use std::{ffi::OsStr, path::PathBuf};
 
-use crate::settings::Headers;
+use crate::{handler::RequestHandlerOpts, settings::Headers};
+
+/// Appends custom HTTP headers to a response if necessary
+pub(crate) fn post_process(
+    opts: &RequestHandlerOpts,
+    req: &Request<Body>,
+    resp: &mut Response<Body>,
+    file_path: Option<&PathBuf>,
+) {
+    if let Some(advanced) = &opts.advanced_opts {
+        append_headers(
+            req.uri().path(),
+            advanced.headers.as_deref(),
+            resp,
+            file_path,
+        )
+    }
+}
 
 /// Append custom HTTP headers to current response.
 pub fn append_headers(
