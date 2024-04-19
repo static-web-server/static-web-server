@@ -249,12 +249,8 @@ impl RequestHandler {
             }
 
             // Maintenance Mode
-            if self.opts.maintenance_mode {
-                return maintenance_mode::get_response(
-                    method,
-                    &self.opts.maintenance_mode_status,
-                    &self.opts.maintenance_mode_file,
-                );
+            if let Some(response) = maintenance_mode::pre_process(&self.opts, req) {
+                return response;
             }
 
             // Advanced options
