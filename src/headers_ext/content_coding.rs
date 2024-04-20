@@ -140,6 +140,7 @@ mod tests {
         assert_eq!(ContentCoding::from("br"), ContentCoding::BROTLI);
         assert_eq!(ContentCoding::from("GZIP"), ContentCoding::GZIP);
         assert_eq!(ContentCoding::from("zstd"), ContentCoding::ZSTD);
+        assert_eq!(ContentCoding::from("*"), ContentCoding::ANY);
         assert_eq!(ContentCoding::from("blah blah"), ContentCoding::IDENTITY);
     }
 
@@ -147,6 +148,7 @@ mod tests {
     fn from_str() {
         assert_eq!(ContentCoding::from_str("br"), Ok(ContentCoding::BROTLI));
         assert_eq!(ContentCoding::from_str("zstd"), Ok(ContentCoding::ZSTD));
+        assert_eq!(ContentCoding::from_str("*"), Ok(ContentCoding::ANY));
         assert_eq!(ContentCoding::from_str("blah blah"), Err(()));
     }
 }
