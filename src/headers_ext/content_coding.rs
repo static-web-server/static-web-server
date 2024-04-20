@@ -5,8 +5,8 @@ macro_rules! define_content_coding {
         use std::str::FromStr;
 
         #[derive(Copy, Clone, Debug, Eq, PartialEq)]
-        /// Values that are used with headers like [`Content-Encoding`](self::ContentEncoding) or
-        /// [`Accept-Encoding`](self::AcceptEncoding)
+        /// Values that are used with headers like [`Content-Encoding`](headers::ContentEncoding) or
+        /// [`Accept-Encoding`](super::AcceptEncoding)
         ///
         /// [RFC7231](https://www.iana.org/assignments/http-parameters/http-parameters.xhtml)
         pub enum ContentCoding {
