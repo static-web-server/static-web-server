@@ -29,7 +29,7 @@ use {
 #[cfg(feature = "basic-auth")]
 use crate::basic_auth;
 
-use crate::{cors, health, helpers, Settings};
+use crate::{cors, health, helpers, maintenance_mode, Settings};
 use crate::{service::RouterService, Context, Result};
 
 /// Define a multi-threaded HTTP or HTTP/2 web server.
@@ -379,20 +379,11 @@ impl Server {
         basic_auth::init(&general.basic_auth, &mut handler_opts);
 
         // Maintenance mode option
-        handler_opts.maintenance_mode = general.maintenance_mode;
-        handler_opts.maintenance_mode_status = general.maintenance_mode_status;
-        handler_opts.maintenance_mode_file = general.maintenance_mode_file;
-        server_info!(
-            "maintenance mode: enabled={}",
-            handler_opts.maintenance_mode
-        );
-        server_info!(
-            "maintenance mode status: {}",
-            handler_opts.maintenance_mode_status.as_str()
-        );
-        server_info!(
-            "maintenance mode file: \"{}\"",
-            handler_opts.maintenance_mode_file.display()
+        maintenance_mode::init(
+            general.maintenance_mode,
+            general.maintenance_mode_status,
+            general.maintenance_mode_file,
+            &mut handler_opts,
         );
 
         // Create a service router for Hyper
