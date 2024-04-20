@@ -64,6 +64,7 @@ pub struct VirtualHosts {
 }
 
 /// The `advanced` file options.
+#[derive(Default)]
 pub struct Advanced {
     /// Headers list.
     pub headers: Option<Vec<Headers>>,
