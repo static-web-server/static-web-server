@@ -101,7 +101,7 @@ pub(crate) fn handle_error(
     opts: &RequestHandlerOpts,
     req: &Request<Body>,
 ) -> Option<Result<Response<Body>, Error>> {
-    tracing::error!("{err}");
+    tracing::error!("{err:?}");
     Some(error_page::error_response(
         req.uri(),
         req.method(),
