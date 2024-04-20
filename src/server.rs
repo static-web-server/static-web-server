@@ -304,13 +304,6 @@ impl Server {
         let cache_control_headers = general.cache_control_headers;
         server_info!("cache control headers: enabled={}", cache_control_headers);
 
-        // CORS option
-        let cors = cors::new(
-            general.cors_allow_origins.trim(),
-            general.cors_allow_headers.trim(),
-            general.cors_expose_headers.trim(),
-        );
-
         // Log remote address option
         let log_remote_address = general.log_remote_address;
         server_info!("log remote address: enabled={}", log_remote_address);
@@ -352,7 +345,6 @@ impl Server {
             dir_listing_order,
             #[cfg(feature = "directory-listing")]
             dir_listing_format,
-            cors,
             security_headers,
             cache_control_headers,
             page404: page404.clone(),
@@ -373,6 +365,14 @@ impl Server {
         // Metrics endpoint option (experimental)
         #[cfg(all(unix, feature = "experimental"))]
         metrics::init(general.experimental_metrics, &mut handler_opts);
+
+        // CORS option
+        cors::init(
+            &general.cors_allow_origins,
+            &general.cors_allow_headers,
+            &general.cors_expose_headers,
+            &mut handler_opts,
+        );
 
         // `Basic` HTTP Authentication Schema option
         #[cfg(feature = "basic-auth")]

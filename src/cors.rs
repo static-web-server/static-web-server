@@ -13,7 +13,10 @@ use headers::{
     HeaderMapExt, HeaderName, HeaderValue, Origin,
 };
 use http::header;
+use hyper::{Body, Request, Response, StatusCode};
 use std::collections::HashSet;
+
+use crate::{error_page, handler::RequestHandlerOpts, Error};
 
 /// It defines CORS instance.
 #[derive(Clone, Debug)]
@@ -373,5 +376,193 @@ impl<'a> IntoOrigin for &'a str {
         let rest = parts.next().expect("cors::into_origin: missing url scheme");
 
         Origin::try_from_parts(scheme, rest, None).expect("cors::into_origin: invalid Origin")
+    }
+}
+
+/// Initializes CORS settings
+pub(crate) fn init(
+    cors_allow_origins: &str,
+    cors_allow_headers: &str,
+    cors_expose_headers: &str,
+    handler_opts: &mut RequestHandlerOpts,
+) {
+    handler_opts.cors = new(
+        cors_allow_origins.trim(),
+        cors_allow_headers.trim(),
+        cors_expose_headers.trim(),
+    );
+}
+
+/// Rejects requests with wrong CORS headers
+pub(crate) fn pre_process(
+    opts: &RequestHandlerOpts,
+    req: &Request<Body>,
+) -> Option<Result<Response<Body>, Error>> {
+    let cors = opts.cors.as_ref()?;
+    match cors.check_request(req.method(), req.headers()) {
+        Ok((_, state)) => {
+            tracing::debug!("cors state: {:?}", state);
+            None
+        }
+        Err(err) => {
+            tracing::error!("cors error kind: {:?}", err);
+            Some(error_page::error_response(
+                req.uri(),
+                req.method(),
+                &StatusCode::FORBIDDEN,
+                &opts.page404,
+                &opts.page50x,
+            ))
+        }
+    }
+}
+
+/// Adds CORS headers to response
+pub(crate) fn post_process(
+    opts: &RequestHandlerOpts,
+    req: &Request<Body>,
+    resp: &mut Response<Body>,
+) {
+    if let Some(cors) = opts.cors.as_ref() {
+        if let Ok((headers, _)) = cors.check_request(req.method(), req.headers()) {
+            if !headers.is_empty() {
+                for (k, v) in headers.iter() {
+                    resp.headers_mut().insert(k, v.to_owned());
+                }
+                resp.headers_mut().remove(http::header::ALLOW);
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{post_process, pre_process, Configured, Cors};
+    use crate::{handler::RequestHandlerOpts, Error};
+    use hyper::{Body, Request, Response, StatusCode};
+
+    fn make_request(method: &str, origin: &str) -> Request<Body> {
+        let mut builder = Request::builder();
+        if !origin.is_empty() {
+            builder = builder.header("Origin", origin);
+        }
+        builder.method(method).uri("/").body(Body::empty()).unwrap()
+    }
+
+    fn make_response() -> Response<Body> {
+        Response::builder().body(Body::empty()).unwrap()
+    }
+
+    fn make_cors_config() -> Option<Configured> {
+        Cors::build(Some(
+            Cors::new()
+                .allow_origins(vec!["https://example.com/"])
+                .allow_headers(vec!["X-Allowed"])
+                .allow_methods(vec!["GET", "HEAD"]),
+        ))
+    }
+
+    fn get_allowed_origin(resp: Response<Body>) -> Option<String> {
+        resp.headers()
+            .get("Access-Control-Allow-Origin")
+            .and_then(|v| v.to_str().ok())
+            .map(|s| s.to_owned())
+    }
+
+    fn is_403(result: Option<Result<Response<Body>, Error>>) -> bool {
+        if let Some(Ok(response)) = result {
+            response.status() == StatusCode::FORBIDDEN
+        } else {
+            false
+        }
+    }
+
+    #[test]
+    fn test_cors_disabled() {
+        let opts = RequestHandlerOpts {
+            cors: None,
+            ..Default::default()
+        };
+        let req = make_request("GET", "https://example.com/");
+
+        assert!(pre_process(&opts, &req).is_none());
+
+        let mut resp = make_response();
+        post_process(&opts, &req, &mut resp);
+        assert_eq!(get_allowed_origin(resp), None);
+    }
+
+    #[test]
+    fn test_non_cors_request() {
+        let opts = RequestHandlerOpts {
+            cors: make_cors_config(),
+            ..Default::default()
+        };
+        let req = make_request("GET", "");
+
+        assert!(pre_process(&opts, &req).is_none());
+
+        let mut resp = make_response();
+        post_process(&opts, &req, &mut resp);
+        assert_eq!(get_allowed_origin(resp), None);
+    }
+
+    #[test]
+    fn test_forbidden_request() {
+        let opts = RequestHandlerOpts {
+            cors: make_cors_config(),
+            ..Default::default()
+        };
+
+        assert!(is_403(pre_process(
+            &opts,
+            &make_request("GET", "https://example.info")
+        )));
+        assert!(is_403(pre_process(
+            &opts,
+            &make_request("OPTIONS", "https://example.com")
+        )));
+
+        let mut req = make_request("OPTIONS", "https://example.com");
+        req.headers_mut()
+            .insert("Access-Control-Request-Method", "POST".try_into().unwrap());
+        assert!(is_403(pre_process(&opts, &req)));
+
+        let mut req = make_request("OPTIONS", "https://example.com");
+        req.headers_mut()
+            .insert("Access-Control-Request-Method", "GET".try_into().unwrap());
+        req.headers_mut().insert(
+            "Access-Control-Request-Headers",
+            "X-Forbidden".try_into().unwrap(),
+        );
+        assert!(is_403(pre_process(&opts, &req)));
+    }
+
+    #[test]
+    fn test_allowed_request() {
+        let opts = RequestHandlerOpts {
+            cors: make_cors_config(),
+            ..Default::default()
+        };
+
+        let req = make_request("GET", "https://example.com");
+        assert!(pre_process(&opts, &req).is_none());
+
+        let mut resp = make_response();
+        post_process(&opts, &req, &mut resp);
+        assert_eq!(get_allowed_origin(resp), Some("https://example.com".into()));
+
+        let mut req = make_request("GET", "https://example.com");
+        req.headers_mut()
+            .insert("Access-Control-Request-Method", "GET".try_into().unwrap());
+        req.headers_mut().insert(
+            "Access-Control-Request-Headers",
+            "X-Allowed".try_into().unwrap(),
+        );
+        assert!(pre_process(&opts, &req).is_none());
+
+        let mut resp = make_response();
+        post_process(&opts, &req, &mut resp);
+        assert_eq!(get_allowed_origin(resp), Some("https://example.com".into()));
     }
 }
