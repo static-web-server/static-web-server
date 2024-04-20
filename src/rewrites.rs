@@ -88,6 +88,14 @@ fn merge_uris(orig_uri: &Uri, new_uri: &str) -> Result<Uri, Error> {
     if parts.path_and_query.is_none() {
         parts.path_and_query = orig_uri.path_and_query().cloned();
     }
+    if let Some(path_and_query) = &mut parts.path_and_query {
+        if let (None, Some(query)) = (path_and_query.query(), orig_uri.query()) {
+            *path_and_query = [path_and_query.as_str(), "?", query]
+                .into_iter()
+                .collect::<String>()
+                .parse()?;
+        }
+    }
     Ok(Uri::from_parts(parts)?)
 }
 
@@ -147,7 +155,7 @@ mod tests {
             },
             Rewrites {
                 source: Regex::new(r"/(source4)/(.*)").unwrap(),
-                destination: "http://example.net:1234/destination4/$1/$2".into(),
+                destination: "http://example.net:1234/destination4/$1?$2".into(),
                 redirect: None,
             },
         ]
@@ -209,7 +217,7 @@ mod tests {
 
     #[test]
     fn test_match() {
-        let mut req = make_request("", "/source1");
+        let mut req = make_request("", "/source1?query");
         assert!(pre_process(
             &RequestHandlerOpts {
                 advanced_opts: Some(Advanced {
@@ -221,7 +229,7 @@ mod tests {
             &mut req
         )
         .is_none());
-        assert_eq!(req.uri(), "/destination1");
+        assert_eq!(req.uri(), "/destination1?query");
 
         let mut req = make_request("", "/source2");
         assert_eq!(
@@ -256,7 +264,7 @@ mod tests {
             ))
         );
 
-        let mut req = make_request("example.com", "/source4/whatever");
+        let mut req = make_request("example.com", "/source4/whatever?query");
         assert!(pre_process(
             &RequestHandlerOpts {
                 advanced_opts: Some(Advanced {
@@ -270,7 +278,7 @@ mod tests {
         .is_none());
         assert_eq!(
             req.uri(),
-            "http://example.net:1234/destination4/source4/whatever"
+            "http://example.net:1234/destination4/source4?whatever"
         );
         assert_eq!(
             req.headers()
