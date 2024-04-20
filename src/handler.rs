@@ -253,77 +253,13 @@ impl RequestHandler {
                 return response;
             }
 
+            // Redirects
+            if let Some(result) = redirects::pre_process(&self.opts, req) {
+                return result;
+            }
+
             // Advanced options
             if let Some(advanced) = &self.opts.advanced_opts {
-                // Redirects
-                let host = req
-                    .headers()
-                    .get(http::header::HOST)
-                    .and_then(|v| v.to_str().ok())
-                    .unwrap_or("");
-                let mut uri_host = uri.host().unwrap_or(host).to_owned();
-                if let Some(uri_port) = uri.port_u16() {
-                    uri_host.push_str(&format!(":{}", uri_port));
-                }
-                if let Some(redirects) = redirects::get_redirection(
-                    &uri_host,
-                    uri_path.clone().as_str(),
-                    advanced.redirects.as_deref(),
-                ) {
-                    // Redirects: Handle replacements (placeholders)
-                    if let Some(regex_caps) = redirects.source.captures(uri_path.as_str()) {
-                        let caps_range = 0..regex_caps.len();
-                        let caps = caps_range
-                            .clone()
-                            .filter_map(|i| regex_caps.get(i).map(|s| s.as_str()))
-                            .collect::<Vec<&str>>();
-
-                        let patterns = caps_range
-                            .map(|i| format!("${}", i))
-                            .collect::<Vec<String>>();
-
-                        let dest = redirects.destination.as_str();
-
-                        tracing::debug!("url redirects glob pattern: {:?}", patterns);
-                        tracing::debug!("url redirects regex equivalent: {}", redirects.source);
-                        tracing::debug!("url redirects glob pattern captures: {:?}", caps);
-                        tracing::debug!("url redirects glob pattern destination: {:?}", dest);
-
-                        if let Ok(ac) = aho_corasick::AhoCorasick::new(patterns) {
-                            if let Ok(dest) = ac.try_replace_all(dest, &caps) {
-                                tracing::debug!(
-                                    "url redirects glob pattern destination replaced: {:?}",
-                                    dest
-                                );
-                                uri_path = dest;
-                            }
-                        }
-                    }
-
-                    match HeaderValue::from_str(uri_path.as_str()) {
-                        Ok(loc) => {
-                            let mut resp = Response::new(Body::empty());
-                            resp.headers_mut().insert(hyper::header::LOCATION, loc);
-                            *resp.status_mut() = redirects.kind;
-                            tracing::trace!(
-                                "uri matches redirects glob pattern, redirecting with status '{}'",
-                                redirects.kind
-                            );
-                            return Ok(resp);
-                        }
-                        Err(err) => {
-                            tracing::error!("invalid header value from current uri: {:?}", err);
-                            return error_page::error_response(
-                                uri,
-                                method,
-                                &StatusCode::INTERNAL_SERVER_ERROR,
-                                &self.opts.page404,
-                                &self.opts.page50x,
-                            );
-                        }
-                    };
-                }
-
                 // Rewrites
                 if let Some(rewrite) = rewrites::rewrite_uri_path(
                     uri_path.clone().as_str(),
