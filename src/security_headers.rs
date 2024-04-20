@@ -9,7 +9,25 @@
 use http::header::{
     CONTENT_SECURITY_POLICY, STRICT_TRANSPORT_SECURITY, X_CONTENT_TYPE_OPTIONS, X_FRAME_OPTIONS,
 };
-use hyper::{Body, Response};
+use hyper::{Body, Request, Response};
+
+use crate::handler::RequestHandlerOpts;
+
+pub(crate) fn init(enabled: bool, handler_opts: &mut RequestHandlerOpts) {
+    handler_opts.security_headers = enabled;
+    server_info!("security headers: enabled={enabled}");
+}
+
+/// Appends security headers to a response if necessary
+pub(crate) fn post_process(
+    opts: &RequestHandlerOpts,
+    _req: &Request<Body>,
+    resp: &mut Response<Body>,
+) {
+    if opts.security_headers {
+        append_headers(resp);
+    }
+}
 
 /// It appends security headers like `Strict-Transport-Security: max-age=63072000; includeSubDomains; preload` (2 years max-age),
 ///`X-Frame-Options: DENY` and `Content-Security-Policy: frame-ancestors 'self'`.
