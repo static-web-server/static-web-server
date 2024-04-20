@@ -49,7 +49,7 @@ impl<'a> TryFrom<&'a str> for QualityMeta<'a> {
         for part in parts {
             let part = part.trim_start();
             if let Some(value) = part.strip_prefix("q=") {
-                let parsed: f32 = match value.parse() {
+                let parsed: f32 = match value.trim().parse() {
                     Ok(parsed) => parsed,
                     Err(_) => continue,
                 };
@@ -168,6 +168,18 @@ mod tests {
     #[test]
     fn multiple_values() {
         let val = HeaderValue::from_static("deflate, gzip;q=1, br;q=0.8");
+        let qual = QualityValue::from(val);
+
+        let mut values = qual.iter();
+        assert_eq!(values.next(), Some("deflate"));
+        assert_eq!(values.next(), Some("gzip"));
+        assert_eq!(values.next(), Some("br"));
+        assert_eq!(values.next(), None);
+    }
+
+    #[test]
+    fn multiple_values_whitespace() {
+        let val = HeaderValue::from_static("deflate  ;q=0.9, br;   q=0.001 ,gzip  ;  q=0.8");
         let qual = QualityValue::from(val);
 
         let mut values = qual.iter();
