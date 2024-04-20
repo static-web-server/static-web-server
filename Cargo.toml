@@ -68,7 +68,7 @@ clap = { version = "4.5", features = ["derive", "env"] }
 form_urlencoded = "1.2"
 futures-util = { version = "0.3", default-features = false }
 globset = { version = "0.4", features = ["serde1"] }
-headers = { package = "headers-accept-encoding", version = "=1.0" }
+headers = "0.3"
 http = "0.2"
 http-serde = "1.1"
 humansize = { version = "2.1", features = ["impl_style"], optional = true }

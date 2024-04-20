@@ -19,7 +19,7 @@ use async_compression::tokio::bufread::ZstdEncoder;
 
 use bytes::Bytes;
 use futures_util::Stream;
-use headers::{AcceptEncoding, ContentCoding, ContentType, HeaderMap, HeaderMapExt, HeaderValue};
+use headers::{ContentType, HeaderMap, HeaderMapExt, HeaderValue};
 use hyper::{
     header::{CONTENT_ENCODING, CONTENT_LENGTH},
     Body, Method, Response,
@@ -30,7 +30,11 @@ use std::pin::Pin;
 use std::task::{Context, Poll};
 use tokio_util::io::{ReaderStream, StreamReader};
 
-use crate::{http_ext::MethodExt, Result};
+use crate::{
+    headers_ext::{AcceptEncoding, ContentCoding},
+    http_ext::MethodExt,
+    Result,
+};
 
 /// Contains a fixed list of common text-based MIME types in order to apply compression.
 pub const TEXT_MIME_TYPES: [&str; 24] = [
@@ -75,9 +79,9 @@ pub fn auto(
     }
 
     // Compress response based on Accept-Encoding header
-    if let Some(encoding) = get_prefered_encoding(headers) {
+    if let Some(encoding) = get_preferred_encoding(headers) {
         tracing::trace!(
-            "prefered encoding selected from the accept-ecoding header: {:?}",
+            "preferred encoding selected from the accept-encoding header: {:?}",
             encoding
         );
 
@@ -113,7 +117,7 @@ pub fn auto(
             return Ok(zstd(head, body.into()));
         }
 
-        tracing::trace!("no compression feature matched the prefered encoding, probably not enabled or unsupported");
+        tracing::trace!("no compression feature matched the preferred encoding, probably not enabled or unsupported");
     }
 
     Ok(resp)
@@ -218,14 +222,14 @@ pub fn create_encoding_header(existing: Option<HeaderValue>, coding: ContentCodi
     coding.into()
 }
 
-/// Try to get the prefered `content-encoding` via the `accept-encoding` header.
+/// Try to get the preferred `content-encoding` via the `accept-encoding` header.
 #[inline(always)]
-pub fn get_prefered_encoding(headers: &HeaderMap<HeaderValue>) -> Option<ContentCoding> {
+pub fn get_preferred_encoding(headers: &HeaderMap<HeaderValue>) -> Option<ContentCoding> {
     if let Some(ref accept_encoding) = headers.typed_get::<AcceptEncoding>() {
         tracing::trace!("request with accept-ecoding header: {:?}", accept_encoding);
 
-        let encoding = accept_encoding.prefered_encoding();
-        if let Some(prefered_enc) = encoding {
+        let encoding = accept_encoding.preferred_encoding();
+        if let Some(preferred_enc) = encoding {
             let mut feature_formats = Vec::<ContentCoding>::with_capacity(5);
             if cfg!(feature = "compression-deflate") {
                 feature_formats.push(ContentCoding::DEFLATE);
@@ -241,19 +245,19 @@ pub fn get_prefered_encoding(headers: &HeaderMap<HeaderValue>) -> Option<Content
             }
 
             // If there is only one Cargo compression feature enabled
-            // then re-evaluate the prefered encoding and return
+            // then re-evaluate the preferred encoding and return
             // that feature compression algorithm as `ContentCoding` only
             // if was contained in the `AcceptEncoding` value.
             if feature_formats.len() == 1 {
                 let feature_enc = *feature_formats.first().unwrap();
-                if feature_enc != prefered_enc
+                if feature_enc != preferred_enc
                     && accept_encoding
                         .sorted_encodings()
                         .any(|enc| enc == feature_enc)
                 {
                     tracing::trace!(
-                        "prefered encoding {:?} is re-evalated to {:?} because is the only compression feature enabled that matches the `accept-encoding` header",
-                        prefered_enc,
+                        "preferred encoding {:?} is re-evalated to {:?} because is the only compression feature enabled that matches the `accept-encoding` header",
+                        preferred_enc,
                         feature_enc
                     );
                     return Some(feature_enc);
