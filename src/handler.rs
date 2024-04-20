@@ -6,7 +6,7 @@
 //! Request handler module intended to manage incoming HTTP requests.
 //!
 
-use headers::{HeaderMap, HeaderValue};
+use headers::HeaderValue;
 use hyper::{Body, Request, Response, StatusCode};
 use std::{future::Future, net::IpAddr, net::SocketAddr, path::PathBuf, sync::Arc};
 
@@ -165,8 +165,6 @@ impl RequestHandler {
         let ignore_hidden_files = self.opts.ignore_hidden_files;
         let index_files: Vec<&str> = self.opts.index_files.iter().map(|s| s.as_str()).collect();
 
-        let mut cors_headers: Option<HeaderMap> = None;
-
         // Log request information with its remote address if available
         let mut remote_addr_str = String::new();
         if log_remote_addr {
@@ -223,23 +221,8 @@ impl RequestHandler {
             }
 
             // CORS
-            if let Some(cors) = &self.opts.cors {
-                match cors.check_request(method, headers) {
-                    Ok((headers, state)) => {
-                        tracing::debug!("cors state: {:?}", state);
-                        cors_headers = Some(headers);
-                    }
-                    Err(err) => {
-                        tracing::error!("cors error kind: {:?}", err);
-                        return error_page::error_response(
-                            uri,
-                            method,
-                            &StatusCode::FORBIDDEN,
-                            &self.opts.page404,
-                            &self.opts.page50x,
-                        );
-                    }
-                };
+            if let Some(result) = cors::pre_process(&self.opts, req) {
+                return result;
             }
 
             // `Basic` HTTP Authorization Schema
@@ -249,12 +232,8 @@ impl RequestHandler {
             }
 
             // Maintenance Mode
-            if self.opts.maintenance_mode {
-                return maintenance_mode::get_response(
-                    method,
-                    &self.opts.maintenance_mode_status,
-                    &self.opts.maintenance_mode_file,
-                );
+            if let Some(response) = maintenance_mode::pre_process(&self.opts, req) {
+                return response;
             }
 
             // Redirects
@@ -360,14 +339,7 @@ impl RequestHandler {
                     let mut resp = result.resp;
 
                     // Append CORS headers if they are present
-                    if let Some(cors_headers) = cors_headers {
-                        if !cors_headers.is_empty() {
-                            for (k, v) in cors_headers.iter() {
-                                resp.headers_mut().insert(k, v.to_owned());
-                            }
-                            resp.headers_mut().remove(http::header::ALLOW);
-                        }
-                    }
+                    cors::post_process(&self.opts, req, &mut resp);
 
                     // Compression content encoding varies so use a `Vary` header
                     #[cfg(any(
@@ -435,14 +407,7 @@ impl RequestHandler {
                         let mut resp = fallback_page::fallback_response(&self.opts.page_fallback);
 
                         // Append CORS headers if they are present
-                        if let Some(cors_headers) = cors_headers {
-                            if !cors_headers.is_empty() {
-                                for (k, v) in cors_headers.iter() {
-                                    resp.headers_mut().insert(k, v.to_owned());
-                                }
-                                resp.headers_mut().remove(http::header::ALLOW);
-                            }
-                        }
+                        cors::post_process(&self.opts, req, &mut resp);
 
                         // Compression content encoding varies so use a `Vary` header
                         #[cfg(any(

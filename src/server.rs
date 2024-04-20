@@ -29,7 +29,7 @@ use {
 #[cfg(feature = "basic-auth")]
 use crate::basic_auth;
 
-use crate::{control_headers, cors, health, helpers, security_headers, Settings};
+use crate::{control_headers, cors, health, helpers, maintenance_mode, security_headers, Settings};
 use crate::{service::RouterService, Context, Result};
 
 /// Define a multi-threaded HTTP or HTTP/2 web server.
@@ -296,12 +296,9 @@ impl Server {
         #[cfg(feature = "directory-listing")]
         server_info!("directory listing format: {:?}", dir_listing_format);
 
-        // CORS option
-        let cors = cors::new(
-            general.cors_allow_origins.trim(),
-            general.cors_allow_headers.trim(),
-            general.cors_expose_headers.trim(),
-        );
+        // Cache control headers option
+        let cache_control_headers = general.cache_control_headers;
+        server_info!("cache control headers: enabled={}", cache_control_headers);
 
         // Log remote address option
         let log_remote_address = general.log_remote_address;
@@ -344,7 +341,6 @@ impl Server {
             dir_listing_order,
             #[cfg(feature = "directory-listing")]
             dir_listing_format,
-            cors,
             page404: page404.clone(),
             page50x: page50x.clone(),
             #[cfg(feature = "fallback-page")]
@@ -364,25 +360,24 @@ impl Server {
         #[cfg(all(unix, feature = "experimental"))]
         metrics::init(general.experimental_metrics, &mut handler_opts);
 
+        // CORS option
+        cors::init(
+            &general.cors_allow_origins,
+            &general.cors_allow_headers,
+            &general.cors_expose_headers,
+            &mut handler_opts,
+        );
+
         // `Basic` HTTP Authentication Schema option
         #[cfg(feature = "basic-auth")]
         basic_auth::init(&general.basic_auth, &mut handler_opts);
 
         // Maintenance mode option
-        handler_opts.maintenance_mode = general.maintenance_mode;
-        handler_opts.maintenance_mode_status = general.maintenance_mode_status;
-        handler_opts.maintenance_mode_file = general.maintenance_mode_file;
-        server_info!(
-            "maintenance mode: enabled={}",
-            handler_opts.maintenance_mode
-        );
-        server_info!(
-            "maintenance mode status: {}",
-            handler_opts.maintenance_mode_status.as_str()
-        );
-        server_info!(
-            "maintenance mode file: \"{}\"",
-            handler_opts.maintenance_mode_file.display()
+        maintenance_mode::init(
+            general.maintenance_mode,
+            general.maintenance_mode_status,
+            general.maintenance_mode_file,
+            &mut handler_opts,
         );
 
         // Cache control headers option
