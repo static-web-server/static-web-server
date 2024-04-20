@@ -32,7 +32,7 @@ use crate::{
     control_headers, cors, custom_headers, error_page, health,
     http_ext::MethodExt,
     maintenance_mode, redirects, rewrites, security_headers,
-    settings::{file::RedirectsKind, Advanced},
+    settings::Advanced,
     static_files::{self, HandleOpts},
     virtual_hosts, Error, Result,
 };
@@ -188,26 +188,19 @@ impl RequestHandler {
                 return result;
             }
 
-            let method = req.method();
-            let headers = req.headers();
-            let uri = req.uri();
-
-            let mut uri_path = uri.path().to_owned();
-            let uri_query = uri.query();
-
             // Health requests aren't logged here but in health module.
             tracing::info!(
                 "incoming request: method={} uri={}{}",
-                method,
-                uri,
+                req.method(),
+                req.uri(),
                 remote_addr_str,
             );
 
             // Reject in case of incoming HTTP request method is not allowed
-            if !method.is_allowed() {
+            if !req.method().is_allowed() {
                 return error_page::error_response(
-                    uri,
-                    method,
+                    req.uri(),
+                    req.method(),
                     &StatusCode::METHOD_NOT_ALLOWED,
                     &self.opts.page404,
                     &self.opts.page50x,
@@ -241,86 +234,30 @@ impl RequestHandler {
                 return result;
             }
 
+            // Rewrites
+            if let Some(result) = rewrites::pre_process(&self.opts, req) {
+                return result;
+            }
+
             // Advanced options
             if let Some(advanced) = &self.opts.advanced_opts {
-                // Rewrites
-                if let Some(rewrite) = rewrites::rewrite_uri_path(
-                    uri_path.clone().as_str(),
-                    advanced.rewrites.as_deref(),
-                ) {
-                    // Rewrites: Handle replacements (placeholders)
-                    if let Some(regex_caps) = rewrite.source.captures(uri_path.as_str()) {
-                        let caps_range = 0..regex_caps.len();
-                        let caps = caps_range
-                            .clone()
-                            .filter_map(|i| regex_caps.get(i).map(|s| s.as_str()))
-                            .collect::<Vec<&str>>();
-
-                        let patterns = caps_range
-                            .map(|i| format!("${}", i))
-                            .collect::<Vec<String>>();
-
-                        let dest = rewrite.destination.as_str();
-
-                        tracing::debug!("url rewrites glob pattern: {:?}", patterns);
-                        tracing::debug!("url rewrites regex equivalent: {}", rewrite.source);
-                        tracing::debug!("url rewrites glob pattern captures: {:?}", caps);
-                        tracing::debug!("url rewrites glob pattern destination: {:?}", dest);
-
-                        if let Ok(ac) = aho_corasick::AhoCorasick::new(patterns) {
-                            if let Ok(dest) = ac.try_replace_all(dest, &caps) {
-                                tracing::debug!(
-                                    "url rewrites glob pattern destination replaced: {:?}",
-                                    dest
-                                );
-                                uri_path = dest;
-                            }
-                        }
-                    }
-
-                    // Rewrites: Handle redirections
-                    if let Some(redirect_type) = &rewrite.redirect {
-                        let loc = match HeaderValue::from_str(uri_path.as_str()) {
-                            Ok(val) => val,
-                            Err(err) => {
-                                tracing::error!("invalid header value from current uri: {:?}", err);
-                                return error_page::error_response(
-                                    uri,
-                                    method,
-                                    &StatusCode::INTERNAL_SERVER_ERROR,
-                                    &self.opts.page404,
-                                    &self.opts.page50x,
-                                );
-                            }
-                        };
-                        let mut resp = Response::new(Body::empty());
-                        resp.headers_mut().insert(hyper::header::LOCATION, loc);
-                        *resp.status_mut() = match redirect_type {
-                            RedirectsKind::Permanent => StatusCode::MOVED_PERMANENTLY,
-                            RedirectsKind::Temporary => StatusCode::FOUND,
-                        };
-                        return Ok(resp);
-                    }
-                }
-
                 // If the "Host" header matches any virtual_host, change the root directory
                 if let Some(root) =
-                    virtual_hosts::get_real_root(headers, advanced.virtual_hosts.as_deref())
+                    virtual_hosts::get_real_root(req.headers(), advanced.virtual_hosts.as_deref())
                 {
                     base_path = root;
                 }
             }
 
-            let uri_path = &uri_path;
             let index_files = index_files.as_ref();
 
             // Static files
             match static_files::handle(&HandleOpts {
-                method,
-                headers,
+                method: req.method(),
+                headers: req.headers(),
                 base_path,
-                uri_path,
-                uri_query,
+                uri_path: req.uri().path(),
+                uri_query: req.uri().query(),
                 #[cfg(feature = "directory-listing")]
                 dir_listing,
                 #[cfg(feature = "directory-listing")]
@@ -365,13 +302,13 @@ impl RequestHandler {
                         feature = "compression-deflate"
                     ))]
                     if self.opts.compression && !_is_precompressed {
-                        resp = match compression::auto(method, headers, resp) {
+                        resp = match compression::auto(req.method(), req.headers(), resp) {
                             Ok(res) => res,
                             Err(err) => {
                                 tracing::error!("error during body compression: {:?}", err);
                                 return error_page::error_response(
-                                    uri,
-                                    method,
+                                    req.uri(),
+                                    req.method(),
                                     &StatusCode::INTERNAL_SERVER_ERROR,
                                     &self.opts.page404,
                                     &self.opts.page50x,
@@ -382,7 +319,7 @@ impl RequestHandler {
 
                     // Append `Cache-Control` headers for web assets
                     if self.opts.cache_control_headers {
-                        control_headers::append_headers(uri_path, &mut resp);
+                        control_headers::append_headers(req.uri().path(), &mut resp);
                     }
 
                     // Append security headers
@@ -393,7 +330,7 @@ impl RequestHandler {
                     // Add/update custom headers
                     if let Some(advanced) = &self.opts.advanced_opts {
                         custom_headers::append_headers(
-                            uri_path,
+                            req.uri().path(),
                             advanced.headers.as_deref(),
                             &mut resp,
                             Some(&result.file_path),
@@ -405,7 +342,7 @@ impl RequestHandler {
                 Err(status) => {
                     // Check for a fallback response
                     #[cfg(feature = "fallback-page")]
-                    if method.is_get()
+                    if req.method().is_get()
                         && status == StatusCode::NOT_FOUND
                         && !self.opts.page_fallback.is_empty()
                     {
@@ -439,13 +376,13 @@ impl RequestHandler {
                             feature = "compression-deflate"
                         ))]
                         if self.opts.compression {
-                            resp = match compression::auto(method, headers, resp) {
+                            resp = match compression::auto(req.method(), req.headers(), resp) {
                                 Ok(res) => res,
                                 Err(err) => {
                                     tracing::error!("error during body compression: {:?}", err);
                                     return error_page::error_response(
-                                        uri,
-                                        method,
+                                        req.uri(),
+                                        req.method(),
                                         &StatusCode::INTERNAL_SERVER_ERROR,
                                         &self.opts.page404,
                                         &self.opts.page50x,
@@ -456,7 +393,7 @@ impl RequestHandler {
 
                         // Append `Cache-Control` headers for web assets
                         if self.opts.cache_control_headers {
-                            control_headers::append_headers(uri_path, &mut resp);
+                            control_headers::append_headers(req.uri().path(), &mut resp);
                         }
 
                         // Append security headers
@@ -467,7 +404,7 @@ impl RequestHandler {
                         // Add/update custom headers
                         if let Some(advanced) = &self.opts.advanced_opts {
                             custom_headers::append_headers(
-                                uri_path,
+                                req.uri().path(),
                                 advanced.headers.as_deref(),
                                 &mut resp,
                                 None,
@@ -479,8 +416,8 @@ impl RequestHandler {
 
                     // Otherwise return an error response
                     error_page::error_response(
-                        uri,
-                        method,
+                        req.uri(),
+                        req.method(),
                         &status,
                         &self.opts.page404,
                         &self.opts.page50x,
