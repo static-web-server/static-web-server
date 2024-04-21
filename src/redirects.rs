@@ -8,9 +8,11 @@
 
 use headers::HeaderValue;
 use hyper::{Body, Request, Response, StatusCode};
+use regex::Regex;
 
 use crate::{error_page, handler::RequestHandlerOpts, settings::Redirects, Error};
 
+/// Applies redirect rules to a request if necessary.
 pub(crate) fn pre_process(
     opts: &RequestHandlerOpts,
     req: &Request<Body>,
@@ -28,76 +30,78 @@ pub(crate) fn pre_process(
     if let Some(uri_port) = uri.port_u16() {
         uri_host.push_str(&format!(":{}", uri_port));
     }
-    if let Some(matched) = get_redirection(&uri_host, uri_path, Some(redirects)) {
-        // Redirects: Handle replacements (placeholders)
-        let regex_caps = if let Some(regex_caps) = matched.source.captures(uri_path) {
-            regex_caps
-        } else {
-            return handle_error(
-                "unexpected regex failure",
-                "extracting captures failed",
-                opts,
-                req,
+    let matched = get_redirection(&uri_host, uri_path, Some(redirects))?;
+    let dest = match replace_placeholders(uri_path, &matched.source, &matched.destination) {
+        Ok(dest) => dest,
+        Err(err) => return handle_error(err, opts, req),
+    };
+
+    match HeaderValue::from_str(&dest) {
+        Ok(loc) => {
+            let mut resp = Response::new(Body::empty());
+            resp.headers_mut().insert(hyper::header::LOCATION, loc);
+            *resp.status_mut() = matched.kind;
+            tracing::trace!(
+                "uri matches redirects glob pattern, redirecting with status '{}'",
+                matched.kind
             );
-        };
-
-        let caps_range = 0..regex_caps.len();
-        let caps = caps_range
-            .clone()
-            .map(|i| regex_caps.get(i).map(|s| s.as_str()).unwrap_or(""))
-            .collect::<Vec<&str>>();
-
-        let patterns = caps_range
-            .map(|i| format!("${}", i))
-            .collect::<Vec<String>>();
-
-        let dest = &matched.destination;
-
-        tracing::debug!("url redirects glob pattern: {:?}", patterns);
-        tracing::debug!("url redirects regex equivalent: {}", matched.source);
-        tracing::debug!("url redirects glob pattern captures: {:?}", caps);
-        tracing::debug!("url redirects glob pattern destination: {:?}", dest);
-
-        let ac = match aho_corasick::AhoCorasick::new(patterns) {
-            Ok(ac) => ac,
-            Err(err) => {
-                return handle_error("failed creating Aho-Corasick matcher", err, opts, req)
-            }
-        };
-        let dest = match ac.try_replace_all(dest, &caps) {
-            Ok(dest) => dest.to_string(),
-            Err(err) => return handle_error("failed replacing captures", err, opts, req),
-        };
-
-        tracing::debug!(
-            "url redirects glob pattern destination replaced: {:?}",
-            dest
-        );
-        match HeaderValue::from_str(&dest) {
-            Ok(loc) => {
-                let mut resp = Response::new(Body::empty());
-                resp.headers_mut().insert(hyper::header::LOCATION, loc);
-                *resp.status_mut() = matched.kind;
-                tracing::trace!(
-                    "uri matches redirects glob pattern, redirecting with status '{}'",
-                    matched.kind
-                );
-                Some(Ok(resp))
-            }
-            Err(err) => handle_error("invalid header value from current uri", err, opts, req),
+            Some(Ok(resp))
         }
-    } else {
-        None
+        Err(err) => handle_error(
+            Error::new(err).context("invalid header value from current uri"),
+            opts,
+            req,
+        ),
     }
 }
 
-fn handle_error<E: std::fmt::Display>(
-    msg: &str,
-    err: E,
+/// Replaces placeholders in the destination URI by matching capture groups from the original URI.
+pub(crate) fn replace_placeholders(
+    orig_uri: &str,
+    regex: &Regex,
+    dest_uri: &str,
+) -> Result<String, Error> {
+    let regex_caps = if let Some(regex_caps) = regex.captures(orig_uri) {
+        regex_caps
+    } else {
+        return Err(Error::msg("regex didn't match, extracting captures failed"));
+    };
+
+    let caps_range = 0..regex_caps.len();
+    let caps = caps_range
+        .clone()
+        .map(|i| regex_caps.get(i).map(|s| s.as_str()).unwrap_or(""))
+        .collect::<Vec<&str>>();
+
+    let patterns = caps_range
+        .map(|i| format!("${}", i))
+        .collect::<Vec<String>>();
+
+    tracing::debug!("url redirects/rewrites glob pattern: {patterns:?}");
+    tracing::debug!("url redirects/rewrites regex equivalent: {regex}");
+    tracing::debug!("url redirects/rewrites glob pattern captures: {caps:?}");
+    tracing::debug!("url redirects/rewrites glob pattern destination: {dest_uri:?}");
+
+    let ac = match aho_corasick::AhoCorasick::new(patterns) {
+        Ok(ac) => ac,
+        Err(err) => return Err(Error::new(err).context("failed creating Aho-Corasick matcher")),
+    };
+    match ac.try_replace_all(dest_uri, &caps) {
+        Ok(dest) => {
+            tracing::debug!("url redirects/rewrites glob pattern destination replaced: {dest:?}");
+            Ok(dest.to_string())
+        }
+        Err(err) => Err(Error::new(err).context("failed replacing captures")),
+    }
+}
+
+/// Logs error and produces an Internal Server Error response.
+pub(crate) fn handle_error(
+    err: Error,
     opts: &RequestHandlerOpts,
     req: &Request<Body>,
 ) -> Option<Result<Response<Body>, Error>> {
-    tracing::error!("{msg}: {err}");
+    tracing::error!("{err:?}");
     Some(error_page::error_response(
         req.uri(),
         req.method(),
