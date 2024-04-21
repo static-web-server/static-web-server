@@ -3,7 +3,10 @@ on:
   pull_request:
     paths:
       - .github/workflows/perfcheck.yml
+      - .github/workflows/config/benchmarking/*
       - .cargo/config.toml
+      - scripts/ci/benchmark_plot.gnu
+      - scripts/ci/vegeta_report_to_gnuplot.jq
       - Cargo.lock
       - Cargo.toml
       - src/**
@@ -65,10 +68,10 @@ jobs:
         echo "Downloaded vegeta"
         ./vegeta --version
 
-    - name: Install web server software
+    - name: Install required software
       uses: awalsh128/cache-apt-pkgs-action@latest
       with:
-        packages: apache2 lighttpd nginx
+        packages: apache2 lighttpd nginx gnuplot-nox
         version: 1.0
 
     - name: Install Rust
@@ -89,91 +92,115 @@ jobs:
     - name: Run SWS static file benchmark
       run: |
         VERSION=$(${{ env.TARGET_DIR }}/release/static-web-server --version | sed 's/static-web-server/sws/')
+        NAME="$VERSION file"
         REPORT=${{ env.TARGET_DIR }}/report_sws_static.bin
         ${{ env.TARGET_DIR }}/release/static-web-server --config-file .github/workflows/config/benchmarking/sws.toml &
         sleep 2
-        echo "GET http://localhost:8080/README.md" | ./vegeta attack -name "$VERSION file" ${{ env.VEGETA_FLAGS }} > $REPORT
+        echo "GET http://localhost:8080/README.md" | ./vegeta attack -name "$NAME" ${{ env.VEGETA_FLAGS }} > $REPORT
         kill %1
         ./vegeta report -type=text $REPORT
+        ./vegeta report -type=json $REPORT | jq --arg name "$NAME" -r -f scripts/ci/vegeta_report_to_gnuplot.jq | sed 's/,/ /g' >> ${{ env.TARGET_DIR }}/gnuplot.dat
 
     - name: Run SWS directory listing benchmark
       run: |
         VERSION=$(${{ env.TARGET_DIR }}/release/static-web-server --version | sed 's/static-web-server/sws/')
+        NAME="$VERSION dir"
         REPORT=${{ env.TARGET_DIR }}/report_sws_dirlist.bin
         ${{ env.TARGET_DIR }}/release/static-web-server --config-file .github/workflows/config/benchmarking/sws.toml &
         sleep 2
-        echo "GET http://localhost:8080/" | ./vegeta attack -name "$VERSION directory" ${{ env.VEGETA_FLAGS }} > $REPORT
+        echo "GET http://localhost:8080/" | ./vegeta attack -name "$NAME" ${{ env.VEGETA_FLAGS }} > $REPORT
         kill %1
         ./vegeta report -type=text $REPORT
+        ./vegeta report -type=json $REPORT | jq --arg name "$NAME" -r -f scripts/ci/vegeta_report_to_gnuplot.jq | sed 's/,/ /g' >> ${{ env.TARGET_DIR }}/gnuplot.dat
 
     - name: Run Apache static file benchmark
       run: |
         VERSION=$(apache2 -v | sed 's/.*: //' | sed 's/ .*//' | sed 's!/! !')
+        NAME="$VERSION file"
         REPORT=${{ env.TARGET_DIR }}/report_apache_static.bin
         apache2 -D FOREGROUND -f `pwd`/.github/workflows/config/benchmarking/apache.conf &
         sleep 2
-        echo "GET http://localhost:8080/README.md" | ./vegeta attack -name "$VERSION file" ${{ env.VEGETA_FLAGS }} > $REPORT
+        echo "GET http://localhost:8080/README.md" | ./vegeta attack -name "$NAME" ${{ env.VEGETA_FLAGS }} > $REPORT
         kill %1
         ./vegeta report -type=text $REPORT
+        ./vegeta report -type=json $REPORT | jq --arg name "$NAME" -r -f scripts/ci/vegeta_report_to_gnuplot.jq | sed 's/,/ /g' >> ${{ env.TARGET_DIR }}/gnuplot.dat
 
     - name: Run Apache directory listing benchmark
       run: |
         VERSION=$(apache2 -v | sed 's/.*: //' | sed 's/ .*//' | sed 's!/! !')
+        NAME="$VERSION dir"
         REPORT=${{ env.TARGET_DIR }}/report_apache_dirlist.bin
         apache2 -D FOREGROUND -f `pwd`/.github/workflows/config/benchmarking/apache.conf &
         sleep 2
-        echo "GET http://localhost:8080/" | ./vegeta attack -name "$VERSION directory" ${{ env.VEGETA_FLAGS }} > $REPORT
+        echo "GET http://localhost:8080/" | ./vegeta attack -name "$NAME" ${{ env.VEGETA_FLAGS }} > $REPORT
         kill %1
         ./vegeta report -type=text $REPORT
+        ./vegeta report -type=json $REPORT | jq --arg name "$NAME" -r -f scripts/ci/vegeta_report_to_gnuplot.jq | sed 's/,/ /g' >> ${{ env.TARGET_DIR }}/gnuplot.dat
 
     - name: Run lighttpd static file benchmark
       run: |
         VERSION=$(lighttpd -v | sed 's/ .*//' | sed 's!/! !')
+        NAME="$VERSION file"
         REPORT=${{ env.TARGET_DIR }}/report_lighttpd_static.bin
         lighttpd -D -f `pwd`/.github/workflows/config/benchmarking/lighttpd.conf &
         sleep 2
-        echo "GET http://localhost:8080/README.md" | ./vegeta attack -name "$VERSION file" ${{ env.VEGETA_FLAGS }} > $REPORT
+        echo "GET http://localhost:8080/README.md" | ./vegeta attack -name "$NAME" ${{ env.VEGETA_FLAGS }} > $REPORT
         kill %1
         ./vegeta report -type=text $REPORT
+        ./vegeta report -type=json $REPORT | jq --arg name "$NAME" -r -f scripts/ci/vegeta_report_to_gnuplot.jq | sed 's/,/ /g' >> ${{ env.TARGET_DIR }}/gnuplot.dat
 
     - name: Run lighttpd directory listing benchmark
       run: |
         VERSION=$(lighttpd -v | sed 's/ .*//' | sed 's!/! !')
+        NAME="$VERSION dir"
         REPORT=${{ env.TARGET_DIR }}/report_lighttpd_dirlist.bin
         lighttpd -D -f `pwd`/.github/workflows/config/benchmarking/lighttpd.conf &
         sleep 2
-        echo "GET http://localhost:8080/" | ./vegeta attack -name "$VERSION directory" ${{ env.VEGETA_FLAGS }} > $REPORT
+        echo "GET http://localhost:8080/" | ./vegeta attack -name "$NAME" ${{ env.VEGETA_FLAGS }} > $REPORT
         kill %1
         ./vegeta report -type=text $REPORT
+        ./vegeta report -type=json $REPORT | jq --arg name "$NAME" -r -f scripts/ci/vegeta_report_to_gnuplot.jq | sed 's/,/ /g' >> ${{ env.TARGET_DIR }}/gnuplot.dat
 
     - name: Run nginx static file benchmark
       run: |
-        VERSION=$(nginx -v 2>&1 | sed 's/.*: //' | sed 's!/! !')
+        VERSION=$(nginx -v 2>&1 | sed 's/.*: //' | sed 's/ .*//' | sed 's!/! !')
+        NAME="$VERSION file"
         REPORT=${{ env.TARGET_DIR }}/report_nginx_static.bin
         nginx -c `pwd`/.github/workflows/config/benchmarking/nginx.conf &
         sleep 2
-        echo "GET http://localhost:8080/README.md" | ./vegeta attack -name "$VERSION file" ${{ env.VEGETA_FLAGS }} > $REPORT
+        echo "GET http://localhost:8080/README.md" | ./vegeta attack -name "$NAME" ${{ env.VEGETA_FLAGS }} > $REPORT
         kill %1
         ./vegeta report -type=text $REPORT
+        ./vegeta report -type=json $REPORT | jq --arg name "$NAME" -r -f scripts/ci/vegeta_report_to_gnuplot.jq | sed 's/,/ /g' >> ${{ env.TARGET_DIR }}/gnuplot.dat
 
     - name: Run nginx directory listing benchmark
       run: |
-        VERSION=$(nginx -v 2>&1 | sed 's/.*: //' | sed 's!/! !')
+        VERSION=$(nginx -v 2>&1 | sed 's/.*: //' | sed 's/ .*//' | sed 's!/! !')
+        NAME="$VERSION dir"
         REPORT=${{ env.TARGET_DIR }}/report_nginx_dirlist.bin
         nginx -c `pwd`/.github/workflows/config/benchmarking/nginx.conf &
         sleep 2
-        echo "GET http://localhost:8080/" | ./vegeta attack -name "$VERSION directory" ${{ env.VEGETA_FLAGS }} > $REPORT
+        echo "GET http://localhost:8080/" | ./vegeta attack -name "$NAME" ${{ env.VEGETA_FLAGS }} > $REPORT
         kill %1
         ./vegeta report -type=text $REPORT
+        ./vegeta report -type=json $REPORT | jq --arg name "$NAME" -r -f scripts/ci/vegeta_report_to_gnuplot.jq | sed 's/,/ /g' >> ${{ env.TARGET_DIR }}/gnuplot.dat
 
     - name: Produce plot
       run: |
-        ./vegeta plot --title "Benchmark results" ${{ env.TARGET_DIR }}/report_*.bin > benchmark.html
+        ./vegeta plot --title "Benchmark results" ${{ env.TARGET_DIR }}/report_*.bin > detailed_plot.html
+        cat ${{ env.TARGET_DIR }}/gnuplot.dat
+        gnuplot-nox -e "datafile='${{ env.TARGET_DIR }}/gnuplot.dat'" scripts/ci/benchmark_plot.gnu
 
-    - name: Upload benchmark results
+    - name: Upload benchmark plots
       uses: actions/upload-artifact@v4
       with:
-        name: Benchmark results
+        name: Benchmark plots
         path: |
-          benchmark.html
-          target/report_*.bin
+          detailed_plot.html
+          overview.png
+
+    - name: Upload binary result data
+      uses: actions/upload-artifact@v4
+      with:
+        name: Binary result data
+        path: target/report_*.bin
