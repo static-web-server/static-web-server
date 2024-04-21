@@ -6,14 +6,14 @@
 //! Compression static module to serve compressed files directly from the file system.
 //!
 
-use headers::{ContentCoding, HeaderMap, HeaderValue};
+use headers::{HeaderMap, HeaderValue};
 use std::{
     ffi::OsStr,
     fs::Metadata,
     path::{Path, PathBuf},
 };
 
-use crate::{compression, static_files::file_metadata};
+use crate::{compression, headers_ext::ContentCoding, static_files::file_metadata};
 
 /// It defines the pre-compressed file variant metadata of a particular file path.
 pub struct CompressedFileVariant<'a> {
@@ -35,8 +35,8 @@ pub async fn precompressed_variant<'a>(
         file_path.display()
     );
 
-    // Determine prefered-encoding extension if available
-    let comp_ext = match compression::get_prefered_encoding(headers) {
+    // Determine preferred-encoding extension if available
+    let comp_ext = match compression::get_preferred_encoding(headers) {
         // https://zlib.net/zlib_faq.html#faq39
         #[cfg(any(feature = "compression", feature = "compression-gzip"))]
         Some(ContentCoding::GZIP | ContentCoding::DEFLATE) => "gz",
