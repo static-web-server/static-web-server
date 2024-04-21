@@ -1,0 +1,4 @@
+[general]
+port = 8080
+root = "/home/runner/work/static-web-server/static-web-server"
+directory-listing = true

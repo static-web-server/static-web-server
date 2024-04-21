@@ -84,19 +84,11 @@ jobs:
     - name: Build release binary
       run: ${{ env.CARGO_BIN }} build --bin static-web-server -vv --release ${{ env.CARGO_FEATURES }} ${{ env.TARGET_FLAGS }}
 
-    - name: Write SWS config file
-      run: |
-        echo '[general]' > sws-config.toml
-        echo 'port = 8080' >> sws-config.toml
-        echo 'root = "."' >> sws-config.toml
-        echo 'directory-listing = true' >> sws-config.toml
-        cat sws-config.toml
-
     - name: Run SWS static file benchmark
       run: |
         VERSION=$(${{ env.TARGET_DIR }}/release/static-web-server --version | sed 's/static-web-server/sws/')
         REPORT=${{ env.TARGET_DIR }}/report_sws_static.bin
-        ${{ env.TARGET_DIR }}/release/static-web-server --config-file sws-config.toml &
+        ${{ env.TARGET_DIR }}/release/static-web-server --config-file .github/workflows/config/benchmarking/sws.toml &
         sleep 2
         echo "GET http://localhost:8080/README.md" | ./vegeta -cpus=2 attack -name "$VERSION file" -workers=4 -connections=100 -rate=1000/s -duration=10s > $REPORT
         kill %1
@@ -106,35 +98,17 @@ jobs:
       run: |
         VERSION=$(${{ env.TARGET_DIR }}/release/static-web-server --version | sed 's/static-web-server/sws/')
         REPORT=${{ env.TARGET_DIR }}/report_sws_dirlist.bin
-        ${{ env.TARGET_DIR }}/release/static-web-server --config-file sws-config.toml &
+        ${{ env.TARGET_DIR }}/release/static-web-server --config-file .github/workflows/config/benchmarking/sws.toml &
         sleep 2
         echo "GET http://localhost:8080/" | ./vegeta -cpus=2 attack -name "$VERSION directory" -workers=4 -connections=100 -rate=1000/s -duration=10s > $REPORT
         kill %1
         ./vegeta report -type=text $REPORT
 
-    - name: Write Apache config file
-      run: |
-        echo 'ServerRoot /usr/lib/apache2' > apache.conf
-        echo 'LoadModule mpm_event_module modules/mod_mpm_event.so' >> apache.conf
-        echo 'LoadModule authz_core_module modules/mod_authz_core.so' >> apache.conf
-        echo 'LoadModule dir_module modules/mod_dir.so' >> apache.conf
-        echo 'LoadModule autoindex_module modules/mod_autoindex.so' >> apache.conf
-        echo 'LoadModule deflate_module modules/mod_deflate.so' >> apache.conf
-        echo 'Listen *:8080' >> apache.conf
-        echo 'ErrorLog /dev/stderr' >> apache.conf
-        echo "PidFile $(pwd)/target/apache.pid" >> apache.conf
-        echo 'Mutex sem' >> apache.conf
-        echo "DocumentRoot $(pwd)" >> apache.conf
-        echo 'Options +Indexes' >> apache.conf
-        echo 'EnableSendfile On' >> apache.conf
-        echo 'SetOutputFilter DEFLATE' >> apache.conf
-        cat apache.conf
-
     - name: Run Apache static file benchmark
       run: |
         VERSION=$(apache2 -v | sed 's/.*: //' | sed 's/ .*//' | sed 's!/! !')
         REPORT=${{ env.TARGET_DIR }}/report_apache_static.bin
-        apache2 -D FOREGROUND -f `pwd`/apache.conf &
+        apache2 -D FOREGROUND -f `pwd`/.github/workflows/config/benchmarking/apache.conf &
         sleep 2
         echo "GET http://localhost:8080/README.md" | ./vegeta -cpus=2 attack -name "$VERSION file" -workers=4 -connections=100 -rate=1000/s -duration=10s > $REPORT
         kill %1
@@ -144,31 +118,17 @@ jobs:
       run: |
         VERSION=$(apache2 -v | sed 's/.*: //' | sed 's/ .*//' | sed 's!/! !')
         REPORT=${{ env.TARGET_DIR }}/report_apache_dirlist.bin
-        apache2 -D FOREGROUND -f `pwd`/apache.conf &
+        apache2 -D FOREGROUND -f `pwd`/.github/workflows/config/benchmarking/apache.conf &
         sleep 2
         echo "GET http://localhost:8080/" | ./vegeta -cpus=2 attack -name "$VERSION directory" -workers=4 -connections=100 -rate=1000/s -duration=10s > $REPORT
         kill %1
         ./vegeta report -type=text $REPORT
 
-    - name: Write lighttpd config file
-      run: |
-        echo -n 'server.document-root = "' > lighttpd.conf
-        echo -n `pwd` >> lighttpd.conf
-        echo '"' >> lighttpd.conf
-        echo 'server.modules += ( "mod_deflate" )' >> lighttpd.conf
-        echo 'server.port = 8080' >> lighttpd.conf
-        echo 'server.use-ipv6 = "enable"' >> lighttpd.conf
-        echo 'server.v4mapped = "enable"' >> lighttpd.conf
-        echo 'dir-listing.activate = "enable"' >> lighttpd.conf
-        echo 'deflate.allowed-encodings = ( "br", "gzip", "deflate", "bzip2", "zstd" )' >> lighttpd.conf
-        echo 'deflate.mimetypes = ("text/html", "text/plain", "application/octet-stream")' >> lighttpd.conf
-        cat lighttpd.conf
-
     - name: Run lighttpd static file benchmark
       run: |
         VERSION=$(lighttpd -v | sed 's/ .*//' | sed 's!/! !')
         REPORT=${{ env.TARGET_DIR }}/report_lighttpd_static.bin
-        lighttpd -D -f `pwd`/lighttpd.conf &
+        lighttpd -D -f `pwd`/.github/workflows/config/benchmarking/lighttpd.conf &
         sleep 2
         echo "GET http://localhost:8080/README.md" | ./vegeta -cpus=2 attack -name "$VERSION file" -workers=4 -connections=100 -rate=1000/s -duration=10s > $REPORT
         kill %1
@@ -178,43 +138,17 @@ jobs:
       run: |
         VERSION=$(lighttpd -v | sed 's/ .*//' | sed 's!/! !')
         REPORT=${{ env.TARGET_DIR }}/report_lighttpd_dirlist.bin
-        lighttpd -D -f `pwd`/lighttpd.conf &
+        lighttpd -D -f `pwd`/.github/workflows/config/benchmarking/lighttpd.conf &
         sleep 2
         echo "GET http://localhost:8080/" | ./vegeta -cpus=2 attack -name "$VERSION directory" -workers=4 -connections=100 -rate=1000/s -duration=10s > $REPORT
         kill %1
         ./vegeta report -type=text $REPORT
 
-    - name: Write nginx config file
-      run: |
-        echo 'daemon off;' > nginx.conf
-        echo 'error_log /dev/null warn;' >> nginx.conf
-        echo 'pid /dev/null;' >> nginx.conf
-        echo 'events {}' >> nginx.conf
-        echo 'http {' >> nginx.conf
-        echo '  access_log off;' >> nginx.conf
-        echo '  default_type text/plain;' >> nginx.conf
-        echo '  sendfile on;' >> nginx.conf
-        echo '  tcp_nopush on;' >> nginx.conf
-        echo '  gzip on;' >> nginx.conf
-        echo '  gzip_vary on;' >> nginx.conf
-        echo '  gzip_types text/plain text/html;' >> nginx.conf
-        echo '  server {' >> nginx.conf
-        echo '    server_name localhost;' >> nginx.conf
-        echo '    listen 127.0.0.1:8080;' >> nginx.conf
-        echo '    listen [::1]:8080;' >> nginx.conf
-        echo '    location / {' >> nginx.conf
-        echo "      root $(pwd);" >> nginx.conf
-        echo '      autoindex on;' >> nginx.conf
-        echo '    }' >> nginx.conf
-        echo '  }' >> nginx.conf
-        echo '}' >> nginx.conf
-        cat nginx.conf
-
     - name: Run nginx static file benchmark
       run: |
         VERSION=$(nginx -v 2>&1 | sed 's/.*: //' | sed 's!/! !')
         REPORT=${{ env.TARGET_DIR }}/report_nginx_static.bin
-        nginx -c `pwd`/nginx.conf &
+        nginx -c `pwd`/.github/workflows/config/benchmarking/nginx.conf &
         sleep 2
         echo "GET http://localhost:8080/README.md" | ./vegeta -cpus=2 attack -name "$VERSION file" -workers=4 -connections=100 -rate=1000/s -duration=10s > $REPORT
         kill %1
@@ -224,7 +158,7 @@ jobs:
       run: |
         VERSION=$(nginx -v 2>&1 | sed 's/.*: //' | sed 's!/! !')
         REPORT=${{ env.TARGET_DIR }}/report_nginx_dirlist.bin
-        nginx -c `pwd`/nginx.conf &
+        nginx -c `pwd`/.github/workflows/config/benchmarking/nginx.conf &
         sleep 2
         echo "GET http://localhost:8080/" | ./vegeta -cpus=2 attack -name "$VERSION directory" -workers=4 -connections=100 -rate=1000/s -duration=10s > $REPORT
         kill %1
