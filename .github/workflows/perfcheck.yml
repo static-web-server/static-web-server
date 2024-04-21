@@ -5,8 +5,7 @@ on:
       - .github/workflows/perfcheck.yml
       - .github/workflows/config/benchmarking/*
       - .cargo/config.toml
-      - scripts/ci/benchmark_plot.gnu
-      - scripts/ci/vegeta_report_to_gnuplot.jq
+      - scripts/ci/vegeta_report_to_csv.jq
       - Cargo.lock
       - Cargo.toml
       - src/**
@@ -68,10 +67,10 @@ jobs:
         echo "Downloaded vegeta"
         ./vegeta --version
 
-    - name: Install required software
+    - name: Install web server software
       uses: awalsh128/cache-apt-pkgs-action@latest
       with:
-        packages: apache2 lighttpd nginx gnuplot-nox
+        packages: apache2 lighttpd nginx
         version: 1.0
 
     - name: Install Rust
@@ -89,6 +88,9 @@ jobs:
     - name: Build release binary
       run: ${{ env.CARGO_BIN }} build --bin static-web-server -vv --release ${{ env.CARGO_FEATURES }} ${{ env.TARGET_FLAGS }}
 
+    - name: Initialize graph.csv
+      run: echo "Sample, min, mean, 50th, 90th, 95th, 99th, max" > ${{ env.TARGET_DIR }}/graph.csv
+
     - name: Run SWS static file benchmark
       run: |
         VERSION=$(${{ env.TARGET_DIR }}/release/static-web-server --version | sed 's/static-web-server/sws/')
@@ -99,7 +101,7 @@ jobs:
         echo "GET http://localhost:8080/README.md" | ./vegeta attack -name "$NAME" ${{ env.VEGETA_FLAGS }} > $REPORT
         kill %1
         ./vegeta report -type=text $REPORT
-        ./vegeta report -type=json $REPORT | jq --arg name "$NAME" -r -f scripts/ci/vegeta_report_to_gnuplot.jq | sed 's/,/ /g' >> ${{ env.TARGET_DIR }}/gnuplot.dat
+        ./vegeta report -type=json $REPORT | jq --arg name "$NAME" -r -f scripts/ci/vegeta_report_to_csv.jq >> ${{ env.TARGET_DIR }}/graph.csv
 
     - name: Run SWS directory listing benchmark
       run: |
@@ -111,7 +113,7 @@ jobs:
         echo "GET http://localhost:8080/" | ./vegeta attack -name "$NAME" ${{ env.VEGETA_FLAGS }} > $REPORT
         kill %1
         ./vegeta report -type=text $REPORT
-        ./vegeta report -type=json $REPORT | jq --arg name "$NAME" -r -f scripts/ci/vegeta_report_to_gnuplot.jq | sed 's/,/ /g' >> ${{ env.TARGET_DIR }}/gnuplot.dat
+        ./vegeta report -type=json $REPORT | jq --arg name "$NAME" -r -f scripts/ci/vegeta_report_to_csv.jq >> ${{ env.TARGET_DIR }}/graph.csv
 
     - name: Run Apache static file benchmark
       run: |
@@ -123,7 +125,7 @@ jobs:
         echo "GET http://localhost:8080/README.md" | ./vegeta attack -name "$NAME" ${{ env.VEGETA_FLAGS }} > $REPORT
         kill %1
         ./vegeta report -type=text $REPORT
-        ./vegeta report -type=json $REPORT | jq --arg name "$NAME" -r -f scripts/ci/vegeta_report_to_gnuplot.jq | sed 's/,/ /g' >> ${{ env.TARGET_DIR }}/gnuplot.dat
+        ./vegeta report -type=json $REPORT | jq --arg name "$NAME" -r -f scripts/ci/vegeta_report_to_csv.jq >> ${{ env.TARGET_DIR }}/graph.csv
 
     - name: Run Apache directory listing benchmark
       run: |
@@ -135,7 +137,7 @@ jobs:
         echo "GET http://localhost:8080/" | ./vegeta attack -name "$NAME" ${{ env.VEGETA_FLAGS }} > $REPORT
         kill %1
         ./vegeta report -type=text $REPORT
-        ./vegeta report -type=json $REPORT | jq --arg name "$NAME" -r -f scripts/ci/vegeta_report_to_gnuplot.jq | sed 's/,/ /g' >> ${{ env.TARGET_DIR }}/gnuplot.dat
+        ./vegeta report -type=json $REPORT | jq --arg name "$NAME" -r -f scripts/ci/vegeta_report_to_csv.jq >> ${{ env.TARGET_DIR }}/graph.csv
 
     - name: Run lighttpd static file benchmark
       run: |
@@ -147,7 +149,7 @@ jobs:
         echo "GET http://localhost:8080/README.md" | ./vegeta attack -name "$NAME" ${{ env.VEGETA_FLAGS }} > $REPORT
         kill %1
         ./vegeta report -type=text $REPORT
-        ./vegeta report -type=json $REPORT | jq --arg name "$NAME" -r -f scripts/ci/vegeta_report_to_gnuplot.jq | sed 's/,/ /g' >> ${{ env.TARGET_DIR }}/gnuplot.dat
+        ./vegeta report -type=json $REPORT | jq --arg name "$NAME" -r -f scripts/ci/vegeta_report_to_csv.jq >> ${{ env.TARGET_DIR }}/graph.csv
 
     - name: Run lighttpd directory listing benchmark
       run: |
@@ -159,7 +161,7 @@ jobs:
         echo "GET http://localhost:8080/" | ./vegeta attack -name "$NAME" ${{ env.VEGETA_FLAGS }} > $REPORT
         kill %1
         ./vegeta report -type=text $REPORT
-        ./vegeta report -type=json $REPORT | jq --arg name "$NAME" -r -f scripts/ci/vegeta_report_to_gnuplot.jq | sed 's/,/ /g' >> ${{ env.TARGET_DIR }}/gnuplot.dat
+        ./vegeta report -type=json $REPORT | jq --arg name "$NAME" -r -f scripts/ci/vegeta_report_to_csv.jq >> ${{ env.TARGET_DIR }}/graph.csv
 
     - name: Run nginx static file benchmark
       run: |
@@ -171,7 +173,7 @@ jobs:
         echo "GET http://localhost:8080/README.md" | ./vegeta attack -name "$NAME" ${{ env.VEGETA_FLAGS }} > $REPORT
         kill %1
         ./vegeta report -type=text $REPORT
-        ./vegeta report -type=json $REPORT | jq --arg name "$NAME" -r -f scripts/ci/vegeta_report_to_gnuplot.jq | sed 's/,/ /g' >> ${{ env.TARGET_DIR }}/gnuplot.dat
+        ./vegeta report -type=json $REPORT | jq --arg name "$NAME" -r -f scripts/ci/vegeta_report_to_csv.jq >> ${{ env.TARGET_DIR }}/graph.csv
 
     - name: Run nginx directory listing benchmark
       run: |
@@ -183,13 +185,21 @@ jobs:
         echo "GET http://localhost:8080/" | ./vegeta attack -name "$NAME" ${{ env.VEGETA_FLAGS }} > $REPORT
         kill %1
         ./vegeta report -type=text $REPORT
-        ./vegeta report -type=json $REPORT | jq --arg name "$NAME" -r -f scripts/ci/vegeta_report_to_gnuplot.jq | sed 's/,/ /g' >> ${{ env.TARGET_DIR }}/gnuplot.dat
+        ./vegeta report -type=json $REPORT | jq --arg name "$NAME" -r -f scripts/ci/vegeta_report_to_csv.jq >> ${{ env.TARGET_DIR }}/graph.csv
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+
+    - name: Install pipx
+      run: pip install pipx
 
     - name: Produce plot
       run: |
-        ./vegeta plot --title "Benchmark results" ${{ env.TARGET_DIR }}/report_*.bin > detailed_plot.html
-        cat ${{ env.TARGET_DIR }}/gnuplot.dat
-        gnuplot-nox -e "datafile='${{ env.TARGET_DIR }}/gnuplot.dat'" scripts/ci/benchmark_plot.gnu
+        ./vegeta plot --title 'Benchmark results' ${{ env.TARGET_DIR }}/report_*.bin > detailed_plot.html
+        cat ${{ env.TARGET_DIR }}/graph.csv
+        pipx run graph-cli --barh --bar-label --xlabel '' --ylabel 'Latency (ms)' --title 'Benchmark results' --figsize 1200x1200 --fontsize 10 --ytick-angle 45 --ytick-align top -o overview.png ${{ env.TARGET_DIR }}/graph.csv
 
     - name: Upload benchmark plots
       uses: actions/upload-artifact@v4
@@ -203,4 +213,6 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: Binary result data
-        path: target/report_*.bin
+        path: |
+          ${{ env.TARGET_DIR }}/report_*.bin
+          ${{ env.TARGET_DIR }}/graph.csv
