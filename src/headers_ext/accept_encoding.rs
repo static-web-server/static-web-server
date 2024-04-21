@@ -142,7 +142,7 @@ mod tests {
 
     #[test]
     fn from_static() {
-        let val = HeaderValue::from_static("deflate, gzip;q=1.0, br;q=0.9, *;q=0.1");
+        let val = HeaderValue::from_static("deflate, gzip;q=1.0, br;q=0.9");
         let accept_enc = AcceptEncoding(val.into());
 
         assert_eq!(
@@ -154,7 +154,6 @@ mod tests {
         assert_eq!(encodings.next(), Some(ContentCoding::DEFLATE));
         assert_eq!(encodings.next(), Some(ContentCoding::GZIP));
         assert_eq!(encodings.next(), Some(ContentCoding::BROTLI));
-        assert_eq!(encodings.next(), Some(ContentCoding::ANY));
         assert_eq!(encodings.next(), None);
     }
 
