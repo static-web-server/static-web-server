@@ -48,12 +48,6 @@ impl Header for AcceptEncoding {
 }
 
 impl AcceptEncoding {
-    /// Convenience method to create an `Accept-Encoding: gzip` header
-    #[inline]
-    pub fn gzip() -> Self {
-        Self(HeaderValue::from_static("gzip").into())
-    }
-
     /// A convenience method to create an Accept-Encoding header from pairs of values and qualities
     ///
     /// # Example
