@@ -1,0 +1,235 @@
+name: perfcheck
+on:
+  pull_request:
+    paths:
+      - .github/workflows/perfcheck.yml
+      - .cargo/config.toml
+      - Cargo.lock
+      - Cargo.toml
+      - src/**
+      - tests/**
+  push:
+    branches:
+    - master
+    - staging
+    - trying
+    paths:
+      - .github/workflows/perfcheck.yml
+      - .cargo/config.toml
+      - Cargo.lock
+      - Cargo.toml
+      - src/**
+      - tests/**
+  schedule:
+    - cron: '50 01 * * *' # Every day at 01:50 UTC
+
+jobs:
+  benchmark:
+    name: benchmark
+    runs-on: ubuntu-22.04
+    env:
+      # Cargo binary
+      CARGO_BIN: cargo
+      # When CARGO_BIN is set to CROSS, this is set to `--target matrix.target`.
+      TARGET_FLAGS: ""
+      # When CARGO_BIN is set to CROSS, TARGET_DIR includes matrix.target.
+      TARGET_DIR: ./target
+      # Rustc flags needed by the `all` features
+      RUSTFLAGS: "--cfg tokio_unstable"
+      # SWS features for Cargo build
+      CARGO_FEATURES: "--features=all"
+      # Version of the vegeta binary
+      VEGETA_VERSION: "12.11.1"
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 1
+
+    - name: Cache Rust Cargo/Toolchain
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cargo
+          **/target
+        key: rust-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: |
+          rust-
+
+    - name: Install vegeta binary
+      run: |
+        curl -L https://github.com/tsenart/vegeta/releases/download/v${{ env.VEGETA_VERSION }}/vegeta_${{ env.VEGETA_VERSION }}_linux_amd64.tar.gz | tar xz
+        echo "Downloaded vegeta"
+        ./vegeta --version
+
+    - name: Install web server software
+      uses: awalsh128/cache-apt-pkgs-action@latest
+      with:
+        packages: apache2 lighttpd nginx
+        version: 1.0
+
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        toolchain: stable
+        target: x86_64-unknown-linux-gnu
+
+    - name: Show command used for Cargo
+      run: |
+        echo "cargo command is: ${{ env.CARGO_BIN }}"
+        echo "target flag is: ${{ env.TARGET_FLAGS }}"
+        echo "target dir is: ${{ env.TARGET_DIR }}"
+
+    - name: Build release binary
+      run: ${{ env.CARGO_BIN }} build --bin static-web-server -vv --release ${{ env.CARGO_FEATURES }} ${{ env.TARGET_FLAGS }}
+
+    - name: Write SWS config file
+      run: |
+        echo '[general]' > sws-config.toml
+        echo 'port = 8080' >> sws-config.toml
+        echo 'root = "."' >> sws-config.toml
+        echo 'directory-listing = true' >> sws-config.toml
+        cat sws-config.toml
+
+    - name: Run SWS static file benchmark
+      run: |
+        VERSION=$(${{ env.TARGET_DIR }}/release/static-web-server --version | sed 's/static-web-server/sws/')
+        REPORT=${{ env.TARGET_DIR }}/report_sws_static.bin
+        ${{ env.TARGET_DIR }}/release/static-web-server --config-file sws-config.toml &
+        sleep 2
+        echo "GET http://localhost:8080/README.md" | ./vegeta -cpus=2 attack -name "$VERSION file" -workers=4 -connections=100 -rate=1000/s -duration=10s > $REPORT
+        kill %1
+        ./vegeta report -type=text $REPORT
+
+    - name: Run SWS directory listing benchmark
+      run: |
+        VERSION=$(${{ env.TARGET_DIR }}/release/static-web-server --version | sed 's/static-web-server/sws/')
+        REPORT=${{ env.TARGET_DIR }}/report_sws_dirlist.bin
+        ${{ env.TARGET_DIR }}/release/static-web-server --config-file sws-config.toml &
+        sleep 2
+        echo "GET http://localhost:8080/" | ./vegeta -cpus=2 attack -name "$VERSION directory" -workers=4 -connections=100 -rate=1000/s -duration=10s > $REPORT
+        kill %1
+        ./vegeta report -type=text $REPORT
+
+    - name: Write Apache config file
+      run: |
+        echo 'ServerRoot /usr/lib/apache2' > apache.conf
+        echo 'LoadModule mpm_event_module modules/mod_mpm_event.so' >> apache.conf
+        echo 'LoadModule authz_core_module modules/mod_authz_core.so' >> apache.conf
+        echo 'LoadModule dir_module modules/mod_dir.so' >> apache.conf
+        echo 'LoadModule autoindex_module modules/mod_autoindex.so' >> apache.conf
+        echo 'Listen *:8080' >> apache.conf
+        echo 'ErrorLog /dev/stderr' >> apache.conf
+        echo "PidFile $(pwd)/target/apache.pid" >> apache.conf
+        echo 'Mutex sem' >> apache.conf
+        echo "DocumentRoot $(pwd)" >> apache.conf
+        echo 'Options +Indexes' >> apache.conf
+        echo 'EnableSendfile On' >> apache.conf
+        cat apache.conf
+
+    - name: Run Apache static file benchmark
+      run: |
+        VERSION=$(apache2 -v | sed 's/.*: //' | sed 's/ .*//' | sed 's!/! !')
+        REPORT=${{ env.TARGET_DIR }}/report_apache_static.bin
+        apache2 -D FOREGROUND -f `pwd`/apache.conf &
+        sleep 2
+        echo "GET http://localhost:8080/README.md" | ./vegeta -cpus=2 attack -name "$VERSION file" -workers=4 -connections=100 -rate=1000/s -duration=10s > $REPORT
+        kill %1
+        ./vegeta report -type=text $REPORT
+
+    - name: Run Apache directory listing benchmark
+      run: |
+        VERSION=$(apache2 -v | sed 's/.*: //' | sed 's/ .*//' | sed 's!/! !')
+        REPORT=${{ env.TARGET_DIR }}/report_apache_dirlist.bin
+        apache2 -D FOREGROUND -f `pwd`/apache.conf &
+        sleep 2
+        echo "GET http://localhost:8080/" | ./vegeta -cpus=2 attack -name "$VERSION directory" -workers=4 -connections=100 -rate=1000/s -duration=10s > $REPORT
+        kill %1
+        ./vegeta report -type=text $REPORT
+
+    - name: Write lighttpd config file
+      run: |
+        echo -n 'server.document-root = "' > lighttpd.conf
+        echo -n `pwd` >> lighttpd.conf
+        echo '"' >> lighttpd.conf
+        echo 'server.port = 8080' >> lighttpd.conf
+        echo 'server.use-ipv6 = "enable"' >> lighttpd.conf
+        echo 'server.v4mapped = "enable"' >> lighttpd.conf
+        echo 'dir-listing.activate = "enable"' >> lighttpd.conf
+        cat lighttpd.conf
+
+    - name: Run lighttpd static file benchmark
+      run: |
+        VERSION=$(lighttpd -v | sed 's/ .*//' | sed 's!/! !')
+        REPORT=${{ env.TARGET_DIR }}/report_lighttpd_static.bin
+        lighttpd -D -f `pwd`/lighttpd.conf &
+        sleep 2
+        echo "GET http://localhost:8080/README.md" | ./vegeta -cpus=2 attack -name "$VERSION file" -workers=4 -connections=100 -rate=1000/s -duration=10s > $REPORT
+        kill %1
+        ./vegeta report -type=text $REPORT
+
+    - name: Run lighttpd directory listing benchmark
+      run: |
+        VERSION=$(lighttpd -v | sed 's/ .*//' | sed 's!/! !')
+        REPORT=${{ env.TARGET_DIR }}/report_lighttpd_dirlist.bin
+        lighttpd -D -f `pwd`/lighttpd.conf &
+        sleep 2
+        echo "GET http://localhost:8080/" | ./vegeta -cpus=2 attack -name "$VERSION directory" -workers=4 -connections=100 -rate=1000/s -duration=10s > $REPORT
+        kill %1
+        ./vegeta report -type=text $REPORT
+
+    - name: Write nginx config file
+      run: |
+        echo 'daemon off;' > nginx.conf
+        echo 'error_log /dev/null warn;' >> nginx.conf
+        echo 'pid /dev/null;' >> nginx.conf
+        echo 'events {}' >> nginx.conf
+        echo 'http {' >> nginx.conf
+        echo '  access_log off;' >> nginx.conf
+        echo '  default_type text/plain;' >> nginx.conf
+        echo '  sendfile on;' >> nginx.conf
+        echo '  tcp_nopush on;' >> nginx.conf
+        echo '  server {' >> nginx.conf
+        echo '    server_name localhost;' >> nginx.conf
+        echo '    listen 127.0.0.1:8080;' >> nginx.conf
+        echo '    listen [::1]:8080;' >> nginx.conf
+        echo '    location / {' >> nginx.conf
+        echo "      root $(pwd);" >> nginx.conf
+        echo '      autoindex on;' >> nginx.conf
+        echo '    }' >> nginx.conf
+        echo '  }' >> nginx.conf
+        echo '}' >> nginx.conf
+        cat nginx.conf
+
+    - name: Run nginx static file benchmark
+      run: |
+        VERSION=$(nginx -v 2>&1 | sed 's/.*: //' | sed 's!/! !')
+        REPORT=${{ env.TARGET_DIR }}/report_nginx_static.bin
+        nginx -c `pwd`/nginx.conf &
+        sleep 2
+        echo "GET http://localhost:8080/README.md" | ./vegeta -cpus=2 attack -name "$VERSION file" -workers=4 -connections=100 -rate=1000/s -duration=10s > $REPORT
+        kill %1
+        ./vegeta report -type=text $REPORT
+
+    - name: Run nginx directory listing benchmark
+      run: |
+        VERSION=$(nginx -v 2>&1 | sed 's/.*: //' | sed 's!/! !')
+        REPORT=${{ env.TARGET_DIR }}/report_nginx_dirlist.bin
+        nginx -c `pwd`/nginx.conf &
+        sleep 2
+        echo "GET http://localhost:8080/" | ./vegeta -cpus=2 attack -name "$VERSION directory" -workers=4 -connections=100 -rate=1000/s -duration=10s > $REPORT
+        kill %1
+        ./vegeta report -type=text $REPORT
+
+    - name: Produce plot
+      run: |
+        ./vegeta plot --title "Benchmark results" ${{ env.TARGET_DIR }}/report_*.bin > benchmark.html
+
+    - name: Upload benchmark results
+      uses: actions/upload-artifact@v4
+      with:
+        name: Benchmark results
+        path: |
+          benchmark.html
+          target/report_*.bin
