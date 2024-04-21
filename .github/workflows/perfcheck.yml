@@ -40,6 +40,8 @@ jobs:
       CARGO_FEATURES: "--features=all"
       # Version of the vegeta binary
       VEGETA_VERSION: "12.11.1"
+      # Command-line parameters for the vegeta binary
+      VEGETA_FLAGS: "-workers=4 -connections=100 -rate=1000/s -duration=10s"
 
     steps:
     - name: Checkout repository
@@ -90,7 +92,7 @@ jobs:
         REPORT=${{ env.TARGET_DIR }}/report_sws_static.bin
         ${{ env.TARGET_DIR }}/release/static-web-server --config-file .github/workflows/config/benchmarking/sws.toml &
         sleep 2
-        echo "GET http://localhost:8080/README.md" | ./vegeta -cpus=2 attack -name "$VERSION file" -workers=4 -connections=100 -rate=1000/s -duration=10s > $REPORT
+        echo "GET http://localhost:8080/README.md" | ./vegeta attack -name "$VERSION file" ${{ env.VEGETA_FLAGS }} > $REPORT
         kill %1
         ./vegeta report -type=text $REPORT
 
@@ -100,7 +102,7 @@ jobs:
         REPORT=${{ env.TARGET_DIR }}/report_sws_dirlist.bin
         ${{ env.TARGET_DIR }}/release/static-web-server --config-file .github/workflows/config/benchmarking/sws.toml &
         sleep 2
-        echo "GET http://localhost:8080/" | ./vegeta -cpus=2 attack -name "$VERSION directory" -workers=4 -connections=100 -rate=1000/s -duration=10s > $REPORT
+        echo "GET http://localhost:8080/" | ./vegeta attack -name "$VERSION directory" ${{ env.VEGETA_FLAGS }} > $REPORT
         kill %1
         ./vegeta report -type=text $REPORT
 
@@ -110,7 +112,7 @@ jobs:
         REPORT=${{ env.TARGET_DIR }}/report_apache_static.bin
         apache2 -D FOREGROUND -f `pwd`/.github/workflows/config/benchmarking/apache.conf &
         sleep 2
-        echo "GET http://localhost:8080/README.md" | ./vegeta -cpus=2 attack -name "$VERSION file" -workers=4 -connections=100 -rate=1000/s -duration=10s > $REPORT
+        echo "GET http://localhost:8080/README.md" | ./vegeta attack -name "$VERSION file" ${{ env.VEGETA_FLAGS }} > $REPORT
         kill %1
         ./vegeta report -type=text $REPORT
 
@@ -120,7 +122,7 @@ jobs:
         REPORT=${{ env.TARGET_DIR }}/report_apache_dirlist.bin
         apache2 -D FOREGROUND -f `pwd`/.github/workflows/config/benchmarking/apache.conf &
         sleep 2
-        echo "GET http://localhost:8080/" | ./vegeta -cpus=2 attack -name "$VERSION directory" -workers=4 -connections=100 -rate=1000/s -duration=10s > $REPORT
+        echo "GET http://localhost:8080/" | ./vegeta attack -name "$VERSION directory" ${{ env.VEGETA_FLAGS }} > $REPORT
         kill %1
         ./vegeta report -type=text $REPORT
 
@@ -130,7 +132,7 @@ jobs:
         REPORT=${{ env.TARGET_DIR }}/report_lighttpd_static.bin
         lighttpd -D -f `pwd`/.github/workflows/config/benchmarking/lighttpd.conf &
         sleep 2
-        echo "GET http://localhost:8080/README.md" | ./vegeta -cpus=2 attack -name "$VERSION file" -workers=4 -connections=100 -rate=1000/s -duration=10s > $REPORT
+        echo "GET http://localhost:8080/README.md" | ./vegeta attack -name "$VERSION file" ${{ env.VEGETA_FLAGS }} > $REPORT
         kill %1
         ./vegeta report -type=text $REPORT
 
@@ -140,7 +142,7 @@ jobs:
         REPORT=${{ env.TARGET_DIR }}/report_lighttpd_dirlist.bin
         lighttpd -D -f `pwd`/.github/workflows/config/benchmarking/lighttpd.conf &
         sleep 2
-        echo "GET http://localhost:8080/" | ./vegeta -cpus=2 attack -name "$VERSION directory" -workers=4 -connections=100 -rate=1000/s -duration=10s > $REPORT
+        echo "GET http://localhost:8080/" | ./vegeta attack -name "$VERSION directory" ${{ env.VEGETA_FLAGS }} > $REPORT
         kill %1
         ./vegeta report -type=text $REPORT
 
@@ -150,7 +152,7 @@ jobs:
         REPORT=${{ env.TARGET_DIR }}/report_nginx_static.bin
         nginx -c `pwd`/.github/workflows/config/benchmarking/nginx.conf &
         sleep 2
-        echo "GET http://localhost:8080/README.md" | ./vegeta -cpus=2 attack -name "$VERSION file" -workers=4 -connections=100 -rate=1000/s -duration=10s > $REPORT
+        echo "GET http://localhost:8080/README.md" | ./vegeta attack -name "$VERSION file" ${{ env.VEGETA_FLAGS }} > $REPORT
         kill %1
         ./vegeta report -type=text $REPORT
 
@@ -160,7 +162,7 @@ jobs:
         REPORT=${{ env.TARGET_DIR }}/report_nginx_dirlist.bin
         nginx -c `pwd`/.github/workflows/config/benchmarking/nginx.conf &
         sleep 2
-        echo "GET http://localhost:8080/" | ./vegeta -cpus=2 attack -name "$VERSION directory" -workers=4 -connections=100 -rate=1000/s -duration=10s > $REPORT
+        echo "GET http://localhost:8080/" | ./vegeta attack -name "$VERSION directory" ${{ env.VEGETA_FLAGS }} > $REPORT
         kill %1
         ./vegeta report -type=text $REPORT
 
