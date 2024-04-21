@@ -24,7 +24,7 @@ macro_rules! define_content_coding {
         impl ContentCoding {
             /// Returns a `&'static str` for a `ContentCoding`
             #[inline]
-            pub fn as_str(&self) -> &'static str {
+            pub(crate) fn as_str(&self) -> &'static str {
                 match *self {
                     $(ContentCoding::$coding => $str,)+
                 }

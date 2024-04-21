@@ -19,7 +19,7 @@ use std::cmp::Ordering;
 /// representations that can be selected for a resource.
 ///
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct QualityValue {
+pub(crate) struct QualityValue {
     value: HeaderValue,
 }
 

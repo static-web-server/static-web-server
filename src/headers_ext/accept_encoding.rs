@@ -28,7 +28,7 @@ use super::{ContentCoding, QualityValue};
 /// * `br;q=1.0, gzip;q=0.8`
 ///
 #[derive(Clone, Debug)]
-pub struct AcceptEncoding(pub QualityValue);
+pub(crate) struct AcceptEncoding(QualityValue);
 
 impl Header for AcceptEncoding {
     fn name() -> &'static HeaderName {
@@ -50,12 +50,12 @@ impl Header for AcceptEncoding {
 impl AcceptEncoding {
     /// Returns the most preferred encoding that is specified by the header,
     /// if one is specified.
-    pub fn preferred_encoding(&self) -> Option<ContentCoding> {
+    pub(crate) fn preferred_encoding(&self) -> Option<ContentCoding> {
         self.0.iter().next().map(ContentCoding::from)
     }
 
     /// Returns a quality sorted iterator of the `ContentCoding`
-    pub fn sorted_encodings(&self) -> impl Iterator<Item = ContentCoding> + '_ {
+    pub(crate) fn sorted_encodings(&self) -> impl Iterator<Item = ContentCoding> + '_ {
         self.0.iter().map(ContentCoding::from)
     }
 }
