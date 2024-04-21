@@ -7,7 +7,9 @@
 //! for incoming requests based on a set of file types.
 //!
 
-use hyper::{Body, Response};
+use hyper::{Body, Request, Response};
+
+use crate::handler::RequestHandlerOpts;
 
 // Cache-Control `max-age` variants
 const MAX_AGE_ONE_HOUR: u64 = 60 * 60;
@@ -21,6 +23,22 @@ const CACHE_EXT_ONE_YEAR: [&str; 32] = [
     "map", "mjs", "mp3", "mp4", "ogg", "ogv", "pdf", "png", "rar", "rtf", "tar", "tgz", "wav",
     "weba", "webm", "webp", "woff", "woff2", "zip",
 ];
+
+pub(crate) fn init(enabled: bool, handler_opts: &mut RequestHandlerOpts) {
+    handler_opts.cache_control_headers = enabled;
+    server_info!("cache control headers: enabled={enabled}");
+}
+
+/// Appends `Cache-Control` header to a response if necessary
+pub(crate) fn post_process(
+    opts: &RequestHandlerOpts,
+    req: &Request<Body>,
+    resp: &mut Response<Body>,
+) {
+    if opts.cache_control_headers {
+        append_headers(req.uri().path(), resp);
+    }
+}
 
 /// It appends a `Cache-Control` header to a response if that one is part of a set of file types.
 pub fn append_headers(uri: &str, resp: &mut Response<Body>) {

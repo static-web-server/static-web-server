@@ -29,7 +29,7 @@ use {
 #[cfg(feature = "basic-auth")]
 use crate::basic_auth;
 
-use crate::{cors, health, helpers, maintenance_mode, Settings};
+use crate::{control_headers, cors, health, helpers, maintenance_mode, security_headers, Settings};
 use crate::{service::RouterService, Context, Result};
 
 /// Define a multi-threaded HTTP or HTTP/2 web server.
@@ -218,10 +218,6 @@ impl Server {
             );
         }
 
-        // Security Headers option
-        let security_headers = general.security_headers;
-        server_info!("security headers: enabled={}", security_headers);
-
         #[cfg(not(any(
             feature = "compression",
             feature = "compression-deflate",
@@ -345,8 +341,6 @@ impl Server {
             dir_listing_order,
             #[cfg(feature = "directory-listing")]
             dir_listing_format,
-            security_headers,
-            cache_control_headers,
             page404: page404.clone(),
             page50x: page50x.clone(),
             #[cfg(feature = "fallback-page")]
@@ -385,6 +379,12 @@ impl Server {
             general.maintenance_mode_file,
             &mut handler_opts,
         );
+
+        // Cache control headers option
+        control_headers::init(general.cache_control_headers, &mut handler_opts);
+
+        // Security Headers option
+        security_headers::init(general.security_headers, &mut handler_opts);
 
         // Create a service router for Hyper
         let router_service = RouterService::new(RequestHandler {
