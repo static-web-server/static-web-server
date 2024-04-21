@@ -1,4 +1,4 @@
-# URL Rewrites 
+# URL Rewrites
 
 **SWS** provides the ability to rewrite request URLs (routes) with Glob pattern-matching support.
 
@@ -28,8 +28,7 @@ The glob pattern functionality is powered by the [globset](https://docs.rs/globs
 
 ### Destination
 
-The value can be either a local file path that maps to an existing file on the system or an external URL (URLs only in case of redirection).
-It could look like `/some/directory/file.html`. It is worth noting that the `/` at the beginning indicates the server's root directory.
+The value should be a relative or absolute URL. A relative URL could look like `/some/directory/file.html`. An absolute URL can be `https://external.example.com/` for example.
 
 #### Replacements
 
@@ -40,6 +39,38 @@ Replacements order start from `0` to `n` and are defined with a dollar sign foll
 !!! tip "Group your Glob patterns"
     When using replacements, also group your Glob pattern by surrounding them with curly braces so every group should map to its corresponding replacement.<br>
     For example: `source = "**/{*}.{png,gif}"`
+
+#### Destination processing
+
+How destination is processed depends on whether the `redirect` key (see below) is present. If it is present, SWS will perform an *external* redirect. It will send a redirect response to the client, and the browser will usually proceed to the destination. In case of a relative URL, it will be another page on the same server. An absolute URL can result in navigation to another server.
+
+Without a `redirect` key, SWS will perform an *internal* redirect. It will attempt to retrieve the file denoted by the destination and send it to the client. While it is possible to specify an absolute URL here as well, it will always be processed by the same SWS instance. It will result by the request being mapped to a different [virtual host](virtual-hosting.md) however if a matching virtual host is present.
+
+#### Different roots within the same virtual host
+
+Normally, different root directories are only possible with different virtual hosts. Rewrites however allow exposing another root in a subdirectory for example. For that, you add an internal virtual host that isn't normally visible from outside, e.g. `internal.local`. You then rewrite the requests to the subdirectory to the internal virtual host. For example:
+
+```toml
+[general]
+root = "/usr/srv/www"
+
+[advanced]
+
+[[advanced.rewrites]]
+source = "/test/{**}"
+destination = "http://internal.local/test/$1"
+
+[[advanced.virtual-hosts]]
+host = "internal.local"
+root = "/usr/srv/alternative-root"
+```
+
+A request to `/index.html` will be mapped to `/usr/srv/www/index.html`, yet `/test/hi.txt` will be mapped to the file `/usr/srv/alternative-root/test/hi.txt`.
+
+This approach has two caveats:
+
+1. When SWS produces redirects (e.g. redirecting `http://internal.local/test/subdir` to `http://internal.local/test/subdir/`), it isn't aware of rewrites. Unless the path part of the URL is identical before and after rewrite (like in the example above), this will result in broken redirects.
+2. While the `internal.local` virtual host isn't normally accessed directly, this doesn't mean that it isn't possible for someone knowing (or guessing) its name. You should consider all files under the virtual host's root as public. Don't put any secrets in it even if these aren't accessible via rewrites.
 
 ### Redirect
 
