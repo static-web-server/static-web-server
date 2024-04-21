@@ -15,6 +15,7 @@ macro_rules! define_content_coding {
         /// [RFC7231](https://www.iana.org/assignments/http-parameters/http-parameters.xhtml)
         pub enum ContentCoding {
             $(
+                #[allow(clippy::upper_case_acronyms)]
                 #[doc = $str]
                 $coding,
             )+
@@ -22,17 +23,8 @@ macro_rules! define_content_coding {
 
         impl ContentCoding {
             /// Returns a `&'static str` for a `ContentCoding`
-            ///
-            /// # Example
-            ///
-            /// ```
-            /// use static_web_server::headers_ext::ContentCoding;
-            ///
-            /// let coding = ContentCoding::BROTLI;
-            /// assert_eq!(coding.to_static(), "br");
-            /// ```
             #[inline]
-            pub fn to_static(&self) -> &'static str {
+            pub fn as_str(&self) -> &'static str {
                 match *self {
                     $(ContentCoding::$coding => $str,)+
                 }
@@ -45,18 +37,6 @@ macro_rules! define_content_coding {
             /// Note this will never fail, in the case of `&str` being an invalid content coding,
             /// will return `ContentCoding::IDENTITY` because `'identity'` is generally always an
             /// accepted coding.
-            ///
-            /// # Example
-            ///
-            /// ```
-            /// use static_web_server::headers_ext::ContentCoding;
-            ///
-            /// let invalid = ContentCoding::from("not a valid coding");
-            /// assert_eq!(invalid, ContentCoding::IDENTITY);
-            ///
-            /// let valid = ContentCoding::from("gzip");
-            /// assert_eq!(valid, ContentCoding::GZIP);
-            /// ```
             #[inline]
             fn from(s: &str) -> Self {
                 ContentCoding::from_str(s).unwrap_or_else(|_| ContentCoding::IDENTITY)
@@ -68,21 +48,8 @@ macro_rules! define_content_coding {
 
             /// Given a `&str` will try to return a `ContentCoding`
             ///
-            /// Different from `ContentCoding::from_str(&str)`, if `&str` is an invalid content
+            /// Different from `ContentCoding::from(&str)`, if `&str` is an invalid content
             /// coding, it will return `Err(())`
-            ///
-            /// # Example
-            ///
-            /// ```
-            /// use static_web_server::headers_ext::ContentCoding;
-            /// use std::str::FromStr;
-            ///
-            /// let invalid = ContentCoding::from_str("not a valid coding");
-            /// assert!(invalid.is_err());
-            ///
-            /// let valid = ContentCoding::from_str("gzip");
-            /// assert_eq!(valid.unwrap(), ContentCoding::GZIP);
-            /// ```
             #[inline]
             fn from_str(s: &str) -> Result<Self, Self::Err> {
                 match s {
@@ -129,8 +96,8 @@ mod tests {
     use std::str::FromStr;
 
     #[test]
-    fn to_static() {
-        assert_eq!(ContentCoding::GZIP.to_static(), "gzip");
+    fn as_str() {
+        assert_eq!(ContentCoding::GZIP.as_str(), "gzip");
     }
 
     #[test]

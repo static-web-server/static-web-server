@@ -215,7 +215,7 @@ pub fn zstd(
 pub fn create_encoding_header(existing: Option<HeaderValue>, coding: ContentCoding) -> HeaderValue {
     if let Some(val) = existing {
         if let Ok(str_val) = val.to_str() {
-            return HeaderValue::from_str(&[str_val, ", ", coding.to_static()].concat())
+            return HeaderValue::from_str(&[str_val, ", ", coding.as_str()].concat())
                 .unwrap_or_else(|_| coding.into());
         }
     }
