@@ -1,3 +1,7 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
+// Original code by Parker Timmerman
+// Original code sourced from https://github.com/hyperium/headers/pull/70
+
 use bytes::BytesMut;
 use headers::Error;
 use hyper::header::HeaderValue;
