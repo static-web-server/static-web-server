@@ -119,6 +119,7 @@ jobs:
         echo 'LoadModule authz_core_module modules/mod_authz_core.so' >> apache.conf
         echo 'LoadModule dir_module modules/mod_dir.so' >> apache.conf
         echo 'LoadModule autoindex_module modules/mod_autoindex.so' >> apache.conf
+        echo 'LoadModule deflate_module modules/mod_deflate.so' >> apache.conf
         echo 'Listen *:8080' >> apache.conf
         echo 'ErrorLog /dev/stderr' >> apache.conf
         echo "PidFile $(pwd)/target/apache.pid" >> apache.conf
@@ -126,6 +127,7 @@ jobs:
         echo "DocumentRoot $(pwd)" >> apache.conf
         echo 'Options +Indexes' >> apache.conf
         echo 'EnableSendfile On' >> apache.conf
+        echo 'SetOutputFilter DEFLATE' >> apache.conf
         cat apache.conf
 
     - name: Run Apache static file benchmark
@@ -153,10 +155,13 @@ jobs:
         echo -n 'server.document-root = "' > lighttpd.conf
         echo -n `pwd` >> lighttpd.conf
         echo '"' >> lighttpd.conf
+        echo 'server.modules += ( "mod_deflate" )' >> lighttpd.conf
         echo 'server.port = 8080' >> lighttpd.conf
         echo 'server.use-ipv6 = "enable"' >> lighttpd.conf
         echo 'server.v4mapped = "enable"' >> lighttpd.conf
         echo 'dir-listing.activate = "enable"' >> lighttpd.conf
+        echo 'deflate.allowed-encodings = ( "br", "gzip", "deflate", "bzip2", "zstd" )' >> lighttpd.conf
+        echo 'deflate.mimetypes = ("text/html", "text/plain")' >> lighttpd.conf
         cat lighttpd.conf
 
     - name: Run lighttpd static file benchmark
@@ -190,6 +195,9 @@ jobs:
         echo '  default_type text/plain;' >> nginx.conf
         echo '  sendfile on;' >> nginx.conf
         echo '  tcp_nopush on;' >> nginx.conf
+        echo '  gzip on;' >> nginx.conf
+        echo '  gzip_vary on;' >> nginx.conf
+        echo '  gzip_types text/plain text/html;' >> nginx.conf
         echo '  server {' >> nginx.conf
         echo '    server_name localhost;' >> nginx.conf
         echo '    listen 127.0.0.1:8080;' >> nginx.conf
