@@ -381,24 +381,18 @@ impl RequestHandler {
                     }
 
                     // Append `Cache-Control` headers for web assets
-                    if self.opts.cache_control_headers {
-                        control_headers::append_headers(uri_path, &mut resp);
-                    }
+                    control_headers::post_process(&self.opts, req, &mut resp);
 
                     // Append security headers
-                    if self.opts.security_headers {
-                        security_headers::append_headers(&mut resp);
-                    }
+                    security_headers::post_process(&self.opts, req, &mut resp);
 
                     // Add/update custom headers
-                    if let Some(advanced) = &self.opts.advanced_opts {
-                        custom_headers::append_headers(
-                            uri_path,
-                            advanced.headers.as_deref(),
-                            &mut resp,
-                            Some(&result.file_path),
-                        )
-                    }
+                    custom_headers::post_process(
+                        &self.opts,
+                        req,
+                        &mut resp,
+                        Some(&result.file_path),
+                    );
 
                     Ok(resp)
                 }
@@ -455,24 +449,13 @@ impl RequestHandler {
                         }
 
                         // Append `Cache-Control` headers for web assets
-                        if self.opts.cache_control_headers {
-                            control_headers::append_headers(uri_path, &mut resp);
-                        }
+                        control_headers::post_process(&self.opts, req, &mut resp);
 
                         // Append security headers
-                        if self.opts.security_headers {
-                            security_headers::append_headers(&mut resp);
-                        }
+                        security_headers::post_process(&self.opts, req, &mut resp);
 
                         // Add/update custom headers
-                        if let Some(advanced) = &self.opts.advanced_opts {
-                            custom_headers::append_headers(
-                                uri_path,
-                                advanced.headers.as_deref(),
-                                &mut resp,
-                                None,
-                            )
-                        }
+                        custom_headers::post_process(&self.opts, req, &mut resp, None);
 
                         return Ok(resp);
                     }
