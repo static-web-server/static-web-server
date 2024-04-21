@@ -161,7 +161,7 @@ jobs:
         echo 'server.v4mapped = "enable"' >> lighttpd.conf
         echo 'dir-listing.activate = "enable"' >> lighttpd.conf
         echo 'deflate.allowed-encodings = ( "br", "gzip", "deflate", "bzip2", "zstd" )' >> lighttpd.conf
-        echo 'deflate.mimetypes = ("text/html", "text/plain")' >> lighttpd.conf
+        echo 'deflate.mimetypes = ("text/html", "text/plain", "application/octet-stream")' >> lighttpd.conf
         cat lighttpd.conf
 
     - name: Run lighttpd static file benchmark
