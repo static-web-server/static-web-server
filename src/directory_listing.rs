@@ -14,7 +14,6 @@ use humansize::FormatSize;
 use hyper::{Body, Method, Response, StatusCode};
 use mime_guess::mime;
 use percent_encoding::{percent_decode_str, utf8_percent_encode, NON_ALPHANUMERIC};
-use std::cmp::Ordering;
 use std::future::Future;
 use std::io;
 use std::path::Path;
@@ -435,30 +434,34 @@ fn html_auto_index<'a>(
     );
 
     // Prepare table row template
-    let mut table_row = String::new();
-    if base_path != "/" {
-        table_row = String::from(r#"<tr><td colspan="3"><a href="../">../</a></td></tr>"#);
-    }
+    let table_rows = if base_path == "/" {
+        String::new()
+    } else {
+        String::from(r#"<tr><td colspan="3"><a href="../">../</a></td></tr>"#)
+    };
 
-    for entry in entries {
-        let file_name = &entry.name_encoded;
+    let table_rows = entries.iter().fold(table_rows, |mut output, entry| {
+        let file_name = &entry.name;
+        let file_name_suffix = if entry.is_dir { "/" } else { "" };
         let file_modified = &entry.modified;
-        let file_uri = &entry.uri.clone().unwrap_or_else(|| file_name.to_owned());
-        let file_name_decoded = percent_decode_str(file_name).decode_utf8()?.to_string();
-        let mut filesize_str = entry.filesize.format_size(humansize::DECIMAL);
-
-        if entry.filesize == 0 {
-            filesize_str = String::from("-");
-        }
+        let file_uri = &entry.uri.clone().unwrap_or_else(|| entry.name_encoded.clone());
+        let filesize_str = if entry.filesize == 0 {
+            String::from("-")
+        } else {
+            entry.filesize.format_size(humansize::DECIMAL)
+        };
 
         let file_modified_str = file_modified.map_or("-".to_owned(), |local_dt| {
             local_dt.format(DATETIME_FORMAT_LOCAL).to_string()
         });
 
-        table_row = format!(
-            "{table_row}<tr><td><a href=\"{file_uri}\">{file_name_decoded}</a></td><td>{file_modified_str}</td><td align=\"right\">{filesize_str}</td></tr>"
+        use std::fmt::Write;
+        let _ = write!(
+            output,
+            "<tr><td><a href=\"{file_uri}\">{file_name}{file_name_suffix}</a></td><td>{file_modified_str}</td><td align=\"right\">{filesize_str}</td></tr>"
         );
-    }
+        output
+    });
 
     let current_path = percent_decode_str(base_path).decode_utf8()?.to_string();
     let summary = format!(
@@ -467,7 +470,7 @@ fn html_auto_index<'a>(
     );
 
     let html_page = format!(
-        "<!DOCTYPE html><html><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,minimum-scale=1,initial-scale=1\"><title>Index of {current_path}</title>{STYLE}</head><body><h1>Index of {current_path}</h1>{summary}<hr><div style=\"overflow-x: auto;\"><table>{table_header}{table_row}</table></div><hr>{FOOTER}</body></html>"
+        "<!DOCTYPE html><html><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,minimum-scale=1,initial-scale=1\"><title>Index of {current_path}</title>{STYLE}</head><body><h1>Index of {current_path}</h1>{summary}<hr><div style=\"overflow-x: auto;\"><table>{table_header}{table_rows}</table></div><hr>{FOOTER}</body></html>"
     );
 
     Ok(html_page)
@@ -480,40 +483,38 @@ fn sort_file_entries(files: &mut [FileEntry], order_code: u8) -> SortingAttr<'_>
     let mut last_modified = "2";
     let mut size = "4";
 
-    files.sort_by(|a, b| match order_code {
-        // Name (asc, desc)
-        0 => {
-            name = "1";
-            a.name.to_lowercase().cmp(&b.name.to_lowercase())
+    match order_code {
+        0 | 1 => {
+            // Name (asc, desc)
+            files.sort_by_cached_key(|f| f.name.to_lowercase());
+            if order_code == 1 {
+                files.reverse();
+            } else {
+                name = "1";
+            }
         }
-        1 => {
-            name = "0";
-            b.name.to_lowercase().cmp(&a.name.to_lowercase())
+        2 | 3 => {
+            // Modified (asc, desc)
+            files.sort_by_key(|f| f.modified);
+            if order_code == 3 {
+                files.reverse();
+            } else {
+                last_modified = "3";
+            }
         }
-
-        // Modified (asc, desc)
-        2 => {
-            last_modified = "3";
-            a.modified.cmp(&b.modified)
+        4 | 5 => {
+            // File size (asc, desc)
+            files.sort_by_key(|f| f.filesize);
+            if order_code == 5 {
+                files.reverse();
+            } else {
+                size = "5";
+            }
         }
-        3 => {
-            last_modified = "2";
-            b.modified.cmp(&a.modified)
+        _ => {
+            // Unsorted
         }
-
-        // File size (asc, desc)
-        4 => {
-            size = "5";
-            a.filesize.cmp(&b.filesize)
-        }
-        5 => {
-            size = "4";
-            b.filesize.cmp(&a.filesize)
-        }
-
-        // Unordered
-        _ => Ordering::Equal,
-    });
+    }
 
     SortingAttr {
         name,
