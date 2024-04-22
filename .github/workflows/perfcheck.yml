@@ -185,6 +185,7 @@ jobs:
       run: |
         ./vegeta plot --title "${{ matrix.title }}" report_*.bin > detailed_plot.html
         cat graph.csv
+        cat graph.csv | sed -e 's/,/|/g' -e 's/"//g' -e 's/^/|/' -e 's/$/|/' -e '2 i |-|-|-|-|-|-|-|-|' >> $GITHUB_STEP_SUMMARY
         pipx run graph-cli --barh --bar-label --xlabel '' --ylabel 'Latency (ms)' --title "${{ matrix.title }}" --figsize 1200x700 --fontsize 10 --ytick-angle 45 --ytick-align top -o overview.png graph.csv
 
     - name: Upload benchmark plots
