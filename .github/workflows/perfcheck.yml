@@ -3,13 +3,13 @@ on:
   pull_request:
     paths:
       - .github/workflows/perfcheck.yml
-      - .github/workflows/config/benchmarking/*
+      - .github/workflows/config/benchmarking/**
+      - .github/workflows/testroot/**
       - .cargo/config.toml
       - scripts/ci/vegeta_report_to_csv.jq
       - Cargo.lock
       - Cargo.toml
       - src/**
-      - tests/**
   push:
     branches:
     - master
@@ -17,11 +17,13 @@ on:
     - trying
     paths:
       - .github/workflows/perfcheck.yml
+      - .github/workflows/config/benchmarking/**
+      - .github/workflows/testroot/**
       - .cargo/config.toml
+      - scripts/ci/vegeta_report_to_csv.jq
       - Cargo.lock
       - Cargo.toml
       - src/**
-      - tests/**
   schedule:
     - cron: '50 01 * * *' # Every day at 01:50 UTC
 
@@ -43,7 +45,38 @@ jobs:
       # Version of the vegeta binary
       VEGETA_VERSION: "12.11.1"
       # Command-line parameters for the vegeta binary
-      VEGETA_FLAGS: "-workers=4 -connections=100 -rate=1000/s -duration=10s"
+      VEGETA_FLAGS: "-workers=4 -connections=100 -rate=${{ matrix.rate }} -duration=10s"
+
+    strategy:
+      matrix:
+        include:
+        - title: "Small file (dynamic compression)"
+          url: http://localhost:8080/small.txt
+          rate: "1000/s"
+        - title: "Small file (pre-compressed)"
+          url: http://localhost:8080/small_precompressed.txt
+          rate: "1000/s"
+        - title: "Large file (dynamic compression)"
+          url: http://localhost:8080/large.txt
+          rate: "200/s"
+        - title: "Large file (pre-compressed)"
+          url: http://localhost:8080/large_precompressed.txt
+          rate: "500/s"
+        - title: "Directory listing (many files)"
+          url: http://localhost:8080/
+          rate: "1000/s"
+        - title: "Directory listing (empty directory)"
+          url: http://localhost:8080/emptydir/
+          rate: "1000/s"
+        - title: "Small directory index file"
+          url: http://localhost:8080/dirsmallindex/
+          rate: "1000/s"
+        - title: "Large directory index file"
+          url: http://localhost:8080/dirlargeindex/
+          rate: "200/s"
+        - title: "Not found"
+          url: http://localhost:8080/not_found
+          rate: "1000/s"
 
     steps:
     - name: Checkout repository
@@ -89,103 +122,56 @@ jobs:
       run: ${{ env.CARGO_BIN }} build --bin static-web-server -vv --release ${{ env.CARGO_FEATURES }} ${{ env.TARGET_FLAGS }}
 
     - name: Initialize graph.csv
-      run: echo "Sample, min, mean, 50th, 90th, 95th, 99th, max" > ${{ env.TARGET_DIR }}/graph.csv
+      run: echo "Sample, min, mean, 50th, 90th, 95th, 99th, max" > graph.csv
 
-    - name: Run SWS static file benchmark
+    - name: Run SWS benchmark
       run: |
-        VERSION=$(${{ env.TARGET_DIR }}/release/static-web-server --version | sed 's/static-web-server/sws/')
-        NAME="$VERSION file"
-        REPORT=${{ env.TARGET_DIR }}/report_sws_static.bin
+        NAME=$(${{ env.TARGET_DIR }}/release/static-web-server --version | sed 's/static-web-server/sws/')
+        REPORT=report_sws.bin
         ${{ env.TARGET_DIR }}/release/static-web-server --config-file .github/workflows/config/benchmarking/sws.toml &
         sleep 2
-        echo "GET http://localhost:8080/README.md" | ./vegeta attack -name "$NAME" ${{ env.VEGETA_FLAGS }} > $REPORT
+        echo "GET ${{ matrix.url }}" | ./vegeta attack -name "$NAME" ${{ env.VEGETA_FLAGS }} > $REPORT
         kill %1
         ./vegeta report -type=text $REPORT
-        ./vegeta report -type=json $REPORT | jq --arg name "$NAME" -r -f scripts/ci/vegeta_report_to_csv.jq >> ${{ env.TARGET_DIR }}/graph.csv
+        ./vegeta report -type=json $REPORT | jq --arg name "$NAME" -r -f scripts/ci/vegeta_report_to_csv.jq >> graph.csv
 
-    - name: Run SWS directory listing benchmark
+    - name: Run Apache benchmark
       run: |
-        VERSION=$(${{ env.TARGET_DIR }}/release/static-web-server --version | sed 's/static-web-server/sws/')
-        NAME="$VERSION dir"
-        REPORT=${{ env.TARGET_DIR }}/report_sws_dirlist.bin
-        ${{ env.TARGET_DIR }}/release/static-web-server --config-file .github/workflows/config/benchmarking/sws.toml &
-        sleep 2
-        echo "GET http://localhost:8080/" | ./vegeta attack -name "$NAME" ${{ env.VEGETA_FLAGS }} > $REPORT
-        kill %1
-        ./vegeta report -type=text $REPORT
-        ./vegeta report -type=json $REPORT | jq --arg name "$NAME" -r -f scripts/ci/vegeta_report_to_csv.jq >> ${{ env.TARGET_DIR }}/graph.csv
-
-    - name: Run Apache static file benchmark
-      run: |
-        VERSION=$(apache2 -v | sed 's/.*: //' | sed 's/ .*//' | sed 's!/! !')
-        NAME="$VERSION file"
-        REPORT=${{ env.TARGET_DIR }}/report_apache_static.bin
+        NAME=$(apache2 -v | sed 's/.*: //' | sed 's/ .*//' | sed 's!/! !')
+        REPORT=report_apache.bin
         apache2 -D FOREGROUND -f `pwd`/.github/workflows/config/benchmarking/apache.conf &
         sleep 2
-        echo "GET http://localhost:8080/README.md" | ./vegeta attack -name "$NAME" ${{ env.VEGETA_FLAGS }} > $REPORT
+        echo "GET ${{ matrix.url }}" | ./vegeta attack -name "$NAME" ${{ env.VEGETA_FLAGS }} > $REPORT
         kill %1
         ./vegeta report -type=text $REPORT
-        ./vegeta report -type=json $REPORT | jq --arg name "$NAME" -r -f scripts/ci/vegeta_report_to_csv.jq >> ${{ env.TARGET_DIR }}/graph.csv
+        ./vegeta report -type=json $REPORT | jq --arg name "$NAME" -r -f scripts/ci/vegeta_report_to_csv.jq >> graph.csv
 
-    - name: Run Apache directory listing benchmark
+    - name: Run lighttpd benchmark
       run: |
-        VERSION=$(apache2 -v | sed 's/.*: //' | sed 's/ .*//' | sed 's!/! !')
-        NAME="$VERSION dir"
-        REPORT=${{ env.TARGET_DIR }}/report_apache_dirlist.bin
-        apache2 -D FOREGROUND -f `pwd`/.github/workflows/config/benchmarking/apache.conf &
-        sleep 2
-        echo "GET http://localhost:8080/" | ./vegeta attack -name "$NAME" ${{ env.VEGETA_FLAGS }} > $REPORT
-        kill %1
-        ./vegeta report -type=text $REPORT
-        ./vegeta report -type=json $REPORT | jq --arg name "$NAME" -r -f scripts/ci/vegeta_report_to_csv.jq >> ${{ env.TARGET_DIR }}/graph.csv
-
-    - name: Run lighttpd static file benchmark
-      run: |
-        VERSION=$(lighttpd -v | sed 's/ .*//' | sed 's!/! !')
-        NAME="$VERSION file"
-        REPORT=${{ env.TARGET_DIR }}/report_lighttpd_static.bin
+        NAME=$(lighttpd -v | sed 's/ .*//' | sed 's!/! !')
+        REPORT=report_lighttpd.bin
         lighttpd -D -f `pwd`/.github/workflows/config/benchmarking/lighttpd.conf &
         sleep 2
-        echo "GET http://localhost:8080/README.md" | ./vegeta attack -name "$NAME" ${{ env.VEGETA_FLAGS }} > $REPORT
+        URL="${{ matrix.url }}"
+        if [[ $URL == *"_precompressed"* ]]; then
+          # lighttpd does not really support pre-compressed files, request them explicitly
+          URL="${{ matrix.url }}.gz"
+        fi
+        echo "GET $URL" | ./vegeta attack -name "$NAME" ${{ env.VEGETA_FLAGS }} > $REPORT
         kill %1
         ./vegeta report -type=text $REPORT
-        ./vegeta report -type=json $REPORT | jq --arg name "$NAME" -r -f scripts/ci/vegeta_report_to_csv.jq >> ${{ env.TARGET_DIR }}/graph.csv
+        ./vegeta report -type=json $REPORT | jq --arg name "$NAME" -r -f scripts/ci/vegeta_report_to_csv.jq >> graph.csv
 
-    - name: Run lighttpd directory listing benchmark
+    - name: Run nginx benchmark
       run: |
-        VERSION=$(lighttpd -v | sed 's/ .*//' | sed 's!/! !')
-        NAME="$VERSION dir"
-        REPORT=${{ env.TARGET_DIR }}/report_lighttpd_dirlist.bin
-        lighttpd -D -f `pwd`/.github/workflows/config/benchmarking/lighttpd.conf &
-        sleep 2
-        echo "GET http://localhost:8080/" | ./vegeta attack -name "$NAME" ${{ env.VEGETA_FLAGS }} > $REPORT
-        kill %1
-        ./vegeta report -type=text $REPORT
-        ./vegeta report -type=json $REPORT | jq --arg name "$NAME" -r -f scripts/ci/vegeta_report_to_csv.jq >> ${{ env.TARGET_DIR }}/graph.csv
-
-    - name: Run nginx static file benchmark
-      run: |
-        VERSION=$(nginx -v 2>&1 | sed 's/.*: //' | sed 's/ .*//' | sed 's!/! !')
-        NAME="$VERSION file"
-        REPORT=${{ env.TARGET_DIR }}/report_nginx_static.bin
+        NAME=$(nginx -v 2>&1 | sed 's/.*: //' | sed 's/ .*//' | sed 's!/! !')
+        REPORT=report_nginx.bin
         nginx -c `pwd`/.github/workflows/config/benchmarking/nginx.conf &
         sleep 2
-        echo "GET http://localhost:8080/README.md" | ./vegeta attack -name "$NAME" ${{ env.VEGETA_FLAGS }} > $REPORT
+        echo "GET ${{ matrix.url }}" | ./vegeta attack -name "$NAME" ${{ env.VEGETA_FLAGS }} > $REPORT
         kill %1
         ./vegeta report -type=text $REPORT
-        ./vegeta report -type=json $REPORT | jq --arg name "$NAME" -r -f scripts/ci/vegeta_report_to_csv.jq >> ${{ env.TARGET_DIR }}/graph.csv
-
-    - name: Run nginx directory listing benchmark
-      run: |
-        VERSION=$(nginx -v 2>&1 | sed 's/.*: //' | sed 's/ .*//' | sed 's!/! !')
-        NAME="$VERSION dir"
-        REPORT=${{ env.TARGET_DIR }}/report_nginx_dirlist.bin
-        nginx -c `pwd`/.github/workflows/config/benchmarking/nginx.conf &
-        sleep 2
-        echo "GET http://localhost:8080/" | ./vegeta attack -name "$NAME" ${{ env.VEGETA_FLAGS }} > $REPORT
-        kill %1
-        ./vegeta report -type=text $REPORT
-        ./vegeta report -type=json $REPORT | jq --arg name "$NAME" -r -f scripts/ci/vegeta_report_to_csv.jq >> ${{ env.TARGET_DIR }}/graph.csv
+        ./vegeta report -type=json $REPORT | jq --arg name "$NAME" -r -f scripts/ci/vegeta_report_to_csv.jq >> graph.csv
 
     - name: Set up Python
       uses: actions/setup-python@v5
@@ -197,14 +183,14 @@ jobs:
 
     - name: Produce plot
       run: |
-        ./vegeta plot --title 'Benchmark results' ${{ env.TARGET_DIR }}/report_*.bin > detailed_plot.html
-        cat ${{ env.TARGET_DIR }}/graph.csv
-        pipx run graph-cli --barh --bar-label --xlabel '' --ylabel 'Latency (ms)' --title 'Benchmark results' --figsize 1200x1200 --fontsize 10 --ytick-angle 45 --ytick-align top -o overview.png ${{ env.TARGET_DIR }}/graph.csv
+        ./vegeta plot --title "${{ matrix.title }}" report_*.bin > detailed_plot.html
+        cat graph.csv
+        pipx run graph-cli --barh --bar-label --xlabel '' --ylabel 'Latency (ms)' --title "${{ matrix.title }}" --figsize 1200x700 --fontsize 10 --ytick-angle 45 --ytick-align top -o overview.png graph.csv
 
     - name: Upload benchmark plots
       uses: actions/upload-artifact@v4
       with:
-        name: Benchmark plots
+        name: Benchmark plots (${{ matrix.title }})
         path: |
           detailed_plot.html
           overview.png
@@ -212,7 +198,7 @@ jobs:
     - name: Upload binary result data
       uses: actions/upload-artifact@v4
       with:
-        name: Binary result data
+        name: Binary result data (${{ matrix.title }})
         path: |
-          ${{ env.TARGET_DIR }}/report_*.bin
-          ${{ env.TARGET_DIR }}/graph.csv
+          report_*.bin
+          graph.csv
