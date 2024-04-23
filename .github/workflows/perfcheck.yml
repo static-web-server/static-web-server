@@ -24,8 +24,6 @@ on:
       - Cargo.lock
       - Cargo.toml
       - src/**
-  schedule:
-    - cron: '50 01 * * *' # Every day at 01:50 UTC
 
 jobs:
   benchmark:
