@@ -292,7 +292,7 @@ impl RequestHandler {
                             &status,
                             &self.opts.page404,
                             &self.opts.page50x,
-                        )?
+                        )?,
                     );
 
                     (resp, false, None)
@@ -348,12 +348,7 @@ impl RequestHandler {
             security_headers::post_process(&self.opts, req, &mut resp);
 
             // Add/update custom headers
-            custom_headers::post_process(
-                &self.opts,
-                req,
-                &mut resp,
-                file_path.as_ref(),
-            );
+            custom_headers::post_process(&self.opts, req, &mut resp, file_path.as_ref());
 
             Ok(resp)
         }
