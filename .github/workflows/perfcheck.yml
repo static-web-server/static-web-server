@@ -189,7 +189,7 @@ jobs:
     - name: Upload benchmark plots
       uses: actions/upload-artifact@v4
       with:
-        name: Benchmark plots (${{ matrix.title }})
+        name: ${{ matrix.title }}
         path: |
           detailed_plot.html
           overview.png
@@ -204,6 +204,5 @@ jobs:
       uses: actions/upload-artifact/merge@v4
       with:
         name: Benchmark plots
-        pattern: Benchmark plots *
         separate-directories: true
         delete-merged: true
