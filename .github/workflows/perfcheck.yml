@@ -201,3 +201,25 @@ jobs:
         path: |
           report_*.bin
           graph.csv
+
+  merge-artifacts:
+    name: merge-artifacts
+    needs: benchmark
+    runs-on: ubuntu-22.04
+
+    steps:
+    - name: Merge benchmark plots
+      uses: actions/upload-artifact/merge@v4
+      with:
+        name: Benchmark plots
+        pattern: Benchmark plots *
+        separate-directories: true
+        delete-merged: true
+
+    - name: Merge binary result data
+      uses: actions/upload-artifact/merge@v4
+      with:
+        name: Binary result data
+        pattern: Binary result data *
+        separate-directories: true
+        delete-merged: true
