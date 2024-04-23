@@ -43,7 +43,11 @@ impl Server {
     /// Create a new multi-threaded server instance.
     pub fn new(opts: Settings) -> Result<Server> {
         // Configure number of worker threads
-        let cpus = num_cpus::get();
+        let cpus = std::thread::available_parallelism()
+            .with_context(|| {
+                "unable to get current platform cpus or lack of permissions to query available parallelism"
+            })?
+            .get();
         let worker_threads = match opts.general.threads_multiplier {
             0 | 1 => cpus,
             n => cpus * n,
