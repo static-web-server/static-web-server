@@ -64,6 +64,18 @@ pub const TEXT_MIME_TYPES: [&str; 24] = [
     "application/wasm",
 ];
 
+/// List of encodings that can be handled given enabled features.
+const AVAILABLE_ENCODINGS: &[ContentCoding] = &[
+    #[cfg(any(feature = "compression", feature = "compression-deflate"))]
+    ContentCoding::DEFLATE,
+    #[cfg(any(feature = "compression", feature = "compression-gzip"))]
+    ContentCoding::GZIP,
+    #[cfg(any(feature = "compression", feature = "compression-brotli"))]
+    ContentCoding::BROTLI,
+    #[cfg(any(feature = "compression", feature = "compression-zstd"))]
+    ContentCoding::ZSTD,
+];
+
 /// Create a wrapping handler that compresses the Body of a [`hyper::Response`]
 /// using gzip, `deflate`, `brotli` or `zstd` if is specified in the `Accept-Encoding` header, adding
 /// `content-encoding: <coding>` to the Response's [`HeaderMap`].
@@ -228,43 +240,10 @@ pub fn get_preferred_encoding(headers: &HeaderMap<HeaderValue>) -> Option<Conten
     if let Some(ref accept_encoding) = headers.typed_get::<AcceptEncoding>() {
         tracing::trace!("request with accept-ecoding header: {:?}", accept_encoding);
 
-        let encoding = accept_encoding.preferred_encoding();
-        if let Some(preferred_enc) = encoding {
-            let mut feature_formats = Vec::<ContentCoding>::with_capacity(5);
-            if cfg!(feature = "compression-deflate") {
-                feature_formats.push(ContentCoding::DEFLATE);
+        for encoding in accept_encoding.sorted_encodings() {
+            if AVAILABLE_ENCODINGS.contains(&encoding) {
+                return Some(encoding);
             }
-            if cfg!(feature = "compression-gzip") {
-                feature_formats.push(ContentCoding::GZIP);
-            }
-            if cfg!(feature = "compression-brotli") {
-                feature_formats.push(ContentCoding::BROTLI);
-            }
-            if cfg!(feature = "compression-zstd") {
-                feature_formats.push(ContentCoding::ZSTD);
-            }
-
-            // If there is only one Cargo compression feature enabled
-            // then re-evaluate the preferred encoding and return
-            // that feature compression algorithm as `ContentCoding` only
-            // if was contained in the `AcceptEncoding` value.
-            if feature_formats.len() == 1 {
-                let feature_enc = *feature_formats.first().unwrap();
-                if feature_enc != preferred_enc
-                    && accept_encoding
-                        .sorted_encodings()
-                        .any(|enc| enc == feature_enc)
-                {
-                    tracing::trace!(
-                        "preferred encoding {:?} is re-evalated to {:?} because is the only compression feature enabled that matches the `accept-encoding` header",
-                        preferred_enc,
-                        feature_enc
-                    );
-                    return Some(feature_enc);
-                }
-            }
-
-            return encoding;
         }
     }
     None
