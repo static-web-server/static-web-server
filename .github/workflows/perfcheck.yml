@@ -194,14 +194,6 @@ jobs:
           detailed_plot.html
           overview.png
 
-    - name: Upload binary result data
-      uses: actions/upload-artifact@v4
-      with:
-        name: Binary result data (${{ matrix.title }})
-        path: |
-          report_*.bin
-          graph.csv
-
   merge-artifacts:
     name: merge-artifacts
     needs: benchmark
@@ -213,13 +205,5 @@ jobs:
       with:
         name: Benchmark plots
         pattern: Benchmark plots *
-        separate-directories: true
-        delete-merged: true
-
-    - name: Merge binary result data
-      uses: actions/upload-artifact/merge@v4
-      with:
-        name: Binary result data
-        pattern: Binary result data *
         separate-directories: true
         delete-merged: true
