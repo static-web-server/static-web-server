@@ -73,6 +73,7 @@ http = "0.2"
 http-serde = "1.1"
 humansize = { version = "2.1", features = ["impl_style"], optional = true }
 hyper = { version = "0.14", features = ["stream", "http1", "http2", "tcp", "server"] }
+lazy_static = "1.4.0"
 listenfd = "1.0"
 mime_guess = "2.0"
 percent-encoding = "2.3"
