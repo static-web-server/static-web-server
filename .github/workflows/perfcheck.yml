@@ -3,8 +3,6 @@ on:
   pull_request:
     paths:
       - .github/workflows/perfcheck.yml
-      - .github/workflows/config/benchmarking/**
-      - .github/workflows/testroot/**
       - .cargo/config.toml
       - scripts/ci/vegeta_report_to_csv.jq
       - Cargo.lock
@@ -17,8 +15,6 @@ on:
     - trying
     paths:
       - .github/workflows/perfcheck.yml
-      - .github/workflows/config/benchmarking/**
-      - .github/workflows/testroot/**
       - .cargo/config.toml
       - scripts/ci/vegeta_report_to_csv.jq
       - Cargo.lock
@@ -82,6 +78,14 @@ jobs:
       with:
         fetch-depth: 1
 
+    - name: Checkout benchmark-setup repository
+      uses: actions/checkout@v4
+      with:
+        repository: static-web-server/benchmarks-setup
+        ref: v0.1
+        path: benchmarks-setup
+        fetch-depth: 1
+
     - name: Cache Rust Cargo/Toolchain
       uses: actions/cache@v4
       with:
@@ -126,7 +130,7 @@ jobs:
       run: |
         NAME=$(${{ env.TARGET_DIR }}/release/static-web-server --version | sed -e 's/static-web-server/sws/' -e 's/$/ (source)/')
         REPORT=report_sws.bin
-        ${{ env.TARGET_DIR }}/release/static-web-server --config-file .github/workflows/config/benchmarking/sws.toml &
+        ${{ env.TARGET_DIR }}/release/static-web-server --config-file benchmarks-setup/config/sws.toml &
         sleep 2
         echo "GET ${{ matrix.url }}" | ./vegeta attack -name "$NAME" ${{ env.VEGETA_FLAGS }} > $REPORT
         kill %1
@@ -137,7 +141,7 @@ jobs:
       run: |
         NAME=$(apache2 -v | sed 's/.*: //' | sed 's/ .*//' | sed 's!/! !')
         REPORT=report_apache.bin
-        apache2 -D FOREGROUND -f `pwd`/.github/workflows/config/benchmarking/apache.conf &
+        apache2 -D FOREGROUND -f `pwd`/benchmarks-setup/config/apache.conf &
         sleep 2
         echo "GET ${{ matrix.url }}" | ./vegeta attack -name "$NAME" ${{ env.VEGETA_FLAGS }} > $REPORT
         kill %1
@@ -148,7 +152,7 @@ jobs:
       run: |
         NAME=$(lighttpd -v | sed 's/ .*//' | sed 's!/! !')
         REPORT=report_lighttpd.bin
-        lighttpd -D -f `pwd`/.github/workflows/config/benchmarking/lighttpd.conf &
+        lighttpd -D -f `pwd`/benchmarks-setup/config/lighttpd.conf &
         sleep 2
         URL="${{ matrix.url }}"
         if [[ $URL == *"_precompressed"* ]]; then
@@ -164,7 +168,7 @@ jobs:
       run: |
         NAME=$(nginx -v 2>&1 | sed 's/.*: //' | sed 's/ .*//' | sed 's!/! !')
         REPORT=report_nginx.bin
-        nginx -c `pwd`/.github/workflows/config/benchmarking/nginx.conf &
+        nginx -c `pwd`/benchmarks-setup/config/nginx.conf &
         sleep 2
         echo "GET ${{ matrix.url }}" | ./vegeta attack -name "$NAME" ${{ env.VEGETA_FLAGS }} > $REPORT
         kill %1

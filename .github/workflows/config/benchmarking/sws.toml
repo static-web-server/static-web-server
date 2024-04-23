@@ -1,6 +1,0 @@
-[general]
-port = 8080
-root = "/home/runner/work/static-web-server/static-web-server/.github/workflows/testroot"
-directory-listing = true
-compression = true
-compression-static = true
