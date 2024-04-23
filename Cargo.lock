@@ -1227,7 +1227,6 @@ dependencies = [
  "hyper",
  "listenfd",
  "mime_guess",
- "num_cpus",
  "percent-encoding",
  "pin-project",
  "prometheus",
