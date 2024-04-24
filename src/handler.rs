@@ -252,7 +252,7 @@ impl RequestHandler {
             let index_files = index_files.as_ref();
 
             // Static files
-            match static_files::handle(&HandleOpts {
+            let (mut resp, _is_precompressed, file_path) = match static_files::handle(&HandleOpts {
                 method: req.method(),
                 headers: req.headers(),
                 base_path,
@@ -271,142 +271,86 @@ impl RequestHandler {
             })
             .await
             {
-                Ok(result) => {
-                    let _is_precompressed = result.is_precompressed;
-                    let mut resp = result.resp;
-
-                    // Append CORS headers if they are present
-                    cors::post_process(&self.opts, req, &mut resp);
-
-                    // Compression content encoding varies so use a `Vary` header
-                    #[cfg(any(
-                        feature = "compression",
-                        feature = "compression-gzip",
-                        feature = "compression-brotli",
-                        feature = "compression-zstd",
-                        feature = "compression-deflate"
-                    ))]
-                    if self.opts.compression || compression_static {
-                        resp.headers_mut().append(
-                            hyper::header::VARY,
-                            HeaderValue::from_name(hyper::header::ACCEPT_ENCODING),
-                        );
-                    }
-
-                    // Auto compression based on the `Accept-Encoding` header
-                    #[cfg(any(
-                        feature = "compression",
-                        feature = "compression-gzip",
-                        feature = "compression-brotli",
-                        feature = "compression-zstd",
-                        feature = "compression-deflate"
-                    ))]
-                    if self.opts.compression && !_is_precompressed {
-                        resp = match compression::auto(req.method(), req.headers(), resp) {
-                            Ok(res) => res,
-                            Err(err) => {
-                                tracing::error!("error during body compression: {:?}", err);
-                                return error_page::error_response(
-                                    req.uri(),
-                                    req.method(),
-                                    &StatusCode::INTERNAL_SERVER_ERROR,
-                                    &self.opts.page404,
-                                    &self.opts.page50x,
-                                );
-                            }
-                        };
-                    }
-
-                    // Append `Cache-Control` headers for web assets
-                    control_headers::post_process(&self.opts, req, &mut resp);
-
-                    // Append security headers
-                    security_headers::post_process(&self.opts, req, &mut resp);
-
-                    // Add/update custom headers
-                    custom_headers::post_process(
-                        &self.opts,
-                        req,
-                        &mut resp,
-                        Some(&result.file_path),
-                    );
-
-                    Ok(resp)
-                }
+                Ok(result) => (result.resp, result.is_precompressed, Some(result.file_path)),
                 Err(status) => {
+                    let mut resp = None;
+
                     // Check for a fallback response
                     #[cfg(feature = "fallback-page")]
                     if req.method().is_get()
                         && status == StatusCode::NOT_FOUND
                         && !self.opts.page_fallback.is_empty()
                     {
-                        // We use all modules as usual when the `page-fallback` feature is enabled
-                        let mut resp = fallback_page::fallback_response(&self.opts.page_fallback);
-
-                        // Append CORS headers if they are present
-                        cors::post_process(&self.opts, req, &mut resp);
-
-                        // Compression content encoding varies so use a `Vary` header
-                        #[cfg(any(
-                            feature = "compression",
-                            feature = "compression-gzip",
-                            feature = "compression-brotli",
-                            feature = "compression-zstd",
-                            feature = "compression-deflate"
-                        ))]
-                        if self.opts.compression || compression_static {
-                            resp.headers_mut().append(
-                                hyper::header::VARY,
-                                HeaderValue::from_name(hyper::header::ACCEPT_ENCODING),
-                            );
-                        }
-
-                        // Auto compression based on the `Accept-Encoding` header
-                        #[cfg(any(
-                            feature = "compression",
-                            feature = "compression-gzip",
-                            feature = "compression-brotli",
-                            feature = "compression-zstd",
-                            feature = "compression-deflate"
-                        ))]
-                        if self.opts.compression {
-                            resp = match compression::auto(req.method(), req.headers(), resp) {
-                                Ok(res) => res,
-                                Err(err) => {
-                                    tracing::error!("error during body compression: {:?}", err);
-                                    return error_page::error_response(
-                                        req.uri(),
-                                        req.method(),
-                                        &StatusCode::INTERNAL_SERVER_ERROR,
-                                        &self.opts.page404,
-                                        &self.opts.page50x,
-                                    );
-                                }
-                            };
-                        }
-
-                        // Append `Cache-Control` headers for web assets
-                        control_headers::post_process(&self.opts, req, &mut resp);
-
-                        // Append security headers
-                        security_headers::post_process(&self.opts, req, &mut resp);
-
-                        // Add/update custom headers
-                        custom_headers::post_process(&self.opts, req, &mut resp, None);
-
-                        return Ok(resp);
+                        resp = Some(fallback_page::fallback_response(&self.opts.page_fallback));
                     }
 
-                    // Otherwise return an error response
-                    error_page::error_response(
-                        req.uri(),
-                        req.method(),
-                        &status,
-                        &self.opts.page404,
-                        &self.opts.page50x,
-                    )
+                    let resp = resp.unwrap_or(
+                        // Otherwise return an error response
+                        error_page::error_response(
+                            req.uri(),
+                            req.method(),
+                            &status,
+                            &self.opts.page404,
+                            &self.opts.page50x,
+                        )?,
+                    );
+
+                    (resp, false, None)
                 }
+            };
+
+            // Append CORS headers if they are present
+            cors::post_process(&self.opts, req, &mut resp);
+
+            // Compression content encoding varies so use a `Vary` header
+            #[cfg(any(
+                feature = "compression",
+                feature = "compression-gzip",
+                feature = "compression-brotli",
+                feature = "compression-zstd",
+                feature = "compression-deflate"
+            ))]
+            if self.opts.compression || compression_static {
+                resp.headers_mut().append(
+                    hyper::header::VARY,
+                    HeaderValue::from_name(hyper::header::ACCEPT_ENCODING),
+                );
             }
+
+            // Auto compression based on the `Accept-Encoding` header
+            #[cfg(any(
+                feature = "compression",
+                feature = "compression-gzip",
+                feature = "compression-brotli",
+                feature = "compression-zstd",
+                feature = "compression-deflate"
+            ))]
+            if self.opts.compression && !_is_precompressed {
+                resp = match compression::auto(req.method(), req.headers(), resp) {
+                    Ok(res) => res,
+                    Err(err) => {
+                        tracing::error!("error during body compression: {:?}", err);
+                        return error_page::error_response(
+                            req.uri(),
+                            req.method(),
+                            &StatusCode::INTERNAL_SERVER_ERROR,
+                            &self.opts.page404,
+                            &self.opts.page50x,
+                        );
+                    }
+                };
+            }
+
+            // Append `Cache-Control` headers for web assets
+            control_headers::post_process(&self.opts, req, &mut resp);
+
+            // Append security headers
+            security_headers::post_process(&self.opts, req, &mut resp);
+
+            // Add/update custom headers
+            custom_headers::post_process(&self.opts, req, &mut resp, file_path.as_ref());
+
+            Ok(resp)
         }
     }
 }
