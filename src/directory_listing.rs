@@ -8,13 +8,12 @@
 
 use chrono::{DateTime, Local, Utc};
 use clap::ValueEnum;
-use futures_util::{future, future::Either, FutureExt};
+use futures_util::{future, future::Either};
 use headers::{ContentLength, ContentType, HeaderMapExt};
 use humansize::FormatSize;
 use hyper::{Body, Method, Response, StatusCode};
 use mime_guess::mime;
 use percent_encoding::{percent_decode_str, utf8_percent_encode, NON_ALPHANUMERIC};
-use std::cmp::Ordering;
 use std::future::Future;
 use std::io;
 use std::path::Path;
@@ -64,7 +63,7 @@ pub fn auto_index(
     let filepath = opts.filepath;
     let parent = filepath.parent().unwrap_or(filepath);
 
-    tokio::fs::read_dir(parent).then(move |res| match res {
+    match std::fs::read_dir(parent) {
         Ok(dir_reader) => Either::Left(async move {
             let is_head = opts.method.is_head();
             match read_dir_entries(
@@ -114,7 +113,7 @@ pub fn auto_index(
             };
             Either::Right(future::err(status))
         }
-    })
+    }
 }
 
 const STYLE: &str = r#"<style>html{background-color:#fff;-moz-osx-font-smoothing:grayscale;-webkit-font-smoothing:antialiased;min-width:20rem;text-rendering:optimizeLegibility;-webkit-text-size-adjust:100%;-moz-text-size-adjust:100%;text-size-adjust:100%}:after,:before{box-sizing:border-box;}body{padding:1rem;font-family:Consolas,'Liberation Mono',Menlo,monospace;font-size:.75rem;max-width:70rem;margin:0 auto;color:#4a4a4a;font-weight:400;line-height:1.5}h1{margin:0;padding:0;font-size:1rem;line-height:1.25;margin-bottom:0.5rem;}table{width:100%;table-layout:fixed;border-spacing: 0;}hr{border-style: none;border-bottom: solid 1px gray;}table th,table td{padding:.15rem 0;white-space:nowrap;vertical-align:top}table th a,table td a{display:inline-block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:95%;vertical-align:top;}table tr:hover td{background-color:#f5f5f5}footer{padding-top:0.5rem}table tr th{text-align:left;}@media (max-width:30rem){table th:first-child{width:20rem;}}</style>"#;
@@ -144,7 +143,7 @@ struct SortingAttr<'a> {
 /// It reads a list of directory entries and create an index page content.
 /// Otherwise it returns a status error.
 async fn read_dir_entries(
-    mut dir_reader: tokio::fs::ReadDir,
+    dir_reader: std::fs::ReadDir,
     base_path: &str,
     uri_query: Option<&str>,
     is_head: bool,
@@ -156,12 +155,9 @@ async fn read_dir_entries(
     let mut files_count: usize = 0;
     let mut file_entries: Vec<FileEntry> = vec![];
 
-    while let Some(dir_entry) = dir_reader
-        .next_entry()
-        .await
-        .with_context(|| "unable to read directory entry")?
-    {
-        let meta = match dir_entry.metadata().await {
+    for dir_entry in dir_reader {
+        let dir_entry = dir_entry.with_context(|| "unable to read directory entry")?;
+        let meta = match dir_entry.metadata() {
             Ok(m) => m,
             Err(err) => {
                 tracing::error!(
@@ -218,7 +214,7 @@ async fn read_dir_entries(
                 }
             };
 
-            let symlink_meta = match tokio::fs::symlink_metadata(&symlink).await {
+            let symlink_meta = match std::fs::symlink_metadata(&symlink) {
                 Ok(v) => v,
                 Err(err) => {
                     tracing::error!(
@@ -435,30 +431,34 @@ fn html_auto_index<'a>(
     );
 
     // Prepare table row template
-    let mut table_row = String::new();
-    if base_path != "/" {
-        table_row = String::from(r#"<tr><td colspan="3"><a href="../">../</a></td></tr>"#);
-    }
+    let table_rows = if base_path == "/" {
+        String::new()
+    } else {
+        String::from(r#"<tr><td colspan="3"><a href="../">../</a></td></tr>"#)
+    };
 
-    for entry in entries {
-        let file_name = &entry.name_encoded;
+    let table_rows = entries.iter().fold(table_rows, |mut output, entry| {
+        let file_name = &entry.name;
+        let file_name_suffix = if entry.is_dir { "/" } else { "" };
         let file_modified = &entry.modified;
-        let file_uri = &entry.uri.clone().unwrap_or_else(|| file_name.to_owned());
-        let file_name_decoded = percent_decode_str(file_name).decode_utf8()?.to_string();
-        let mut filesize_str = entry.filesize.format_size(humansize::DECIMAL);
-
-        if entry.filesize == 0 {
-            filesize_str = String::from("-");
-        }
+        let file_uri = &entry.uri.clone().unwrap_or_else(|| entry.name_encoded.clone());
+        let filesize_str = if entry.filesize == 0 {
+            String::from("-")
+        } else {
+            entry.filesize.format_size(humansize::DECIMAL)
+        };
 
         let file_modified_str = file_modified.map_or("-".to_owned(), |local_dt| {
             local_dt.format(DATETIME_FORMAT_LOCAL).to_string()
         });
 
-        table_row = format!(
-            "{table_row}<tr><td><a href=\"{file_uri}\">{file_name_decoded}</a></td><td>{file_modified_str}</td><td align=\"right\">{filesize_str}</td></tr>"
+        use std::fmt::Write;
+        let _ = write!(
+            output,
+            "<tr><td><a href=\"{file_uri}\">{file_name}{file_name_suffix}</a></td><td>{file_modified_str}</td><td align=\"right\">{filesize_str}</td></tr>"
         );
-    }
+        output
+    });
 
     let current_path = percent_decode_str(base_path).decode_utf8()?.to_string();
     let summary = format!(
@@ -467,7 +467,7 @@ fn html_auto_index<'a>(
     );
 
     let html_page = format!(
-        "<!DOCTYPE html><html><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,minimum-scale=1,initial-scale=1\"><title>Index of {current_path}</title>{STYLE}</head><body><h1>Index of {current_path}</h1>{summary}<hr><div style=\"overflow-x: auto;\"><table>{table_header}{table_row}</table></div><hr>{FOOTER}</body></html>"
+        "<!DOCTYPE html><html><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,minimum-scale=1,initial-scale=1\"><title>Index of {current_path}</title>{STYLE}</head><body><h1>Index of {current_path}</h1>{summary}<hr><div style=\"overflow-x: auto;\"><table>{table_header}{table_rows}</table></div><hr>{FOOTER}</body></html>"
     );
 
     Ok(html_page)
@@ -480,40 +480,38 @@ fn sort_file_entries(files: &mut [FileEntry], order_code: u8) -> SortingAttr<'_>
     let mut last_modified = "2";
     let mut size = "4";
 
-    files.sort_by(|a, b| match order_code {
-        // Name (asc, desc)
-        0 => {
-            name = "1";
-            a.name.to_lowercase().cmp(&b.name.to_lowercase())
+    match order_code {
+        0 | 1 => {
+            // Name (asc, desc)
+            files.sort_by_cached_key(|f| f.name.to_lowercase());
+            if order_code == 1 {
+                files.reverse();
+            } else {
+                name = "1";
+            }
         }
-        1 => {
-            name = "0";
-            b.name.to_lowercase().cmp(&a.name.to_lowercase())
+        2 | 3 => {
+            // Modified (asc, desc)
+            files.sort_by_key(|f| f.modified);
+            if order_code == 3 {
+                files.reverse();
+            } else {
+                last_modified = "3";
+            }
         }
-
-        // Modified (asc, desc)
-        2 => {
-            last_modified = "3";
-            a.modified.cmp(&b.modified)
+        4 | 5 => {
+            // File size (asc, desc)
+            files.sort_by_key(|f| f.filesize);
+            if order_code == 5 {
+                files.reverse();
+            } else {
+                size = "5";
+            }
         }
-        3 => {
-            last_modified = "2";
-            b.modified.cmp(&a.modified)
+        _ => {
+            // Unsorted
         }
-
-        // File size (asc, desc)
-        4 => {
-            size = "5";
-            a.filesize.cmp(&b.filesize)
-        }
-        5 => {
-            size = "4";
-            b.filesize.cmp(&a.filesize)
-        }
-
-        // Unordered
-        _ => Ordering::Equal,
-    });
+    }
 
     SortingAttr {
         name,
