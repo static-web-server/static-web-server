@@ -1,0 +1,212 @@
+name: perfcheck
+on:
+  pull_request:
+    paths:
+      - .github/workflows/perfcheck.yml
+      - .cargo/config.toml
+      - scripts/ci/vegeta_report_to_csv.jq
+      - Cargo.lock
+      - Cargo.toml
+      - src/**
+  push:
+    branches:
+    - master
+    - staging
+    - trying
+    paths:
+      - .github/workflows/perfcheck.yml
+      - .cargo/config.toml
+      - scripts/ci/vegeta_report_to_csv.jq
+      - Cargo.lock
+      - Cargo.toml
+      - src/**
+
+jobs:
+  benchmark:
+    name: benchmark
+    runs-on: ubuntu-22.04
+    env:
+      # Cargo binary
+      CARGO_BIN: cargo
+      # When CARGO_BIN is set to CROSS, this is set to `--target matrix.target`.
+      TARGET_FLAGS: ""
+      # When CARGO_BIN is set to CROSS, TARGET_DIR includes matrix.target.
+      TARGET_DIR: ./target
+      # Rustc flags needed by the `all` features
+      RUSTFLAGS: "--cfg tokio_unstable"
+      # SWS features for Cargo build
+      CARGO_FEATURES: "--features=all"
+      # Version of the vegeta binary
+      VEGETA_VERSION: "12.11.1"
+      # Command-line parameters for the vegeta binary
+      VEGETA_FLAGS: "-workers=4 -connections=100 -rate=${{ matrix.rate }} -duration=10s"
+
+    strategy:
+      matrix:
+        include:
+        - title: "Small file (dynamic compression)"
+          url: http://localhost:8080/small.txt
+          rate: "1000/s"
+        - title: "Small file (pre-compressed)"
+          url: http://localhost:8080/small_precompressed.txt
+          rate: "1000/s"
+        - title: "Large file (dynamic compression)"
+          url: http://localhost:8080/large.txt
+          rate: "200/s"
+        - title: "Large file (pre-compressed)"
+          url: http://localhost:8080/large_precompressed.txt
+          rate: "500/s"
+        - title: "Directory listing (many files)"
+          url: http://localhost:8080/
+          rate: "1000/s"
+        - title: "Directory listing (empty directory)"
+          url: http://localhost:8080/emptydir/
+          rate: "1000/s"
+        - title: "Small directory index file"
+          url: http://localhost:8080/dirsmallindex/
+          rate: "1000/s"
+        - title: "Large directory index file"
+          url: http://localhost:8080/dirlargeindex/
+          rate: "200/s"
+        - title: "Not found"
+          url: http://localhost:8080/not_found
+          rate: "1000/s"
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 1
+
+    - name: Checkout benchmark-setup repository
+      uses: actions/checkout@v4
+      with:
+        repository: static-web-server/benchmarks-setup
+        ref: v0.1
+        path: benchmarks-setup
+        fetch-depth: 1
+
+    - name: Cache Rust Cargo/Toolchain
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cargo
+          **/target
+        key: rust-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: |
+          rust-
+
+    - name: Install vegeta binary
+      run: |
+        curl -L https://github.com/tsenart/vegeta/releases/download/v${{ env.VEGETA_VERSION }}/vegeta_${{ env.VEGETA_VERSION }}_linux_amd64.tar.gz | tar xz
+        echo "Downloaded vegeta"
+        ./vegeta --version
+
+    - name: Install web server software
+      uses: awalsh128/cache-apt-pkgs-action@latest
+      with:
+        packages: apache2 lighttpd nginx
+        version: 1.0
+
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        toolchain: stable
+        target: x86_64-unknown-linux-gnu
+
+    - name: Show command used for Cargo
+      run: |
+        echo "cargo command is: ${{ env.CARGO_BIN }}"
+        echo "target flag is: ${{ env.TARGET_FLAGS }}"
+        echo "target dir is: ${{ env.TARGET_DIR }}"
+
+    - name: Build release binary
+      run: ${{ env.CARGO_BIN }} build --bin static-web-server -vv --release ${{ env.CARGO_FEATURES }} ${{ env.TARGET_FLAGS }}
+
+    - name: Initialize graph.csv
+      run: echo "Sample, min, mean, 50th, 90th, 95th, 99th, max" > graph.csv
+
+    - name: Run SWS benchmark
+      run: |
+        NAME=$(${{ env.TARGET_DIR }}/release/static-web-server --version | sed -e 's/static-web-server/sws/' -e 's/$/ (source)/')
+        REPORT=report_sws.bin
+        ${{ env.TARGET_DIR }}/release/static-web-server --config-file benchmarks-setup/config/sws.toml &
+        sleep 2
+        echo "GET ${{ matrix.url }}" | ./vegeta attack -name "$NAME" ${{ env.VEGETA_FLAGS }} > $REPORT
+        kill %1
+        ./vegeta report -type=text $REPORT
+        ./vegeta report -type=json $REPORT | jq --arg name "$NAME" -r -f scripts/ci/vegeta_report_to_csv.jq >> graph.csv
+
+    - name: Run Apache benchmark
+      run: |
+        NAME=$(apache2 -v | sed 's/.*: //' | sed 's/ .*//' | sed 's!/! !')
+        REPORT=report_apache.bin
+        apache2 -D FOREGROUND -f `pwd`/benchmarks-setup/config/apache.conf &
+        sleep 2
+        echo "GET ${{ matrix.url }}" | ./vegeta attack -name "$NAME" ${{ env.VEGETA_FLAGS }} > $REPORT
+        kill %1
+        ./vegeta report -type=text $REPORT
+        ./vegeta report -type=json $REPORT | jq --arg name "$NAME" -r -f scripts/ci/vegeta_report_to_csv.jq >> graph.csv
+
+    - name: Run lighttpd benchmark
+      run: |
+        NAME=$(lighttpd -v | sed 's/ .*//' | sed 's!/! !')
+        REPORT=report_lighttpd.bin
+        lighttpd -D -f `pwd`/benchmarks-setup/config/lighttpd.conf &
+        sleep 2
+        URL="${{ matrix.url }}"
+        if [[ $URL == *"_precompressed"* ]]; then
+          # lighttpd does not really support pre-compressed files, request them explicitly
+          URL="${{ matrix.url }}.gz"
+        fi
+        echo "GET $URL" | ./vegeta attack -name "$NAME" ${{ env.VEGETA_FLAGS }} > $REPORT
+        kill %1
+        ./vegeta report -type=text $REPORT
+        ./vegeta report -type=json $REPORT | jq --arg name "$NAME" -r -f scripts/ci/vegeta_report_to_csv.jq >> graph.csv
+
+    - name: Run nginx benchmark
+      run: |
+        NAME=$(nginx -v 2>&1 | sed 's/.*: //' | sed 's/ .*//' | sed 's!/! !')
+        REPORT=report_nginx.bin
+        nginx -c `pwd`/benchmarks-setup/config/nginx.conf &
+        sleep 2
+        echo "GET ${{ matrix.url }}" | ./vegeta attack -name "$NAME" ${{ env.VEGETA_FLAGS }} > $REPORT
+        kill %1
+        ./vegeta report -type=text $REPORT
+        ./vegeta report -type=json $REPORT | jq --arg name "$NAME" -r -f scripts/ci/vegeta_report_to_csv.jq >> graph.csv
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+
+    - name: Install pipx
+      run: pip install pipx
+
+    - name: Produce plot
+      run: |
+        ./vegeta plot --title "${{ matrix.title }}" report_*.bin > detailed_plot.html
+        cat graph.csv
+        cat graph.csv | sed -e 's/,/|/g' -e 's/"//g' -e 's/^/|/' -e 's/$/|/' -e '2 i |-|-|-|-|-|-|-|-|' >> $GITHUB_STEP_SUMMARY
+        pipx run graph-cli --barh --bar-label --xlabel '' --ylabel 'Latency (ms)' --title "${{ matrix.title }}" --figsize 1200x700 --fontsize 10 --ytick-angle 45 --ytick-align top -o overview.png graph.csv
+
+    - name: Upload benchmark plots
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ matrix.title }}
+        path: |
+          detailed_plot.html
+          overview.png
+
+  merge-artifacts:
+    name: merge-artifacts
+    needs: benchmark
+    runs-on: ubuntu-22.04
+
+    steps:
+    - name: Merge benchmark plots
+      uses: actions/upload-artifact/merge@v4
+      with:
+        name: Benchmark plots
+        separate-directories: true
+        delete-merged: true
