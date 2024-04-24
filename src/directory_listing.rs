@@ -8,7 +8,7 @@
 
 use chrono::{DateTime, Local, Utc};
 use clap::ValueEnum;
-use futures_util::{future, future::Either, FutureExt};
+use futures_util::{future, future::Either};
 use headers::{ContentLength, ContentType, HeaderMapExt};
 use humansize::FormatSize;
 use hyper::{Body, Method, Response, StatusCode};
@@ -63,7 +63,7 @@ pub fn auto_index(
     let filepath = opts.filepath;
     let parent = filepath.parent().unwrap_or(filepath);
 
-    tokio::fs::read_dir(parent).then(move |res| match res {
+    match std::fs::read_dir(parent) {
         Ok(dir_reader) => Either::Left(async move {
             let is_head = opts.method.is_head();
             match read_dir_entries(
@@ -113,7 +113,7 @@ pub fn auto_index(
             };
             Either::Right(future::err(status))
         }
-    })
+    }
 }
 
 const STYLE: &str = r#"<style>html{background-color:#fff;-moz-osx-font-smoothing:grayscale;-webkit-font-smoothing:antialiased;min-width:20rem;text-rendering:optimizeLegibility;-webkit-text-size-adjust:100%;-moz-text-size-adjust:100%;text-size-adjust:100%}:after,:before{box-sizing:border-box;}body{padding:1rem;font-family:Consolas,'Liberation Mono',Menlo,monospace;font-size:.75rem;max-width:70rem;margin:0 auto;color:#4a4a4a;font-weight:400;line-height:1.5}h1{margin:0;padding:0;font-size:1rem;line-height:1.25;margin-bottom:0.5rem;}table{width:100%;table-layout:fixed;border-spacing: 0;}hr{border-style: none;border-bottom: solid 1px gray;}table th,table td{padding:.15rem 0;white-space:nowrap;vertical-align:top}table th a,table td a{display:inline-block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:95%;vertical-align:top;}table tr:hover td{background-color:#f5f5f5}footer{padding-top:0.5rem}table tr th{text-align:left;}@media (max-width:30rem){table th:first-child{width:20rem;}}</style>"#;
@@ -143,7 +143,7 @@ struct SortingAttr<'a> {
 /// It reads a list of directory entries and create an index page content.
 /// Otherwise it returns a status error.
 async fn read_dir_entries(
-    mut dir_reader: tokio::fs::ReadDir,
+    dir_reader: std::fs::ReadDir,
     base_path: &str,
     uri_query: Option<&str>,
     is_head: bool,
@@ -155,12 +155,9 @@ async fn read_dir_entries(
     let mut files_count: usize = 0;
     let mut file_entries: Vec<FileEntry> = vec![];
 
-    while let Some(dir_entry) = dir_reader
-        .next_entry()
-        .await
-        .with_context(|| "unable to read directory entry")?
-    {
-        let meta = match dir_entry.metadata().await {
+    for dir_entry in dir_reader {
+        let dir_entry = dir_entry.with_context(|| "unable to read directory entry")?;
+        let meta = match dir_entry.metadata() {
             Ok(m) => m,
             Err(err) => {
                 tracing::error!(
@@ -217,7 +214,7 @@ async fn read_dir_entries(
                 }
             };
 
-            let symlink_meta = match tokio::fs::symlink_metadata(&symlink).await {
+            let symlink_meta = match std::fs::symlink_metadata(&symlink) {
                 Ok(v) => v,
                 Err(err) => {
                     tracing::error!(
