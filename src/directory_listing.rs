@@ -116,10 +116,6 @@ pub fn auto_index(
     }
 }
 
-const STYLE: &str = r#"<style>html{background-color:#fff;-moz-osx-font-smoothing:grayscale;-webkit-font-smoothing:antialiased;min-width:20rem;text-rendering:optimizeLegibility;-webkit-text-size-adjust:100%;-moz-text-size-adjust:100%;text-size-adjust:100%}:after,:before{box-sizing:border-box;}body{padding:1rem;font-family:Consolas,'Liberation Mono',Menlo,monospace;font-size:.75rem;max-width:70rem;margin:0 auto;color:#4a4a4a;font-weight:400;line-height:1.5}h1{margin:0;padding:0;font-size:1rem;line-height:1.25;margin-bottom:0.5rem;}table{width:100%;table-layout:fixed;border-spacing: 0;}hr{border-style: none;border-bottom: solid 1px gray;}table th,table td{padding:.15rem 0;white-space:nowrap;vertical-align:top}table th a,table td a{display:inline-block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:95%;vertical-align:top;}table tr:hover td{background-color:#f5f5f5}footer{padding-top:0.5rem}table tr th{text-align:left;}@media (max-width:30rem){table th:first-child{width:20rem;}}</style>"#;
-const FOOTER: &str =
-    r#"<footer><small>Powered by Static Web Server (SWS) / static-web-server.net</small></footer>"#;
-
 const DATETIME_FORMAT_UTC: &str = "%FT%TZ";
 const DATETIME_FORMAT_LOCAL: &str = "%F %T";
 
@@ -422,55 +418,101 @@ fn html_auto_index<'a>(
     entries: &'a mut [FileEntry],
     order_code: u8,
 ) -> Result<String> {
+    use maud::{html, DOCTYPE};
+
     let sort_attrs = sort_file_entries(entries, order_code);
-
-    // Create the table header specifying every order code column
-    let table_header = format!(
-        r#"<thead><tr><th><a href="?sort={}">Name</a></th><th style="width:10rem;"><a href="?sort={}">Last modified</a></th><th style="width:6rem;text-align:right;"><a href="?sort={}">Size</a></th></tr></thead>"#,
-        sort_attrs.name, sort_attrs.last_modified, sort_attrs.size,
-    );
-
-    // Prepare table row template
-    let table_rows = if base_path == "/" {
-        String::new()
-    } else {
-        String::from(r#"<tr><td colspan="3"><a href="../">../</a></td></tr>"#)
-    };
-
-    let table_rows = entries.iter().fold(table_rows, |mut output, entry| {
-        let file_name = &entry.name;
-        let file_name_suffix = if entry.is_dir { "/" } else { "" };
-        let file_modified = &entry.modified;
-        let file_uri = &entry.uri.clone().unwrap_or_else(|| entry.name_encoded.clone());
-        let filesize_str = if entry.filesize == 0 {
-            String::from("-")
-        } else {
-            entry.filesize.format_size(humansize::DECIMAL)
-        };
-
-        let file_modified_str = file_modified.map_or("-".to_owned(), |local_dt| {
-            local_dt.format(DATETIME_FORMAT_LOCAL).to_string()
-        });
-
-        use std::fmt::Write;
-        let _ = write!(
-            output,
-            "<tr><td><a href=\"{file_uri}\">{file_name}{file_name_suffix}</a></td><td>{file_modified_str}</td><td align=\"right\">{filesize_str}</td></tr>"
-        );
-        output
-    });
-
     let current_path = percent_decode_str(base_path).decode_utf8()?.to_string();
-    let summary = format!(
-        "<p><small>directories: {}, files: {}</small></p>",
-        dirs_count, files_count,
-    );
 
-    let html_page = format!(
-        "<!DOCTYPE html><html><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,minimum-scale=1,initial-scale=1\"><title>Index of {current_path}</title>{STYLE}</head><body><h1>Index of {current_path}</h1>{summary}<hr><div style=\"overflow-x: auto;\"><table>{table_header}{table_rows}</table></div><hr>{FOOTER}</body></html>"
-    );
+    Ok(html! {
+        (DOCTYPE)
+        html {
+            head {
+                meta charset="utf-8";
+                meta name="viewport" content="width=device-width,minimum-scale=1,initial-scale=1";
+                title {
+                    "Index of " (current_path)
+                }
+                style {
+                    "html{background-color:#fff;-moz-osx-font-smoothing:grayscale;-webkit-font-smoothing:antialiased;min-width:20rem;text-rendering:optimizeLegibility;-webkit-text-size-adjust:100%;-moz-text-size-adjust:100%;text-size-adjust:100%}:after,:before{box-sizing:border-box;}body{padding:1rem;font-family:Consolas,'Liberation Mono',Menlo,monospace;font-size:.75rem;max-width:70rem;margin:0 auto;color:#4a4a4a;font-weight:400;line-height:1.5}h1{margin:0;padding:0;font-size:1rem;line-height:1.25;margin-bottom:0.5rem;}table{width:100%;table-layout:fixed;border-spacing: 0;}hr{border-style: none;border-bottom: solid 1px gray;}table th,table td{padding:.15rem 0;white-space:nowrap;vertical-align:top}table th a,table td a{display:inline-block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:95%;vertical-align:top;}table tr:hover td{background-color:#f5f5f5}footer{padding-top:0.5rem}table tr th{text-align:left;}@media (max-width:30rem){table th:first-child{width:20rem;}}"
+                }
+            }
+            body {
+                h1 {
+                    "Index of " (current_path)
+                }
+            }
+            p {
+                small {
+                    "directories: " (dirs_count) ", files: " (files_count)
+                }
+            }
+            hr;
+            div style="overflow-x: auto;" {
+                table {
+                    thead {
+                        tr {
+                            th {
+                                a href={ "?sort=" (sort_attrs.name) } {
+                                    "Name"
+                                }
+                            }
+                            th style="width:10rem;" {
+                                a href={ "?sort=" (sort_attrs.last_modified) } {
+                                    "Last modified"
+                                }
+                            }
+                            th style="width:6rem;text-align:right;" {
+                                a href={ "?sort=" (sort_attrs.size) } {
+                                    "Size"
+                                }
+                            }
+                        }
+                    }
 
-    Ok(html_page)
+                    @if base_path != "/" {
+                        tr {
+                            td colspan="3" {
+                                a href="../" {
+                                    "../"
+                                }
+                            }
+                        }
+                    }
+
+                    @for entry in entries {
+                        tr {
+                            td {
+                                a href=(entry.uri.as_ref().unwrap_or(&entry.name_encoded)) {
+                                    (entry.name)
+                                    @if entry.is_dir {
+                                        "/"
+                                    }
+                                }
+                            }
+                            td {
+                                (entry.modified.map_or("-".to_owned(), |local_dt| {
+                                    local_dt.format(DATETIME_FORMAT_LOCAL).to_string()
+                                }))
+                            }
+                            td align="right" {
+                                @if entry.filesize == 0 {
+                                    "-"
+                                } @else {
+                                    (entry.filesize.format_size(humansize::DECIMAL))
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            hr;
+            footer {
+                small {
+                    "Powered by Static Web Server (SWS) / static-web-server.net"
+                }
+            }
+        }
+    }.into())
 }
 
 /// Sort a list of file entries by a specific order code.

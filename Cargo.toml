@@ -48,7 +48,7 @@ compression-deflate = ["async-compression/deflate"]
 compression-gzip = ["async-compression/deflate"]
 compression-zstd = ["async-compression/zstd"]
 # Directory listing
-directory-listing = ["humansize", "chrono"]
+directory-listing = ["humansize", "chrono", "maud"]
 # Basic HTTP Authorization
 basic-auth = ["bcrypt"]
 # Fallback Page
@@ -74,6 +74,7 @@ http-serde = "1.1"
 humansize = { version = "2.1", features = ["impl_style"], optional = true }
 hyper = { version = "0.14", features = ["stream", "http1", "http2", "tcp", "server"] }
 listenfd = "1.0"
+maud = { version = "0.26.0", optional = true }
 mime_guess = "2.0"
 percent-encoding = "2.3"
 pin-project = "1.1"
