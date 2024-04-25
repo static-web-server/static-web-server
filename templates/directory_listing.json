@@ -6,17 +6,17 @@
       first = false;
     } %>
     {
-      "name":<%= json_quote_str(&entry.name) %>,
+      "name":<%= entry.name | json %>,
       "type":<% if entry.is_dir { %>"directory"<% } else { %>"file"<% } %>,
       <% if !entry.is_dir { %>
         "size":<%= entry.filesize %>,
       <% } %>
-      "mtime":"<%= entry.modified.map_or("".to_owned(), |local_dt| {
+      "mtime":<%= entry.modified.map_or("".to_owned(), |local_dt| {
         local_dt
             .with_timezone(&chrono::Utc)
             .format(DATETIME_FORMAT_UTC)
             .to_string()
-      }) %>"
+      }) | json %>
     }
   <% } %>
 ]

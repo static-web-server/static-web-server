@@ -1093,6 +1093,8 @@ dependencies = [
  "itoap",
  "ryu",
  "sailfish-macros",
+ "serde",
+ "serde_json",
  "version_check",
 ]
 

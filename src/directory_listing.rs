@@ -363,26 +363,6 @@ fn json_auto_index(entries: &mut [FileEntry], order_code: u8) -> Result<String> 
     Ok(DirListing { entries }.render_once()?)
 }
 
-/// Quotes a string value.
-fn json_quote_str(s: &str) -> String {
-    let mut r = String::from("\"");
-    for c in s.chars() {
-        match c {
-            '\\' => r.push_str("\\\\"),
-            '\u{0008}' => r.push_str("\\b"),
-            '\u{000c}' => r.push_str("\\f"),
-            '\n' => r.push_str("\\n"),
-            '\r' => r.push_str("\\r"),
-            '\t' => r.push_str("\\t"),
-            '"' => r.push_str("\\\""),
-            c if c.is_control() => r.push_str(format!("\\u{:04x}", c as u32).as_str()),
-            c => r.push(c),
-        };
-    }
-    r.push('\"');
-    r
-}
-
 /// Create an auto index in HTML format.
 fn html_auto_index<'a>(
     base_path: &'a str,
