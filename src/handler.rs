@@ -6,6 +6,14 @@
 //! Request handler module intended to manage incoming HTTP requests.
 //!
 
+#[cfg(any(
+    feature = "compression",
+    feature = "compression-gzip",
+    feature = "compression-brotli",
+    feature = "compression-zstd",
+    feature = "compression-deflate"
+))]
+use headers::HeaderValue;
 use hyper::{Body, Request, Response, StatusCode};
 use std::{future::Future, net::IpAddr, net::SocketAddr, path::PathBuf, sync::Arc};
 
@@ -16,7 +24,7 @@ use std::{future::Future, net::IpAddr, net::SocketAddr, path::PathBuf, sync::Arc
     feature = "compression-zstd",
     feature = "compression-deflate"
 ))]
-use {crate::compression, headers::HeaderValue};
+use crate::compression;
 
 #[cfg(feature = "basic-auth")]
 use crate::basic_auth;
