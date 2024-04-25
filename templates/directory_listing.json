@@ -1,0 +1,22 @@
+[
+  <% let mut first = true; %>
+  <% for entry in entries { %>
+    <% if !first { %>,<% } %>
+    <% if first {
+      first = false;
+    } %>
+    {
+      "name":<%= json_quote_str(&entry.name) %>,
+      "type":<% if entry.is_dir { %>"directory"<% } else { %>"file"<% } %>,
+      <% if !entry.is_dir { %>
+        "size":<%= entry.filesize %>,
+      <% } %>
+      "mtime":"<%= entry.modified.map_or("".to_owned(), |local_dt| {
+        local_dt
+            .with_timezone(&chrono::Utc)
+            .format(DATETIME_FORMAT_UTC)
+            .to_string()
+      }) %>"
+    }
+  <% } %>
+]

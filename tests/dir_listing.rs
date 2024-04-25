@@ -213,7 +213,9 @@ mod tests {
 
                     assert_eq!(
                         body_str.contains(
-                            r#"<a href="sp%C3%A9cial%20direct%C3%B6ry/">spécial directöry/</a>"#
+                            r#"<a href="sp%C3%A9cial%20direct%C3%B6ry/">
+spécial directöry/
+</a>"#
                         ),
                         method == Method::GET
                     );

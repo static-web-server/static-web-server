@@ -6,14 +6,14 @@
 //! It provides directory listig and auto-index support.
 //!
 
-use chrono::{DateTime, Local, Utc};
+use chrono::{DateTime, Local};
 use clap::ValueEnum;
 use futures_util::{future, future::Either};
 use headers::{ContentLength, ContentType, HeaderMapExt};
-use humansize::FormatSize;
 use hyper::{Body, Method, Response, StatusCode};
 use mime_guess::mime;
 use percent_encoding::{percent_decode_str, utf8_percent_encode, NON_ALPHANUMERIC};
+use sailfish::TemplateOnce;
 use std::future::Future;
 use std::io;
 use std::path::Path;
@@ -116,10 +116,6 @@ pub fn auto_index(
     }
 }
 
-const STYLE: &str = r#"<style>html{background-color:#fff;-moz-osx-font-smoothing:grayscale;-webkit-font-smoothing:antialiased;min-width:20rem;text-rendering:optimizeLegibility;-webkit-text-size-adjust:100%;-moz-text-size-adjust:100%;text-size-adjust:100%}:after,:before{box-sizing:border-box;}body{padding:1rem;font-family:Consolas,'Liberation Mono',Menlo,monospace;font-size:.75rem;max-width:70rem;margin:0 auto;color:#4a4a4a;font-weight:400;line-height:1.5}h1{margin:0;padding:0;font-size:1rem;line-height:1.25;margin-bottom:0.5rem;}table{width:100%;table-layout:fixed;border-spacing: 0;}hr{border-style: none;border-bottom: solid 1px gray;}table th,table td{padding:.15rem 0;white-space:nowrap;vertical-align:top}table th a,table td a{display:inline-block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:95%;vertical-align:top;}table tr:hover td{background-color:#f5f5f5}footer{padding-top:0.5rem}table tr th{text-align:left;}@media (max-width:30rem){table th:first-child{width:20rem;}}</style>"#;
-const FOOTER: &str =
-    r#"<footer><small>Powered by Static Web Server (SWS) / static-web-server.net</small></footer>"#;
-
 const DATETIME_FORMAT_UTC: &str = "%FT%TZ";
 const DATETIME_FORMAT_LOCAL: &str = "%F %T";
 
@@ -134,10 +130,10 @@ struct FileEntry {
 }
 
 /// Defines sorting attributes for file entries.
-struct SortingAttr<'a> {
-    name: &'a str,
-    last_modified: &'a str,
-    size: &'a str,
+struct SortingAttr {
+    name: &'static str,
+    last_modified: &'static str,
+    size: &'static str,
 }
 
 /// It reads a list of directory entries and create an index page content.
@@ -356,42 +352,15 @@ async fn read_dir_entries(
 
 /// Create an auto index in JSON format.
 fn json_auto_index(entries: &mut [FileEntry], order_code: u8) -> Result<String> {
+    #[derive(TemplateOnce)]
+    #[template(path = "directory_listing.json", rm_whitespace = true, escape = false)]
+    struct DirListing<'a> {
+        entries: &'a [FileEntry],
+    }
+
     sort_file_entries(entries, order_code);
 
-    let mut json = String::from('[');
-
-    for entry in entries {
-        let file_size = &entry.filesize;
-        let file_name = &entry.name;
-        let file_type = if entry.is_dir { "directory" } else { "file" };
-        let file_modified = &entry.modified;
-
-        json.push('{');
-        json.push_str(format!("\"name\":{},", json_quote_str(file_name.as_str())).as_str());
-        json.push_str(format!("\"type\":\"{file_type}\",").as_str());
-
-        let file_modified_str = file_modified.map_or("".to_owned(), |local_dt| {
-            local_dt
-                .with_timezone(&Utc)
-                .format(DATETIME_FORMAT_UTC)
-                .to_string()
-        });
-        json.push_str(format!("\"mtime\":\"{file_modified_str}\"").as_str());
-
-        if !entry.is_dir {
-            json.push_str(format!(",\"size\":{file_size}").as_str());
-        }
-        json.push_str("},");
-    }
-
-    // Strip trailing comma out in case of available items
-    if json.len() > 1 {
-        json.pop();
-    }
-
-    json.push(']');
-
-    Ok(json)
+    Ok(DirListing { entries }.render_once()?)
 }
 
 /// Quotes a string value.
@@ -422,59 +391,33 @@ fn html_auto_index<'a>(
     entries: &'a mut [FileEntry],
     order_code: u8,
 ) -> Result<String> {
+    #[derive(TemplateOnce)]
+    #[template(path = "directory_listing.html", rm_whitespace = true)]
+    struct DirListing<'a> {
+        base_path: &'a str,
+        current_path: String,
+        dirs_count: usize,
+        files_count: usize,
+        sort_attrs: SortingAttr,
+        entries: &'a [FileEntry],
+    }
+
     let sort_attrs = sort_file_entries(entries, order_code);
-
-    // Create the table header specifying every order code column
-    let table_header = format!(
-        r#"<thead><tr><th><a href="?sort={}">Name</a></th><th style="width:10rem;"><a href="?sort={}">Last modified</a></th><th style="width:6rem;text-align:right;"><a href="?sort={}">Size</a></th></tr></thead>"#,
-        sort_attrs.name, sort_attrs.last_modified, sort_attrs.size,
-    );
-
-    // Prepare table row template
-    let table_rows = if base_path == "/" {
-        String::new()
-    } else {
-        String::from(r#"<tr><td colspan="3"><a href="../">../</a></td></tr>"#)
-    };
-
-    let table_rows = entries.iter().fold(table_rows, |mut output, entry| {
-        let file_name = &entry.name;
-        let file_name_suffix = if entry.is_dir { "/" } else { "" };
-        let file_modified = &entry.modified;
-        let file_uri = &entry.uri.clone().unwrap_or_else(|| entry.name_encoded.clone());
-        let filesize_str = if entry.filesize == 0 {
-            String::from("-")
-        } else {
-            entry.filesize.format_size(humansize::DECIMAL)
-        };
-
-        let file_modified_str = file_modified.map_or("-".to_owned(), |local_dt| {
-            local_dt.format(DATETIME_FORMAT_LOCAL).to_string()
-        });
-
-        use std::fmt::Write;
-        let _ = write!(
-            output,
-            "<tr><td><a href=\"{file_uri}\">{file_name}{file_name_suffix}</a></td><td>{file_modified_str}</td><td align=\"right\">{filesize_str}</td></tr>"
-        );
-        output
-    });
-
     let current_path = percent_decode_str(base_path).decode_utf8()?.to_string();
-    let summary = format!(
-        "<p><small>directories: {}, files: {}</small></p>",
-        dirs_count, files_count,
-    );
 
-    let html_page = format!(
-        "<!DOCTYPE html><html><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,minimum-scale=1,initial-scale=1\"><title>Index of {current_path}</title>{STYLE}</head><body><h1>Index of {current_path}</h1>{summary}<hr><div style=\"overflow-x: auto;\"><table>{table_header}{table_rows}</table></div><hr>{FOOTER}</body></html>"
-    );
-
-    Ok(html_page)
+    Ok(DirListing {
+        base_path,
+        current_path,
+        dirs_count,
+        files_count,
+        sort_attrs,
+        entries,
+    }
+    .render_once()?)
 }
 
 /// Sort a list of file entries by a specific order code.
-fn sort_file_entries(files: &mut [FileEntry], order_code: u8) -> SortingAttr<'_> {
+fn sort_file_entries(files: &mut [FileEntry], order_code: u8) -> SortingAttr {
     // Default sorting type values
     let mut name = "0";
     let mut last_modified = "2";

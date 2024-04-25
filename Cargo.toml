@@ -79,6 +79,7 @@ percent-encoding = "2.3"
 pin-project = "1.1"
 regex = "1.10"
 rustls-pemfile = { version = "2.1", optional = true }
+sailfish = "0.8.3"
 serde = { version = "1.0", default-features = false, features = ["derive"] }
 serde_ignored = "0.1"
 serde_repr = "0.1"
