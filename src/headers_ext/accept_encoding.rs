@@ -60,13 +60,14 @@ mod tests {
 
     #[test]
     fn from_static() {
-        let val = HeaderValue::from_static("deflate, gzip;q=1.0, br;q=0.9");
+        let val = HeaderValue::from_static("deflate, zstd;q=0.7, gzip;q=1.0, br;q=0.9");
         let accept_enc = AcceptEncoding(val.into());
 
         let mut encodings = accept_enc.sorted_encodings();
         assert_eq!(encodings.next(), Some(ContentCoding::DEFLATE));
         assert_eq!(encodings.next(), Some(ContentCoding::GZIP));
         assert_eq!(encodings.next(), Some(ContentCoding::BROTLI));
+        assert_eq!(encodings.next(), Some(ContentCoding::ZSTD));
         assert_eq!(encodings.next(), None);
     }
 }

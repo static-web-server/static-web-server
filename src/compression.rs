@@ -238,7 +238,7 @@ pub fn create_encoding_header(existing: Option<HeaderValue>, coding: ContentCodi
 #[inline(always)]
 pub fn get_preferred_encoding(headers: &HeaderMap<HeaderValue>) -> Option<ContentCoding> {
     if let Some(ref accept_encoding) = headers.typed_get::<AcceptEncoding>() {
-        tracing::trace!("request with accept-ecoding header: {:?}", accept_encoding);
+        tracing::trace!("request with accept-encoding header: {:?}", accept_encoding);
 
         for encoding in accept_encoding.sorted_encodings() {
             if AVAILABLE_ENCODINGS.contains(&encoding) {
