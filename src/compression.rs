@@ -24,8 +24,10 @@ use hyper::{
     header::{CONTENT_ENCODING, CONTENT_LENGTH},
     Body, Method, Response,
 };
-use mime_guess::Mime;
+use lazy_static::lazy_static;
+use mime_guess::{mime, Mime};
 use pin_project::pin_project;
+use std::collections::HashSet;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 use tokio_util::io::{ReaderStream, StreamReader};
@@ -36,32 +38,30 @@ use crate::{
     Result,
 };
 
-/// Contains a fixed list of common text-based MIME types in order to apply compression.
-pub const TEXT_MIME_TYPES: [&str; 24] = [
-    "text/html",
-    "text/css",
-    "text/javascript",
-    "text/xml",
-    "text/plain",
-    "text/csv",
-    "text/calendar",
-    "text/markdown",
-    "text/x-yaml",
-    "text/x-toml",
-    "text/x-component",
-    "application/rtf",
-    "application/xhtml+xml",
-    "application/javascript",
-    "application/x-javascript",
-    "application/json",
-    "application/xml",
-    "application/rss+xml",
-    "application/atom+xml",
-    "font/truetype",
-    "font/opentype",
-    "application/vnd.ms-fontobject",
-    "image/svg+xml",
-    "application/wasm",
+lazy_static! {
+    /// Contains a fixed list of common text-based MIME types that aren't recognizable in a generic way.
+    static ref TEXT_MIME_TYPES: HashSet<&'static str> = [
+        "application/rtf",
+        "application/javascript",
+        "application/json",
+        "application/xml",
+        "font/ttf",
+        "application/font-sfnt",
+        "application/vnd.ms-fontobject",
+        "application/wasm",
+    ].into_iter().collect();
+}
+
+/// List of encodings that can be handled given enabled features.
+const AVAILABLE_ENCODINGS: &[ContentCoding] = &[
+    #[cfg(any(feature = "compression", feature = "compression-deflate"))]
+    ContentCoding::DEFLATE,
+    #[cfg(any(feature = "compression", feature = "compression-gzip"))]
+    ContentCoding::GZIP,
+    #[cfg(any(feature = "compression", feature = "compression-brotli"))]
+    ContentCoding::BROTLI,
+    #[cfg(any(feature = "compression", feature = "compression-zstd"))]
+    ContentCoding::ZSTD,
 ];
 
 /// Create a wrapping handler that compresses the Body of a [`hyper::Response`]
@@ -87,8 +87,7 @@ pub fn auto(
 
         // Skip compression for non-text-based MIME types
         if let Some(content_type) = resp.headers().typed_get::<ContentType>() {
-            let mime = Mime::from(content_type);
-            if !TEXT_MIME_TYPES.iter().any(|h| *h == mime) {
+            if !is_text(Mime::from(content_type)) {
                 return Ok(resp);
             }
         }
@@ -121,6 +120,15 @@ pub fn auto(
     }
 
     Ok(resp)
+}
+
+/// Checks whether the MIME type corresponds to any of the known text types.
+fn is_text(mime: Mime) -> bool {
+    mime.type_() == mime::TEXT
+        || mime
+            .suffix()
+            .is_some_and(|suffix| suffix == mime::XML || suffix == mime::JSON)
+        || TEXT_MIME_TYPES.contains(mime.essence_str())
 }
 
 /// Create a wrapping handler that compresses the Body of a [`Response`].
@@ -226,45 +234,12 @@ pub fn create_encoding_header(existing: Option<HeaderValue>, coding: ContentCodi
 #[inline(always)]
 pub fn get_preferred_encoding(headers: &HeaderMap<HeaderValue>) -> Option<ContentCoding> {
     if let Some(ref accept_encoding) = headers.typed_get::<AcceptEncoding>() {
-        tracing::trace!("request with accept-ecoding header: {:?}", accept_encoding);
+        tracing::trace!("request with accept-encoding header: {:?}", accept_encoding);
 
-        let encoding = accept_encoding.preferred_encoding();
-        if let Some(preferred_enc) = encoding {
-            let mut feature_formats = Vec::<ContentCoding>::with_capacity(5);
-            if cfg!(feature = "compression-deflate") {
-                feature_formats.push(ContentCoding::DEFLATE);
+        for encoding in accept_encoding.sorted_encodings() {
+            if AVAILABLE_ENCODINGS.contains(&encoding) {
+                return Some(encoding);
             }
-            if cfg!(feature = "compression-gzip") {
-                feature_formats.push(ContentCoding::GZIP);
-            }
-            if cfg!(feature = "compression-brotli") {
-                feature_formats.push(ContentCoding::BROTLI);
-            }
-            if cfg!(feature = "compression-zstd") {
-                feature_formats.push(ContentCoding::ZSTD);
-            }
-
-            // If there is only one Cargo compression feature enabled
-            // then re-evaluate the preferred encoding and return
-            // that feature compression algorithm as `ContentCoding` only
-            // if was contained in the `AcceptEncoding` value.
-            if feature_formats.len() == 1 {
-                let feature_enc = *feature_formats.first().unwrap();
-                if feature_enc != preferred_enc
-                    && accept_encoding
-                        .sorted_encodings()
-                        .any(|enc| enc == feature_enc)
-                {
-                    tracing::trace!(
-                        "preferred encoding {:?} is re-evalated to {:?} because is the only compression feature enabled that matches the `accept-encoding` header",
-                        preferred_enc,
-                        feature_enc
-                    );
-                    return Some(feature_enc);
-                }
-            }
-
-            return encoding;
         }
     }
     None

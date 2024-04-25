@@ -671,12 +671,25 @@ mod tests {
     ))]
     #[tokio::test]
     async fn handle_file_compressions() {
-        let encodings = ["gzip", "deflate", "br", "zstd", "xyz"];
+        let encodings = [
+            #[cfg(any(feature = "compression", feature = "compression-gzip"))]
+            "gzip",
+            #[cfg(any(feature = "compression", feature = "compression-deflate"))]
+            "deflate",
+            #[cfg(any(feature = "compression", feature = "compression-brotli"))]
+            "br",
+            #[cfg(any(feature = "compression", feature = "compression-zstd"))]
+            "zstd",
+            "xyz",
+        ];
         let method = &Method::GET;
 
         for enc in encodings {
             let mut headers = HeaderMap::new();
-            headers.insert(http::header::ACCEPT_ENCODING, enc.parse().unwrap());
+            headers.insert(
+                http::header::ACCEPT_ENCODING,
+                format!("identity, {enc}").parse().unwrap(),
+            );
 
             match static_files::handle(&HandleOpts {
                 method,
