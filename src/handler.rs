@@ -6,7 +6,6 @@
 //! Request handler module intended to manage incoming HTTP requests.
 //!
 
-use headers::HeaderValue;
 use hyper::{Body, Request, Response, StatusCode};
 use std::{future::Future, net::IpAddr, net::SocketAddr, path::PathBuf, sync::Arc};
 
@@ -17,7 +16,7 @@ use std::{future::Future, net::IpAddr, net::SocketAddr, path::PathBuf, sync::Arc
     feature = "compression-zstd",
     feature = "compression-deflate"
 ))]
-use crate::compression;
+use {crate::compression, headers::HeaderValue};
 
 #[cfg(feature = "basic-auth")]
 use crate::basic_auth;
@@ -273,17 +272,20 @@ impl RequestHandler {
             {
                 Ok(result) => (result.resp, result.is_precompressed, Some(result.file_path)),
                 Err(status) => {
-                    let mut resp = None;
+                    let resp = None;
 
                     // Check for a fallback response
                     #[cfg(feature = "fallback-page")]
-                    if req.method().is_get()
+                    let resp = if req.method().is_get()
                         && status == StatusCode::NOT_FOUND
                         && !self.opts.page_fallback.is_empty()
                     {
-                        resp = Some(fallback_page::fallback_response(&self.opts.page_fallback));
-                    }
+                        Some(fallback_page::fallback_response(&self.opts.page_fallback))
+                    } else {
+                        resp
+                    };
 
+                    #[allow(clippy::unnecessary_literal_unwrap)]
                     let resp = resp.unwrap_or(
                         // Otherwise return an error response
                         error_page::error_response(
