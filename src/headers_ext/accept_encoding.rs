@@ -48,12 +48,6 @@ impl Header for AcceptEncoding {
 }
 
 impl AcceptEncoding {
-    /// Returns the most preferred encoding that is specified by the header,
-    /// if one is specified.
-    pub(crate) fn preferred_encoding(&self) -> Option<ContentCoding> {
-        self.0.iter().next().map(ContentCoding::from)
-    }
-
     /// Returns a quality sorted iterator of the `ContentCoding`
     pub(crate) fn sorted_encodings(&self) -> impl Iterator<Item = ContentCoding> + '_ {
         self.0.iter().map(ContentCoding::from)
@@ -66,18 +60,14 @@ mod tests {
 
     #[test]
     fn from_static() {
-        let val = HeaderValue::from_static("deflate, gzip;q=1.0, br;q=0.9");
+        let val = HeaderValue::from_static("deflate, zstd;q=0.7, gzip;q=1.0, br;q=0.9");
         let accept_enc = AcceptEncoding(val.into());
-
-        assert_eq!(
-            accept_enc.preferred_encoding(),
-            Some(ContentCoding::DEFLATE)
-        );
 
         let mut encodings = accept_enc.sorted_encodings();
         assert_eq!(encodings.next(), Some(ContentCoding::DEFLATE));
         assert_eq!(encodings.next(), Some(ContentCoding::GZIP));
         assert_eq!(encodings.next(), Some(ContentCoding::BROTLI));
+        assert_eq!(encodings.next(), Some(ContentCoding::ZSTD));
         assert_eq!(encodings.next(), None);
     }
 }
