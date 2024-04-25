@@ -1,10 +1,6 @@
 [
-  <% let mut first = true; %>
-  <% for entry in entries { %>
-    <% if !first { %>,<% } %>
-    <% if first {
-      first = false;
-    } %>
+  <% let mut entries = entries.iter().peekable(); %>
+  <% while let Some(entry) = entries.next() { %>
     {
       "name":<%= entry.name | json %>,
       "type":<% if entry.is_dir { %>"directory"<% } else { %>"file"<% } %>,
@@ -17,6 +13,6 @@
             .format(DATETIME_FORMAT_UTC)
             .to_string()
       }) | json %>
-    }
+    }<% if entries.peek().is_some() { %>,<% } %>
   <% } %>
 ]

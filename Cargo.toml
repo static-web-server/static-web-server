@@ -114,7 +114,7 @@ lto = "fat"
 opt-level = 3
 panic = "abort"
 rpath = false
-strip = true
+#strip = true
 
 [package.metadata.docs.rs]
 all-features = true
