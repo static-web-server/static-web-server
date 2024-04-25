@@ -1225,6 +1225,7 @@ dependencies = [
  "http-serde",
  "humansize",
  "hyper",
+ "lazy_static",
  "listenfd",
  "mime_guess",
  "percent-encoding",

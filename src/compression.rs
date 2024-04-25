@@ -24,8 +24,10 @@ use hyper::{
     header::{CONTENT_ENCODING, CONTENT_LENGTH},
     Body, Method, Response,
 };
-use mime_guess::Mime;
+use lazy_static::lazy_static;
+use mime_guess::{mime, Mime};
 use pin_project::pin_project;
+use std::collections::HashSet;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 use tokio_util::io::{ReaderStream, StreamReader};
@@ -36,33 +38,19 @@ use crate::{
     Result,
 };
 
-/// Contains a fixed list of common text-based MIME types in order to apply compression.
-pub const TEXT_MIME_TYPES: [&str; 24] = [
-    "text/html",
-    "text/css",
-    "text/javascript",
-    "text/xml",
-    "text/plain",
-    "text/csv",
-    "text/calendar",
-    "text/markdown",
-    "text/x-yaml",
-    "text/x-toml",
-    "text/x-component",
-    "application/rtf",
-    "application/xhtml+xml",
-    "application/javascript",
-    "application/x-javascript",
-    "application/json",
-    "application/xml",
-    "application/rss+xml",
-    "application/atom+xml",
-    "font/truetype",
-    "font/opentype",
-    "application/vnd.ms-fontobject",
-    "image/svg+xml",
-    "application/wasm",
-];
+lazy_static! {
+    /// Contains a fixed list of common text-based MIME types that aren't recognizable in a generic way.
+    static ref TEXT_MIME_TYPES: HashSet<&'static str> = [
+        "application/rtf",
+        "application/javascript",
+        "application/json",
+        "application/xml",
+        "font/ttf",
+        "application/font-sfnt",
+        "application/vnd.ms-fontobject",
+        "application/wasm",
+    ].into_iter().collect();
+}
 
 /// List of encodings that can be handled given enabled features.
 const AVAILABLE_ENCODINGS: &[ContentCoding] = &[
@@ -99,8 +87,7 @@ pub fn auto(
 
         // Skip compression for non-text-based MIME types
         if let Some(content_type) = resp.headers().typed_get::<ContentType>() {
-            let mime = Mime::from(content_type);
-            if !TEXT_MIME_TYPES.iter().any(|h| *h == mime) {
+            if !is_text(Mime::from(content_type)) {
                 return Ok(resp);
             }
         }
@@ -133,6 +120,15 @@ pub fn auto(
     }
 
     Ok(resp)
+}
+
+/// Checks whether the MIME type corresponds to any of the known text types.
+fn is_text(mime: Mime) -> bool {
+    mime.type_() == mime::TEXT
+        || mime
+            .suffix()
+            .is_some_and(|suffix| suffix == mime::XML || suffix == mime::JSON)
+        || TEXT_MIME_TYPES.contains(mime.essence_str())
 }
 
 /// Create a wrapping handler that compresses the Body of a [`Response`].
