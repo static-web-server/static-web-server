@@ -480,7 +480,10 @@ fn html_auto_index<'a>(
                                 }))
                             }
                             td align="right" {
-                                (entry.size.map(|size| size.format_size(humansize::DECIMAL)).unwrap_or("-".into()))
+                                (match entry.size.unwrap_or(0) {
+                                    0 => "-".to_owned(),
+                                    size => size.format_size(humansize::DECIMAL)
+                                })
                             }
                         }
                     }
