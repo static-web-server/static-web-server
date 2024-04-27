@@ -280,7 +280,15 @@ impl RequestHandler {
             {
                 Ok(result) => (result.resp, result.is_precompressed, Some(result.file_path)),
                 Err(status) => {
-                    let resp = None;
+                    // Produce an error response by default
+                    let resp = error_page::error_response(
+                        req.uri(),
+                        req.method(),
+                        &status,
+                        &self.opts.page404,
+                        &self.opts.page50x,
+                    )?;
+
 
                     // Check for a fallback response
                     #[cfg(feature = "fallback-page")]
@@ -288,22 +296,10 @@ impl RequestHandler {
                         && status == StatusCode::NOT_FOUND
                         && !self.opts.page_fallback.is_empty()
                     {
-                        Some(fallback_page::fallback_response(&self.opts.page_fallback))
+                        fallback_page::fallback_response(&self.opts.page_fallback)
                     } else {
                         resp
                     };
-
-                    #[allow(clippy::unnecessary_literal_unwrap)]
-                    let resp = resp.unwrap_or(
-                        // Otherwise return an error response
-                        error_page::error_response(
-                            req.uri(),
-                            req.method(),
-                            &status,
-                            &self.opts.page404,
-                            &self.opts.page50x,
-                        )?,
-                    );
 
                     (resp, false, None)
                 }
