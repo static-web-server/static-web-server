@@ -6,6 +6,13 @@
 //! Request handler module intended to manage incoming HTTP requests.
 //!
 
+#[cfg(any(
+    feature = "compression",
+    feature = "compression-gzip",
+    feature = "compression-brotli",
+    feature = "compression-zstd",
+    feature = "compression-deflate"
+))]
 use headers::HeaderValue;
 use hyper::{Body, Request, Response, StatusCode};
 use std::{future::Future, net::IpAddr, net::SocketAddr, path::PathBuf, sync::Arc};
@@ -273,27 +280,25 @@ impl RequestHandler {
             {
                 Ok(result) => (result.resp, result.is_precompressed, Some(result.file_path)),
                 Err(status) => {
-                    let mut resp = None;
+                    // Produce an error response by default
+                    let resp = error_page::error_response(
+                        req.uri(),
+                        req.method(),
+                        &status,
+                        &self.opts.page404,
+                        &self.opts.page50x,
+                    )?;
 
                     // Check for a fallback response
                     #[cfg(feature = "fallback-page")]
-                    if req.method().is_get()
+                    let resp = if req.method().is_get()
                         && status == StatusCode::NOT_FOUND
                         && !self.opts.page_fallback.is_empty()
                     {
-                        resp = Some(fallback_page::fallback_response(&self.opts.page_fallback));
-                    }
-
-                    let resp = resp.unwrap_or(
-                        // Otherwise return an error response
-                        error_page::error_response(
-                            req.uri(),
-                            req.method(),
-                            &status,
-                            &self.opts.page404,
-                            &self.opts.page50x,
-                        )?,
-                    );
+                        fallback_page::fallback_response(&self.opts.page_fallback)
+                    } else {
+                        resp
+                    };
 
                     (resp, false, None)
                 }
