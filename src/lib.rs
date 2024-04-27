@@ -164,6 +164,13 @@ pub(crate) mod file_path;
 pub(crate) mod file_response;
 pub(crate) mod file_stream;
 pub mod handler;
+#[cfg(any(
+    feature = "compression",
+    feature = "compression-gzip",
+    feature = "compression-brotli",
+    feature = "compression-zstd",
+    feature = "compression-deflate"
+))]
 pub(crate) mod headers_ext;
 pub(crate) mod health;
 pub(crate) mod http_ext;
