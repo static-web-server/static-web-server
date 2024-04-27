@@ -26,6 +26,15 @@ use {
     hyper::service::{make_service_fn, service_fn},
 };
 
+#[cfg(any(
+    feature = "compression",
+    feature = "compression-deflate",
+    feature = "compression-gzip",
+    feature = "compression-brotli",
+    feature = "compression-zstd",
+))]
+use crate::{compression, compression_static};
+
 #[cfg(feature = "basic-auth")]
 use crate::basic_auth;
 
@@ -222,68 +231,6 @@ impl Server {
             );
         }
 
-        #[cfg(not(any(
-            feature = "compression",
-            feature = "compression-deflate",
-            feature = "compression-gzip",
-            feature = "compression-deflate",
-            feature = "compression-brotli",
-            feature = "compression-zstd",
-        )))]
-        let compression = false;
-        // Auto compression based on the `Accept-Encoding` header
-        #[cfg(any(
-            feature = "compression",
-            feature = "compression-deflate",
-            feature = "compression-gzip",
-            feature = "compression-deflate",
-            feature = "compression-brotli",
-            feature = "compression-zstd",
-        ))]
-        let compression = general.compression;
-
-        #[allow(unused_mut)]
-        let mut compression_formats = Vec::<&str>::with_capacity(5);
-        #[cfg(any(feature = "compression", feature = "compression-deflate"))]
-        compression_formats.push("deflate");
-        #[cfg(any(feature = "compression", feature = "compression-gzip"))]
-        compression_formats.push("gzip");
-        #[cfg(any(feature = "compression", feature = "compression-brotli"))]
-        compression_formats.push("brotli");
-        #[cfg(any(feature = "compression", feature = "compression-zstd"))]
-        compression_formats.push("zstd");
-        let compression_format = compression_formats.join(",");
-        server_info!(
-            "auto compression: enabled={}, formats={}",
-            compression,
-            compression_format
-        );
-
-        // Check pre-compressed files based on the `Accept-Encoding` header
-        #[cfg(not(any(
-            feature = "compression",
-            feature = "compression-deflate",
-            feature = "compression-gzip",
-            feature = "compression-deflate",
-            feature = "compression-brotli",
-            feature = "compression-zstd",
-        )))]
-        let compression_static = false;
-        #[cfg(any(
-            feature = "compression",
-            feature = "compression-deflate",
-            feature = "compression-gzip",
-            feature = "compression-deflate",
-            feature = "compression-brotli",
-            feature = "compression-zstd",
-        ))]
-        let compression_static = general.compression_static;
-        server_info!(
-            "compression static: enabled={}, formats={}",
-            compression_static,
-            compression_format
-        );
-
         // Directory listing options
         #[cfg(feature = "directory-listing")]
         let dir_listing = general.directory_listing;
@@ -337,8 +284,6 @@ impl Server {
         // Request handler options, some settings will be filled in by modules
         let mut handler_opts = RequestHandlerOpts {
             root_dir,
-            compression,
-            compression_static,
             #[cfg(feature = "directory-listing")]
             dir_listing,
             #[cfg(feature = "directory-listing")]
@@ -383,6 +328,26 @@ impl Server {
             general.maintenance_mode_file,
             &mut handler_opts,
         );
+
+        // Check pre-compressed files based on the `Accept-Encoding` header
+        #[cfg(any(
+            feature = "compression",
+            feature = "compression-deflate",
+            feature = "compression-gzip",
+            feature = "compression-brotli",
+            feature = "compression-zstd",
+        ))]
+        compression_static::init(general.compression_static, &mut handler_opts);
+
+        // Auto compression based on the `Accept-Encoding` header
+        #[cfg(any(
+            feature = "compression",
+            feature = "compression-deflate",
+            feature = "compression-gzip",
+            feature = "compression-brotli",
+            feature = "compression-zstd",
+        ))]
+        compression::init(general.compression, &mut handler_opts);
 
         // Cache control headers option
         control_headers::init(general.cache_control_headers, &mut handler_opts);
