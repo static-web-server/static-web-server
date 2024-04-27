@@ -14,6 +14,7 @@ use humansize::FormatSize;
 use hyper::{Body, Method, Response, StatusCode};
 use mime_guess::mime;
 use percent_encoding::{percent_decode_str, utf8_percent_encode, NON_ALPHANUMERIC};
+use serde::{Serialize, Serializer};
 use std::future::Future;
 use std::io;
 use std::path::Path;
@@ -116,21 +117,35 @@ pub fn auto_index(
     }
 }
 
-const STYLE: &str = r#"<style>html{background-color:#fff;-moz-osx-font-smoothing:grayscale;-webkit-font-smoothing:antialiased;min-width:20rem;text-rendering:optimizeLegibility;-webkit-text-size-adjust:100%;-moz-text-size-adjust:100%;text-size-adjust:100%}:after,:before{box-sizing:border-box;}body{padding:1rem;font-family:Consolas,'Liberation Mono',Menlo,monospace;font-size:.75rem;max-width:70rem;margin:0 auto;color:#4a4a4a;font-weight:400;line-height:1.5}h1{margin:0;padding:0;font-size:1rem;line-height:1.25;margin-bottom:0.5rem;}table{width:100%;table-layout:fixed;border-spacing: 0;}hr{border-style: none;border-bottom: solid 1px gray;}table th,table td{padding:.15rem 0;white-space:nowrap;vertical-align:top}table th a,table td a{display:inline-block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:95%;vertical-align:top;}table tr:hover td{background-color:#f5f5f5}footer{padding-top:0.5rem}table tr th{text-align:left;}@media (max-width:30rem){table th:first-child{width:20rem;}}</style>"#;
-const FOOTER: &str =
-    r#"<footer><small>Powered by Static Web Server (SWS) / static-web-server.net</small></footer>"#;
-
 const DATETIME_FORMAT_UTC: &str = "%FT%TZ";
 const DATETIME_FORMAT_LOCAL: &str = "%F %T";
 
+#[derive(Serialize, PartialEq)]
+#[serde(rename_all = "lowercase")]
+enum FileType {
+    Directory,
+    File,
+}
+
 /// Defines a file entry and its properties.
+#[derive(Serialize)]
 struct FileEntry {
     name: String,
+    #[serde(skip_serializing)]
     name_encoded: String,
-    modified: Option<DateTime<Local>>,
-    filesize: u64,
-    is_dir: bool,
+    #[serde(serialize_with = "serialize_mtime")]
+    mtime: Option<DateTime<Local>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    size: Option<u64>,
+    r#type: FileType,
+    #[serde(skip_serializing)]
     uri: Option<String>,
+}
+
+impl FileEntry {
+    fn is_dir(&self) -> bool {
+        self.r#type == FileType::Directory
+    }
 }
 
 /// Defines sorting attributes for file entries.
@@ -189,13 +204,13 @@ async fn read_dir_entries(
         }
 
         let mut name_encoded = utf8_percent_encode(&name, NON_ALPHANUMERIC).to_string();
-        let mut filesize = 0_u64;
+        let mut size = None;
 
         if meta.is_dir() {
             name_encoded.push('/');
             dirs_count += 1;
         } else if meta.is_file() {
-            filesize = meta.len();
+            size = Some(meta.len());
             files_count += 1;
         } else if meta.file_type().is_symlink() {
             // NOTE: we resolve the symlink path below to just know if is a directory or not.
@@ -229,7 +244,7 @@ async fn read_dir_entries(
                 name_encoded.push('/');
                 dirs_count += 1;
             } else {
-                filesize = meta.len();
+                size = Some(meta.len());
                 files_count += 1;
             }
         } else {
@@ -275,21 +290,25 @@ async fn read_dir_entries(
             uri = Some(base_str);
         }
 
-        let modified = match parse_last_modified(meta.modified()?) {
+        let mtime = match parse_last_modified(meta.modified()?) {
             Ok(local_dt) => Some(local_dt),
             Err(err) => {
                 tracing::error!("error determining the file's last modified: {:?}", err);
                 None
             }
         };
-        let is_dir = meta.is_dir();
+        let r#type = if meta.is_dir() {
+            FileType::Directory
+        } else {
+            FileType::File
+        };
 
         file_entries.push(FileEntry {
             name,
             name_encoded,
-            modified,
-            filesize,
-            is_dir,
+            mtime,
+            size,
+            r#type,
             uri,
         });
     }
@@ -358,60 +377,22 @@ async fn read_dir_entries(
 fn json_auto_index(entries: &mut [FileEntry], order_code: u8) -> Result<String> {
     sort_file_entries(entries, order_code);
 
-    let mut json = String::from('[');
-
-    for entry in entries {
-        let file_size = &entry.filesize;
-        let file_name = &entry.name;
-        let file_type = if entry.is_dir { "directory" } else { "file" };
-        let file_modified = &entry.modified;
-
-        json.push('{');
-        json.push_str(format!("\"name\":{},", json_quote_str(file_name.as_str())).as_str());
-        json.push_str(format!("\"type\":\"{file_type}\",").as_str());
-
-        let file_modified_str = file_modified.map_or("".to_owned(), |local_dt| {
-            local_dt
-                .with_timezone(&Utc)
-                .format(DATETIME_FORMAT_UTC)
-                .to_string()
-        });
-        json.push_str(format!("\"mtime\":\"{file_modified_str}\"").as_str());
-
-        if !entry.is_dir {
-            json.push_str(format!(",\"size\":{file_size}").as_str());
-        }
-        json.push_str("},");
-    }
-
-    // Strip trailing comma out in case of available items
-    if json.len() > 1 {
-        json.pop();
-    }
-
-    json.push(']');
-
-    Ok(json)
+    Ok(serde_json::to_string(entries)?)
 }
 
-/// Quotes a string value.
-fn json_quote_str(s: &str) -> String {
-    let mut r = String::from("\"");
-    for c in s.chars() {
-        match c {
-            '\\' => r.push_str("\\\\"),
-            '\u{0008}' => r.push_str("\\b"),
-            '\u{000c}' => r.push_str("\\f"),
-            '\n' => r.push_str("\\n"),
-            '\r' => r.push_str("\\r"),
-            '\t' => r.push_str("\\t"),
-            '"' => r.push_str("\\\""),
-            c if c.is_control() => r.push_str(format!("\\u{:04x}", c as u32).as_str()),
-            c => r.push(c),
-        };
+/// Serialize FileEntry::mtime field
+fn serialize_mtime<S: Serializer>(
+    mtime: &Option<DateTime<Local>>,
+    serializer: S,
+) -> Result<S::Ok, S::Error> {
+    match mtime {
+        Some(dt) => serializer.serialize_str(
+            &dt.with_timezone(&Utc)
+                .format(DATETIME_FORMAT_UTC)
+                .to_string(),
+        ),
+        None => serializer.serialize_str(""),
     }
-    r.push('\"');
-    r
 }
 
 /// Create an auto index in HTML format.
@@ -422,55 +403,100 @@ fn html_auto_index<'a>(
     entries: &'a mut [FileEntry],
     order_code: u8,
 ) -> Result<String> {
+    use maud::{html, DOCTYPE};
+
     let sort_attrs = sort_file_entries(entries, order_code);
-
-    // Create the table header specifying every order code column
-    let table_header = format!(
-        r#"<thead><tr><th><a href="?sort={}">Name</a></th><th style="width:10rem;"><a href="?sort={}">Last modified</a></th><th style="width:6rem;text-align:right;"><a href="?sort={}">Size</a></th></tr></thead>"#,
-        sort_attrs.name, sort_attrs.last_modified, sort_attrs.size,
-    );
-
-    // Prepare table row template
-    let table_rows = if base_path == "/" {
-        String::new()
-    } else {
-        String::from(r#"<tr><td colspan="3"><a href="../">../</a></td></tr>"#)
-    };
-
-    let table_rows = entries.iter().fold(table_rows, |mut output, entry| {
-        let file_name = &entry.name;
-        let file_name_suffix = if entry.is_dir { "/" } else { "" };
-        let file_modified = &entry.modified;
-        let file_uri = &entry.uri.clone().unwrap_or_else(|| entry.name_encoded.clone());
-        let filesize_str = if entry.filesize == 0 {
-            String::from("-")
-        } else {
-            entry.filesize.format_size(humansize::DECIMAL)
-        };
-
-        let file_modified_str = file_modified.map_or("-".to_owned(), |local_dt| {
-            local_dt.format(DATETIME_FORMAT_LOCAL).to_string()
-        });
-
-        use std::fmt::Write;
-        let _ = write!(
-            output,
-            "<tr><td><a href=\"{file_uri}\">{file_name}{file_name_suffix}</a></td><td>{file_modified_str}</td><td align=\"right\">{filesize_str}</td></tr>"
-        );
-        output
-    });
-
     let current_path = percent_decode_str(base_path).decode_utf8()?.to_string();
-    let summary = format!(
-        "<p><small>directories: {}, files: {}</small></p>",
-        dirs_count, files_count,
-    );
 
-    let html_page = format!(
-        "<!DOCTYPE html><html><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,minimum-scale=1,initial-scale=1\"><title>Index of {current_path}</title>{STYLE}</head><body><h1>Index of {current_path}</h1>{summary}<hr><div style=\"overflow-x: auto;\"><table>{table_header}{table_rows}</table></div><hr>{FOOTER}</body></html>"
-    );
+    Ok(html! {
+        (DOCTYPE)
+        html {
+            head {
+                meta charset="utf-8";
+                meta name="viewport" content="width=device-width,minimum-scale=1,initial-scale=1";
+                title {
+                    "Index of " (current_path)
+                }
+                style {
+                    "html{background-color:#fff;-moz-osx-font-smoothing:grayscale;-webkit-font-smoothing:antialiased;min-width:20rem;text-rendering:optimizeLegibility;-webkit-text-size-adjust:100%;-moz-text-size-adjust:100%;text-size-adjust:100%}:after,:before{box-sizing:border-box;}body{padding:1rem;font-family:Consolas,'Liberation Mono',Menlo,monospace;font-size:.75rem;max-width:70rem;margin:0 auto;color:#4a4a4a;font-weight:400;line-height:1.5}h1{margin:0;padding:0;font-size:1rem;line-height:1.25;margin-bottom:0.5rem;}table{width:100%;table-layout:fixed;border-spacing: 0;}hr{border-style: none;border-bottom: solid 1px gray;}table th,table td{padding:.15rem 0;white-space:nowrap;vertical-align:top}table th a,table td a{display:inline-block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:95%;vertical-align:top;}table tr:hover td{background-color:#f5f5f5}footer{padding-top:0.5rem}table tr th{text-align:left;}@media (max-width:30rem){table th:first-child{width:20rem;}}"
+                }
+            }
+            body {
+                h1 {
+                    "Index of " (current_path)
+                }
+            }
+            p {
+                small {
+                    "directories: " (dirs_count) ", files: " (files_count)
+                }
+            }
+            hr;
+            div style="overflow-x: auto;" {
+                table {
+                    thead {
+                        tr {
+                            th {
+                                a href={ "?sort=" (sort_attrs.name) } {
+                                    "Name"
+                                }
+                            }
+                            th style="width:10rem;" {
+                                a href={ "?sort=" (sort_attrs.last_modified) } {
+                                    "Last modified"
+                                }
+                            }
+                            th style="width:6rem;text-align:right;" {
+                                a href={ "?sort=" (sort_attrs.size) } {
+                                    "Size"
+                                }
+                            }
+                        }
+                    }
 
-    Ok(html_page)
+                    @if base_path != "/" {
+                        tr {
+                            td colspan="3" {
+                                a href="../" {
+                                    "../"
+                                }
+                            }
+                        }
+                    }
+
+                    @for entry in entries {
+                        tr {
+                            td {
+                                a href=(entry.uri.as_ref().unwrap_or(&entry.name_encoded)) {
+                                    (entry.name)
+                                    @if entry.is_dir() {
+                                        "/"
+                                    }
+                                }
+                            }
+                            td {
+                                (entry.mtime.map_or("-".to_owned(), |local_dt| {
+                                    local_dt.format(DATETIME_FORMAT_LOCAL).to_string()
+                                }))
+                            }
+                            td align="right" {
+                                (match entry.size.unwrap_or(0) {
+                                    0 => "-".to_owned(),
+                                    size => size.format_size(humansize::DECIMAL)
+                                })
+                            }
+                        }
+                    }
+                }
+            }
+            hr;
+            footer {
+                small {
+                    "Powered by Static Web Server (SWS) / static-web-server.net"
+                }
+            }
+        }
+    }.into())
 }
 
 /// Sort a list of file entries by a specific order code.
@@ -492,7 +518,7 @@ fn sort_file_entries(files: &mut [FileEntry], order_code: u8) -> SortingAttr<'_>
         }
         2 | 3 => {
             // Modified (asc, desc)
-            files.sort_by_key(|f| f.modified);
+            files.sort_by_key(|f| f.mtime);
             if order_code == 3 {
                 files.reverse();
             } else {
@@ -501,7 +527,7 @@ fn sort_file_entries(files: &mut [FileEntry], order_code: u8) -> SortingAttr<'_>
         }
         4 | 5 => {
             // File size (asc, desc)
-            files.sort_by_key(|f| f.filesize);
+            files.sort_by_key(|f| f.size);
             if order_code == 5 {
                 files.reverse();
             } else {
