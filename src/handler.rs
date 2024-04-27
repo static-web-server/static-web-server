@@ -289,7 +289,6 @@ impl RequestHandler {
                         &self.opts.page50x,
                     )?;
 
-
                     // Check for a fallback response
                     #[cfg(feature = "fallback-page")]
                     let resp = if req.method().is_get()
