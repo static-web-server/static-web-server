@@ -83,8 +83,6 @@ pub struct HandleOpts<'a> {
 pub struct StaticFileResponse {
     /// Inner HTTP response.
     pub resp: Response<Body>,
-    /// If the inner HTTP response is already pre-compressed.
-    pub is_precompressed: bool,
     /// The file path of the inner HTTP response.
     pub file_path: PathBuf,
 }
@@ -123,9 +121,6 @@ pub async fn handle<'a>(opts: &HandleOpts<'a>) -> Result<StaticFileResponse, Sta
 
     let resp_file_path = file_path.to_owned();
 
-    // `is_precompressed` relates to `opts.compression_static` value
-    let is_precompressed = precompressed_variant.is_some();
-
     // Check for a trailing slash on the current directory path
     // and redirect if that path doesn't end with the slash char
     if is_dir && opts.redirect_trailing_slash && !uri_path.ends_with('/') {
@@ -145,7 +140,6 @@ pub async fn handle<'a>(opts: &HandleOpts<'a>) -> Result<StaticFileResponse, Sta
         tracing::trace!("uri doesn't end with a slash so redirecting permanently");
         return Ok(StaticFileResponse {
             resp,
-            is_precompressed,
             file_path: resp_file_path,
         });
     }
@@ -160,7 +154,6 @@ pub async fn handle<'a>(opts: &HandleOpts<'a>) -> Result<StaticFileResponse, Sta
 
         return Ok(StaticFileResponse {
             resp,
-            is_precompressed,
             file_path: resp_file_path,
         });
     }
@@ -184,7 +177,6 @@ pub async fn handle<'a>(opts: &HandleOpts<'a>) -> Result<StaticFileResponse, Sta
 
         return Ok(StaticFileResponse {
             resp,
-            is_precompressed,
             file_path: resp_file_path,
         });
     }
@@ -201,7 +193,6 @@ pub async fn handle<'a>(opts: &HandleOpts<'a>) -> Result<StaticFileResponse, Sta
 
         return Ok(StaticFileResponse {
             resp,
-            is_precompressed,
             file_path: resp_file_path,
         });
     }
@@ -210,7 +201,6 @@ pub async fn handle<'a>(opts: &HandleOpts<'a>) -> Result<StaticFileResponse, Sta
 
     Ok(StaticFileResponse {
         resp,
-        is_precompressed,
         file_path: resp_file_path,
     })
 }

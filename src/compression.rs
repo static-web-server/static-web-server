@@ -22,7 +22,7 @@ use futures_util::Stream;
 use headers::{ContentType, HeaderMap, HeaderMapExt, HeaderValue};
 use hyper::{
     header::{CONTENT_ENCODING, CONTENT_LENGTH},
-    Body, Method, Response,
+    Body, Method, Request, Response, StatusCode,
 };
 use lazy_static::lazy_static;
 use mime_guess::{mime, Mime};
@@ -33,9 +33,11 @@ use std::task::{Context, Poll};
 use tokio_util::io::{ReaderStream, StreamReader};
 
 use crate::{
+    error_page,
+    handler::RequestHandlerOpts,
     headers_ext::{AcceptEncoding, ContentCoding},
     http_ext::MethodExt,
-    Result,
+    Error, Result,
 };
 
 lazy_static! {
@@ -63,6 +65,63 @@ const AVAILABLE_ENCODINGS: &[ContentCoding] = &[
     #[cfg(any(feature = "compression", feature = "compression-zstd"))]
     ContentCoding::ZSTD,
 ];
+
+/// Initializes dynamic compression.
+pub fn init(enabled: bool, handler_opts: &mut RequestHandlerOpts) {
+    handler_opts.compression = enabled;
+
+    const FORMATS: &[&str] = &[
+        #[cfg(any(feature = "compression", feature = "compression-deflate"))]
+        "deflate",
+        #[cfg(any(feature = "compression", feature = "compression-gzip"))]
+        "gzip",
+        #[cfg(any(feature = "compression", feature = "compression-brotli"))]
+        "brotli",
+        #[cfg(any(feature = "compression", feature = "compression-zstd"))]
+        "zstd",
+    ];
+    server_info!(
+        "auto compression: enabled={enabled}, formats={}",
+        FORMATS.join(",")
+    );
+}
+
+/// Post-processing to dynamically compress the response if necessary.
+pub(crate) fn post_process(
+    opts: &RequestHandlerOpts,
+    req: &Request<Body>,
+    mut resp: Response<Body>,
+) -> Result<Response<Body>, Error> {
+    if !opts.compression {
+        return Ok(resp);
+    }
+
+    let is_precompressed = resp.headers().get(CONTENT_ENCODING).is_some();
+    if is_precompressed {
+        return Ok(resp);
+    }
+
+    // Compression content encoding varies so use a `Vary` header
+    resp.headers_mut().append(
+        hyper::header::VARY,
+        HeaderValue::from_name(hyper::header::ACCEPT_ENCODING),
+    );
+
+    // Auto compression based on the `Accept-Encoding` header
+    match auto(req.method(), req.headers(), resp) {
+        Ok(resp) => Ok(resp),
+        Err(err) => {
+            tracing::error!("error during body compression: {:?}", err);
+            error_page::error_response(
+                req.uri(),
+                req.method(),
+                &StatusCode::INTERNAL_SERVER_ERROR,
+                &opts.page404,
+                &opts.page50x,
+            )
+        }
+    }
+}
 
 /// Create a wrapping handler that compresses the Body of a [`hyper::Response`]
 /// using gzip, `deflate`, `brotli` or `zstd` if is specified in the `Accept-Encoding` header, adding
