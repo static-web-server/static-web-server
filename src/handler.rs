@@ -6,14 +6,6 @@
 //! Request handler module intended to manage incoming HTTP requests.
 //!
 
-#[cfg(any(
-    feature = "compression",
-    feature = "compression-gzip",
-    feature = "compression-brotli",
-    feature = "compression-zstd",
-    feature = "compression-deflate"
-))]
-use headers::HeaderValue;
 use hyper::{Body, Request, Response, StatusCode};
 use std::{future::Future, net::IpAddr, net::SocketAddr, path::PathBuf, sync::Arc};
 
@@ -24,7 +16,7 @@ use std::{future::Future, net::IpAddr, net::SocketAddr, path::PathBuf, sync::Arc
     feature = "compression-zstd",
     feature = "compression-deflate"
 ))]
-use crate::compression;
+use crate::{compression, compression_static};
 
 #[cfg(feature = "basic-auth")]
 use crate::basic_auth;
@@ -259,7 +251,7 @@ impl RequestHandler {
             let index_files = index_files.as_ref();
 
             // Static files
-            let (mut resp, _is_precompressed, file_path) = match static_files::handle(&HandleOpts {
+            let (mut resp, file_path) = match static_files::handle(&HandleOpts {
                 method: req.method(),
                 headers: req.headers(),
                 base_path,
@@ -278,7 +270,7 @@ impl RequestHandler {
             })
             .await
             {
-                Ok(result) => (result.resp, result.is_precompressed, Some(result.file_path)),
+                Ok(result) => (result.resp, Some(result.file_path)),
                 Err(status) => {
                     // Produce an error response by default
                     let resp = error_page::error_response(
@@ -300,14 +292,14 @@ impl RequestHandler {
                         resp
                     };
 
-                    (resp, false, None)
+                    (resp, None)
                 }
             };
 
             // Append CORS headers if they are present
             cors::post_process(&self.opts, req, &mut resp);
 
-            // Compression content encoding varies so use a `Vary` header
+            // Add a `Vary` header if static compression is used
             #[cfg(any(
                 feature = "compression",
                 feature = "compression-gzip",
@@ -315,12 +307,7 @@ impl RequestHandler {
                 feature = "compression-zstd",
                 feature = "compression-deflate"
             ))]
-            if self.opts.compression || compression_static {
-                resp.headers_mut().append(
-                    hyper::header::VARY,
-                    HeaderValue::from_name(hyper::header::ACCEPT_ENCODING),
-                );
-            }
+            compression_static::post_process(&self.opts, req, &mut resp);
 
             // Auto compression based on the `Accept-Encoding` header
             #[cfg(any(
@@ -330,21 +317,7 @@ impl RequestHandler {
                 feature = "compression-zstd",
                 feature = "compression-deflate"
             ))]
-            if self.opts.compression && !_is_precompressed {
-                resp = match compression::auto(req.method(), req.headers(), resp) {
-                    Ok(res) => res,
-                    Err(err) => {
-                        tracing::error!("error during body compression: {:?}", err);
-                        return error_page::error_response(
-                            req.uri(),
-                            req.method(),
-                            &StatusCode::INTERNAL_SERVER_ERROR,
-                            &self.opts.page404,
-                            &self.opts.page50x,
-                        );
-                    }
-                };
-            }
+            let mut resp = compression::post_process(&self.opts, req, resp)?;
 
             // Append `Cache-Control` headers for web assets
             control_headers::post_process(&self.opts, req, &mut resp);

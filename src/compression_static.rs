@@ -7,13 +7,17 @@
 //!
 
 use headers::{HeaderMap, HeaderValue};
+use hyper::{Body, Request, Response};
 use std::{
     ffi::OsStr,
     fs::Metadata,
     path::{Path, PathBuf},
 };
 
-use crate::{compression, headers_ext::ContentCoding, static_files::file_metadata};
+use crate::{
+    compression, handler::RequestHandlerOpts, headers_ext::ContentCoding,
+    static_files::file_metadata,
+};
 
 /// It defines the pre-compressed file variant metadata of a particular file path.
 pub struct CompressedFileVariant<'a> {
@@ -23,6 +27,29 @@ pub struct CompressedFileVariant<'a> {
     pub metadata: Metadata,
     /// The file extension.
     pub extension: &'a str,
+}
+
+/// Initializes static compression.
+pub fn init(enabled: bool, handler_opts: &mut RequestHandlerOpts) {
+    handler_opts.compression_static = enabled;
+    server_info!("compression static: enabled={enabled}");
+}
+
+/// Post-processing to add Vary header if necessary.
+pub(crate) fn post_process(
+    opts: &RequestHandlerOpts,
+    _req: &Request<Body>,
+    resp: &mut Response<Body>,
+) {
+    if !opts.compression_static {
+        return;
+    }
+
+    // Compression content encoding varies so use a `Vary` header
+    resp.headers_mut().append(
+        hyper::header::VARY,
+        HeaderValue::from_name(hyper::header::ACCEPT_ENCODING),
+    );
 }
 
 /// Search for the pre-compressed variant of the given file path.
