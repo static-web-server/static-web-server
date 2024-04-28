@@ -13,7 +13,7 @@ use headers::{ContentLength, ContentType, HeaderMapExt};
 use humansize::FormatSize;
 use hyper::{Body, Method, Response, StatusCode};
 use mime_guess::mime;
-use percent_encoding::{percent_decode_str, utf8_percent_encode, NON_ALPHANUMERIC};
+use percent_encoding::{percent_decode_str, utf8_percent_encode, AsciiSet, NON_ALPHANUMERIC};
 use serde::{Serialize, Serializer};
 use std::future::Future;
 use std::io;
@@ -21,6 +21,15 @@ use std::path::Path;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::{handler::RequestHandlerOpts, http_ext::MethodExt, Context, Result};
+
+/// Non-alphanumeric characters to be percent-encoded
+/// excluding the "unreserved characters" because allowed in a URI.
+/// See 2.3.  Unreserved Characters - https://www.ietf.org/rfc/rfc3986.txt
+const PERCENT_ENCODE_SET: &AsciiSet = &NON_ALPHANUMERIC
+    .remove(b'_')
+    .remove(b'-')
+    .remove(b'.')
+    .remove(b'~');
 
 #[derive(Debug, Serialize, Deserialize, Clone, ValueEnum)]
 #[serde(rename_all = "lowercase")]
@@ -90,9 +99,7 @@ pub fn auto_index(
                 opts.dir_listing_order,
                 opts.dir_listing_format,
                 opts.ignore_hidden_files,
-            )
-            .await
-            {
+            ) {
                 Ok(resp) => Ok(resp),
                 Err(err) => {
                     tracing::error!("error after try to read directory entries: {:?}", err);
@@ -172,7 +179,7 @@ struct SortingAttr<'a> {
 
 /// It reads a list of directory entries and create an index page content.
 /// Otherwise it returns a status error.
-async fn read_dir_entries(
+fn read_dir_entries(
     dir_reader: std::fs::ReadDir,
     base_path: &str,
     uri_query: Option<&str>,
@@ -198,6 +205,7 @@ async fn read_dir_entries(
             }
         };
 
+        // FIXME: handle non-Unicode file names properly via OsString
         let name = match dir_entry
             .file_name()
             .into_string()
@@ -218,7 +226,7 @@ async fn read_dir_entries(
             continue;
         }
 
-        let mut name_encoded = utf8_percent_encode(&name, NON_ALPHANUMERIC).to_string();
+        let mut name_encoded = utf8_percent_encode(&name, PERCENT_ENCODE_SET).to_string();
         let mut size = None;
 
         if meta.is_dir() {
