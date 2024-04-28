@@ -10,13 +10,11 @@ use hyper::server::Server as HyperServer;
 use listenfd::ListenFd;
 use std::net::{IpAddr, SocketAddr, TcpListener};
 use std::sync::Arc;
-use tokio::sync::{watch::Receiver, Mutex};
+use tokio::sync::watch::Receiver;
 
 use crate::handler::{RequestHandler, RequestHandlerOpts};
 #[cfg(all(unix, feature = "experimental"))]
 use crate::metrics;
-#[cfg(any(unix, windows))]
-use crate::signals;
 
 #[cfg(feature = "http2")]
 use {
@@ -43,7 +41,10 @@ use crate::{compression, compression_static};
 #[cfg(feature = "basic-auth")]
 use crate::basic_auth;
 
-use crate::{control_headers, cors, health, helpers, maintenance_mode, security_headers, Settings};
+use crate::{
+    control_headers, cors, health, helpers, maintenance_mode, security_headers, shutdown::Shutdown,
+    Settings,
+};
 use crate::{service::RouterService, Context, Result};
 
 /// Define a multi-threaded HTTP or HTTP/2 web server.
@@ -128,7 +129,7 @@ impl Server {
 
     /// Run the inner Hyper `HyperServer` (HTTP1/HTTP2) forever on the current thread
     // using the given configuration.
-    async fn start_server<F>(self, _cancel_recv: Option<Receiver<()>>, _cancel_fn: F) -> Result
+    async fn start_server<F>(self, cancel_recv: Option<Receiver<()>>, _cancel_fn: F) -> Result
     where
         F: FnOnce(),
     {
@@ -330,20 +331,12 @@ impl Server {
             opts: Arc::from(handler_opts),
         });
 
-        #[cfg(windows)]
-        let (sender, receiver) = tokio::sync::watch::channel(());
-        // ctrl+c listening
-        #[cfg(windows)]
-        let ctrlc_task = tokio::spawn(async move {
-            if !general.windows_service {
-                server_info!("installing graceful shutdown ctrl+c signal handler");
-                tokio::signal::ctrl_c()
-                    .await
-                    .expect("failed to install ctrl+c signal handler");
-                server_info!("installing graceful shutdown ctrl+c signal handler");
-                let _ = sender.send(());
-            }
-        });
+        let shutdown = Shutdown::new();
+        if let Some(cancel_recv) = cancel_recv {
+            shutdown.listen_to(cancel_recv);
+        } else {
+            shutdown.listen_to_signals();
+        }
 
         // Run the corresponding HTTP Server asynchronously with its given options
         #[cfg(feature = "http2")]
@@ -392,45 +385,11 @@ impl Server {
                     "failed to initialize TLS probably because invalid cert or key file"
                 })?;
 
-            #[cfg(unix)]
-            let signals = signals::create_signals()
-                .with_context(|| "failed to register termination signals")?;
-            #[cfg(unix)]
-            let handle = signals.handle();
-
             let http2_server =
                 HyperServer::builder(TlsAcceptor::new(tls, incoming)).serve(router_service);
 
-            #[cfg(unix)]
-            let http2_cancel_recv = Arc::new(Mutex::new(_cancel_recv));
-            #[cfg(unix)]
-            let redirect_cancel_recv = http2_cancel_recv.clone();
-
-            #[cfg(unix)]
-            let http2_server = http2_server.with_graceful_shutdown(signals::wait_for_signals(
-                signals,
-                grace_period,
-                http2_cancel_recv,
-            ));
-
-            #[cfg(windows)]
-            let http2_cancel_recv = Arc::new(Mutex::new(_cancel_recv));
-            #[cfg(windows)]
-            let redirect_cancel_recv = http2_cancel_recv.clone();
-
-            #[cfg(windows)]
-            let http2_ctrlc_recv = Arc::new(Mutex::new(Some(receiver)));
-            #[cfg(windows)]
-            let redirect_ctrlc_recv = http2_ctrlc_recv.clone();
-
-            #[cfg(windows)]
-            let http2_server = http2_server.with_graceful_shutdown(async move {
-                if general.windows_service {
-                    signals::wait_for_ctrl_c(http2_cancel_recv, grace_period).await;
-                } else {
-                    signals::wait_for_ctrl_c(http2_ctrlc_recv, grace_period).await;
-                }
-            });
+            let http2_server =
+                http2_server.with_graceful_shutdown(shutdown.wait_for_shutdown(grace_period));
 
             server_info!(
                 parent: tracing::info_span!("Server::start_server", ?addr_str, ?threads),
@@ -455,12 +414,6 @@ impl Server {
                 tcp_listener
                     .set_nonblocking(true)
                     .with_context(|| "failed to set TCP non-blocking mode")?;
-
-                #[cfg(unix)]
-                let redirect_signals = signals::create_signals()
-                    .with_context(|| "failed to register termination signals")?;
-                #[cfg(unix)]
-                let redirect_handle = redirect_signals.handle();
 
                 // Allowed redirect hosts
                 let redirect_allowed_hosts = general
@@ -507,18 +460,8 @@ impl Server {
                         }
                     }));
 
-                #[cfg(unix)]
-                let server_redirect = server_redirect.with_graceful_shutdown(
-                    signals::wait_for_signals(redirect_signals, grace_period, redirect_cancel_recv),
-                );
-                #[cfg(windows)]
-                let server_redirect = server_redirect.with_graceful_shutdown(async move {
-                    if general.windows_service {
-                        signals::wait_for_ctrl_c(redirect_cancel_recv, grace_period).await;
-                    } else {
-                        signals::wait_for_ctrl_c(redirect_ctrlc_recv, grace_period).await;
-                    }
-                });
+                let server_redirect = server_redirect
+                    .with_graceful_shutdown(shutdown.wait_for_shutdown(grace_period));
 
                 // HTTP/2 server task
                 let server_task = tokio::spawn(async move {
@@ -538,20 +481,11 @@ impl Server {
 
                 server_info!("press ctrl+c to shut down the servers");
 
-                #[cfg(windows)]
-                tokio::try_join!(ctrlc_task, server_task, redirect_server_task)?;
-                #[cfg(unix)]
                 tokio::try_join!(server_task, redirect_server_task)?;
-
-                #[cfg(unix)]
-                redirect_handle.close();
             } else {
                 server_info!("press ctrl+c to shut down the server");
                 http2_server.await?;
             }
-
-            #[cfg(unix)]
-            handle.close();
 
             #[cfg(windows)]
             _cancel_fn();
@@ -562,12 +496,6 @@ impl Server {
 
         // HTTP/1
 
-        #[cfg(unix)]
-        let signals =
-            signals::create_signals().with_context(|| "failed to register termination signals")?;
-        #[cfg(unix)]
-        let handle = signals.handle();
-
         tcp_listener
             .set_nonblocking(true)
             .with_context(|| "failed to set TCP non-blocking mode")?;
@@ -577,29 +505,8 @@ impl Server {
             .tcp_nodelay(true)
             .serve(router_service);
 
-        #[cfg(unix)]
-        let http1_cancel_recv = Arc::new(Mutex::new(_cancel_recv));
-
-        #[cfg(unix)]
-        let http1_server = http1_server.with_graceful_shutdown(signals::wait_for_signals(
-            signals,
-            grace_period,
-            http1_cancel_recv,
-        ));
-
-        #[cfg(windows)]
-        let http1_cancel_recv = Arc::new(Mutex::new(_cancel_recv));
-        #[cfg(windows)]
-        let http1_ctrlc_recv = Arc::new(Mutex::new(Some(receiver)));
-
-        #[cfg(windows)]
-        let http1_server = http1_server.with_graceful_shutdown(async move {
-            if general.windows_service {
-                signals::wait_for_ctrl_c(http1_cancel_recv, grace_period).await;
-            } else {
-                signals::wait_for_ctrl_c(http1_ctrlc_recv, grace_period).await;
-            }
-        });
+        let http1_server =
+            http1_server.with_graceful_shutdown(shutdown.wait_for_shutdown(grace_period));
 
         server_info!(
             parent: tracing::info_span!("Server::start_server", ?addr_str, ?threads),
@@ -613,9 +520,6 @@ impl Server {
 
         #[cfg(windows)]
         _cancel_fn();
-
-        #[cfg(unix)]
-        handle.close();
 
         server_warn!("termination signal caught, shutting down the server execution");
         Ok(())
