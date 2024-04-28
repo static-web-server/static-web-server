@@ -20,7 +20,7 @@ use std::io;
 use std::path::Path;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use crate::{http_ext::MethodExt, Context, Result};
+use crate::{handler::RequestHandlerOpts, http_ext::MethodExt, Context, Result};
 
 #[derive(Debug, Serialize, Deserialize, Clone, ValueEnum)]
 #[serde(rename_all = "lowercase")]
@@ -48,6 +48,21 @@ pub struct DirListOpts<'a> {
     pub dir_listing_format: &'a DirListFmt,
     /// Ignore hidden files (dotfiles).
     pub ignore_hidden_files: bool,
+}
+
+/// Initializes directory listings.
+pub fn init(enabled: bool, order: u8, format: DirListFmt, handler_opts: &mut RequestHandlerOpts) {
+    handler_opts.dir_listing = enabled;
+    server_info!("directory listing: enabled={enabled}");
+
+    handler_opts.dir_listing_order = order;
+    server_info!("directory listing order code: {order}");
+
+    handler_opts.dir_listing_format = format;
+    server_info!(
+        "directory listing format: {:?}",
+        handler_opts.dir_listing_format
+    );
 }
 
 /// Provides directory listing support for the current request.
