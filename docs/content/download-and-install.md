@@ -35,6 +35,16 @@ Via [Yay](https://github.com/Jguer/yay) or your favorite AUR Helper.
 yay -S static-web-server-bin
 ```
 
+### Exherbo Linux
+
+Add the `rust` repository and install [the package](https://gitlab.exherbo.org/exherbo/rust/-/tree/master/packages/www-servers/static-web-server) through `cave`:
+
+```
+cave sync
+cave resolve -x repository/rust
+cave resolve -x static-web-server
+```
+
 ### NixOS
 
 Via [Nix](https://github.com/NixOS/nix) (Linux/MacOS)
