@@ -334,7 +334,13 @@ impl Server {
         let shutdown = Shutdown::new();
         if let Some(cancel_recv) = cancel_recv {
             shutdown.listen_to(cancel_recv);
-        } else {
+        }
+
+        #[cfg(windows)]
+        let listen_to_signals = !general.windows_service;
+        #[cfg(not(windows))]
+        let listen_to_signals = true;
+        if listen_to_signals {
             shutdown.listen_to_signals();
         }
 
