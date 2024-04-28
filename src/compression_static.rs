@@ -16,7 +16,7 @@ use std::{
 
 use crate::{
     compression, handler::RequestHandlerOpts, headers_ext::ContentCoding,
-    static_files::file_metadata,
+    static_files::file_metadata, Error,
 };
 
 /// It defines the pre-compressed file variant metadata of a particular file path.
@@ -39,10 +39,10 @@ pub fn init(enabled: bool, handler_opts: &mut RequestHandlerOpts) {
 pub(crate) fn post_process(
     opts: &RequestHandlerOpts,
     _req: &Request<Body>,
-    resp: &mut Response<Body>,
-) {
+    mut resp: Response<Body>,
+) -> Result<Response<Body>, Error> {
     if !opts.compression_static {
-        return;
+        return Ok(resp);
     }
 
     // Compression content encoding varies so use a `Vary` header
@@ -50,6 +50,8 @@ pub(crate) fn post_process(
         hyper::header::VARY,
         HeaderValue::from_name(hyper::header::ACCEPT_ENCODING),
     );
+
+    Ok(resp)
 }
 
 /// Search for the pre-compressed variant of the given file path.
