@@ -13,7 +13,7 @@ use std::path::Path;
 
 use crate::{handler::RequestHandlerOpts, helpers, http_ext::MethodExt, Error};
 
-/// Initializes fallpack page processing
+/// Initializes fallback page processing
 pub(crate) fn init(path: &Path, handler_opts: &mut RequestHandlerOpts) {
     handler_opts.page_fallback = helpers::read_bytes_default(path);
 
