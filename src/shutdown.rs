@@ -3,7 +3,7 @@
 // See https://static-web-server.net/ for more information
 // Copyright (C) 2019-present Jose Quintana <joseluisq.net>
 
-/// Graceful shutdown handling
+//! Graceful shutdown handling
 use std::future::Future;
 use tokio::sync::watch::{channel, Receiver, Sender};
 use tokio::time::{sleep, Duration};
