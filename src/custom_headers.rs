@@ -9,23 +9,24 @@
 use hyper::{Body, Request, Response};
 use std::{ffi::OsStr, path::PathBuf};
 
-use crate::{handler::RequestHandlerOpts, settings::Headers};
+use crate::{handler::RequestHandlerOpts, settings::Headers, Error};
 
 /// Appends custom HTTP headers to a response if necessary
 pub(crate) fn post_process(
     opts: &RequestHandlerOpts,
     req: &Request<Body>,
-    resp: &mut Response<Body>,
+    mut resp: Response<Body>,
     file_path: Option<&PathBuf>,
-) {
+) -> Result<Response<Body>, Error> {
     if let Some(advanced) = &opts.advanced_opts {
         append_headers(
             req.uri().path(),
             advanced.headers.as_deref(),
-            resp,
+            &mut resp,
             file_path,
         )
     }
+    Ok(resp)
 }
 
 /// Append custom HTTP headers to current response.

@@ -26,6 +26,9 @@ use {
     hyper::service::{make_service_fn, service_fn},
 };
 
+#[cfg(feature = "fallback-page")]
+use crate::fallback_page;
+
 #[cfg(any(
     feature = "compression",
     feature = "compression-deflate",
@@ -211,26 +214,6 @@ impl Server {
             );
         }
 
-        // Fallback page option
-        #[cfg(feature = "fallback-page")]
-        let page_fallback_pbuf = general.page_fallback;
-        #[cfg(feature = "fallback-page")]
-        let page_fallback = helpers::read_bytes_default(&page_fallback_pbuf);
-        #[cfg(feature = "fallback-page")]
-        {
-            let page_fallback_enabled = !page_fallback.is_empty();
-            let mut page_fallback_opt = "";
-            if page_fallback_enabled {
-                page_fallback_opt = page_fallback_pbuf.to_str().unwrap()
-            }
-
-            server_info!(
-                "fallback page: enabled={}, value=\"{}\"",
-                page_fallback_enabled,
-                page_fallback_opt
-            );
-        }
-
         // Directory listing options
         #[cfg(feature = "directory-listing")]
         let dir_listing = general.directory_listing;
@@ -292,8 +275,6 @@ impl Server {
             dir_listing_format,
             page404: page404.clone(),
             page50x: page50x.clone(),
-            #[cfg(feature = "fallback-page")]
-            page_fallback,
             log_remote_address,
             redirect_trailing_slash,
             ignore_hidden_files,
@@ -301,6 +282,10 @@ impl Server {
             advanced_opts,
             ..Default::default()
         };
+
+        // Fallback page option
+        #[cfg(feature = "fallback-page")]
+        fallback_page::init(&general.page_fallback, &mut handler_opts);
 
         // Health endpoint option
         health::init(general.health, &mut handler_opts);
