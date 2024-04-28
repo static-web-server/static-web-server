@@ -7,10 +7,7 @@
 
 use hyper::StatusCode;
 use percent_encoding::percent_decode_str;
-use std::{
-    borrow::Cow,
-    path::{Component, Path, PathBuf},
-};
+use std::path::{Component, Path, PathBuf};
 
 /// SWS Path extensions trait.
 pub(crate) trait PathExt {
@@ -30,20 +27,29 @@ impl PathExt for Path {
     }
 }
 
-fn decode_tail_path(tail: &str) -> Result<Cow<'_, str>, StatusCode> {
-    match percent_decode_str(tail.trim_start_matches('/')).decode_utf8() {
-        Ok(p) => Ok(p),
-        Err(err) => {
-            tracing::debug!("dir: failed to decode route={:?}: {:?}", tail, err);
-            Err(StatusCode::UNSUPPORTED_MEDIA_TYPE)
-        }
-    }
+#[cfg(unix)]
+fn path_from_bytes(bytes: &[u8]) -> PathBuf {
+    use std::ffi::OsStr;
+    use std::os::unix::ffi::OsStrExt;
+
+    OsStr::from_bytes(bytes).into()
+}
+
+#[cfg(windows)]
+fn path_from_bytes(bytes: &[u8]) -> PathBuf {
+    // This should really be OsStr::from_encoded_bytes_unchecked() but it’s
+    // unsafe. With this fallback non-Unicode file names will result in 404.
+    String::from_utf8_lossy(bytes).into_owned().into()
+}
+
+fn decode_tail_path(tail: &str) -> PathBuf {
+    let bytes = percent_decode_str(tail.trim_start_matches('/')).collect::<Vec<_>>();
+    path_from_bytes(&bytes)
 }
 
 /// Sanitizes a base/tail paths and then it returns an unified one.
 pub(crate) fn sanitize_path(base: &Path, tail: &str) -> Result<PathBuf, StatusCode> {
-    let path_decoded = decode_tail_path(tail)?;
-    let path_decoded = Path::new(&*path_decoded);
+    let path_decoded = decode_tail_path(tail);
     let mut full_path = base.to_path_buf();
     tracing::trace!("dir: base={:?}, route={:?}", full_path, path_decoded);
 
