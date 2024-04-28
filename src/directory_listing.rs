@@ -13,7 +13,7 @@ use headers::{ContentLength, ContentType, HeaderMapExt};
 use humansize::FormatSize;
 use hyper::{Body, Method, Response, StatusCode};
 use mime_guess::mime;
-use percent_encoding::{percent_decode_str, utf8_percent_encode, NON_ALPHANUMERIC};
+use percent_encoding::{percent_decode_str, utf8_percent_encode, AsciiSet, NON_ALPHANUMERIC};
 use serde::{Serialize, Serializer};
 use std::future::Future;
 use std::io;
@@ -21,6 +21,21 @@ use std::path::Path;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::{http_ext::MethodExt, Context, Result};
+
+/// Non-alphanumeric characters to be percent-encoded
+/// excluding the "unreserved marks" because allowed in a URI.
+/// See https://www.ietf.org/rfc/rfc2396.txt
+const PERCENT_ENCODE_SET: &AsciiSet = &NON_ALPHANUMERIC
+    .remove(b'_')
+    .remove(b'-')
+    .remove(b'!')
+    .remove(b'.')
+    .remove(b'(')
+    .remove(b')')
+    .remove(b'*')
+    .remove(b'/')
+    .remove(b'\'')
+    .remove(b'~');
 
 #[derive(Debug, Serialize, Deserialize, Clone, ValueEnum)]
 #[serde(rename_all = "lowercase")]
@@ -75,9 +90,7 @@ pub fn auto_index(
                 opts.dir_listing_order,
                 opts.dir_listing_format,
                 opts.ignore_hidden_files,
-            )
-            .await
-            {
+            ) {
                 Ok(resp) => Ok(resp),
                 Err(err) => {
                     tracing::error!("error after try to read directory entries: {:?}", err);
@@ -131,15 +144,13 @@ enum FileType {
 #[derive(Serialize)]
 struct FileEntry {
     name: String,
-    #[serde(skip_serializing)]
-    name_encoded: String,
     #[serde(serialize_with = "serialize_mtime")]
     mtime: Option<DateTime<Local>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     size: Option<u64>,
     r#type: FileType,
     #[serde(skip_serializing)]
-    uri: Option<String>,
+    uri: String,
 }
 
 impl FileEntry {
@@ -157,7 +168,7 @@ struct SortingAttr<'a> {
 
 /// It reads a list of directory entries and create an index page content.
 /// Otherwise it returns a status error.
-async fn read_dir_entries(
+fn read_dir_entries(
     dir_reader: std::fs::ReadDir,
     base_path: &str,
     uri_query: Option<&str>,
@@ -183,17 +194,11 @@ async fn read_dir_entries(
             }
         };
 
-        let name = match dir_entry
-            .file_name()
-            .into_string()
-            .map_err(|err| anyhow::anyhow!(err.into_string().unwrap_or_default()))
-        {
-            Ok(s) => s,
-            Err(err) => {
-                tracing::error!(
-                    "unable to resolve name for file or directory entry (skipped): {:?}",
-                    err
-                );
+        let entry_name = dir_entry.file_name();
+        let name = match entry_name.to_str() {
+            Some(s) => s.to_owned(),
+            None => {
+                tracing::error!("unable to resolve name for file or directory entry (skipped)");
                 continue;
             }
         };
@@ -203,11 +208,11 @@ async fn read_dir_entries(
             continue;
         }
 
-        let mut name_encoded = utf8_percent_encode(&name, NON_ALPHANUMERIC).to_string();
+        let mut uri = name.clone();
         let mut size = None;
 
         if meta.is_dir() {
-            name_encoded.push('/');
+            uri.push('/');
             dirs_count += 1;
         } else if meta.is_file() {
             size = Some(meta.len());
@@ -241,7 +246,7 @@ async fn read_dir_entries(
                 }
             };
             if symlink_meta.is_dir() {
-                name_encoded.push('/');
+                uri.push('/');
                 dirs_count += 1;
             } else {
                 size = Some(meta.len());
@@ -251,7 +256,6 @@ async fn read_dir_entries(
             continue;
         }
 
-        let mut uri = None;
         // NOTE: Use relative paths by default independently of
         // the "redirect trailing slash" feature.
         // However, when "redirect trailing slash" is disabled
@@ -259,7 +263,7 @@ async fn read_dir_entries(
         // entries should contain the "parent/entry-name" as a link format.
         // Otherwise, we just use the "entry-name" as a link (default behavior).
         // Note that in both cases, we add a trailing slash if the entry is a directory.
-        if !base_path.ends_with('/') {
+        let uri = if !base_path.ends_with('/') {
             let base_path = Path::new(base_path);
             let parent_dir = base_path.parent().unwrap_or(base_path);
             let mut base_dir = base_path;
@@ -286,9 +290,11 @@ async fn read_dir_entries(
                 base_str.push('/');
             }
 
-            base_str.push_str(&name_encoded);
-            uri = Some(base_str);
-        }
+            base_str.push_str(&uri);
+            base_str
+        } else {
+            uri
+        };
 
         let mtime = match parse_last_modified(meta.modified()?) {
             Ok(local_dt) => Some(local_dt),
@@ -303,14 +309,15 @@ async fn read_dir_entries(
             FileType::File
         };
 
-        file_entries.push(FileEntry {
+        let uri = utf8_percent_encode(&uri, PERCENT_ENCODE_SET).to_string();
+        let entry = FileEntry {
             name,
-            name_encoded,
             mtime,
             size,
             r#type,
             uri,
-        });
+        };
+        file_entries.push(entry);
     }
 
     // Check the query request uri for a sorting type. E.g https://blah/?sort=5
@@ -467,7 +474,7 @@ fn html_auto_index<'a>(
                     @for entry in entries {
                         tr {
                             td {
-                                a href=(entry.uri.as_ref().unwrap_or(&entry.name_encoded)) {
+                                a href=(entry.uri) {
                                     (entry.name)
                                     @if entry.is_dir() {
                                         "/"
