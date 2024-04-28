@@ -23,18 +23,12 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use crate::{http_ext::MethodExt, Context, Result};
 
 /// Non-alphanumeric characters to be percent-encoded
-/// excluding the "unreserved marks" because allowed in a URI.
-/// See https://www.ietf.org/rfc/rfc2396.txt
+/// excluding the "unreserved characters" because allowed in a URI.
+/// See 2.3.  Unreserved Characters - https://www.ietf.org/rfc/rfc3986.txt
 const PERCENT_ENCODE_SET: &AsciiSet = &NON_ALPHANUMERIC
     .remove(b'_')
     .remove(b'-')
-    .remove(b'!')
     .remove(b'.')
-    .remove(b'(')
-    .remove(b')')
-    .remove(b'*')
-    .remove(b'/')
-    .remove(b'\'')
     .remove(b'~');
 
 #[derive(Debug, Serialize, Deserialize, Clone, ValueEnum)]
@@ -144,13 +138,15 @@ enum FileType {
 #[derive(Serialize)]
 struct FileEntry {
     name: String,
+    #[serde(skip_serializing)]
+    name_encoded: String,
     #[serde(serialize_with = "serialize_mtime")]
     mtime: Option<DateTime<Local>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     size: Option<u64>,
     r#type: FileType,
     #[serde(skip_serializing)]
-    uri: String,
+    uri: Option<String>,
 }
 
 impl FileEntry {
@@ -194,11 +190,18 @@ fn read_dir_entries(
             }
         };
 
-        let entry_name = dir_entry.file_name();
-        let name = match entry_name.to_str() {
-            Some(s) => s.to_owned(),
-            None => {
-                tracing::error!("unable to resolve name for file or directory entry (skipped)");
+        // FIXME: handle non-Unicode file names properly via OsString
+        let name = match dir_entry
+            .file_name()
+            .into_string()
+            .map_err(|err| anyhow::anyhow!(err.into_string().unwrap_or_default()))
+        {
+            Ok(s) => s,
+            Err(err) => {
+                tracing::error!(
+                    "unable to resolve name for file or directory entry (skipped): {:?}",
+                    err
+                );
                 continue;
             }
         };
@@ -208,11 +211,11 @@ fn read_dir_entries(
             continue;
         }
 
-        let mut uri = name.clone();
+        let mut name_encoded = utf8_percent_encode(&name, PERCENT_ENCODE_SET).to_string();
         let mut size = None;
 
         if meta.is_dir() {
-            uri.push('/');
+            name_encoded.push('/');
             dirs_count += 1;
         } else if meta.is_file() {
             size = Some(meta.len());
@@ -246,7 +249,7 @@ fn read_dir_entries(
                 }
             };
             if symlink_meta.is_dir() {
-                uri.push('/');
+                name_encoded.push('/');
                 dirs_count += 1;
             } else {
                 size = Some(meta.len());
@@ -256,6 +259,7 @@ fn read_dir_entries(
             continue;
         }
 
+        let mut uri = None;
         // NOTE: Use relative paths by default independently of
         // the "redirect trailing slash" feature.
         // However, when "redirect trailing slash" is disabled
@@ -263,7 +267,7 @@ fn read_dir_entries(
         // entries should contain the "parent/entry-name" as a link format.
         // Otherwise, we just use the "entry-name" as a link (default behavior).
         // Note that in both cases, we add a trailing slash if the entry is a directory.
-        let uri = if !base_path.ends_with('/') {
+        if !base_path.ends_with('/') {
             let base_path = Path::new(base_path);
             let parent_dir = base_path.parent().unwrap_or(base_path);
             let mut base_dir = base_path;
@@ -290,11 +294,9 @@ fn read_dir_entries(
                 base_str.push('/');
             }
 
-            base_str.push_str(&uri);
-            base_str
-        } else {
-            uri
-        };
+            base_str.push_str(&name_encoded);
+            uri = Some(base_str);
+        }
 
         let mtime = match parse_last_modified(meta.modified()?) {
             Ok(local_dt) => Some(local_dt),
@@ -309,15 +311,14 @@ fn read_dir_entries(
             FileType::File
         };
 
-        let uri = utf8_percent_encode(&uri, PERCENT_ENCODE_SET).to_string();
-        let entry = FileEntry {
+        file_entries.push(FileEntry {
             name,
+            name_encoded,
             mtime,
             size,
             r#type,
             uri,
-        };
-        file_entries.push(entry);
+        });
     }
 
     // Check the query request uri for a sorting type. E.g https://blah/?sort=5
@@ -474,7 +475,7 @@ fn html_auto_index<'a>(
                     @for entry in entries {
                         tr {
                             td {
-                                a href=(entry.uri) {
+                                a href=(entry.uri.as_ref().unwrap_or(&entry.name_encoded)) {
                                     (entry.name)
                                     @if entry.is_dir() {
                                         "/"
