@@ -11,7 +11,7 @@ use http::header::{
 };
 use hyper::{Body, Request, Response};
 
-use crate::handler::RequestHandlerOpts;
+use crate::{handler::RequestHandlerOpts, Error};
 
 pub(crate) fn init(enabled: bool, handler_opts: &mut RequestHandlerOpts) {
     handler_opts.security_headers = enabled;
@@ -22,11 +22,12 @@ pub(crate) fn init(enabled: bool, handler_opts: &mut RequestHandlerOpts) {
 pub(crate) fn post_process(
     opts: &RequestHandlerOpts,
     _req: &Request<Body>,
-    resp: &mut Response<Body>,
-) {
+    mut resp: Response<Body>,
+) -> Result<Response<Body>, Error> {
     if opts.security_headers {
-        append_headers(resp);
+        append_headers(&mut resp);
     }
+    Ok(resp)
 }
 
 /// It appends security headers like `Strict-Transport-Security: max-age=63072000; includeSubDomains; preload` (2 years max-age),
