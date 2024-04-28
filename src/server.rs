@@ -26,6 +26,8 @@ use {
     hyper::service::{make_service_fn, service_fn},
 };
 
+#[cfg(feature = "directory-listing")]
+use crate::directory_listing;
 #[cfg(feature = "fallback-page")]
 use crate::fallback_page;
 
@@ -214,26 +216,6 @@ impl Server {
             );
         }
 
-        // Directory listing options
-        #[cfg(feature = "directory-listing")]
-        let dir_listing = general.directory_listing;
-        #[cfg(feature = "directory-listing")]
-        server_info!("directory listing: enabled={}", dir_listing);
-        // Directory listing order number
-        #[cfg(feature = "directory-listing")]
-        let dir_listing_order = general.directory_listing_order;
-        #[cfg(feature = "directory-listing")]
-        server_info!("directory listing order code: {}", dir_listing_order);
-        // Directory listing format
-        #[cfg(feature = "directory-listing")]
-        let dir_listing_format = general.directory_listing_format;
-        #[cfg(feature = "directory-listing")]
-        server_info!("directory listing format: {:?}", dir_listing_format);
-
-        // Cache control headers option
-        let cache_control_headers = general.cache_control_headers;
-        server_info!("cache control headers: enabled={}", cache_control_headers);
-
         // Log remote address option
         let log_remote_address = general.log_remote_address;
         server_info!("log remote address: enabled={}", log_remote_address);
@@ -267,12 +249,6 @@ impl Server {
         // Request handler options, some settings will be filled in by modules
         let mut handler_opts = RequestHandlerOpts {
             root_dir,
-            #[cfg(feature = "directory-listing")]
-            dir_listing,
-            #[cfg(feature = "directory-listing")]
-            dir_listing_order,
-            #[cfg(feature = "directory-listing")]
-            dir_listing_format,
             page404: page404.clone(),
             page50x: page50x.clone(),
             log_remote_address,
@@ -282,6 +258,15 @@ impl Server {
             advanced_opts,
             ..Default::default()
         };
+
+        // Directory listing options
+        #[cfg(feature = "directory-listing")]
+        directory_listing::init(
+            general.directory_listing,
+            general.directory_listing_order,
+            general.directory_listing_format,
+            &mut handler_opts,
+        );
 
         // Fallback page option
         #[cfg(feature = "fallback-page")]
