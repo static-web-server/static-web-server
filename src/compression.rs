@@ -87,9 +87,9 @@ pub fn init(enabled: bool, handler_opts: &mut RequestHandlerOpts) {
 }
 
 /// Post-processing to dynamically compress the response if necessary.
-pub(crate) fn post_process(
+pub(crate) fn post_process<T>(
     opts: &RequestHandlerOpts,
-    req: &Request<Body>,
+    req: &Request<T>,
     mut resp: Response<Body>,
 ) -> Result<Response<Body>, Error> {
     if !opts.compression {

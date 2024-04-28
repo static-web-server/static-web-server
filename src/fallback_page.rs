@@ -25,9 +25,9 @@ pub(crate) fn init(path: &Path, handler_opts: &mut RequestHandlerOpts) {
 }
 
 /// Replace 404 Not Found by the configured fallback page
-pub(crate) fn post_process(
+pub(crate) fn post_process<T>(
     opts: &RequestHandlerOpts,
-    req: &Request<Body>,
+    req: &Request<T>,
     resp: Response<Body>,
 ) -> Result<Response<Body>, Error> {
     Ok(

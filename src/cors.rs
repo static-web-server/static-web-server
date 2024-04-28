@@ -394,9 +394,9 @@ pub(crate) fn init(
 }
 
 /// Rejects requests with wrong CORS headers
-pub(crate) fn pre_process(
+pub(crate) fn pre_process<T>(
     opts: &RequestHandlerOpts,
-    req: &Request<Body>,
+    req: &Request<T>,
 ) -> Option<Result<Response<Body>, Error>> {
     let cors = opts.cors.as_ref()?;
     match cors.check_request(req.method(), req.headers()) {
@@ -418,9 +418,9 @@ pub(crate) fn pre_process(
 }
 
 /// Adds CORS headers to response
-pub(crate) fn post_process(
+pub(crate) fn post_process<T>(
     opts: &RequestHandlerOpts,
-    req: &Request<Body>,
+    req: &Request<T>,
     mut resp: Response<Body>,
 ) -> Result<Response<Body>, Error> {
     if let Some(cors) = opts.cors.as_ref() {
