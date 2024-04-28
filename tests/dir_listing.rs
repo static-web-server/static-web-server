@@ -213,7 +213,7 @@ mod tests {
 
                     assert_eq!(
                         body_str.contains(
-                            r#"<a href="sp%C3%A9cial%20direct%C3%B6ry/">spécial directöry/</a>"#
+                            r#"<a href="sp%C3%A9cial-direct%C3%B6ry.net/">spécial-directöry.net/</a>"#
                         ),
                         method == Method::GET
                     );
@@ -269,7 +269,7 @@ mod tests {
                         assert_eq!(entries.len(), 3);
 
                         let first_entry = entries.first().unwrap();
-                        assert_eq!(first_entry.name, "spécial directöry");
+                        assert_eq!(first_entry.name, "spécial-directöry.net");
                         assert_eq!(first_entry.typed, "directory");
                         assert!(!first_entry.mtime.is_empty());
                         assert!(first_entry.size.is_none());
