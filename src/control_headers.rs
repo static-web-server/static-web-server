@@ -9,7 +9,7 @@
 
 use hyper::{Body, Request, Response};
 
-use crate::handler::RequestHandlerOpts;
+use crate::{handler::RequestHandlerOpts, Error};
 
 // Cache-Control `max-age` variants
 const MAX_AGE_ONE_HOUR: u64 = 60 * 60;
@@ -33,11 +33,12 @@ pub(crate) fn init(enabled: bool, handler_opts: &mut RequestHandlerOpts) {
 pub(crate) fn post_process(
     opts: &RequestHandlerOpts,
     req: &Request<Body>,
-    resp: &mut Response<Body>,
-) {
+    mut resp: Response<Body>,
+) -> Result<Response<Body>, Error> {
     if opts.cache_control_headers {
-        append_headers(req.uri().path(), resp);
+        append_headers(req.uri().path(), &mut resp);
     }
+    Ok(resp)
 }
 
 /// It appends a `Cache-Control` header to a response if that one is part of a set of file types.

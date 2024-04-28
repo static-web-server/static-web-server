@@ -251,7 +251,7 @@ impl RequestHandler {
             let index_files = index_files.as_ref();
 
             // Static files
-            let (mut resp, file_path) = match static_files::handle(&HandleOpts {
+            let (resp, file_path) = match static_files::handle(&HandleOpts {
                 method: req.method(),
                 headers: req.headers(),
                 base_path,
@@ -271,33 +271,24 @@ impl RequestHandler {
             .await
             {
                 Ok(result) => (result.resp, Some(result.file_path)),
-                Err(status) => {
-                    // Produce an error response by default
-                    let resp = error_page::error_response(
+                Err(status) => (
+                    error_page::error_response(
                         req.uri(),
                         req.method(),
                         &status,
                         &self.opts.page404,
                         &self.opts.page50x,
-                    )?;
-
-                    // Check for a fallback response
-                    #[cfg(feature = "fallback-page")]
-                    let resp = if req.method().is_get()
-                        && status == StatusCode::NOT_FOUND
-                        && !self.opts.page_fallback.is_empty()
-                    {
-                        fallback_page::fallback_response(&self.opts.page_fallback)
-                    } else {
-                        resp
-                    };
-
-                    (resp, None)
-                }
+                    )?,
+                    None,
+                ),
             };
 
+            // Check for a fallback response
+            #[cfg(feature = "fallback-page")]
+            let resp = fallback_page::post_process(&self.opts, req, resp)?;
+
             // Append CORS headers if they are present
-            cors::post_process(&self.opts, req, &mut resp);
+            let resp = cors::post_process(&self.opts, req, resp)?;
 
             // Add a `Vary` header if static compression is used
             #[cfg(any(
@@ -307,7 +298,7 @@ impl RequestHandler {
                 feature = "compression-zstd",
                 feature = "compression-deflate"
             ))]
-            compression_static::post_process(&self.opts, req, &mut resp);
+            let resp = compression_static::post_process(&self.opts, req, resp)?;
 
             // Auto compression based on the `Accept-Encoding` header
             #[cfg(any(
@@ -317,16 +308,16 @@ impl RequestHandler {
                 feature = "compression-zstd",
                 feature = "compression-deflate"
             ))]
-            let mut resp = compression::post_process(&self.opts, req, resp)?;
+            let resp = compression::post_process(&self.opts, req, resp)?;
 
             // Append `Cache-Control` headers for web assets
-            control_headers::post_process(&self.opts, req, &mut resp);
+            let resp = control_headers::post_process(&self.opts, req, resp)?;
 
             // Append security headers
-            security_headers::post_process(&self.opts, req, &mut resp);
+            let resp = security_headers::post_process(&self.opts, req, resp)?;
 
             // Add/update custom headers
-            custom_headers::post_process(&self.opts, req, &mut resp, file_path.as_ref());
+            let resp = custom_headers::post_process(&self.opts, req, resp, file_path.as_ref())?;
 
             Ok(resp)
         }

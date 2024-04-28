@@ -421,8 +421,8 @@ pub(crate) fn pre_process(
 pub(crate) fn post_process(
     opts: &RequestHandlerOpts,
     req: &Request<Body>,
-    resp: &mut Response<Body>,
-) {
+    mut resp: Response<Body>,
+) -> Result<Response<Body>, Error> {
     if let Some(cors) = opts.cors.as_ref() {
         if let Ok((headers, _)) = cors.check_request(req.method(), req.headers()) {
             if !headers.is_empty() {
@@ -433,6 +433,7 @@ pub(crate) fn post_process(
             }
         }
     }
+    Ok(resp)
 }
 
 #[cfg(test)]
@@ -478,7 +479,7 @@ mod tests {
     }
 
     #[test]
-    fn test_cors_disabled() {
+    fn test_cors_disabled() -> Result<(), Error> {
         let opts = RequestHandlerOpts {
             cors: None,
             ..Default::default()
@@ -487,13 +488,14 @@ mod tests {
 
         assert!(pre_process(&opts, &req).is_none());
 
-        let mut resp = make_response();
-        post_process(&opts, &req, &mut resp);
+        let resp = post_process(&opts, &req, make_response())?;
         assert_eq!(get_allowed_origin(resp), None);
+
+        Ok(())
     }
 
     #[test]
-    fn test_non_cors_request() {
+    fn test_non_cors_request() -> Result<(), Error> {
         let opts = RequestHandlerOpts {
             cors: make_cors_config(),
             ..Default::default()
@@ -502,9 +504,10 @@ mod tests {
 
         assert!(pre_process(&opts, &req).is_none());
 
-        let mut resp = make_response();
-        post_process(&opts, &req, &mut resp);
+        let resp = post_process(&opts, &req, make_response())?;
         assert_eq!(get_allowed_origin(resp), None);
+
+        Ok(())
     }
 
     #[test]
@@ -539,7 +542,7 @@ mod tests {
     }
 
     #[test]
-    fn test_allowed_request() {
+    fn test_allowed_request() -> Result<(), Error> {
         let opts = RequestHandlerOpts {
             cors: make_cors_config(),
             ..Default::default()
@@ -548,8 +551,7 @@ mod tests {
         let req = make_request("GET", "https://example.com");
         assert!(pre_process(&opts, &req).is_none());
 
-        let mut resp = make_response();
-        post_process(&opts, &req, &mut resp);
+        let resp = post_process(&opts, &req, make_response())?;
         assert_eq!(get_allowed_origin(resp), Some("https://example.com".into()));
 
         let mut req = make_request("GET", "https://example.com");
@@ -561,8 +563,9 @@ mod tests {
         );
         assert!(pre_process(&opts, &req).is_none());
 
-        let mut resp = make_response();
-        post_process(&opts, &req, &mut resp);
+        let resp = post_process(&opts, &req, make_response())?;
         assert_eq!(get_allowed_origin(resp), Some("https://example.com".into()));
+
+        Ok(())
     }
 }
