@@ -562,7 +562,7 @@ fn format_file_size(size: u64) -> String {
 
     if size_tmp < 1024 {
         // return the size with Byte
-        return format!("{} {}", size_tmp, "B");
+        return format!("{} {}", size_tmp, UNITS[0]);
     }
 
     for unit in &UNITS[1..UNITS.len() - 1] {
