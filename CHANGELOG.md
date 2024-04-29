@@ -7,6 +7,55 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _**Note:** See changelog for v1 under the [1.x](https://github.com/static-web-server/static-web-server/blob/1.x/CHANGELOG.md) branch._
 
+## v2.30.0 - 2024-04-29
+
+This new `v2.30.0` release brings security and dependency updates as well as several bug fixes. Overall performance improvements (directory listing particularly), continuous HTTP load testing benchmarks, project refactorings for increased stability, security and correctness as well as several other improvements.
+
+__Fixes__
+
+- [6683446](https://github.com/static-web-server/static-web-server/commit/6683446) Bugfix/security dependency updates including rustls, tokio, async-compression, regex, chrono, clap and other crates (also [8cfc7ed](https://github.com/static-web-server/static-web-server/commit/8cfc7ed), [a876cd5](https://github.com/static-web-server/static-web-server/commit/a876cd5), [69bfdd4](https://github.com/static-web-server/static-web-server/commit/69bfdd4)).
+- [c04357e](https://github.com/static-web-server/static-web-server/commit/c04357e) Missing custom headers for directory requests (trailing slash). PR [#333](https://github.com/static-web-server/static-web-server/pull/333).
+- [1c4fad2](https://github.com/static-web-server/static-web-server/commit/1c4fad2) CORS does not work properly when used with Basic Auth. PR [#343](https://github.com/static-web-server/static-web-server/pull/343) by [@ms140569](https://github.com/ms140569).
+- [528ed08](https://github.com/static-web-server/static-web-server/commit/528ed08) Accept-Encoding handling does not work correctly if only two compression schemes are available. PR [#361](https://github.com/static-web-server/static-web-server/pull/361) by [@palant](https://github.com/palant).
+- [c8e39aa](https://github.com/static-web-server/static-web-server/commit/c8e39aa) Errors due to "unused code" when features are disabled. PR [#368](https://github.com/static-web-server/static-web-server/pull/368) by [@palant](https://github.com/palant).
+- [5d66301](https://github.com/static-web-server/static-web-server/commit/5d66301) Unreserved characters are percent-encoded in directory listing links. PR [#371](https://github.com/static-web-server/static-web-server/pull/371).
+- [114862a](https://github.com/static-web-server/static-web-server/commit/114862a) Malformed UTF-8 file names are not handled correctly. PR [#374](https://github.com/static-web-server/static-web-server/pull/374) by [@palant](https://github.com/palant).
+
+__Features__
+
+- [012ef11](https://github.com/static-web-server/static-web-server/commit/012ef11) Crate: Display platforms-specific documentation on docs.rs.
+- [a197f20](https://github.com/static-web-server/static-web-server/commit/a197f20) CI: Load testing benchmarks comparison for each commit via Github Actions. PR [#355](https://github.com/static-web-server/static-web-server/pull/355) by [@palant](https://github.com/palant).
+
+__Refactorings__
+
+- [a451a93](https://github.com/static-web-server/static-web-server/commit/a451a93) Improve performance when serving static files. PR [#334](https://github.com/static-web-server/static-web-server/pull/334).
+- [e569a71](https://github.com/static-web-server/static-web-server/commit/e569a71) Reduce some allocations in several modules. PR [#337](https://github.com/static-web-server/static-web-server/pull/337).
+- [183102d](https://github.com/static-web-server/static-web-server/commit/183102d) Build error when using specific or no Cargo compression features. PR [#339](https://github.com/static-web-server/static-web-server/pull/339).
+- [fe6a2a1](https://github.com/static-web-server/static-web-server/commit/fe6a2a1) Move health endpoint-related code into a separate file. PR [#344](https://github.com/static-web-server/static-web-server/pull/344) by [@palant](https://github.com/palant).
+- [cc6784a](https://github.com/static-web-server/static-web-server/commit/cc6784a) Move metrics endpoint-related code into a separate file. PR [#345](https://github.com/static-web-server/static-web-server/pull/345) by [@palant](https://github.com/palant).
+- [76531e6](https://github.com/static-web-server/static-web-server/commit/76531e6) Move all of Basic authentication logic into basic_auth module. PR [#346](https://github.com/static-web-server/static-web-server/pull/346) by [@palant](https://github.com/palant).
+- [d44e5a1](https://github.com/static-web-server/static-web-server/commit/d44e5a1) Move all redirect handling logic into the redirects module. PR [#348](https://github.com/static-web-server/static-web-server/pull/348) by [@palant](https://github.com/palant).
+- [e965933](https://github.com/static-web-server/static-web-server/commit/e965933) Move most of CORS-related code into the cors module. PR [#349](https://github.com/static-web-server/static-web-server/pull/349) by [@palant](https://github.com/palant).
+- [1246e37](https://github.com/static-web-server/static-web-server/commit/1246e37) Move most of maintenance mode logic into maintenance_mode module. PR [#350](https://github.com/static-web-server/static-web-server/pull/350) by [@palant](https://github.com/palant).
+- [941f692](https://github.com/static-web-server/static-web-server/commit/941f692) Move various code related to header handling to the respective modules. PR [#351](https://github.com/static-web-server/static-web-server/pull/351) by [@palant](https://github.com/palant).
+- [a13f496](https://github.com/static-web-server/static-web-server/commit/a13f496) Replaced fork of the headers module by an in-tree handler for the Accept-Encoding header. PR [#354](https://github.com/static-web-server/static-web-server/pull/354) by [@palant](https://github.com/palant).
+- [207fa4a](https://github.com/static-web-server/static-web-server/commit/207fa4a) Move all rewrite handling logic into the rewrites module. PR [#353](https://github.com/static-web-server/static-web-server/pull/353) by [@palant](https://github.com/palant).
+- [c3c55a4](https://github.com/static-web-server/static-web-server/commit/c3c55a4) Prefer querying available cpus using Rust std. PR [#358](https://github.com/static-web-server/static-web-server/pull/358).
+- [ddda871](https://github.com/static-web-server/static-web-server/commit/ddda871) Apply the usual post-processing to error responses for consistency. PR [#359](https://github.com/static-web-server/static-web-server/pull/359) by [@palant](https://github.com/palant).
+- [cfd1390](https://github.com/static-web-server/static-web-server/commit/cfd1390) Improve performance of directory listings. PR [#357](https://github.com/static-web-server/static-web-server/pull/357) by [@palant](https://github.com/palant).
+- [5a4035f](https://github.com/static-web-server/static-web-server/commit/5a4035f) Improve recognition of text MIME types for compression. PR [#360](https://github.com/static-web-server/static-web-server/pull/360) by [@palant](https://github.com/palant).
+- [b66c89e](https://github.com/static-web-server/static-web-server/commit/b66c89e) Move all compression-related code into compression and compression_static modules. PR [#369](https://github.com/static-web-server/static-web-server/pull/369) by [@palant](https://github.com/palant).
+- [5b5ea98](https://github.com/static-web-server/static-web-server/commit/5b5ea98) Use maud templates and serde_json for directory listings. PR [#367](https://github.com/static-web-server/static-web-server/pull/367) by [@palant](https://github.com/palant).
+- [f311e94](https://github.com/static-web-server/static-web-server/commit/f311e94) Move all fallback page logic into the corresponding module. PR [#372](https://github.com/static-web-server/static-web-server/pull/372) by [@palant](https://github.com/palant).
+- [7d61c91](https://github.com/static-web-server/static-web-server/commit/7d61c91) Move directory listing initialization into the corresponding module. PR [#373](https://github.com/static-web-server/static-web-server/pull/373) by [@palant](https://github.com/palant).
+
+__Docs__
+
+- [90b6032](https://github.com/static-web-server/static-web-server/commit/90b6032) Add Exherbo Linux install guide. PR [#331](https://github.com/static-web-server/static-web-server/pull/331) by [@davlgd](https://github.com/davlgd). See [docs](https://static-web-server.net/download-and-install/).
+- [f534f00](https://github.com/static-web-server/static-web-server/commit/f534f00) Fix typo in GitHub bug report template. PR [#341](https://github.com/static-web-server/static-web-server/pull/341) by [@palant](https://github.com/palant).
+
+For more details see [v2.30.0 milestone](https://github.com/static-web-server/static-web-server/milestone/17?closed=1) and the full changelog [v2.28.0...v2.30.0](https://github.com/static-web-server/static-web-server/compare/v2.28.0...v2.30.0).
+
 ## v2.28.0 - 2024-03-09
 
 This new `v2.28.0` release brings several dependency updates and bug fixes. Cancellation ability to shut down the server gracefully on demand when using the library, Docker examples and Windows Firewall instructions as well as other improvements.
