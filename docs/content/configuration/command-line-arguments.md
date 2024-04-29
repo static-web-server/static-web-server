@@ -151,10 +151,10 @@ Options:
           Compression level to apply for Gzip, Deflate, Brotli or Zstd compression
 
           [env: SERVER_COMPRESSION_LEVEL=]
-          [default: fastest]
+          [default: default]
 
           Possible values:
-          - fastest: Fastest execution at the expense of larger file sizes (recommended)
+          - fastest: Fastest execution at the expense of larger file sizes
           - best:    Smallest file size but potentially slow
           - default: Algorithm-specific default compression level setting
 

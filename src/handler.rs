@@ -54,7 +54,7 @@ pub struct RequestHandlerOpts {
         feature = "compression-deflate"
     ))]
     /// Compression level.
-    pub compression_level: async_compression::Level,
+    pub compression_level: crate::settings::CompressionLevel,
     /// Compression static feature.
     pub compression_static: bool,
     /// Directory listing feature.
@@ -124,7 +124,7 @@ impl Default for RequestHandlerOpts {
                 feature = "compression-zstd",
                 feature = "compression-deflate"
             ))]
-            compression_level: async_compression::Level::Fastest,
+            compression_level: crate::settings::CompressionLevel::Default,
             #[cfg(feature = "directory-listing")]
             dir_listing: false,
             #[cfg(feature = "directory-listing")]

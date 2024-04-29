@@ -66,7 +66,7 @@ impl LogLevel {
 #[serde(rename_all = "kebab-case")]
 /// Compression level settings.
 pub enum CompressionLevel {
-    /// Fastest execution at the expense of larger file sizes (recommended).
+    /// Fastest execution at the expense of larger file sizes.
     Fastest,
     /// Smallest file size but potentially slow.
     Best,
@@ -91,12 +91,14 @@ pub enum CompressionLevel {
         feature = "compression-deflate"
     )))
 )]
-impl From<CompressionLevel> for async_compression::Level {
-    fn from(level: CompressionLevel) -> Self {
-        match level {
-            CompressionLevel::Fastest => Self::Fastest,
-            CompressionLevel::Best => Self::Best,
-            CompressionLevel::Default => Self::Default,
+impl CompressionLevel {
+    /// Converts to a library-specific compression level specification, using
+    /// given numeric level as default.
+    pub fn into_algorithm_level(self, default: i32) -> async_compression::Level {
+        match self {
+            Self::Fastest => async_compression::Level::Fastest,
+            Self::Best => async_compression::Level::Best,
+            Self::Default => async_compression::Level::Precise(default),
         }
     }
 }

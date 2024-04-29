@@ -276,9 +276,9 @@ pub struct General {
             feature = "compression-deflate"
         )))
     )]
-    #[arg(long, default_value = "fastest", env = "SERVER_COMPRESSION_LEVEL")]
+    #[arg(long, default_value = "default", env = "SERVER_COMPRESSION_LEVEL")]
     /// Compression level to apply for Gzip, Deflate, Brotli or Zstd compression.
-    pub compression_level: super::file::CompressionLevel,
+    pub compression_level: super::CompressionLevel,
 
     #[cfg(any(
         feature = "compression",

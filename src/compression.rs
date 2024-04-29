@@ -37,7 +37,7 @@ use crate::{
     handler::RequestHandlerOpts,
     headers_ext::{AcceptEncoding, ContentCoding},
     http_ext::MethodExt,
-    settings::file::CompressionLevel,
+    settings::CompressionLevel,
     Error, Result,
 };
 
@@ -70,7 +70,7 @@ const AVAILABLE_ENCODINGS: &[ContentCoding] = &[
 /// Initializes dynamic compression.
 pub fn init(enabled: bool, level: CompressionLevel, handler_opts: &mut RequestHandlerOpts) {
     handler_opts.compression = enabled;
-    handler_opts.compression_level = level.into();
+    handler_opts.compression_level = level;
 
     const FORMATS: &[&str] = &[
         #[cfg(any(feature = "compression", feature = "compression-deflate"))]
@@ -132,7 +132,7 @@ pub(crate) fn post_process(
 pub fn auto(
     method: &Method,
     headers: &HeaderMap<HeaderValue>,
-    level: async_compression::Level,
+    level: CompressionLevel,
     resp: Response<Body>,
 ) -> Result<Response<Body>> {
     // Skip compression for HEAD and OPTIONS request methods
@@ -203,10 +203,13 @@ fn is_text(mime: Mime) -> bool {
 pub fn gzip(
     mut head: http::response::Parts,
     body: CompressableBody<Body, hyper::Error>,
-    level: async_compression::Level,
+    level: CompressionLevel,
 ) -> Response<Body> {
+    const DEFAULT_COMPRESSION_LEVEL: i32 = 4;
+
     tracing::trace!("compressing response body on the fly using GZIP");
 
+    let level = level.into_algorithm_level(DEFAULT_COMPRESSION_LEVEL);
     let body = Body::wrap_stream(ReaderStream::new(GzipEncoder::with_quality(
         StreamReader::new(body),
         level,
@@ -227,10 +230,13 @@ pub fn gzip(
 pub fn deflate(
     mut head: http::response::Parts,
     body: CompressableBody<Body, hyper::Error>,
-    level: async_compression::Level,
+    level: CompressionLevel,
 ) -> Response<Body> {
+    const DEFAULT_COMPRESSION_LEVEL: i32 = 4;
+
     tracing::trace!("compressing response body on the fly using DEFLATE");
 
+    let level = level.into_algorithm_level(DEFAULT_COMPRESSION_LEVEL);
     let body = Body::wrap_stream(ReaderStream::new(DeflateEncoder::with_quality(
         StreamReader::new(body),
         level,
@@ -254,10 +260,13 @@ pub fn deflate(
 pub fn brotli(
     mut head: http::response::Parts,
     body: CompressableBody<Body, hyper::Error>,
-    level: async_compression::Level,
+    level: CompressionLevel,
 ) -> Response<Body> {
+    const DEFAULT_COMPRESSION_LEVEL: i32 = 4;
+
     tracing::trace!("compressing response body on the fly using BROTLI");
 
+    let level = level.into_algorithm_level(DEFAULT_COMPRESSION_LEVEL);
     let body = Body::wrap_stream(ReaderStream::new(BrotliEncoder::with_quality(
         StreamReader::new(body),
         level,
@@ -279,10 +288,13 @@ pub fn brotli(
 pub fn zstd(
     mut head: http::response::Parts,
     body: CompressableBody<Body, hyper::Error>,
-    level: async_compression::Level,
+    level: CompressionLevel,
 ) -> Response<Body> {
+    const DEFAULT_COMPRESSION_LEVEL: i32 = 4;
+
     tracing::trace!("compressing response body on the fly using ZSTD");
 
+    let level = level.into_algorithm_level(DEFAULT_COMPRESSION_LEVEL);
     let body = Body::wrap_stream(ReaderStream::new(ZstdEncoder::with_quality(
         StreamReader::new(body),
         level,

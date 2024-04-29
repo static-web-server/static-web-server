@@ -713,7 +713,7 @@ mod tests {
                 Ok(result) => {
                     let res = result.resp;
                     let res =
-                        compression::auto(method, &headers, async_compression::Level::Fastest, res)
+                        compression::auto(method, &headers, static_web_server::settings::CompressionLevel::Default, res)
                             .expect("unexpected bytes error during body compression");
 
                     let buf = fs::read(root_dir().join("index.html"))

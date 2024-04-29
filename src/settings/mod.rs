@@ -25,6 +25,15 @@ use cli::General;
 
 use self::file::{RedirectsKind, Settings as FileSettings};
 
+#[cfg(any(
+    feature = "compression",
+    feature = "compression-gzip",
+    feature = "compression-brotli",
+    feature = "compression-zstd",
+    feature = "compression-deflate"
+))]
+pub use file::CompressionLevel;
+
 /// The `headers` file options.
 pub struct Headers {
     /// Source pattern glob matcher

@@ -81,7 +81,7 @@ Specify an optional CORS list of exposed HTTP headers separated by commas. It re
 `Gzip`, `Deflate` or `Brotli` compression on demand determined by the `Accept-Encoding` header and applied to text-based web file types only. See [ad-hoc mime-type list](https://github.com/static-web-server/static-web-server/blob/master/src/compression.rs#L20). Default `true` (enabled).
 
 ### SERVER_COMPRESSION_LEVEL
-Supported values are `fastest` (fast compression but larger resulting files), `best` (smallest file size but potentially slow) and `default` (algorithm-specific default compression level setting). Default is `fastest`.
+Supported values are `fastest` (fast compression but larger resulting files), `best` (smallest file size but potentially slow) and `default` (algorithm-specific balanced compression level). Default is `default`.
 
 ### SERVER_COMPRESSION_STATIC
 Look up the pre-compressed file variant (`.gz` or `.br`) on disk of a requested file and serves it directly if available. Default `false` (disabled). The compression type is determined by the `Accept-Encoding` header.

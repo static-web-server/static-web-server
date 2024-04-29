@@ -28,7 +28,7 @@ cache-control-headers = true
 
 #### Auto Compression
 compression = true
-compression_level = "fastest"
+compression_level = "default"
 
 #### Error pages
 # Note: If a relative path is used then it will be resolved under the root directory.
