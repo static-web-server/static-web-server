@@ -70,7 +70,7 @@ pub mod fixtures {
                 feature = "compression-zstd",
                 feature = "compression-deflate"
             ))]
-            compression_level: opts.general.compression_level.into(),
+            compression_level: opts.general.compression_level,
             #[cfg(feature = "directory-listing")]
             dir_listing: opts.general.directory_listing,
             #[cfg(feature = "directory-listing")]
