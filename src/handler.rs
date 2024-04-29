@@ -46,6 +46,15 @@ pub struct RequestHandlerOpts {
     pub root_dir: PathBuf,
     /// Compression feature.
     pub compression: bool,
+    #[cfg(any(
+        feature = "compression",
+        feature = "compression-gzip",
+        feature = "compression-brotli",
+        feature = "compression-zstd",
+        feature = "compression-deflate"
+    ))]
+    /// Compression level.
+    pub compression_level: async_compression::Level,
     /// Compression static feature.
     pub compression_static: bool,
     /// Directory listing feature.
@@ -108,6 +117,14 @@ impl Default for RequestHandlerOpts {
             root_dir: PathBuf::from("./public"),
             compression: true,
             compression_static: false,
+            #[cfg(any(
+                feature = "compression",
+                feature = "compression-gzip",
+                feature = "compression-brotli",
+                feature = "compression-zstd",
+                feature = "compression-deflate"
+            ))]
+            compression_level: async_compression::Level::Fastest,
             #[cfg(feature = "directory-listing")]
             dir_listing: false,
             #[cfg(feature = "directory-listing")]

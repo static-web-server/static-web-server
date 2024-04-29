@@ -317,7 +317,11 @@ impl Server {
             feature = "compression-brotli",
             feature = "compression-zstd",
         ))]
-        compression::init(general.compression, &mut handler_opts);
+        compression::init(
+            general.compression,
+            general.compression_level,
+            &mut handler_opts,
+        );
 
         // Cache control headers option
         control_headers::init(general.cache_control_headers, &mut handler_opts);

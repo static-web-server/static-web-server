@@ -114,6 +114,14 @@ impl Settings {
             feature = "compression-zstd",
             feature = "compression-deflate"
         ))]
+        let mut compression_level = opts.compression_level;
+        #[cfg(any(
+            feature = "compression",
+            feature = "compression-gzip",
+            feature = "compression-brotli",
+            feature = "compression-zstd",
+            feature = "compression-deflate"
+        ))]
         let mut compression_static = opts.compression_static;
 
         let mut page404 = opts.page404;
@@ -211,6 +219,16 @@ impl Settings {
                 ))]
                 if let Some(v) = general.compression {
                     compression = v
+                }
+                #[cfg(any(
+                    feature = "compression",
+                    feature = "compression-gzip",
+                    feature = "compression-brotli",
+                    feature = "compression-zstd",
+                    feature = "compression-deflate"
+                ))]
+                if let Some(v) = general.compression_level {
+                    compression_level = v
                 }
                 #[cfg(any(
                     feature = "compression",
@@ -544,6 +562,14 @@ impl Settings {
                     feature = "compression-deflate"
                 ))]
                 compression,
+                #[cfg(any(
+                    feature = "compression",
+                    feature = "compression-gzip",
+                    feature = "compression-brotli",
+                    feature = "compression-zstd",
+                    feature = "compression-deflate"
+                ))]
+                compression_level,
                 #[cfg(any(
                     feature = "compression",
                     feature = "compression-gzip",
