@@ -557,67 +557,71 @@ fn parse_last_modified(modified: SystemTime) -> Result<DateTime<Local>> {
 
 /// Formats the file size in bytes to a human-readable string
 fn format_file_size(size: u64) -> String {
-    let units = ["B", "KiB", "MiB", "GiB", "TiB", "PiB"];
+    const UNITS: [&str; 6] = ["B", "KiB", "MiB", "GiB", "TiB", "PiB"];
     let mut size_tmp = size;
 
-    for i in 0..units.len() - 1 {
-        if size_tmp < 1024 {
-            // return the size with the current unit
-            return format!("{} {}", size_tmp, units[i]);
-        } else if size_tmp < 1024 * 1024 && i < units.len() - 1 {
-            // return the size divided by 1024 with the next unit
-            return format!("{:.2} {}", size_tmp as f64 / 1024.0, units[i + 1]);
-        } 
+    if size_tmp < 1024 {
+        // return the size with Byte
+        return format!("{} {}", size_tmp, "B");
+    }
+
+    for unit in &UNITS[1..UNITS.len() - 1] {
+        if size_tmp < 1024 * 1024 {
+            // return the size divided by 1024 with the unit
+            return format!("{:.2} {}", size_tmp as f64 / 1024.0, unit);
+        }
         size_tmp >>= 10;
     }
 
     // if size is too large, return the largest unit
-    format!("{} {}", size_tmp, units[units.len() - 1])
+    format!("{:.2} {}", size_tmp as f64 / 1024.0, UNITS[UNITS.len() - 1])
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::directory_listing::format_file_size;
+    use std::u64::MAX;
+
+    use super::format_file_size;
 
     #[test]
     fn handle_byte() {
         let size = 128;
         assert_eq!("128 B", format_file_size(size))
     }
-    
+
     #[test]
     fn handle_kibibyte() {
-        let size = 1690;
-        assert_eq!("1.65 KiB", format_file_size(size))
+        let size = 1024;
+        assert_eq!("1.00 KiB", format_file_size(size))
     }
-    
+
     #[test]
     fn handle_mebibyte() {
-        let size = 1310720;
-        assert_eq!("1.25 MiB", format_file_size(size))
+        let size = 1048576;
+        assert_eq!("1.00 MiB", format_file_size(size))
     }
-    
+
     #[test]
     fn handle_gibibyte() {
-        let size = 1342177280;
-        assert_eq!("1.25 GiB", format_file_size(size))
+        let size = 1073741824;
+        assert_eq!("1.00 GiB", format_file_size(size))
     }
-    
+
     #[test]
     fn handle_tebibyte() {
-        let size = 1495335813775;
-        assert_eq!("1.36 TiB", format_file_size(size))
+        let size = 1099511627776;
+        assert_eq!("1.00 TiB", format_file_size(size))
     }
-    
+
     #[test]
     fn handle_pebibyte() {
-        let size = 3681692695375380;
-        assert_eq!("3.27 PiB", format_file_size(size))
+        let size = 1125899906842624;
+        assert_eq!("1.00 PiB", format_file_size(size))
     }
-    
+
     #[test]
     fn handle_large() {
-        let size = 1152921504606846976;
-        assert_eq!("1024 PiB", format_file_size(size))
+        let size = MAX;
+        assert_eq!("16384.00 PiB", format_file_size(size))
     }
 }
