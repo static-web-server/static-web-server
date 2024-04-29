@@ -3,7 +3,7 @@
 // See https://static-web-server.net/ for more information
 // Copyright (C) 2019-present Jose Quintana <joseluisq.net>
 
-//! It provides directory listig and auto-index support.
+//! It provides directory listing and auto-index support.
 //!
 
 use chrono::{DateTime, Local, Utc};
@@ -219,7 +219,7 @@ fn read_dir_entries(
             (FileType::File, Some(meta.len()))
         } else if meta.file_type().is_symlink() {
             // NOTE: we resolve the symlink path below to just know if is a directory or not.
-            // Hwever, we are still showing the symlink name but not the resolved name.
+            // However, we are still showing the symlink name but not the resolved name.
 
             let symlink = dir_entry.path();
             let symlink = match symlink.canonicalize() {
