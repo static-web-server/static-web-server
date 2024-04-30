@@ -67,7 +67,11 @@ pub async fn precompressed_variant<'a>(
     // Determine preferred-encoding extension if available
     let comp_ext = match compression::get_preferred_encoding(headers) {
         // https://zlib.net/zlib_faq.html#faq39
-        #[cfg(any(feature = "compression", feature = "compression-gzip"))]
+        #[cfg(any(
+            feature = "compression",
+            feature = "compression-gzip",
+            feature = "compression-deflate"
+        ))]
         Some(ContentCoding::GZIP | ContentCoding::DEFLATE) => "gz",
         // https://peazip.github.io/brotli-compressed-file-format.html
         #[cfg(any(feature = "compression", feature = "compression-brotli"))]
