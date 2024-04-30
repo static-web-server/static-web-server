@@ -290,7 +290,7 @@ pub fn zstd(
     body: CompressableBody<Body, hyper::Error>,
     level: CompressionLevel,
 ) -> Response<Body> {
-    const DEFAULT_COMPRESSION_LEVEL: i32 = 4;
+    const DEFAULT_COMPRESSION_LEVEL: i32 = 3;
 
     tracing::trace!("compressing response body on the fly using ZSTD");
 
