@@ -94,7 +94,7 @@ pub enum CompressionLevel {
 impl CompressionLevel {
     /// Converts to a library-specific compression level specification, using
     /// given numeric level as default.
-    pub fn into_algorithm_level(self, default: i32) -> async_compression::Level {
+    pub(crate) fn into_algorithm_level(self, default: i32) -> async_compression::Level {
         match self {
             Self::Fastest => async_compression::Level::Fastest,
             Self::Best => async_compression::Level::Best,
