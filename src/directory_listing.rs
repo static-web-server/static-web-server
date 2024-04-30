@@ -3,18 +3,18 @@
 // See https://static-web-server.net/ for more information
 // Copyright (C) 2019-present Jose Quintana <joseluisq.net>
 
-//! It provides directory listig and auto-index support.
+//! It provides directory listing and auto-index support.
 //!
 
 use chrono::{DateTime, Local, Utc};
 use clap::ValueEnum;
 use futures_util::{future, future::Either};
 use headers::{ContentLength, ContentType, HeaderMapExt};
-use humansize::FormatSize;
 use hyper::{Body, Method, Response, StatusCode};
 use mime_guess::mime;
-use percent_encoding::{percent_decode_str, utf8_percent_encode, AsciiSet, NON_ALPHANUMERIC};
+use percent_encoding::{percent_decode_str, percent_encode, AsciiSet, NON_ALPHANUMERIC};
 use serde::{Serialize, Serializer};
+use std::ffi::{OsStr, OsString};
 use std::future::Future;
 use std::io;
 use std::path::Path;
@@ -152,16 +152,15 @@ enum FileType {
 /// Defines a file entry and its properties.
 #[derive(Serialize)]
 struct FileEntry {
-    name: String,
-    #[serde(skip_serializing)]
-    name_encoded: String,
+    #[serde(serialize_with = "serialize_name")]
+    name: OsString,
     #[serde(serialize_with = "serialize_mtime")]
     mtime: Option<DateTime<Local>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     size: Option<u64>,
     r#type: FileType,
     #[serde(skip_serializing)]
-    uri: Option<String>,
+    uri: String,
 }
 
 impl FileEntry {
@@ -205,39 +204,22 @@ fn read_dir_entries(
             }
         };
 
-        // FIXME: handle non-Unicode file names properly via OsString
-        let name = match dir_entry
-            .file_name()
-            .into_string()
-            .map_err(|err| anyhow::anyhow!(err.into_string().unwrap_or_default()))
-        {
-            Ok(s) => s,
-            Err(err) => {
-                tracing::error!(
-                    "unable to resolve name for file or directory entry (skipped): {:?}",
-                    err
-                );
-                continue;
-            }
-        };
+        let name = dir_entry.file_name();
 
         // Check and ignore the current hidden file/directory (dotfile) if feature enabled
-        if ignore_hidden_files && name.starts_with('.') {
+        if ignore_hidden_files && name.as_encoded_bytes().first().is_some_and(|c| *c == b'.') {
             continue;
         }
 
-        let mut name_encoded = utf8_percent_encode(&name, PERCENT_ENCODE_SET).to_string();
-        let mut size = None;
-
-        if meta.is_dir() {
-            name_encoded.push('/');
+        let (r#type, size) = if meta.is_dir() {
             dirs_count += 1;
+            (FileType::Directory, None)
         } else if meta.is_file() {
-            size = Some(meta.len());
             files_count += 1;
+            (FileType::File, Some(meta.len()))
         } else if meta.file_type().is_symlink() {
             // NOTE: we resolve the symlink path below to just know if is a directory or not.
-            // Hwever, we are still showing the symlink name but not the resolved name.
+            // However, we are still showing the symlink name but not the resolved name.
 
             let symlink = dir_entry.path();
             let symlink = match symlink.canonicalize() {
@@ -246,7 +228,7 @@ fn read_dir_entries(
                     tracing::error!(
                         "unable to resolve `{}` symlink path (skipped): {:?}",
                         symlink.display(),
-                        err
+                        err,
                     );
                     continue;
                 }
@@ -258,23 +240,24 @@ fn read_dir_entries(
                     tracing::error!(
                         "unable to resolve metadata for `{}` symlink (skipped): {:?}",
                         symlink.display(),
-                        err
+                        err,
                     );
                     continue;
                 }
             };
             if symlink_meta.is_dir() {
-                name_encoded.push('/');
                 dirs_count += 1;
+                (FileType::Directory, None)
             } else {
-                size = Some(meta.len());
                 files_count += 1;
+                (FileType::File, Some(symlink_meta.len()))
             }
         } else {
             continue;
-        }
+        };
 
-        let mut uri = None;
+        let name_encoded = percent_encode(name.as_encoded_bytes(), PERCENT_ENCODE_SET).to_string();
+
         // NOTE: Use relative paths by default independently of
         // the "redirect trailing slash" feature.
         // However, when "redirect trailing slash" is disabled
@@ -282,35 +265,18 @@ fn read_dir_entries(
         // entries should contain the "parent/entry-name" as a link format.
         // Otherwise, we just use the "entry-name" as a link (default behavior).
         // Note that in both cases, we add a trailing slash if the entry is a directory.
-        if !base_path.ends_with('/') {
-            let base_path = Path::new(base_path);
-            let parent_dir = base_path.parent().unwrap_or(base_path);
-            let mut base_dir = base_path;
-            if base_path != parent_dir {
-                base_dir = match base_path.strip_prefix(parent_dir) {
-                    Ok(v) => v,
-                    Err(err) => {
-                        tracing::error!(
-                            "unable to strip parent path prefix for `{}` (skipped): {:?}",
-                            base_path.display(),
-                            err
-                        );
-                        continue;
-                    }
-                };
-            }
+        let mut uri = if !base_path.ends_with('/') && !base_path.is_empty() {
+            let parent = base_path
+                .rsplit_once('/')
+                .map(|(_, parent)| parent)
+                .unwrap_or(base_path);
+            format!("{parent}/{name_encoded}")
+        } else {
+            name_encoded
+        };
 
-            let mut base_str = String::new();
-            if !base_dir.starts_with("/") {
-                let base_dir = base_dir.to_str().unwrap_or_default();
-                if !base_dir.is_empty() {
-                    base_str.push_str(base_dir);
-                }
-                base_str.push('/');
-            }
-
-            base_str.push_str(&name_encoded);
-            uri = Some(base_str);
+        if r#type == FileType::Directory {
+            uri.push('/');
         }
 
         let mtime = match parse_last_modified(meta.modified()?) {
@@ -320,15 +286,9 @@ fn read_dir_entries(
                 None
             }
         };
-        let r#type = if meta.is_dir() {
-            FileType::Directory
-        } else {
-            FileType::File
-        };
 
         file_entries.push(FileEntry {
             name,
-            name_encoded,
             mtime,
             size,
             r#type,
@@ -379,7 +339,7 @@ fn read_dir_entries(
                 files_count,
                 &mut file_entries,
                 order_code,
-            )?
+            )
         }
     };
 
@@ -401,6 +361,11 @@ fn json_auto_index(entries: &mut [FileEntry], order_code: u8) -> Result<String> 
     sort_file_entries(entries, order_code);
 
     Ok(serde_json::to_string(entries)?)
+}
+
+/// Serialize FileEntry::name
+fn serialize_name<S: Serializer>(name: &OsStr, serializer: S) -> Result<S::Ok, S::Error> {
+    serializer.serialize_str(&name.to_string_lossy())
 }
 
 /// Serialize FileEntry::mtime field
@@ -425,13 +390,13 @@ fn html_auto_index<'a>(
     files_count: usize,
     entries: &'a mut [FileEntry],
     order_code: u8,
-) -> Result<String> {
+) -> String {
     use maud::{html, DOCTYPE};
 
     let sort_attrs = sort_file_entries(entries, order_code);
-    let current_path = percent_decode_str(base_path).decode_utf8()?.to_string();
+    let current_path = percent_decode_str(base_path).decode_utf8_lossy();
 
-    Ok(html! {
+    html! {
         (DOCTYPE)
         html {
             head {
@@ -490,8 +455,8 @@ fn html_auto_index<'a>(
                     @for entry in entries {
                         tr {
                             td {
-                                a href=(entry.uri.as_ref().unwrap_or(&entry.name_encoded)) {
-                                    (entry.name)
+                                a href=(entry.uri) {
+                                    (entry.name.to_string_lossy())
                                     @if entry.is_dir() {
                                         "/"
                                     }
@@ -505,7 +470,7 @@ fn html_auto_index<'a>(
                             td align="right" {
                                 (match entry.size.unwrap_or(0) {
                                     0 => "-".to_owned(),
-                                    size => size.format_size(humansize::DECIMAL)
+                                    size => format_file_size(size),
                                 })
                             }
                         }
@@ -519,7 +484,7 @@ fn html_auto_index<'a>(
                 }
             }
         }
-    }.into())
+    }.into()
 }
 
 /// Sort a list of file entries by a specific order code.
@@ -532,7 +497,7 @@ fn sort_file_entries(files: &mut [FileEntry], order_code: u8) -> SortingAttr<'_>
     match order_code {
         0 | 1 => {
             // Name (asc, desc)
-            files.sort_by_cached_key(|f| f.name.to_lowercase());
+            files.sort_by_cached_key(|f| f.name.to_string_lossy().to_lowercase());
             if order_code == 1 {
                 files.reverse();
             } else {
@@ -587,5 +552,74 @@ fn parse_last_modified(modified: SystemTime) -> Result<DateTime<Local>> {
         None => Err(anyhow!(
             "out-of-range number of seconds and/or invalid nanosecond"
         )),
+    }
+}
+
+/// Formats the file size in bytes to a human-readable string
+fn format_file_size(size: u64) -> String {
+    const UNITS: [&str; 6] = ["B", "KiB", "MiB", "GiB", "TiB", "PiB"];
+    let mut size_tmp = size;
+
+    if size_tmp < 1024 {
+        // return the size with Byte
+        return format!("{} {}", size_tmp, UNITS[0]);
+    }
+
+    for unit in &UNITS[1..UNITS.len() - 1] {
+        if size_tmp < 1024 * 1024 {
+            // return the size divided by 1024 with the unit
+            return format!("{:.2} {}", size_tmp as f64 / 1024.0, unit);
+        }
+        size_tmp >>= 10;
+    }
+
+    // if size is too large, return the largest unit
+    format!("{:.2} {}", size_tmp as f64 / 1024.0, UNITS[UNITS.len() - 1])
+}
+
+#[cfg(test)]
+mod tests {
+    use super::format_file_size;
+
+    #[test]
+    fn handle_byte() {
+        let size = 128;
+        assert_eq!("128 B", format_file_size(size))
+    }
+
+    #[test]
+    fn handle_kibibyte() {
+        let size = 1024;
+        assert_eq!("1.00 KiB", format_file_size(size))
+    }
+
+    #[test]
+    fn handle_mebibyte() {
+        let size = 1048576;
+        assert_eq!("1.00 MiB", format_file_size(size))
+    }
+
+    #[test]
+    fn handle_gibibyte() {
+        let size = 1073741824;
+        assert_eq!("1.00 GiB", format_file_size(size))
+    }
+
+    #[test]
+    fn handle_tebibyte() {
+        let size = 1099511627776;
+        assert_eq!("1.00 TiB", format_file_size(size))
+    }
+
+    #[test]
+    fn handle_pebibyte() {
+        let size = 1125899906842624;
+        assert_eq!("1.00 PiB", format_file_size(size))
+    }
+
+    #[test]
+    fn handle_large() {
+        let size = u64::MAX;
+        assert_eq!("16384.00 PiB", format_file_size(size))
     }
 }
