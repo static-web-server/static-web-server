@@ -3,14 +3,13 @@
 // See https://static-web-server.net/ for more information
 // Copyright (C) 2019-present Jose Quintana <joseluisq.net>
 
-//! It provides directory listig and auto-index support.
+//! It provides directory listing and auto-index support.
 //!
 
 use chrono::{DateTime, Local, Utc};
 use clap::ValueEnum;
 use futures_util::{future, future::Either};
 use headers::{ContentLength, ContentType, HeaderMapExt};
-use humansize::FormatSize;
 use hyper::{Body, Method, Response, StatusCode};
 use mime_guess::mime;
 use percent_encoding::{percent_decode_str, percent_encode, AsciiSet, NON_ALPHANUMERIC};
@@ -220,7 +219,7 @@ fn read_dir_entries(
             (FileType::File, Some(meta.len()))
         } else if meta.file_type().is_symlink() {
             // NOTE: we resolve the symlink path below to just know if is a directory or not.
-            // Hwever, we are still showing the symlink name but not the resolved name.
+            // However, we are still showing the symlink name but not the resolved name.
 
             let symlink = dir_entry.path();
             let symlink = match symlink.canonicalize() {
@@ -471,7 +470,7 @@ fn html_auto_index<'a>(
                             td align="right" {
                                 (match entry.size.unwrap_or(0) {
                                     0 => "-".to_owned(),
-                                    size => size.format_size(humansize::DECIMAL)
+                                    size => format_file_size(size),
                                 })
                             }
                         }
@@ -553,5 +552,74 @@ fn parse_last_modified(modified: SystemTime) -> Result<DateTime<Local>> {
         None => Err(anyhow!(
             "out-of-range number of seconds and/or invalid nanosecond"
         )),
+    }
+}
+
+/// Formats the file size in bytes to a human-readable string
+fn format_file_size(size: u64) -> String {
+    const UNITS: [&str; 6] = ["B", "KiB", "MiB", "GiB", "TiB", "PiB"];
+    let mut size_tmp = size;
+
+    if size_tmp < 1024 {
+        // return the size with Byte
+        return format!("{} {}", size_tmp, UNITS[0]);
+    }
+
+    for unit in &UNITS[1..UNITS.len() - 1] {
+        if size_tmp < 1024 * 1024 {
+            // return the size divided by 1024 with the unit
+            return format!("{:.2} {}", size_tmp as f64 / 1024.0, unit);
+        }
+        size_tmp >>= 10;
+    }
+
+    // if size is too large, return the largest unit
+    format!("{:.2} {}", size_tmp as f64 / 1024.0, UNITS[UNITS.len() - 1])
+}
+
+#[cfg(test)]
+mod tests {
+    use super::format_file_size;
+
+    #[test]
+    fn handle_byte() {
+        let size = 128;
+        assert_eq!("128 B", format_file_size(size))
+    }
+
+    #[test]
+    fn handle_kibibyte() {
+        let size = 1024;
+        assert_eq!("1.00 KiB", format_file_size(size))
+    }
+
+    #[test]
+    fn handle_mebibyte() {
+        let size = 1048576;
+        assert_eq!("1.00 MiB", format_file_size(size))
+    }
+
+    #[test]
+    fn handle_gibibyte() {
+        let size = 1073741824;
+        assert_eq!("1.00 GiB", format_file_size(size))
+    }
+
+    #[test]
+    fn handle_tebibyte() {
+        let size = 1099511627776;
+        assert_eq!("1.00 TiB", format_file_size(size))
+    }
+
+    #[test]
+    fn handle_pebibyte() {
+        let size = 1125899906842624;
+        assert_eq!("1.00 PiB", format_file_size(size))
+    }
+
+    #[test]
+    fn handle_large() {
+        let size = u64::MAX;
+        assert_eq!("16384.00 PiB", format_file_size(size))
     }
 }
