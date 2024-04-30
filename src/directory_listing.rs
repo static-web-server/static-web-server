@@ -579,8 +579,6 @@ fn format_file_size(size: u64) -> String {
 
 #[cfg(test)]
 mod tests {
-    use std::u64::MAX;
-
     use super::format_file_size;
 
     #[test]
@@ -621,7 +619,7 @@ mod tests {
 
     #[test]
     fn handle_large() {
-        let size = MAX;
+        let size = u64::MAX;
         assert_eq!("16384.00 PiB", format_file_size(size))
     }
 }
