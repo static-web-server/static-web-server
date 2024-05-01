@@ -12,9 +12,9 @@ use std::{ffi::OsStr, path::PathBuf};
 use crate::{handler::RequestHandlerOpts, settings::Headers, Error};
 
 /// Appends custom HTTP headers to a response if necessary
-pub(crate) fn post_process(
+pub(crate) fn post_process<T>(
     opts: &RequestHandlerOpts,
-    req: &Request<Body>,
+    req: &Request<T>,
     mut resp: Response<Body>,
     file_path: Option<&PathBuf>,
 ) -> Result<Response<Body>, Error> {
