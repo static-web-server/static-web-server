@@ -278,7 +278,7 @@ fn read_dir_entries(
             uri.push('/');
         }
 
-        let mtime = meta.modified().ok().map(|mtime| mtime.into());
+        let mtime = meta.modified().ok().map(DateTime::<Local>::from);
 
         file_entries.push(FileEntry {
             name,
