@@ -18,7 +18,6 @@ use std::ffi::{OsStr, OsString};
 use std::future::Future;
 use std::io;
 use std::path::Path;
-use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::{handler::RequestHandlerOpts, http_ext::MethodExt, Context, Result};
 
@@ -279,13 +278,7 @@ fn read_dir_entries(
             uri.push('/');
         }
 
-        let mtime = match parse_last_modified(meta.modified()?) {
-            Ok(local_dt) => Some(local_dt),
-            Err(err) => {
-                tracing::error!("error determining the file's last modified: {:?}", err);
-                None
-            }
-        };
+        let mtime = meta.modified().ok().map(|mtime| mtime.into());
 
         file_entries.push(FileEntry {
             name,
@@ -531,27 +524,6 @@ fn sort_file_entries(files: &mut [FileEntry], order_code: u8) -> SortingAttr<'_>
         name,
         last_modified,
         size,
-    }
-}
-
-/// Return the last modified `DateTime` in local timescale.
-fn parse_last_modified(modified: SystemTime) -> Result<DateTime<Local>> {
-    let since_epoch = modified.duration_since(UNIX_EPOCH)?;
-    // HTTP times don't have nanosecond precision, so we truncate
-    // the modification time.
-    // Converting to i64 should be safe until we get beyond the
-    // planned lifetime of the universe
-    //
-    // TODO: Investigate how to write a test for this. Changing
-    // the modification time of a file with greater than second
-    // precision appears to be something that only is possible to
-    // do on Linux.
-    let utc_dt = DateTime::from_timestamp(since_epoch.as_secs() as i64, since_epoch.subsec_nanos());
-    match utc_dt {
-        Some(utc_dt) => Ok(utc_dt.with_timezone(&Local)),
-        None => Err(anyhow!(
-            "out-of-range number of seconds and/or invalid nanosecond"
-        )),
     }
 }
 
