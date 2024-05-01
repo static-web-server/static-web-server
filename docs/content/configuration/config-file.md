@@ -28,6 +28,7 @@ cache-control-headers = true
 
 #### Auto Compression
 compression = true
+compression-level = "default"
 
 #### Error pages
 # Note: If a relative path is used then it will be resolved under the root directory.
@@ -88,7 +89,7 @@ health = false
 #### Maintenance Mode
 
 maintenance-mode = false
-# maintenance-mode-status = 503 
+# maintenance-mode-status = 503
 # maintenance-mode-file = "./maintenance.html"
 
 ### Windows Only

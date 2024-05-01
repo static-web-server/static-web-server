@@ -37,6 +37,7 @@ use crate::{
     handler::RequestHandlerOpts,
     headers_ext::{AcceptEncoding, ContentCoding},
     http_ext::MethodExt,
+    settings::CompressionLevel,
     Error, Result,
 };
 
@@ -67,8 +68,9 @@ const AVAILABLE_ENCODINGS: &[ContentCoding] = &[
 ];
 
 /// Initializes dynamic compression.
-pub fn init(enabled: bool, handler_opts: &mut RequestHandlerOpts) {
+pub fn init(enabled: bool, level: CompressionLevel, handler_opts: &mut RequestHandlerOpts) {
     handler_opts.compression = enabled;
+    handler_opts.compression_level = level;
 
     const FORMATS: &[&str] = &[
         #[cfg(any(feature = "compression", feature = "compression-deflate"))]
@@ -81,7 +83,7 @@ pub fn init(enabled: bool, handler_opts: &mut RequestHandlerOpts) {
         "zstd",
     ];
     server_info!(
-        "auto compression: enabled={enabled}, formats={}",
+        "auto compression: enabled={enabled}, formats={}, compression level={level:?}",
         FORMATS.join(",")
     );
 }
@@ -108,7 +110,7 @@ pub(crate) fn post_process(
     );
 
     // Auto compression based on the `Accept-Encoding` header
-    match auto(req.method(), req.headers(), resp) {
+    match auto(req.method(), req.headers(), opts.compression_level, resp) {
         Ok(resp) => Ok(resp),
         Err(err) => {
             tracing::error!("error during body compression: {:?}", err);
@@ -130,6 +132,7 @@ pub(crate) fn post_process(
 pub fn auto(
     method: &Method,
     headers: &HeaderMap<HeaderValue>,
+    level: CompressionLevel,
     resp: Response<Body>,
 ) -> Result<Response<Body>> {
     // Skip compression for HEAD and OPTIONS request methods
@@ -154,25 +157,25 @@ pub fn auto(
         #[cfg(any(feature = "compression", feature = "compression-gzip"))]
         if encoding == ContentCoding::GZIP {
             let (head, body) = resp.into_parts();
-            return Ok(gzip(head, body.into()));
+            return Ok(gzip(head, body.into(), level));
         }
 
         #[cfg(any(feature = "compression", feature = "compression-deflate"))]
         if encoding == ContentCoding::DEFLATE {
             let (head, body) = resp.into_parts();
-            return Ok(deflate(head, body.into()));
+            return Ok(deflate(head, body.into(), level));
         }
 
         #[cfg(any(feature = "compression", feature = "compression-brotli"))]
         if encoding == ContentCoding::BROTLI {
             let (head, body) = resp.into_parts();
-            return Ok(brotli(head, body.into()));
+            return Ok(brotli(head, body.into(), level));
         }
 
         #[cfg(any(feature = "compression", feature = "compression-zstd"))]
         if encoding == ContentCoding::ZSTD {
             let (head, body) = resp.into_parts();
-            return Ok(zstd(head, body.into()));
+            return Ok(zstd(head, body.into(), level));
         }
 
         tracing::trace!("no compression feature matched the preferred encoding, probably not enabled or unsupported");
@@ -200,10 +203,17 @@ fn is_text(mime: Mime) -> bool {
 pub fn gzip(
     mut head: http::response::Parts,
     body: CompressableBody<Body, hyper::Error>,
+    level: CompressionLevel,
 ) -> Response<Body> {
+    const DEFAULT_COMPRESSION_LEVEL: i32 = 4;
+
     tracing::trace!("compressing response body on the fly using GZIP");
 
-    let body = Body::wrap_stream(ReaderStream::new(GzipEncoder::new(StreamReader::new(body))));
+    let level = level.into_algorithm_level(DEFAULT_COMPRESSION_LEVEL);
+    let body = Body::wrap_stream(ReaderStream::new(GzipEncoder::with_quality(
+        StreamReader::new(body),
+        level,
+    )));
     let header = create_encoding_header(head.headers.remove(CONTENT_ENCODING), ContentCoding::GZIP);
     head.headers.remove(CONTENT_LENGTH);
     head.headers.append(CONTENT_ENCODING, header);
@@ -220,12 +230,17 @@ pub fn gzip(
 pub fn deflate(
     mut head: http::response::Parts,
     body: CompressableBody<Body, hyper::Error>,
+    level: CompressionLevel,
 ) -> Response<Body> {
+    const DEFAULT_COMPRESSION_LEVEL: i32 = 4;
+
     tracing::trace!("compressing response body on the fly using DEFLATE");
 
-    let body = Body::wrap_stream(ReaderStream::new(DeflateEncoder::new(StreamReader::new(
-        body,
-    ))));
+    let level = level.into_algorithm_level(DEFAULT_COMPRESSION_LEVEL);
+    let body = Body::wrap_stream(ReaderStream::new(DeflateEncoder::with_quality(
+        StreamReader::new(body),
+        level,
+    )));
     let header = create_encoding_header(
         head.headers.remove(CONTENT_ENCODING),
         ContentCoding::DEFLATE,
@@ -245,12 +260,17 @@ pub fn deflate(
 pub fn brotli(
     mut head: http::response::Parts,
     body: CompressableBody<Body, hyper::Error>,
+    level: CompressionLevel,
 ) -> Response<Body> {
+    const DEFAULT_COMPRESSION_LEVEL: i32 = 4;
+
     tracing::trace!("compressing response body on the fly using BROTLI");
 
-    let body = Body::wrap_stream(ReaderStream::new(BrotliEncoder::new(StreamReader::new(
-        body,
-    ))));
+    let level = level.into_algorithm_level(DEFAULT_COMPRESSION_LEVEL);
+    let body = Body::wrap_stream(ReaderStream::new(BrotliEncoder::with_quality(
+        StreamReader::new(body),
+        level,
+    )));
     let header =
         create_encoding_header(head.headers.remove(CONTENT_ENCODING), ContentCoding::BROTLI);
     head.headers.remove(CONTENT_LENGTH);
@@ -268,10 +288,17 @@ pub fn brotli(
 pub fn zstd(
     mut head: http::response::Parts,
     body: CompressableBody<Body, hyper::Error>,
+    level: CompressionLevel,
 ) -> Response<Body> {
+    const DEFAULT_COMPRESSION_LEVEL: i32 = 3;
+
     tracing::trace!("compressing response body on the fly using ZSTD");
 
-    let body = Body::wrap_stream(ReaderStream::new(ZstdEncoder::new(StreamReader::new(body))));
+    let level = level.into_algorithm_level(DEFAULT_COMPRESSION_LEVEL);
+    let body = Body::wrap_stream(ReaderStream::new(ZstdEncoder::with_quality(
+        StreamReader::new(body),
+        level,
+    )));
     let header = create_encoding_header(head.headers.remove(CONTENT_ENCODING), ContentCoding::ZSTD);
     head.headers.remove(CONTENT_LENGTH);
     head.headers.append(CONTENT_ENCODING, header);

@@ -25,6 +25,15 @@ use cli::General;
 
 use self::file::{RedirectsKind, Settings as FileSettings};
 
+#[cfg(any(
+    feature = "compression",
+    feature = "compression-gzip",
+    feature = "compression-brotli",
+    feature = "compression-zstd",
+    feature = "compression-deflate"
+))]
+pub use file::CompressionLevel;
+
 /// The `headers` file options.
 pub struct Headers {
     /// Source pattern glob matcher
@@ -107,6 +116,14 @@ impl Settings {
             feature = "compression-deflate"
         ))]
         let mut compression = opts.compression;
+        #[cfg(any(
+            feature = "compression",
+            feature = "compression-gzip",
+            feature = "compression-brotli",
+            feature = "compression-zstd",
+            feature = "compression-deflate"
+        ))]
+        let mut compression_level = opts.compression_level;
         #[cfg(any(
             feature = "compression",
             feature = "compression-gzip",
@@ -211,6 +228,16 @@ impl Settings {
                 ))]
                 if let Some(v) = general.compression {
                     compression = v
+                }
+                #[cfg(any(
+                    feature = "compression",
+                    feature = "compression-gzip",
+                    feature = "compression-brotli",
+                    feature = "compression-zstd",
+                    feature = "compression-deflate"
+                ))]
+                if let Some(v) = general.compression_level {
+                    compression_level = v
                 }
                 #[cfg(any(
                     feature = "compression",
@@ -544,6 +571,14 @@ impl Settings {
                     feature = "compression-deflate"
                 ))]
                 compression,
+                #[cfg(any(
+                    feature = "compression",
+                    feature = "compression-gzip",
+                    feature = "compression-brotli",
+                    feature = "compression-zstd",
+                    feature = "compression-deflate"
+                ))]
+                compression_level,
                 #[cfg(any(
                     feature = "compression",
                     feature = "compression-gzip",
