@@ -63,6 +63,14 @@ pub mod fixtures {
             root_dir: opts.general.root,
             compression,
             compression_static,
+            #[cfg(any(
+                feature = "compression",
+                feature = "compression-gzip",
+                feature = "compression-brotli",
+                feature = "compression-zstd",
+                feature = "compression-deflate"
+            ))]
+            compression_level: opts.general.compression_level,
             #[cfg(feature = "directory-listing")]
             dir_listing: opts.general.directory_listing,
             #[cfg(feature = "directory-listing")]

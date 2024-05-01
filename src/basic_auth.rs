@@ -22,9 +22,9 @@ pub(crate) fn init(credentials: &str, handler_opts: &mut RequestHandlerOpts) {
 }
 
 /// Handles `Basic` HTTP Authorization Schema
-pub(crate) fn pre_process(
+pub(crate) fn pre_process<T>(
     opts: &RequestHandlerOpts,
-    req: &Request<Body>,
+    req: &Request<T>,
 ) -> Option<Result<Response<Body>, Error>> {
     if opts.basic_auth.is_empty() {
         return None;

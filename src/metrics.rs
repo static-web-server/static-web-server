@@ -27,9 +27,9 @@ pub fn init(enabled: bool, handler_opts: &mut RequestHandlerOpts) {
 }
 
 /// Handles metrics requests
-pub fn pre_process(
+pub fn pre_process<T>(
     opts: &RequestHandlerOpts,
-    req: &Request<Body>,
+    req: &Request<T>,
 ) -> Option<Result<Response<Body>, Error>> {
     if !opts.experimental_metrics {
         return None;

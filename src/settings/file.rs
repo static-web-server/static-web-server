@@ -45,6 +45,64 @@ impl LogLevel {
     }
 }
 
+#[cfg(any(
+    feature = "compression",
+    feature = "compression-gzip",
+    feature = "compression-brotli",
+    feature = "compression-zstd",
+    feature = "compression-deflate"
+))]
+#[cfg_attr(
+    docsrs,
+    doc(cfg(any(
+        feature = "compression",
+        feature = "compression-gzip",
+        feature = "compression-brotli",
+        feature = "compression-zstd",
+        feature = "compression-deflate"
+    )))
+)]
+#[derive(clap::ValueEnum, Debug, Serialize, Deserialize, Copy, Clone)]
+#[serde(rename_all = "kebab-case")]
+/// Compression level settings.
+pub enum CompressionLevel {
+    /// Fastest execution at the expense of larger file sizes.
+    Fastest,
+    /// Smallest file size but potentially slow.
+    Best,
+    /// Algorithm-specific default compression level setting.
+    Default,
+}
+
+#[cfg(any(
+    feature = "compression",
+    feature = "compression-gzip",
+    feature = "compression-brotli",
+    feature = "compression-zstd",
+    feature = "compression-deflate"
+))]
+#[cfg_attr(
+    docsrs,
+    doc(cfg(any(
+        feature = "compression",
+        feature = "compression-gzip",
+        feature = "compression-brotli",
+        feature = "compression-zstd",
+        feature = "compression-deflate"
+    )))
+)]
+impl CompressionLevel {
+    /// Converts to a library-specific compression level specification, using
+    /// given numeric level as default.
+    pub(crate) fn into_algorithm_level(self, default: i32) -> async_compression::Level {
+        match self {
+            Self::Fastest => async_compression::Level::Fastest,
+            Self::Best => async_compression::Level::Best,
+            Self::Default => async_compression::Level::Precise(default),
+        }
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "kebab-case")]
 /// Represents an HTTP headers map.
@@ -153,6 +211,26 @@ pub struct General {
         )))
     )]
     pub compression: Option<bool>,
+
+    /// Compression level.
+    #[cfg(any(
+        feature = "compression",
+        feature = "compression-gzip",
+        feature = "compression-brotli",
+        feature = "compression-zstd",
+        feature = "compression-deflate"
+    ))]
+    #[cfg_attr(
+        docsrs,
+        doc(cfg(any(
+            feature = "compression",
+            feature = "compression-gzip",
+            feature = "compression-brotli",
+            feature = "compression-zstd",
+            feature = "compression-deflate"
+        )))
+    )]
+    pub compression_level: Option<CompressionLevel>,
 
     /// Check for a pre-compressed file on disk.
     #[cfg(any(

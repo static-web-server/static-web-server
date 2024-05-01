@@ -19,9 +19,9 @@ pub(crate) fn init(enabled: bool, handler_opts: &mut RequestHandlerOpts) {
 }
 
 /// Appends security headers to a response if necessary
-pub(crate) fn post_process(
+pub(crate) fn post_process<T>(
     opts: &RequestHandlerOpts,
-    _req: &Request<Body>,
+    _req: &Request<T>,
     mut resp: Response<Body>,
 ) -> Result<Response<Body>, Error> {
     if opts.security_headers {

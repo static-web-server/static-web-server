@@ -18,9 +18,9 @@ pub fn init(enabled: bool, handler_opts: &mut RequestHandlerOpts) {
 }
 
 /// Handles health requests
-pub fn pre_process(
+pub fn pre_process<T>(
     opts: &RequestHandlerOpts,
-    req: &Request<Body>,
+    req: &Request<T>,
     remote_addr_str: &str,
 ) -> Option<Result<Response<Body>, Error>> {
     if !opts.health {

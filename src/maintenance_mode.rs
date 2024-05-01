@@ -40,9 +40,9 @@ pub(crate) fn init(
 }
 
 /// Produces maintenance mode response if necessary
-pub(crate) fn pre_process(
+pub(crate) fn pre_process<T>(
     opts: &RequestHandlerOpts,
-    req: &Request<Body>,
+    req: &Request<T>,
 ) -> Option<Result<Response<Body>, Error>> {
     if opts.maintenance_mode {
         Some(get_response(
