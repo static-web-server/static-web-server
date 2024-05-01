@@ -17,9 +17,9 @@ use crate::{
 };
 
 /// Applies rewrite rules to a request if necessary.
-pub(crate) fn pre_process(
+pub(crate) fn pre_process<T>(
     opts: &RequestHandlerOpts,
-    req: &mut Request<Body>,
+    req: &mut Request<T>,
 ) -> Option<Result<Response<Body>, Error>> {
     let rewrites = opts.advanced_opts.as_ref()?.rewrites.as_deref()?;
     let uri_path = req.uri().path();

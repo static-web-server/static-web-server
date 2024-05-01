@@ -13,9 +13,9 @@ use regex::Regex;
 use crate::{error_page, handler::RequestHandlerOpts, settings::Redirects, Error};
 
 /// Applies redirect rules to a request if necessary.
-pub(crate) fn pre_process(
+pub(crate) fn pre_process<T>(
     opts: &RequestHandlerOpts,
-    req: &Request<Body>,
+    req: &Request<T>,
 ) -> Option<Result<Response<Body>, Error>> {
     let redirects = opts.advanced_opts.as_ref()?.redirects.as_deref()?;
 
@@ -96,10 +96,10 @@ pub(crate) fn replace_placeholders(
 }
 
 /// Logs error and produces an Internal Server Error response.
-pub(crate) fn handle_error(
+pub(crate) fn handle_error<T>(
     err: Error,
     opts: &RequestHandlerOpts,
-    req: &Request<Body>,
+    req: &Request<T>,
 ) -> Option<Result<Response<Body>, Error>> {
     tracing::error!("{err:?}");
     Some(error_page::error_response(
