@@ -186,9 +186,7 @@ pub mod security_headers;
 pub mod server;
 pub mod service;
 pub mod settings;
-#[cfg(any(unix, windows))]
-#[cfg_attr(docsrs, doc(cfg(any(unix, windows))))]
-pub mod signals;
+pub(crate) mod shutdown;
 pub mod static_files;
 #[cfg(feature = "http2")]
 #[cfg_attr(docsrs, doc(cfg(feature = "http2")))]
