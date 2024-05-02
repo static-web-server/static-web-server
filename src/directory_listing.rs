@@ -468,10 +468,7 @@ fn html_auto_index<'a>(
                                 }))
                             }
                             td align="right" {
-                                (match entry.size.unwrap_or(0) {
-                                    0 => "-".to_owned(),
-                                    size => format_file_size(size),
-                                })
+                                (entry.size.map(format_file_size).unwrap_or("-".into()))
                             }
                         }
                     }
