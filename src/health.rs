@@ -7,9 +7,9 @@
 //!
 
 use headers::{ContentType, HeaderMapExt};
-use hyper::{Body, Request, Response};
+use hyper::{Body, Method, Request, Response};
 
-use crate::{handler::RequestHandlerOpts, http_ext::MethodExt, Error};
+use crate::{handler::RequestHandlerOpts, Error};
 
 /// Initializes the health endpoint.
 pub fn init(enabled: bool, handler_opts: &mut RequestHandlerOpts) {
@@ -26,25 +26,23 @@ pub fn pre_process<T>(
         return None;
     }
 
-    let uri = req.uri();
-    if uri.path() != "/health" {
+    if !is_health_endpoint(req) {
         return None;
     }
 
-    let method = req.method();
-    if !method.is_get() && !method.is_head() {
-        return None;
-    }
-
-    let body = if method.is_get() {
-        Body::from("OK")
-    } else {
-        Body::empty()
+    let body = match *req.method() {
+        Method::HEAD => Body::empty(),
+        Method::GET => Body::from("OK"),
+        _ => return None,
     };
 
     let mut resp = Response::new(body);
     resp.headers_mut().typed_insert(ContentType::html());
     Some(Ok(resp))
+}
+
+pub(crate) fn is_health_endpoint<T>(req: &Request<T>) -> bool {
+    req.uri().path() == "/health"
 }
 
 #[cfg(test)]

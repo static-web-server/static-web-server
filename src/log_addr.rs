@@ -9,7 +9,7 @@
 use hyper::Request;
 use std::net::{IpAddr, SocketAddr};
 
-use crate::handler::RequestHandlerOpts;
+use crate::{handler::RequestHandlerOpts, health};
 
 /// Initializes the log address module.
 pub(crate) fn init(enabled: bool, handler_opts: &mut RequestHandlerOpts) {
@@ -42,7 +42,7 @@ pub(crate) fn pre_process<T>(
     };
 
     // Log incoming requests in debug mode only if the health option is enabled
-    if opts.health {
+    if opts.health && health::is_health_endpoint(req) {
         tracing::debug!(
             "incoming request: method={} uri={}{remote_addrs}",
             req.method(),

@@ -276,7 +276,7 @@ impl Server {
         // Health endpoint option
         health::init(general.health, &mut handler_opts);
 
-        // Log request option
+        // Log remote address option
         log_addr::init(general.log_remote_address, &mut handler_opts);
 
         // Metrics endpoint option (experimental)
