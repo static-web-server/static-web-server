@@ -7,9 +7,9 @@
 //!
 
 use headers::{ContentType, HeaderMapExt};
-use hyper::{Body, Request, Response};
+use hyper::{Body, Method, Request, Response};
 
-use crate::{handler::RequestHandlerOpts, http_ext::MethodExt, Error};
+use crate::{handler::RequestHandlerOpts, Error};
 
 /// Initializes the health endpoint.
 pub fn init(enabled: bool, handler_opts: &mut RequestHandlerOpts) {
@@ -17,42 +17,32 @@ pub fn init(enabled: bool, handler_opts: &mut RequestHandlerOpts) {
     server_info!("health endpoint: enabled={enabled}");
 }
 
-/// Handles health requests
+/// Handles health requests.
 pub fn pre_process<T>(
     opts: &RequestHandlerOpts,
     req: &Request<T>,
-    remote_addr_str: &str,
 ) -> Option<Result<Response<Body>, Error>> {
     if !opts.health {
         return None;
     }
 
-    let uri = req.uri();
-    if uri.path() != "/health" {
+    if !is_health_endpoint(req) {
         return None;
     }
 
-    let method = req.method();
-    if !method.is_get() && !method.is_head() {
-        return None;
-    }
-
-    tracing::debug!(
-        "incoming request: method={} uri={}{}",
-        method,
-        uri,
-        remote_addr_str,
-    );
-
-    let body = if method.is_get() {
-        Body::from("OK")
-    } else {
-        Body::empty()
+    let body = match *req.method() {
+        Method::HEAD => Body::empty(),
+        Method::GET => Body::from("OK"),
+        _ => return None,
     };
 
     let mut resp = Response::new(body);
     resp.headers_mut().typed_insert(ContentType::html());
     Some(Ok(resp))
+}
+
+pub(crate) fn is_health_endpoint<T>(req: &Request<T>) -> bool {
+    req.uri().path() == "/health"
 }
 
 #[cfg(test)]
@@ -77,7 +67,6 @@ mod tests {
                 ..Default::default()
             },
             &make_request("GET", "/health"),
-            ""
         )
         .is_none());
     }
@@ -90,7 +79,6 @@ mod tests {
                 ..Default::default()
             },
             &make_request("GET", "/health2"),
-            ""
         )
         .is_none());
     }
@@ -103,7 +91,6 @@ mod tests {
                 ..Default::default()
             },
             &make_request("POST", "/health"),
-            ""
         )
         .is_none());
     }
@@ -116,7 +103,6 @@ mod tests {
                 ..Default::default()
             },
             &make_request("GET", "/health"),
-            ""
         )
         .is_some());
     }
