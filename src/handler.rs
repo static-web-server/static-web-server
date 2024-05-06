@@ -7,7 +7,7 @@
 //!
 
 use hyper::{Body, Request, Response, StatusCode};
-use std::{future::Future, net::IpAddr, net::SocketAddr, path::PathBuf, sync::Arc};
+use std::{future::Future, net::SocketAddr, path::PathBuf, sync::Arc};
 
 #[cfg(any(
     feature = "compression",
@@ -30,7 +30,7 @@ use crate::metrics;
 use crate::{
     control_headers, cors, custom_headers, error_page, health,
     http_ext::MethodExt,
-    maintenance_mode, redirects, rewrites, security_headers,
+    log_addr, maintenance_mode, redirects, rewrites, security_headers,
     settings::Advanced,
     static_files::{self, HandleOpts},
     virtual_hosts, Error, Result,
@@ -175,44 +175,19 @@ impl RequestHandler {
         let dir_listing_order = self.opts.dir_listing_order;
         #[cfg(feature = "directory-listing")]
         let dir_listing_format = &self.opts.dir_listing_format;
-        let log_remote_addr = self.opts.log_remote_address;
         let redirect_trailing_slash = self.opts.redirect_trailing_slash;
         let compression_static = self.opts.compression_static;
         let ignore_hidden_files = self.opts.ignore_hidden_files;
         let index_files: Vec<&str> = self.opts.index_files.iter().map(|s| s.as_str()).collect();
 
-        // Log request information with its remote address if available
-        let mut remote_addr_str = String::new();
-        if log_remote_addr {
-            remote_addr_str.push_str(" remote_addr=");
-            remote_addr_str.push_str(&remote_addr.map_or("".to_owned(), |v| v.to_string()));
-
-            if let Some(client_ip_address) = req
-                .headers()
-                .get("X-Forwarded-For")
-                .and_then(|v| v.to_str().ok())
-                .and_then(|s| s.split(',').next())
-                .and_then(|s| s.trim().parse::<IpAddr>().ok())
-            {
-                remote_addr_str.push_str(" real_remote_ip=");
-                remote_addr_str.push_str(&client_ip_address.to_string())
-            }
-        }
+        log_addr::pre_process(&self.opts, req, remote_addr);
 
         async move {
-            if let Some(result) = health::pre_process(&self.opts, req, &remote_addr_str) {
+            if let Some(result) = health::pre_process(&self.opts, req) {
                 return result;
             }
 
-            // Health requests aren't logged here but in health module.
-            tracing::info!(
-                "incoming request: method={} uri={}{}",
-                req.method(),
-                req.uri(),
-                remote_addr_str,
-            );
-
-            // Reject in case of incoming HTTP request method is not allowed
+            // Reject in case of incoming the HTTP request method is not allowed
             if !req.method().is_allowed() {
                 return error_page::error_response(
                     req.uri(),

@@ -43,7 +43,9 @@ use crate::{compression, compression_static};
 #[cfg(feature = "basic-auth")]
 use crate::basic_auth;
 
-use crate::{control_headers, cors, health, helpers, maintenance_mode, security_headers, Settings};
+use crate::{
+    control_headers, cors, health, helpers, log_addr, maintenance_mode, security_headers, Settings,
+};
 use crate::{service::RouterService, Context, Result};
 
 /// Define a multi-threaded HTTP or HTTP/2 web server.
@@ -218,7 +220,6 @@ impl Server {
 
         // Log remote address option
         let log_remote_address = general.log_remote_address;
-        server_info!("log remote address: enabled={}", log_remote_address);
 
         // Log redirect trailing slash option
         let redirect_trailing_slash = general.redirect_trailing_slash;
@@ -274,6 +275,9 @@ impl Server {
 
         // Health endpoint option
         health::init(general.health, &mut handler_opts);
+
+        // Log request option
+        log_addr::init(general.log_remote_address, &mut handler_opts);
 
         // Metrics endpoint option (experimental)
         #[cfg(all(unix, feature = "experimental"))]

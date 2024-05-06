@@ -17,11 +17,10 @@ pub fn init(enabled: bool, handler_opts: &mut RequestHandlerOpts) {
     server_info!("health endpoint: enabled={enabled}");
 }
 
-/// Handles health requests
+/// Handles health requests.
 pub fn pre_process<T>(
     opts: &RequestHandlerOpts,
     req: &Request<T>,
-    remote_addr_str: &str,
 ) -> Option<Result<Response<Body>, Error>> {
     if !opts.health {
         return None;
@@ -36,13 +35,6 @@ pub fn pre_process<T>(
     if !method.is_get() && !method.is_head() {
         return None;
     }
-
-    tracing::debug!(
-        "incoming request: method={} uri={}{}",
-        method,
-        uri,
-        remote_addr_str,
-    );
 
     let body = if method.is_get() {
         Body::from("OK")
@@ -77,7 +69,6 @@ mod tests {
                 ..Default::default()
             },
             &make_request("GET", "/health"),
-            ""
         )
         .is_none());
     }
@@ -90,7 +81,6 @@ mod tests {
                 ..Default::default()
             },
             &make_request("GET", "/health2"),
-            ""
         )
         .is_none());
     }
@@ -103,7 +93,6 @@ mod tests {
                 ..Default::default()
             },
             &make_request("POST", "/health"),
-            ""
         )
         .is_none());
     }
@@ -116,7 +105,6 @@ mod tests {
                 ..Default::default()
             },
             &make_request("GET", "/health"),
-            ""
         )
         .is_some());
     }
