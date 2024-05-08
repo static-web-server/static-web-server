@@ -8,16 +8,15 @@
 
 use headers::{HeaderMap, HeaderValue};
 use hyper::{Body, Request, Response};
-use std::{
-    ffi::OsStr,
-    fs::Metadata,
-    path::{Path, PathBuf},
-};
+use std::ffi::OsStr;
+use std::fs::Metadata;
+use std::path::{Path, PathBuf};
 
-use crate::{
-    compression, handler::RequestHandlerOpts, headers_ext::ContentCoding,
-    static_files::file_metadata, Error,
-};
+use crate::compression;
+use crate::fs::meta::try_metadata;
+use crate::handler::RequestHandlerOpts;
+use crate::headers_ext::ContentCoding;
+use crate::Error;
 
 /// It defines the pre-compressed file variant metadata of a particular file path.
 pub struct CompressedFileVariant<'a> {
@@ -101,7 +100,7 @@ pub async fn precompressed_variant<'a>(
         file_path.display()
     );
 
-    let (metadata, is_dir) = match file_metadata(&file_path) {
+    let (metadata, is_dir) = match try_metadata(&file_path) {
         Ok(v) => v,
         Err(e) => {
             tracing::trace!("pre-compressed file variant error: {:?}", e);

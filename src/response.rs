@@ -16,8 +16,10 @@ use std::ops::Bound;
 use std::path::PathBuf;
 
 use crate::conditional_headers::{ConditionalBody, ConditionalHeaders};
-use crate::file_stream::{optimal_buf_size, FileStream};
+use crate::fs::stream::{optimal_buf_size, FileStream};
 
+/// It converts a file object into a corresponding HTTP response or
+/// returns an error holding an HTTP status code otherwise.
 pub(crate) async fn response_body(
     mut file: File,
     path: &PathBuf,
@@ -93,6 +95,8 @@ pub(crate) async fn response_body(
 
 struct BadRange;
 
+/// It handles the `Range` header returning the corresponding start/end-range bytes
+/// or returns an error for bad ranges otherwise.
 fn bytes_range(range: Option<Range>, max_len: u64) -> Result<(u64, u64), BadRange> {
     let range = if let Some(range) = range {
         range
