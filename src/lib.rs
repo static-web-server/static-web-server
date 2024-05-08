@@ -160,9 +160,7 @@ pub mod error_page;
 #[cfg(feature = "fallback-page")]
 #[cfg_attr(docsrs, doc(cfg(feature = "fallback-page")))]
 pub mod fallback_page;
-pub(crate) mod file_path;
-pub(crate) mod file_response;
-pub(crate) mod file_stream;
+pub(crate) mod fs;
 pub mod handler;
 #[cfg(any(
     feature = "compression",
@@ -182,6 +180,7 @@ pub mod maintenance_mode;
 #[cfg(all(unix, feature = "experimental"))]
 pub(crate) mod metrics;
 pub mod redirects;
+pub(crate) mod response;
 pub mod rewrites;
 pub mod security_headers;
 pub mod server;

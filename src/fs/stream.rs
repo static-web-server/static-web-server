@@ -3,7 +3,7 @@
 // See https://static-web-server.net/ for more information
 // Copyright (C) 2019-present Jose Quintana <joseluisq.net>
 
-//! Module that provides file stream functionality.
+//! A module that provides file stream functionality.
 //!
 
 use bytes::{Bytes, BytesMut};

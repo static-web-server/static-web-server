@@ -3,13 +3,13 @@
 // See https://static-web-server.net/ for more information
 // Copyright (C) 2019-present Jose Quintana <joseluisq.net>
 
-//! Module that provides file path-related functionality and extension traits.
+//! A module that provides file path-related facilities.
 
 use hyper::StatusCode;
 use percent_encoding::percent_decode_str;
 use std::path::{Component, Path, PathBuf};
 
-/// SWS Path extensions trait.
+/// `Path` extensions trait.
 pub(crate) trait PathExt {
     /// If file path is hidden.
     fn is_hidden(&self) -> bool;
@@ -47,7 +47,7 @@ fn decode_tail_path(tail: &str) -> PathBuf {
     path_from_bytes(&bytes)
 }
 
-/// Sanitizes a base/tail paths and then it returns an unified one.
+/// Sanitizes a base/tail path and then it returns a unified one.
 pub(crate) fn sanitize_path(base: &Path, tail: &str) -> Result<PathBuf, StatusCode> {
     let path_decoded = decode_tail_path(tail);
     let mut full_path = base.to_path_buf();

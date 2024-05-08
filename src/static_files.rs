@@ -17,15 +17,14 @@ use headers::{AcceptRanges, HeaderMap, HeaderMapExt, HeaderValue};
 use hyper::{header::CONTENT_ENCODING, header::CONTENT_LENGTH, Body, Method, Response, StatusCode};
 use std::fs::{File, Metadata};
 use std::io;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use crate::conditional_headers::ConditionalHeaders;
-use crate::file_path::{sanitize_path, PathExt};
+use crate::fs::meta::{try_metadata, try_metadata_with_html_suffix, FileMetadata};
+use crate::fs::path::{sanitize_path, PathExt};
+use crate::http_ext::{MethodExt, HTTP_SUPPORTED_METHODS};
+use crate::response::response_body;
 use crate::Result;
-use crate::{
-    file_response::response_body,
-    http_ext::{MethodExt, HTTP_SUPPORTED_METHODS},
-};
 
 #[cfg(any(
     feature = "compression",
@@ -205,21 +204,6 @@ pub async fn handle<'a>(opts: &HandleOpts<'a>) -> Result<StaticFileResponse, Sta
     })
 }
 
-/// It defines a composed file metadata structure containing the current file
-/// and its optional compressed variant.
-struct FileMetadata<'a> {
-    /// The current file path reference.
-    pub file_path: &'a PathBuf,
-    /// The metadata of current `file_path` by default.
-    /// Note that if `precompressed_variant` has some value
-    /// then the `metadata` value will correspond to the `precompressed_variant`.
-    pub metadata: Metadata,
-    // If either `file_path` or `precompressed_variant` is a directory.
-    pub is_dir: bool,
-    // The precompressed file variant for the current `file_path`.
-    pub precompressed_variant: Option<(PathBuf, &'a str)>,
-}
-
 /// Returns the final composed metadata containing
 /// the current `file_path` with its file metadata
 /// as well as its optional pre-compressed variant.
@@ -231,7 +215,7 @@ async fn get_composed_file_metadata<'a>(
 ) -> Result<FileMetadata<'a>, StatusCode> {
     tracing::trace!("getting metadata for file {}", file_path.display());
 
-    match file_metadata(file_path) {
+    match try_metadata(file_path) {
         Ok((mut metadata, is_dir)) => {
             if is_dir {
                 // Try every index file variant in order
@@ -269,7 +253,7 @@ async fn get_composed_file_metadata<'a>(
                     // Otherwise, just fallback to finding the index.html
                     // and overwrite the current `meta`
                     // Also noting that it's still a directory request
-                    if let Ok(meta_res) = file_metadata(file_path) {
+                    if let Ok(meta_res) = try_metadata(file_path) {
                         (metadata, _) = meta_res;
                         index_found = true;
                         break;
@@ -278,7 +262,7 @@ async fn get_composed_file_metadata<'a>(
                     // We remove only the appended index file
                     file_path.pop();
                     let new_meta: Option<Metadata>;
-                    (file_path, new_meta) = suffix_file_html_metadata(file_path);
+                    (file_path, new_meta) = try_metadata_with_html_suffix(file_path);
                     if let Some(new_meta) = new_meta {
                         metadata = new_meta;
                         index_found = true;
@@ -349,7 +333,7 @@ async fn get_composed_file_metadata<'a>(
             // we try to find the path suffixed with `.html`.
             // For example: `/posts/article` will fallback to `/posts/article.html`
             let new_meta: Option<Metadata>;
-            (file_path, new_meta) = suffix_file_html_metadata(file_path);
+            (file_path, new_meta) = try_metadata_with_html_suffix(file_path);
 
             #[cfg(any(
                 feature = "compression",
@@ -399,21 +383,6 @@ async fn get_composed_file_metadata<'a>(
     }
 }
 
-/// Try to find the file system metadata for the given file path or returns an `Not Found` error.
-pub fn file_metadata(file_path: &Path) -> Result<(Metadata, bool), StatusCode> {
-    match std::fs::metadata(file_path) {
-        Ok(meta) => {
-            let is_dir = meta.is_dir();
-            tracing::trace!("file found: {:?}", file_path);
-            Ok((meta, is_dir))
-        }
-        Err(err) => {
-            tracing::debug!("file not found: {:?} {:?}", file_path, err);
-            Err(StatusCode::NOT_FOUND)
-        }
-    }
-}
-
 /// Reply with the corresponding file content taking into account
 /// its precompressed variant if any.
 /// The `path` param should contains always the original requested file path and
@@ -449,28 +418,4 @@ fn file_reply<'a>(
             Either::Right(future::err(status))
         }
     }
-}
-
-/// Returns the result of trying to append a `.html` to the file path.
-/// * If the suffixed html path exists, it mutates the path to the suffixed one and returns the `Metadata`
-/// * If the suffixed html path doesn't exist, it reverts the path to it's original value
-fn suffix_file_html_metadata(file_path: &mut PathBuf) -> (&mut PathBuf, Option<Metadata>) {
-    tracing::debug!("file: appending .html to the path");
-
-    if let Some(filename) = file_path.file_name() {
-        let owned_filename = filename.to_os_string();
-        let mut owned_filename_with_html = owned_filename.clone();
-
-        owned_filename_with_html.push(".html");
-        file_path.set_file_name(owned_filename_with_html);
-
-        if let Ok(meta_res) = file_metadata(file_path) {
-            let (meta, _) = meta_res;
-            return (file_path, Some(meta));
-        }
-
-        file_path.set_file_name(owned_filename);
-    }
-
-    (file_path, None)
 }
