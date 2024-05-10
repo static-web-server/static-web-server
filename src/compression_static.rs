@@ -62,62 +62,68 @@ pub async fn precompressed_variant<'a>(
         "preparing pre-compressed file variant path of {}",
         file_path.display()
     );
-
-    // Determine preferred-encoding extension if available
-    let comp_ext = match compression::get_preferred_encoding(headers) {
-        // https://zlib.net/zlib_faq.html#faq39
-        #[cfg(any(
-            feature = "compression",
-            feature = "compression-gzip",
-            feature = "compression-deflate"
-        ))]
-        Some(ContentCoding::GZIP | ContentCoding::DEFLATE) => "gz",
-        // https://peazip.github.io/brotli-compressed-file-format.html
-        #[cfg(any(feature = "compression", feature = "compression-brotli"))]
-        Some(ContentCoding::BROTLI) => "br",
-        // https://datatracker.ietf.org/doc/html/rfc8878
-        #[cfg(any(feature = "compression", feature = "compression-zstd"))]
-        Some(ContentCoding::ZSTD) => "zst",
-        _ => {
-            tracing::trace!(
+    
+    for encoding in compression::get_encodings(headers) {
+        // Determine preferred-encoding extension if available
+        let comp_ext = match encoding {
+            // https://zlib.net/zlib_faq.html#faq39
+            #[cfg(any(
+                feature = "compression",
+                feature = "compression-gzip",
+                feature = "compression-deflate"
+            ))]
+            ContentCoding::GZIP | ContentCoding::DEFLATE => "gz",
+            // https://peazip.github.io/brotli-compressed-file-format.html
+            #[cfg(any(feature = "compression", feature = "compression-brotli"))]
+            ContentCoding::BROTLI => "br",
+            // https://datatracker.ietf.org/doc/html/rfc8878
+            #[cfg(any(feature = "compression", feature = "compression-zstd"))]
+            ContentCoding::ZSTD => "zst",
+            _ => {
+                tracing::trace!(
                 "preferred encoding based on the file extension was not determined, skipping"
             );
-            return None;
-        }
-    };
+                continue;
+            }
+        };
 
-    let comp_name = match file_path.file_name().and_then(OsStr::to_str) {
-        Some(v) => v,
-        None => {
-            tracing::trace!("file name was not determined for the current path, skipping");
-            return None;
-        }
-    };
+        let comp_name = match file_path.file_name().and_then(OsStr::to_str) {
+            Some(v) => v,
+            None => {
+                tracing::trace!("file name was not determined for the current path, skipping");
+                continue;
+            }
+        };
 
-    let file_path = file_path.with_file_name([comp_name, ".", comp_ext].concat());
-    tracing::trace!(
+        let file_path = file_path.with_file_name([comp_name, ".", comp_ext].concat());
+        tracing::trace!(
         "trying to get the pre-compressed file variant metadata for {}",
         file_path.display()
     );
 
-    let (metadata, is_dir) = match try_metadata(&file_path) {
-        Ok(v) => v,
-        Err(e) => {
-            tracing::trace!("pre-compressed file variant error: {:?}", e);
-            return None;
+        let (metadata, is_dir) = match try_metadata(&file_path) {
+            Ok(v) => v,
+            Err(e) => {
+                tracing::trace!("pre-compressed file variant error: {:?}", e);
+                continue;
+            }
+        };
+
+        if is_dir {
+            tracing::trace!("pre-compressed file variant found but it's a directory, skipping");
+            continue;
         }
-    };
 
-    if is_dir {
-        tracing::trace!("pre-compressed file variant found but it's a directory, skipping");
-        return None;
+        tracing::trace!("pre-compressed file variant found, serving it directly");
+
+        return Some(CompressedFileVariant {
+            file_path,
+            metadata,
+            extension: if comp_ext == "gz" { "gzip" } else { comp_ext },
+        })
     }
+    
+    return None;
 
-    tracing::trace!("pre-compressed file variant found, serving it directly");
-
-    Some(CompressedFileVariant {
-        file_path,
-        metadata,
-        extension: if comp_ext == "gz" { "gzip" } else { comp_ext },
-    })
+    
 }
