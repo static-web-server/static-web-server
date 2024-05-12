@@ -235,7 +235,7 @@ impl RequestHandler {
             if let Some(advanced) = &self.opts.advanced_opts {
                 // If the "Host" header matches any virtual_host, change the root directory
                 if let Some(root) =
-                    virtual_hosts::get_real_root(req.headers(), advanced.virtual_hosts.as_deref())
+                    virtual_hosts::get_real_root(req, advanced.virtual_hosts.as_deref())
                 {
                     base_path = root;
                 }
