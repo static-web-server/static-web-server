@@ -53,7 +53,7 @@ pub struct General {
     pub fd: Option<usize>,
 
     #[cfg_attr(
-        not(wasm),
+        not(target_family = "wasm"),
         arg(
             long,
             short = 'n',
@@ -62,7 +62,7 @@ pub struct General {
         )
     )]
     #[cfg_attr(
-        wasm,
+        target_family = "wasm",
         arg(
             long,
             short = 'n',
@@ -77,7 +77,7 @@ pub struct General {
     pub threads_multiplier: usize,
 
     #[cfg_attr(
-        not(wasm),
+        not(target_family = "wasm"),
         arg(
             long,
             short = 'b',
@@ -86,7 +86,7 @@ pub struct General {
         )
     )]
     #[cfg_attr(
-        wasm,
+        target_family = "wasm",
         arg(
             long,
             short = 'b',
