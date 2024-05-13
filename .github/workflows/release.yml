@@ -85,6 +85,9 @@ jobs:
           os: ubuntu-22.04
           rust: stable
           target: aarch64-unknown-linux-musl
+          # jemalloc 64KB (16) pagesize by default
+          # See: https://github.com/jemalloc/jemalloc/issues/467
+          jemalloc_sys_with_lg_page: 16
         - build: linux-gnu
           os: ubuntu-22.04
           rust: stable
@@ -208,6 +211,11 @@ jobs:
       run: |
         # ring crate: add Visual Studio Build Tools "VS 2022 C++ ARM64 build tools" and "clang" components
         $env:Path += ";C:\Program Files (x86)\Microsoft Visual Studio\2022\Enterprise\VC\Tools\Llvm\x64\bin"
+
+    - name: Setup Linux ARM64 MUSL
+      if: ${{ contains(matrix.build, 'linux-musl-arm64') }}
+      run: |
+        echo "JEMALLOC_SYS_WITH_LG_PAGE=${{ matrix.jemalloc_sys_with_lg_page }}" >> $GITHUB_ENV
 
     - name: Show command used for Cargo
       run: |
