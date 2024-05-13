@@ -194,7 +194,7 @@ pub mod static_files;
 #[cfg_attr(docsrs, doc(cfg(feature = "http2")))]
 pub mod tls;
 pub mod transport;
-pub mod virtual_hosts;
+pub(crate) mod virtual_hosts;
 #[cfg(windows)]
 #[cfg_attr(docsrs, doc(cfg(windows)))]
 pub mod winservice;
