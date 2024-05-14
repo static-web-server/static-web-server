@@ -16,6 +16,8 @@ use std::path::{Path, PathBuf};
 use crate::{helpers, logger, Context, Result};
 
 pub mod cli;
+#[doc(hidden)]
+pub mod cli_output;
 pub mod file;
 
 #[cfg(windows)]
@@ -101,6 +103,7 @@ impl Settings {
         let opts = General::parse();
 
         // Define the general CLI/file options
+        let version = opts.version;
         let mut host = opts.host;
         let mut port = opts.port;
         let mut root = opts.root;
@@ -557,6 +560,7 @@ impl Settings {
 
         Ok(Settings {
             general: General {
+                version,
                 host,
                 port,
                 root,
