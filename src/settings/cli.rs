@@ -3,7 +3,7 @@
 // See https://static-web-server.net/ for more information
 // Copyright (C) 2019-present Jose Quintana <joseluisq.net>
 
-//! The server CLI options
+//! The server CLI options.
 
 use clap::Parser;
 use hyper::StatusCode;
@@ -15,7 +15,7 @@ use crate::Result;
 
 /// General server configuration available in CLI and config file options.
 #[derive(Parser, Debug)]
-#[command(author, version, about, long_about = None)]
+#[command(author, about, long_about)]
 pub struct General {
     #[arg(long, short = 'a', default_value = "::", env = "SERVER_HOST")]
     /// Host address (E.g 127.0.0.1 or ::1)
@@ -518,6 +518,16 @@ pub struct General {
     #[command(subcommand)]
     /// Subcommands to install or uninstall the SWS Windows Service.
     pub commands: Option<Commands>,
+
+    #[arg(
+        long,
+        short = 'V',
+        default_value = "false",
+        default_missing_value("true")
+    )]
+    #[doc(hidden)]
+    /// Print version info and exit.
+    pub version: bool,
 }
 
 #[cfg(windows)]

@@ -17,6 +17,10 @@ use static_web_server::{Result, Settings};
 fn main() -> Result {
     let opts = Settings::get(true)?;
 
+    if opts.general.version {
+        return static_web_server::settings::cli_output::display_version();
+    }
+
     #[cfg(windows)]
     {
         use static_web_server::settings::Commands;
