@@ -97,6 +97,76 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn compression_static_suboptimal_file_exists() {
+        let mut headers = HeaderMap::new();
+        headers.insert(
+            http::header::ACCEPT_ENCODING,
+            "gzip, deflate, br, zstd".parse().unwrap(),
+        );
+
+        let index_br_path = PathBuf::from("tests/fixtures/public/404.html.br");
+        let index_br_path_public = public_dir().join("404.html.br");
+        std::fs::copy(&index_br_path, &index_br_path_public)
+            .expect("unexpected error copying fixture file");
+
+        let result = static_files::handle(&HandleOpts {
+            method: &Method::GET,
+            headers: &headers,
+            base_path: &public_dir(),
+            uri_path: "404.html",
+            uri_query: None,
+            #[cfg(feature = "directory-listing")]
+            dir_listing: false,
+            #[cfg(feature = "directory-listing")]
+            dir_listing_order: 6,
+            #[cfg(feature = "directory-listing")]
+            dir_listing_format: &DirListFmt::Html,
+            redirect_trailing_slash: true,
+            #[cfg(any(
+                feature = "compression",
+                feature = "compression-deflate",
+                feature = "compression-gzip",
+                feature = "compression-deflate",
+                feature = "compression-brotli",
+                feature = "compression-zstd"
+            ))]
+            compression_static: true,
+            ignore_hidden_files: false,
+            index_files: &[],
+        })
+        .await
+        .expect("unexpected error response on `handle` function");
+        let mut res = result.resp;
+
+        let index_br_buf =
+            std::fs::read(&index_br_path).expect("unexpected error when reading index.html.br");
+        let index_br_buf = Bytes::from(index_br_buf);
+
+        std::fs::remove_file(index_br_path_public).unwrap();
+
+        let headers = res.headers();
+
+        assert_eq!(res.status(), 200);
+        assert!(!headers.contains_key("content-length"));
+        assert_eq!(headers["content-encoding"], "br");
+        assert_eq!(headers["accept-ranges"], "bytes");
+        assert!(!headers["last-modified"].is_empty());
+        assert_eq!(
+            &headers["content-type"], "text/html",
+            "content-type is not html"
+        );
+
+        let body = hyper::body::to_bytes(res.body_mut())
+            .await
+            .expect("unexpected bytes error during `body` conversion");
+
+        assert_eq!(
+            body, index_br_buf,
+            "body and index_br_buf are not equal in length"
+        );
+    }
+
+    #[tokio::test]
     async fn compression_static_file_does_not_exist() {
         let mut headers = HeaderMap::new();
         headers.insert(

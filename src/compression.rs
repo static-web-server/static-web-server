@@ -331,6 +331,20 @@ pub fn get_preferred_encoding(headers: &HeaderMap<HeaderValue>) -> Option<Conten
     None
 }
 
+/// Get the `content-encodings` via the `accept-encoding` header.
+#[inline(always)]
+pub fn get_encodings(headers: &HeaderMap<HeaderValue>) -> Vec<ContentCoding> {
+    if let Some(ref accept_encoding) = headers.typed_get::<AcceptEncoding>() {
+        tracing::trace!("request with accept-encoding header: {:?}", accept_encoding);
+
+        return accept_encoding
+            .sorted_encodings()
+            .filter(|encoding| AVAILABLE_ENCODINGS.contains(encoding))
+            .collect::<Vec<_>>();
+    }
+    vec![]
+}
+
 /// A wrapper around any type that implements [`Stream`](futures_util::Stream) to be
 /// compatible with async_compression's `Stream` based encoders.
 #[pin_project]
