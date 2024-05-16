@@ -101,11 +101,11 @@ mod tests {
         let mut headers = HeaderMap::new();
         headers.insert(
             http::header::ACCEPT_ENCODING,
-            "deflate, br".parse().unwrap(),
+            "gzip, deflate, br, zstd".parse().unwrap(),
         );
 
-        let index_br_path = PathBuf::from("tests/fixtures/public/index.html.br");
-        let index_br_path_public = public_dir().join("index.html.br");
+        let index_br_path = PathBuf::from("tests/fixtures/public/404.html.br");
+        let index_br_path_public = public_dir().join("404.html.br");
         std::fs::copy(&index_br_path, &index_br_path_public)
             .expect("unexpected error copying fixture file");
 
@@ -113,7 +113,7 @@ mod tests {
             method: &Method::GET,
             headers: &headers,
             base_path: &public_dir(),
-            uri_path: "index.html",
+            uri_path: "404.html",
             uri_query: None,
             #[cfg(feature = "directory-listing")]
             dir_listing: false,
@@ -134,8 +134,8 @@ mod tests {
             ignore_hidden_files: false,
             index_files: &[],
         })
-            .await
-            .expect("unexpected error response on `handle` function");
+        .await
+        .expect("unexpected error response on `handle` function");
         let mut res = result.resp;
 
         let index_br_buf =

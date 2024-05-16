@@ -62,7 +62,7 @@ pub async fn precompressed_variant<'a>(
         "preparing pre-compressed file variant path of {}",
         file_path.display()
     );
-    
+
     for encoding in compression::get_encodings(headers) {
         // Determine preferred-encoding extension if available
         let comp_ext = match encoding {
@@ -81,8 +81,8 @@ pub async fn precompressed_variant<'a>(
             ContentCoding::ZSTD => "zst",
             _ => {
                 tracing::trace!(
-                "preferred encoding based on the file extension was not determined, skipping"
-            );
+                    "preferred encoding based on the file extension was not determined, skipping"
+                );
                 continue;
             }
         };
@@ -97,9 +97,9 @@ pub async fn precompressed_variant<'a>(
 
         let file_path = file_path.with_file_name([comp_name, ".", comp_ext].concat());
         tracing::trace!(
-        "trying to get the pre-compressed file variant metadata for {}",
-        file_path.display()
-    );
+            "trying to get the pre-compressed file variant metadata for {}",
+            file_path.display()
+        );
 
         let (metadata, is_dir) = match try_metadata(&file_path) {
             Ok(v) => v,
@@ -120,10 +120,8 @@ pub async fn precompressed_variant<'a>(
             file_path,
             metadata,
             extension: if comp_ext == "gz" { "gzip" } else { comp_ext },
-        })
+        });
     }
-    
-    return None;
 
-    
+    None
 }

@@ -337,9 +337,12 @@ pub fn get_encodings(headers: &HeaderMap<HeaderValue>) -> Vec<ContentCoding> {
     if let Some(ref accept_encoding) = headers.typed_get::<AcceptEncoding>() {
         tracing::trace!("request with accept-encoding header: {:?}", accept_encoding);
 
-        return accept_encoding.sorted_encodings().filter(|encoding| AVAILABLE_ENCODINGS.contains(encoding)).collect::<Vec<_>>();
+        return accept_encoding
+            .sorted_encodings()
+            .filter(|encoding| AVAILABLE_ENCODINGS.contains(encoding))
+            .collect::<Vec<_>>();
     }
-    return vec![];
+    vec![]
 }
 
 /// A wrapper around any type that implements [`Stream`](futures_util::Stream) to be
