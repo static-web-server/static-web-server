@@ -4,4 +4,4 @@ Unless you explicitly state otherwise, any contribution intentionally submitted 
 
 Feel free to send some [Pull request](https://github.com/static-web-server/static-web-server/pulls) or file an [issue](https://github.com/static-web-server/static-web-server/issues).
 
-For feedback or questions feel free to reach us on [the discussions page](https://github.com/static-web-server/static-web-server/discussions) or join us on [Discord](https://discord.gg/VWvtZeWAA7).
+For feedback or questions feel free to reach us on [the discussions page](https://github.com/static-web-server/static-web-server/discussions) or join us on [Discord Server](https://discord.gg/VWvtZeWAA7).

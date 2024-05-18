@@ -136,7 +136,7 @@ jobs:
 
     - name: Run SWS benchmark
       run: |
-        NAME=$(${{ env.TARGET_DIR }}/release/static-web-server --version | sed -e 's/static-web-server/sws/' -e 's/$/ (source)/')
+        NAME=$(${{ env.TARGET_DIR }}/release/static-web-server --version | head -n 1 | sed -e 's/^Version: *//' -e 's/static-web-server/sws/' -e 's/$/ (source)/')
         REPORT=report_sws.bin
         ${{ env.TARGET_DIR }}/release/static-web-server --config-file benchmarks-setup/config/sws.toml &
         sleep 2

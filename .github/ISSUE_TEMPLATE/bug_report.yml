@@ -1,8 +1,6 @@
 name: "Bug Report"
 description: "Create a bug report to help us improve."
 labels: ["bug", "v2"]
-assignees:
-  - joseluisq
 body:
   - type: markdown
     attributes:
@@ -114,6 +112,7 @@ body:
       description: Provide information about your environment and specs.
       value: |
         - [ ] **static-web-server:** [e.g. v1.24.1]
+        - [ ] **Rust:** [e.g. v1.78.0]
         - [ ] **OS:** [e.g. Debian 12.2, Macos 14.1.2, Windows 11, etc]
         - [ ] **Arch:** [e.g. x86_64 (64-bit), ARM (32-bit), ARM64 (64-bit), i686 (32-bit), etc]
         - [ ] **Docker:** [e.g. 20.10.7]

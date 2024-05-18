@@ -171,5 +171,6 @@ nav:
   - 'Changelog v2 (stable)': 'https://github.com/static-web-server/static-web-server/blob/master/CHANGELOG.md'
   - 'Changelog v1 (deprecated)': 'https://github.com/static-web-server/static-web-server/releases/tag/v1.19.4'
   - 'Semantic Versioning': 'semantic-versioning.md'
+  - 'Report Security Issues': 'report-security-issues.md'
   - 'Contributions': 'contributions.md'
   - 'License': 'license.md'

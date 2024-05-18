@@ -8,3 +8,7 @@ contact_links:
     url: https://github.com/orgs/static-web-server/discussions
     about: |
       Use the discussions page if you have questions or need help.
+  - name: Static Web Server Discord Community
+    url: https://discord.gg/VWvtZeWAA7
+    about: |
+      Join to our community on Discord if you have questions, need help or want to contribute.

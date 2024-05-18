@@ -22,11 +22,11 @@ body:
         - Completely new feature
         - Improve existing functionality
         - Target/OS/arch/platform
-        - Libary/API (crate)
+        - Library/API (crate)
         - Configuration (e.g. TOML) or CLI/env option
         - Build target (release binary)
-        - Usability / User Experience
-        - Documentation / Resources
+        - Usability/User Experience
+        - Documentation/Resources
         - Performance
         - Security
         - Project/structure/CI-CD/process
@@ -66,7 +66,7 @@ body:
         - Only Linux targets
         - Only Unix/Linux targets
         - Only macOS targets
-        - Only Window targets
+        - Only Windows targets
         - New target (specify below)
         - aarch64-apple-darwin
         - aarch64-linux-android
