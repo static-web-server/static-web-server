@@ -6,7 +6,7 @@ freebsd_instance:
 # 64-bit kernel and in a 64-bit environment. Our tests don't execute
 # any of the system's binaries, so the environment shouldn't matter.
 task:
-  only_if: $CIRRUS_TAG == ''
+  only_if: $CIRRUS_TAG == '' && changesIncludeOnly('.cirrus.yml', 'src/**', 'tests/**', 'Cargo.toml', 'Cargo.lock', '.cargo/config.toml')
   env:
     RUSTFLAGS: -Dwarnings --cfg tokio_unstable
     CARGO_FEATURES: "--features=all"
