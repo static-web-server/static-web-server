@@ -1,0 +1,63 @@
+name: code-analyzer
+on:
+  push:
+    branches:
+    - master
+    - staging
+    - trying
+    paths:
+      - .github/workflows/devel.yml
+      - .github/workflows/devel.code-analyzer.yml
+      - .cargo/config.toml
+      - Cargo.lock
+      - Cargo.toml
+      - src/**
+      - tests/**
+  pull_request:
+    branches:
+    - master
+    paths:
+      - .github/workflows/devel.yml
+      - .github/workflows/devel.code-analyzer.yml
+      - .cargo/config.toml
+      - Cargo.lock
+      - Cargo.toml
+      - src/**
+      - tests/**
+  schedule:
+    - cron: '20 02 * * 1' # Runs at 02:20, only on Monday
+
+jobs:
+  analyze:
+    name: analyze
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 1
+
+    - name: Install stable toolchain
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        toolchain: stable
+        components: rustfmt, clippy
+
+    - name: Install crates
+      run: cargo install clippy-sarif sarif-fmt
+
+    - name: Run clippy
+      continue-on-error: true
+      run: |
+        cargo clippy --all-features --message-format=json | clippy-sarif | tee rust-clippy-results.sarif | sarif-fmt
+
+    - name: Upload analysis results to GitHub
+      uses: github/codeql-action/upload-sarif@v2
+      with:
+        sarif_file: rust-clippy-results.sarif
+        wait-for-processing: true
