@@ -92,14 +92,5 @@ sed -i$sed_fname -e "s/version=\".*\"/version=\"$server_version_num\"/g" $cwd/sc
 echo "Installer script $server_version_num version updated!"
 
 echo
-echo "Committing post release page updates..."
-git config user.name "github-actions"
-git config user.email "actions@users.noreply.github.com"
-git checkout master
-git pull origin master
-git add docs/content/download-and-install.md
-git add scripts/installer.sh
-git commit -m "chore: release $SERVER_VERSION updates [skip ci]" || exit 0
-git push origin master
 
 echo "All changes after release were done successfully!"
