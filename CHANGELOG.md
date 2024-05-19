@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _**Note:** See changelog for v1 under the [1.x](https://github.com/static-web-server/static-web-server/blob/1.x/CHANGELOG.md) branch._
 
+## v2.31.0 - 2024-05-19
+
+This new `v2.31.0` release brings several bug fixes, features like a new compression level option, logs for virtual-hosts and better accepted-encodings handling for pre-compressed files as well as other improvements.
+
+__Fixes__
+
+- [d22e2dd](https://github.com/static-web-server/static-web-server/commit/d22e2dd) Bugfix/security dependency updates including bytes, serde, toml, async-compression, flate2, brotli and other crates (also [ea96328](https://github.com/static-web-server/static-web-server/commit/ea96328)).
+- [1aae13c](https://github.com/static-web-server/static-web-server/commit/1aae13c) Directory Listing: Empty file sizes are displayed incorrectly. PR [#385](https://github.com/static-web-server/static-web-server/pull/385) by [@palant](https://github.com/palant).
+- [25c171b](https://github.com/static-web-server/static-web-server/commit/25c171b) Directory Listing: File sizes are wrongly displayed in decimal format. PR [#376](https://github.com/static-web-server/static-web-server/pull/376) by [@miroim](https://github.com/miroim).
+- [e7bfaa2](https://github.com/static-web-server/static-web-server/commit/e7bfaa2) Lib: Compile errors if only deflate compression is enabled. PR [#383](https://github.com/static-web-server/static-web-server/pull/383) by [@palant](https://github.com/palant).
+- [195f706](https://github.com/static-web-server/static-web-server/commit/195f706) Docker: Unsupported system page size when using Linux ARM64 musl (E.g. Raspberry Pi 5). PR [#443](https://github.com/static-web-server/static-web-server/pull/443).
+- [d4046d9](https://github.com/static-web-server/static-web-server/commit/d4046d9) Unexpected `cfg` condition-name `wasm` in Rust nightly. PR [#441](https://github.com/static-web-server/static-web-server/pull/441).
+- [1b13a74](https://github.com/static-web-server/static-web-server/commit/1b13a74) Misc: Clippy warnings caused by test code. PR [#382](https://github.com/static-web-server/static-web-server/pull/382) by [@palant](https://github.com/palant).
+- [0792606](https://github.com/static-web-server/static-web-server/commit/0792606) CI: Code analysis workflow.
+- [936b224](https://github.com/static-web-server/static-web-server/commit/936b224) CI: Prevent running the FreeBSD devel pipeline unnecessarily. 
+
+__Refactorings__
+
+- [85e3da](https://github.com/static-web-server/static-web-server/commit/85e3da) Lib: Make request `body` type generic across modules. PR [#375](https://github.com/static-web-server/static-web-server/pull/375) by [@palant](https://github.com/palant).
+- [18f550a](https://github.com/static-web-server/static-web-server/commit/18f550a) Directory Listing: Drop custom type conversion between `SystemTime` and `DateTime`. PR [#384](https://github.com/static-web-server/static-web-server/pull/384) by [@palant](https://github.com/palant).
+- [219ec6c](https://github.com/static-web-server/static-web-server/commit/219ec6c) Move Remote and Real IP addresses logging to a new module. PR [#388](https://github.com/static-web-server/static-web-server/pull/388).
+- [cfd8bb1](https://github.com/static-web-server/static-web-server/commit/cfd8bb1) Re-organize file system-related modules. PR [#424](https://github.com/static-web-server/static-web-server/pull/424).
+- [7cf72e6](https://github.com/static-web-server/static-web-server/commit/7cf72e6) Misc: Several project config and doc file improvements.
+
+__Features__
+
+- [9cbf95b](https://github.com/static-web-server/static-web-server/commit/9cbf95b) Compression level option support. PR [#381](https://github.com/static-web-server/static-web-server/pull/381) by [@palant](https://github.com/palant). See [docs](https://static-web-server.net/features/compression/#compression-level).
+- [778477e](https://github.com/static-web-server/static-web-server/commit/778477e) Log virtual-hosts information per request. PR [#442](https://github.com/static-web-server/static-web-server/pull/442).
+- [7f59da9](https://github.com/static-web-server/static-web-server/commit/7f59da9) Look for all accepted encodings for pre-compressed files but keeping the quality ordering. PR [#439](https://github.com/static-web-server/static-web-server/pull/439) by [@kobutri](https://github.com/kobutri).
+- [d2eaa74](https://github.com/static-web-server/static-web-server/commit/d2eaa74) Benchmark: Add Caddy server to performance benchmarks. PR [#379](https://github.com/static-web-server/static-web-server/pull/379) by [@palant](https://github.com/palant).
+- [2faeef5](https://github.com/static-web-server/static-web-server/commit/2faeef5) Show detailed information about the server via `--version` (`-V`) flag. PR [#444](https://github.com/static-web-server/static-web-server/pull/444).
+
 ## v2.30.0 - 2024-04-29
 
 This new `v2.30.0` release brings security and dependency updates as well as several bug fixes. Overall performance improvements (directory listing particularly), continuous HTTP load testing benchmarks, project refactorings for increased stability, security and correctness as well as several other improvements.
