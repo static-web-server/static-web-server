@@ -17,6 +17,7 @@ keywords = [
 categories = ["network-programming", "web-programming::http-server"]
 include = [
     "src/**/*.rs",
+    "build.rs",
     "Cargo.toml",
     "README.md",
     "LICENSE-MIT",
