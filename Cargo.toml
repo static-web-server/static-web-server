@@ -126,7 +126,7 @@ strip = true
 all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
 
-# workaround for https://github.com/cross-rs/cross/issues/1345
+# Cross: workaround for https://github.com/cross-rs/cross/issues/1345
 [package.metadata.cross.target.x86_64-unknown-netbsd]
 pre-build = [
     "mkdir -p /tmp/netbsd",
@@ -136,3 +136,10 @@ pre-build = [
     "rm base.tar.xz",
     "rm -rf /tmp/netbsd",
 ]
+
+# Cross: Linux ARM64 Musl only
+[package.metadata.cross.target.aarch64-unknown-linux-musl.env]
+# workaround for jemalloc on ARM64 (musl) by using 64KB pagesize by default (max value)
+# - https://github.com/static-web-server/static-web-server/issues/440
+# - https://github.com/jemalloc/jemalloc/issues/467
+passthrough = ["JEMALLOC_SYS_WITH_LG_PAGE=16"]
