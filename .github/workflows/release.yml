@@ -143,11 +143,11 @@ jobs:
           target: aarch64-apple-darwin
         - build: windows-msvc
           os: windows-2022
-          rust: stable
+          rust: 1.77.2
           target: x86_64-pc-windows-msvc
         - build: windows-msvc-i686
           os: windows-2022
-          rust: stable
+          rust: 1.77.2
           target: i686-pc-windows-msvc
         - build: windows-msvc-arm64
           os: windows-2022
@@ -155,7 +155,7 @@ jobs:
           target: aarch64-pc-windows-msvc
         - build: windows-pc-gnu
           os: windows-2022
-          rust: stable-x86_64-gnu
+          rust: 1.77.2
           target: x86_64-pc-windows-gnu
 
     steps:
