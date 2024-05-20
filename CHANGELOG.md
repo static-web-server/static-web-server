@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _**Note:** See changelog for v1 under the [1.x](https://github.com/static-web-server/static-web-server/blob/1.x/CHANGELOG.md) branch._
 
+## v2.31.1 - 2024-05-21
+
+This new `v2.31.1` release fixes an issue when running the SWS Linux ARM64 Musl binary on systems with greater memory page sizes than 4KB and re-enables build support for the legacy Windows 7 dropped by the previous release.
+
+__Fixes__
+
+- [c5f851f](https://github.com/static-web-server/static-web-server/commit/c5f851f) Bugfix/security dependency updates.
+- [adaddde](https://github.com/static-web-server/static-web-server/commit/adaddde) Jemalloc unsupported system page size in Linux ARM64 Musl. PR [#446](https://github.com/static-web-server/static-web-server/pull/446).
+- [1763623](https://github.com/static-web-server/static-web-server/commit/1763623) Lib: Cargo `publish` issue due to missing `build.rs` file include.
+
+__Refactorings__
+
+- [5f116d](https://github.com/static-web-server/static-web-server/commit/5f116d) Re-enable Windows 7 build support. PR [#446](https://github.com/static-web-server/static-web-server/pull/446).<br>
+  The following Windows targets will build now using Rust `1.77.2` rather than the latest stable version, except `aarch64-pc-windows-msvc` (a.k.a. Windows ARM64):
+  - `x86_64-pc-windows-msvc`
+  - `i686-pc-windows-msvc`
+  - `x86_64-pc-windows-gnu`
+
 ## v2.31.0 - 2024-05-19
 
 This new `v2.31.0` release brings several bug fixes, features like a new compression level option, logs for virtual-hosts and better accepted-encodings handling for pre-compressed files as well as other improvements.
