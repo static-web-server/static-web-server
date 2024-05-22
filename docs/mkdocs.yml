@@ -29,7 +29,6 @@ theme:
     - content.action.edit
     - content.action.view
     - content.tabs.link
-    - header.autohide
     # - navigation.expand
     - navigation.indexes
     # - navigation.instant
@@ -130,7 +129,7 @@ plugins:
 nav:
   - 'Overview': 'index.md'
   - 'Getting Started': 'getting-started.md'
-  - 'Download and Install': 'download-and-install.md'
+  - 'Download and Install': 'download-and-install.generated.md'
   - 'Configuration':
     - 'Command Line Arguments': 'configuration/command-line-arguments.md'
     - 'Environment Variables': 'configuration/environment-variables.md'
