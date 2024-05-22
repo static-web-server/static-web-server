@@ -98,6 +98,7 @@ pub mod fixtures {
             maintenance_mode: opts.general.maintenance_mode,
             maintenance_mode_status: opts.general.maintenance_mode_status,
             maintenance_mode_file: opts.general.maintenance_mode_file,
+            memory_cache: None,
             advanced_opts: opts.advanced,
         };
 

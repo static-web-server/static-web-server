@@ -360,6 +360,9 @@ pub struct General {
     /// Custom maintenance mode HTML file.
     pub maintenance_mode_file: Option<PathBuf>,
 
+    /// In-memory files cache feature.
+    pub memory_cache: Option<bool>,
+
     #[cfg(windows)]
     /// windows service feature.
     pub windows_service: Option<bool>,

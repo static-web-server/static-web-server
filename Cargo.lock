@@ -1298,6 +1298,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "sieve-cache"
+version = "0.1.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "51bf3a9dccf2c079bf1465d449a485c85b36443caf765f2f127bfec28b180f75"
+
+[[package]]
 name = "signal-hook"
 version = "0.3.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1382,6 +1388,8 @@ dependencies = [
  "listenfd",
  "maud",
  "mime_guess",
+ "once_cell",
+ "parking_lot",
  "percent-encoding",
  "pin-project",
  "prometheus",
@@ -1392,6 +1400,7 @@ dependencies = [
  "serde_json",
  "serde_repr",
  "shadow-rs",
+ "sieve-cache",
  "signal-hook",
  "signal-hook-tokio",
  "tikv-jemallocator",

@@ -333,6 +333,9 @@ impl Server {
         // Security Headers option
         security_headers::init(general.security_headers, &mut handler_opts);
 
+        let memory_cache = general.memory_cache;
+        server_info!("in-memory files cache: enabled={}", memory_cache);
+
         // Create a service router for Hyper
         let router_service = RouterService::new(RequestHandler {
             opts: Arc::from(handler_opts),

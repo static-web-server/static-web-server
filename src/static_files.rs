@@ -23,6 +23,7 @@ use crate::conditional_headers::ConditionalHeaders;
 use crate::fs::meta::{try_metadata, try_metadata_with_html_suffix, FileMetadata};
 use crate::fs::path::{sanitize_path, PathExt};
 use crate::http_ext::{MethodExt, HTTP_SUPPORTED_METHODS};
+use crate::mem_cache::{MemCacheOpts, CACHE_STORE};
 use crate::response::response_body;
 use crate::Result;
 
@@ -48,6 +49,8 @@ const DEFAULT_INDEX_FILES: &[&str; 1] = &["index.html"];
 pub struct HandleOpts<'a> {
     /// Request method.
     pub method: &'a Method,
+    /// In-memory files cache feature.
+    pub memory_cache: Option<&'a MemCacheOpts>,
     /// Request headers.
     pub headers: &'a HeaderMap<HeaderValue>,
     /// Request base path.
@@ -99,6 +102,7 @@ pub async fn handle<'a>(opts: &HandleOpts<'a>) -> Result<StaticFileResponse, Sta
 
     let headers_opt = opts.headers;
     let mut file_path = sanitize_path(opts.base_path, uri_path)?;
+    let memory_cache = opts.memory_cache;
 
     let FileMetadata {
         file_path,
@@ -157,6 +161,42 @@ pub async fn handle<'a>(opts: &HandleOpts<'a>) -> Result<StaticFileResponse, Sta
         });
     }
 
+    // In-memory file cache feature with eviction policy
+    if memory_cache.is_some() {
+        if let Some(file_path_str) = file_path.to_str() {
+            let mut cache_store = CACHE_STORE.get().unwrap().lock();
+            match cache_store.get(file_path_str) {
+                Some(mem_file) => {
+                    if !mem_file.has_expired() {
+                        tracing::debug!(
+                            "file `{}` found in the in-memory cache store and valid, returning it immediately",
+                            file_path_str
+                        );
+                        let resp = mem_file.response_body(headers_opt)?;
+                        return Ok(StaticFileResponse {
+                            resp,
+                            file_path: resp_file_path,
+                        });
+                    }
+
+                    // Otherwise, if the file has expired due to TTL
+                    // then remove it from the cache store and continue
+                    cache_store.remove(file_path_str);
+                    tracing::debug!(
+                        "file `{}` found in the in-memory cache store but TTL has expired, removed",
+                        file_path_str
+                    );
+                }
+                _ => {
+                    tracing::debug!(
+                        "file `{}` was not found in the in-memory cache store, continuing",
+                        file_path_str
+                    );
+                }
+            }
+        }
+    }
+
     // Directory listing
     // Check if "directory listing" feature is enabled,
     // if current path is a valid directory and
@@ -183,7 +223,14 @@ pub async fn handle<'a>(opts: &HandleOpts<'a>) -> Result<StaticFileResponse, Sta
     // Check for a pre-compressed file variant if present under the `opts.compression_static` context
     if let Some(precompressed_meta) = precompressed_variant {
         let (precomp_path, precomp_ext) = precompressed_meta;
-        let mut resp = file_reply(headers_opt, file_path, &metadata, Some(precomp_path)).await?;
+        let mut resp = file_reply(
+            headers_opt,
+            file_path,
+            &metadata,
+            Some(precomp_path),
+            memory_cache,
+        )
+        .await?;
 
         // Prepare corresponding headers to let know how to decode the payload
         resp.headers_mut().remove(CONTENT_LENGTH);
@@ -196,7 +243,7 @@ pub async fn handle<'a>(opts: &HandleOpts<'a>) -> Result<StaticFileResponse, Sta
         });
     }
 
-    let resp = file_reply(headers_opt, file_path, &metadata, None).await?;
+    let resp = file_reply(headers_opt, file_path, &metadata, None, memory_cache).await?;
 
     Ok(StaticFileResponse {
         resp,
@@ -394,12 +441,13 @@ fn file_reply<'a>(
     path: &'a PathBuf,
     meta: &'a Metadata,
     path_precompressed: Option<PathBuf>,
+    memory_cache: Option<&'a MemCacheOpts>,
 ) -> impl Future<Output = Result<Response<Body>, StatusCode>> + Send + 'a {
     let conditionals = ConditionalHeaders::new(headers);
     let file_path = path_precompressed.as_ref().unwrap_or(path);
 
     match File::open(file_path) {
-        Ok(file) => Either::Left(response_body(file, path, meta, conditionals)),
+        Ok(file) => Either::Left(response_body(file, path, meta, conditionals, memory_cache)),
         Err(err) => {
             let status = match err.kind() {
                 io::ErrorKind::NotFound => {
