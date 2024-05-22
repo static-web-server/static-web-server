@@ -16,12 +16,12 @@
          <changefreq>daily</changefreq>
     </url>
     <url>
-         <loc>https://static-web-server.net/download-and-install.generated/</loc>
+         <loc>https://static-web-server.net/download-and-install/</loc>
          <lastmod>2024-05-22</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
-         <loc>https://static-web-server.net/download-and-install/</loc>
+         <loc>https://static-web-server.net/download-and-install.template/</loc>
          <lastmod>2024-05-22</lastmod>
          <changefreq>daily</changefreq>
     </url>
