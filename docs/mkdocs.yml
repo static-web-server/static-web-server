@@ -16,7 +16,7 @@ extra_css:
   - 'assets/style.css'
 
 # Copyright
-copyright: Copyright &copy; 2019-2023 Jose Quintana
+copyright: Copyright &copy; 2019-2024 Jose Quintana
 
 # Theme
 theme:
@@ -129,7 +129,7 @@ plugins:
 nav:
   - 'Overview': 'index.md'
   - 'Getting Started': 'getting-started.md'
-  - 'Download and Install': 'download-and-install.generated.md'
+  - 'Download and Install': 'download-and-install.md'
   - 'Configuration':
     - 'Command Line Arguments': 'configuration/command-line-arguments.md'
     - 'Environment Variables': 'configuration/environment-variables.md'

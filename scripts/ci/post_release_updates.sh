@@ -61,12 +61,12 @@ release_date=$(date +%Y-%m-%d)
 filename_version="static-web-server-$SERVER_VERSION"
 filename_version_num="static-web-server-$server_version_num"
 
-page_download_install_generated=docs/content/download-and-install.generated.md
+page_download_install_generated=docs/content/download-and-install.md
 sed_bk=".bk"
 
 # Replace placeholder occurrences
 echo "<!-- Content generated. DO NOT EDIT. -->" > $page_download_install_generated
-sed "s/{{RELEASE_DATE}}/$release_date/g" docs/content/download-and-install.md >> $page_download_install_generated
+sed "s/{{RELEASE_DATE}}/$release_date/g" docs/content/download-and-install.template.md >> $page_download_install_generated
 
 while read -r line; do
     checksum=$(echo $line | awk -F ' ' '{print $1}')
