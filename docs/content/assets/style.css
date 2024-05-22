@@ -1,3 +1,7 @@
+.md-main__inner {
+    margin-top: 0;
+}
+
 .md-button.md-button-sm {
     min-width: 7.5rem;
     text-align: center;
