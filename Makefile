@@ -285,7 +285,6 @@ docs-deploy:
 			static-web-server-docs mkdocs build
 	@git checkout gh-pages
 	@git clean -fdx
-	@cp -rf docs/CNAME /tmp/docs/
 	@rm -rf docs/
 	@mkdir -p docs/
 	@cp -rf /tmp/docs/. docs/

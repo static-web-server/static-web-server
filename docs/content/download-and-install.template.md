@@ -25,7 +25,23 @@ Use the binary installer if your package manager is not supported.
 curl --proto '=https' --tlsv1.2 -sSfL https://get.static-web-server.net | sh
 ```
 
-`static-web-server` should be installed under the `/usr/local/bin` directory.
+`static-web-server` will be installed by default under the `/usr/local/bin` directory.
+
+Alternatively, you can install a specific version of SWS to a custom location by setting environment variables.
+
+```sh
+export SWS_INSTALL_VERSION="2.31.0" # full list at https://github.com/static-web-server/static-web-server/tags
+export SWS_INSTALL_DIR="~/.local/bin"
+curl --proto '=https' --tlsv1.2 -sSfL https://get.static-web-server.net | sh
+```
+
+Make sure you set the environment variables for the piped process (`sh` in our case), not the piping process (`curl`).
+
+If you don't want to `export` environment variables then use:
+
+```sh
+curl --proto '=https' --tlsv1.2 -sSfL https://get.static-web-server.net | SWS_INSTALL_DIR="~/.local/bin" sh
+```
 
 ### Arch Linux
 

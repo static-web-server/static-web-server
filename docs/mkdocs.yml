@@ -16,7 +16,7 @@ extra_css:
   - 'assets/style.css'
 
 # Copyright
-copyright: Copyright &copy; 2019-2023 Jose Quintana
+copyright: Copyright &copy; 2019-2024 Jose Quintana
 
 # Theme
 theme:
@@ -29,7 +29,6 @@ theme:
     - content.action.edit
     - content.action.view
     - content.tabs.link
-    - header.autohide
     # - navigation.expand
     - navigation.indexes
     # - navigation.instant
