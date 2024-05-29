@@ -10,6 +10,7 @@ use http::StatusCode;
 use std::fs::Metadata;
 use std::path::{Path, PathBuf};
 
+use crate::headers_ext::ContentCoding;
 use crate::Result;
 
 /// It defines a composed file metadata structure containing the current file
@@ -24,7 +25,7 @@ pub(crate) struct FileMetadata<'a> {
     // If either `file_path` or `precompressed_variant` is a directory.
     pub is_dir: bool,
     // The precompressed file variant for the current `file_path`.
-    pub precompressed_variant: Option<(PathBuf, &'a str)>,
+    pub precompressed_variant: Option<(PathBuf, ContentCoding)>,
 }
 
 /// Try to find the file system metadata for the given file path or return a `Not Found` error.
