@@ -182,13 +182,22 @@ pub async fn handle<'a>(opts: &HandleOpts<'a>) -> Result<StaticFileResponse, Sta
 
     // Check for a pre-compressed file variant if present under the `opts.compression_static` context
     if let Some(precompressed_meta) = precompressed_variant {
-        let (precomp_path, precomp_ext) = precompressed_meta;
+        let (precomp_path, precomp_encoding) = precompressed_meta;
         let mut resp = file_reply(headers_opt, file_path, &metadata, Some(precomp_path)).await?;
 
         // Prepare corresponding headers to let know how to decode the payload
         resp.headers_mut().remove(CONTENT_LENGTH);
-        resp.headers_mut()
-            .insert(CONTENT_ENCODING, precomp_ext.parse().unwrap());
+        let encoding = match HeaderValue::from_str(precomp_encoding.as_str()) {
+            Ok(val) => val,
+            Err(err) => {
+                tracing::error!(
+                    "unable to parse header value from content encoding: {:?}",
+                    err
+                );
+                return Err(StatusCode::INTERNAL_SERVER_ERROR);
+            }
+        };
+        resp.headers_mut().insert(CONTENT_ENCODING, encoding);
 
         return Ok(StaticFileResponse {
             resp,
@@ -245,7 +254,7 @@ async fn get_composed_file_metadata<'a>(
                                 file_path,
                                 metadata: p.metadata,
                                 is_dir: false,
-                                precompressed_variant: Some((p.file_path, p.extension)),
+                                precompressed_variant: Some((p.file_path, p.encoding)),
                             });
                         }
                     }
@@ -293,7 +302,7 @@ async fn get_composed_file_metadata<'a>(
                             file_path,
                             metadata: p.metadata,
                             is_dir: false,
-                            precompressed_variant: Some((p.file_path, p.extension)),
+                            precompressed_variant: Some((p.file_path, p.encoding)),
                         });
                     }
                 }
@@ -324,7 +333,7 @@ async fn get_composed_file_metadata<'a>(
                         file_path,
                         metadata: p.metadata,
                         is_dir: false,
-                        precompressed_variant: Some((p.file_path, p.extension)),
+                        precompressed_variant: Some((p.file_path, p.encoding)),
                     });
                 }
             }
@@ -362,7 +371,7 @@ async fn get_composed_file_metadata<'a>(
                                 file_path,
                                 metadata: p.metadata,
                                 is_dir: false,
-                                precompressed_variant: Some((p.file_path, p.extension)),
+                                precompressed_variant: Some((p.file_path, p.encoding)),
                             });
                         }
                     }
