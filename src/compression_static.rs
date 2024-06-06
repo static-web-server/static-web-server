@@ -45,7 +45,7 @@ pub(crate) fn post_process<T>(
     }
 
     // Compression content encoding varies so use a `Vary` header
-    resp.headers_mut().append(
+    resp.headers_mut().insert(
         hyper::header::VARY,
         HeaderValue::from_name(hyper::header::ACCEPT_ENCODING),
     );
