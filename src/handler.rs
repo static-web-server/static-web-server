@@ -324,11 +324,12 @@ mod tests {
     use std::net::SocketAddr;
 
     use crate::http_ext::MethodExt;
-    use crate::testing::fixtures::{fixture_req_handler, REMOTE_ADDR};
+    use crate::testing::fixtures::{fixture_req_handler, fixture_settings, REMOTE_ADDR};
 
     #[tokio::test]
     async fn check_allowed_methods() {
-        let req_handler = fixture_req_handler("toml/handler.toml");
+        let settings = fixture_settings("toml/handler.toml");
+        let req_handler = fixture_req_handler(settings.general, settings.advanced);
         let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
 
         let methods = [

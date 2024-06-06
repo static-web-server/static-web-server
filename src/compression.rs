@@ -98,13 +98,8 @@ pub(crate) fn post_process<T>(
         return Ok(resp);
     }
 
-    let is_precompressed = resp.headers().get(CONTENT_ENCODING).is_some();
-    if is_precompressed {
-        return Ok(resp);
-    }
-
     // Compression content encoding varies so use a `Vary` header
-    resp.headers_mut().append(
+    resp.headers_mut().insert(
         hyper::header::VARY,
         HeaderValue::from_name(hyper::header::ACCEPT_ENCODING),
     );
@@ -216,7 +211,7 @@ pub fn gzip(
     )));
     let header = create_encoding_header(head.headers.remove(CONTENT_ENCODING), ContentCoding::GZIP);
     head.headers.remove(CONTENT_LENGTH);
-    head.headers.append(CONTENT_ENCODING, header);
+    head.headers.insert(CONTENT_ENCODING, header);
     Response::from_parts(head, body)
 }
 
@@ -246,7 +241,7 @@ pub fn deflate(
         ContentCoding::DEFLATE,
     );
     head.headers.remove(CONTENT_LENGTH);
-    head.headers.append(CONTENT_ENCODING, header);
+    head.headers.insert(CONTENT_ENCODING, header);
     Response::from_parts(head, body)
 }
 
@@ -274,7 +269,7 @@ pub fn brotli(
     let header =
         create_encoding_header(head.headers.remove(CONTENT_ENCODING), ContentCoding::BROTLI);
     head.headers.remove(CONTENT_LENGTH);
-    head.headers.append(CONTENT_ENCODING, header);
+    head.headers.insert(CONTENT_ENCODING, header);
     Response::from_parts(head, body)
 }
 
@@ -301,7 +296,7 @@ pub fn zstd(
     )));
     let header = create_encoding_header(head.headers.remove(CONTENT_ENCODING), ContentCoding::ZSTD);
     head.headers.remove(CONTENT_LENGTH);
-    head.headers.append(CONTENT_ENCODING, header);
+    head.headers.insert(CONTENT_ENCODING, header);
     Response::from_parts(head, body)
 }
 

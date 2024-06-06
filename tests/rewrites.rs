@@ -7,11 +7,14 @@ pub mod tests {
     use hyper::Request;
     use std::net::SocketAddr;
 
-    use static_web_server::testing::fixtures::{fixture_req_handler, REMOTE_ADDR};
+    use static_web_server::testing::fixtures::{
+        fixture_req_handler, fixture_settings, REMOTE_ADDR,
+    };
 
     #[tokio::test]
     async fn rewrites_skipped() {
-        let req_handler = fixture_req_handler("toml/rewrites.toml");
+        let opts = fixture_settings("toml/rewrites.toml");
+        let req_handler = fixture_req_handler(opts.general, opts.advanced);
         let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
 
         let mut req = Request::default();
@@ -30,7 +33,8 @@ pub mod tests {
 
     #[tokio::test]
     async fn rewrites_glob_groups_1() {
-        let req_handler = fixture_req_handler("toml/rewrites.toml");
+        let opts = fixture_settings("toml/rewrites.toml");
+        let req_handler = fixture_req_handler(opts.general, opts.advanced);
         let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
 
         let mut req = Request::default();
@@ -55,7 +59,8 @@ pub mod tests {
 
     #[tokio::test]
     async fn rewrites_glob_groups_2() {
-        let req_handler = fixture_req_handler("toml/rewrites.toml");
+        let opts = fixture_settings("toml/rewrites.toml");
+        let req_handler = fixture_req_handler(opts.general, opts.advanced);
         let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
 
         let mut req = Request::default();
@@ -80,7 +85,8 @@ pub mod tests {
 
     #[tokio::test]
     async fn rewrites_glob_groups_3() {
-        let req_handler = fixture_req_handler("toml/rewrites.toml");
+        let opts = fixture_settings("toml/rewrites.toml");
+        let req_handler = fixture_req_handler(opts.general, opts.advanced);
         let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
 
         let mut req = Request::default();
@@ -105,7 +111,8 @@ pub mod tests {
 
     #[tokio::test]
     async fn rewrites_glob_groups_4() {
-        let req_handler = fixture_req_handler("toml/rewrites.toml");
+        let opts = fixture_settings("toml/rewrites.toml");
+        let req_handler = fixture_req_handler(opts.general, opts.advanced);
         let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
 
         let mut req = Request::default();
@@ -130,7 +137,8 @@ pub mod tests {
 
     #[tokio::test]
     async fn rewrites_glob_groups_5() {
-        let req_handler = fixture_req_handler("toml/rewrites.toml");
+        let opts = fixture_settings("toml/rewrites.toml");
+        let req_handler = fixture_req_handler(opts.general, opts.advanced);
         let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
 
         let mut req = Request::default();
@@ -149,7 +157,8 @@ pub mod tests {
 
     #[tokio::test]
     async fn rewrites_glob_groups_6() {
-        let req_handler = fixture_req_handler("toml/rewrites.toml");
+        let opts = fixture_settings("toml/rewrites.toml");
+        let req_handler = fixture_req_handler(opts.general, opts.advanced);
         let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
 
         let mut req = Request::default();
@@ -171,7 +180,8 @@ pub mod tests {
 
     #[tokio::test]
     async fn rewrites_glob_groups_generic_1() {
-        let req_handler = fixture_req_handler("toml/rewrites.toml");
+        let opts = fixture_settings("toml/rewrites.toml");
+        let req_handler = fixture_req_handler(opts.general, opts.advanced);
         let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
 
         let mut req = Request::default();

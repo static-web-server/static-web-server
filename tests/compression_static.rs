@@ -316,7 +316,7 @@ mod tests {
         assert!(!headers["last-modified"].is_empty());
         assert_eq!(
             &headers["content-type"], "application/javascript",
-            "content-type is not html"
+            "content-type is not javascript"
         );
 
         let body = hyper::body::to_bytes(res.body_mut())
