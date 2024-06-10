@@ -96,6 +96,7 @@ pub mod fixtures {
             log_remote_address: general.log_remote_address,
             redirect_trailing_slash: general.redirect_trailing_slash,
             ignore_hidden_files: general.ignore_hidden_files,
+            disable_symlinks: general.disable_symlinks,
             index_files: vec![general.index_files],
             health: general.health,
             #[cfg(all(unix, feature = "experimental"))]

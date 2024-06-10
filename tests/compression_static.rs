@@ -62,6 +62,7 @@ mod tests {
             ))]
             compression_static: true,
             ignore_hidden_files: false,
+            disable_symlinks: false,
             index_files: &[],
         })
         .await
@@ -132,6 +133,7 @@ mod tests {
             ))]
             compression_static: true,
             ignore_hidden_files: false,
+            disable_symlinks: false,
             index_files: &[],
         })
         .await
@@ -199,6 +201,7 @@ mod tests {
             ))]
             compression_static: true,
             ignore_hidden_files: false,
+            disable_symlinks: false,
             index_files: &[],
         })
         .await
@@ -253,6 +256,7 @@ mod tests {
             redirect_trailing_slash: true,
             compression_static: true,
             ignore_hidden_files: false,
+            disable_symlinks: false,
             index_files: &[],
         })
         .await
@@ -295,6 +299,7 @@ mod tests {
             ))]
             compression_static: true,
             ignore_hidden_files: false,
+            disable_symlinks: false,
             index_files: &[],
         })
         .await
