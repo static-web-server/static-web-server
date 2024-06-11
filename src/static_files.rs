@@ -76,6 +76,8 @@ pub struct HandleOpts<'a> {
     pub compression_static: bool,
     /// Ignore hidden files feature.
     pub ignore_hidden_files: bool,
+    /// Prevent following symlinks for files and directories.
+    pub disable_symlinks: bool,
 }
 
 /// Static file response type with additional data.
@@ -110,6 +112,7 @@ pub async fn handle<'a>(opts: &HandleOpts<'a>) -> Result<StaticFileResponse, Sta
         headers_opt,
         opts.compression_static,
         opts.index_files,
+        opts.disable_symlinks,
     )
     .await?;
 
@@ -171,6 +174,7 @@ pub async fn handle<'a>(opts: &HandleOpts<'a>) -> Result<StaticFileResponse, Sta
             dir_listing_order: opts.dir_listing_order,
             dir_listing_format: opts.dir_listing_format,
             ignore_hidden_files: opts.ignore_hidden_files,
+            disable_symlinks: opts.disable_symlinks,
         })
         .await?;
 
@@ -221,9 +225,20 @@ async fn get_composed_file_metadata<'a>(
     _headers: &'a HeaderMap<HeaderValue>,
     _compression_static: bool,
     mut index_files: &'a [&'a str],
+    disable_symlinks: bool,
 ) -> Result<FileMetadata<'a>, StatusCode> {
     tracing::trace!("getting metadata for file {}", file_path.display());
 
+    // Prevent symlinks access if option is enabled
+    if disable_symlinks && file_path.is_symlink() {
+        tracing::warn!(
+            "file path {} is a symlink, access denied",
+            file_path.display()
+        );
+        return Err(StatusCode::FORBIDDEN);
+    }
+
+    // Try to find the file path on the file system
     match try_metadata(file_path) {
         Ok((mut metadata, is_dir)) => {
             if is_dir {

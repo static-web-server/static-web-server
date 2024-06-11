@@ -445,6 +445,18 @@ pub struct General {
         num_args(0..=1),
         require_equals(true),
         action = clap::ArgAction::Set,
+        env = "SERVER_DISABLE_SYMLINKS",
+    )]
+    /// Prevent following files or directories if any path name component is a symbolic link.
+    pub disable_symlinks: bool,
+
+    #[arg(
+        long,
+        default_value = "false",
+        default_missing_value("true"),
+        num_args(0..=1),
+        require_equals(true),
+        action = clap::ArgAction::Set,
         env = "SERVER_HEALTH",
     )]
     /// Add a /health endpoint that doesn't generate any log entry and returns a 200 status code.

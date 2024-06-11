@@ -95,6 +95,8 @@ pub struct RequestHandlerOpts {
     pub redirect_trailing_slash: bool,
     /// Ignore hidden files feature.
     pub ignore_hidden_files: bool,
+    /// Prevent following symlinks for files and directories.
+    pub disable_symlinks: bool,
     /// Health endpoint feature.
     pub health: bool,
     /// Metrics endpoint feature (experimental).
@@ -144,6 +146,7 @@ impl Default for RequestHandlerOpts {
             log_remote_address: false,
             redirect_trailing_slash: true,
             ignore_hidden_files: false,
+            disable_symlinks: false,
             health: false,
             #[cfg(all(unix, feature = "experimental"))]
             experimental_metrics: false,
@@ -178,6 +181,7 @@ impl RequestHandler {
         let redirect_trailing_slash = self.opts.redirect_trailing_slash;
         let compression_static = self.opts.compression_static;
         let ignore_hidden_files = self.opts.ignore_hidden_files;
+        let disable_symlinks = self.opts.disable_symlinks;
         let index_files: Vec<&str> = self.opts.index_files.iter().map(|s| s.as_str()).collect();
 
         log_addr::pre_process(&self.opts, req, remote_addr);
@@ -260,6 +264,7 @@ impl RequestHandler {
                 compression_static,
                 ignore_hidden_files,
                 index_files,
+                disable_symlinks,
             })
             .await
             {
