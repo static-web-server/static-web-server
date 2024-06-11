@@ -160,6 +160,7 @@ nav:
     - 'Windows Service': 'features/windows-service.md'
     - 'Trailing Slash Redirect': 'features/trailing-slash-redirect.md'
     - 'Ignore Files': 'features/ignore-files.md'
+    - 'Disable Symlinks': 'features/disable-symlinks.md'
     - 'Health endpoint': 'features/health-endpoint.md'
     - 'Virtual Hosting': 'features/virtual-hosting.md'
     - 'Multiple Index Files': 'features/multiple-index-files.md'
