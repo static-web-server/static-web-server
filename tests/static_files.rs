@@ -29,6 +29,17 @@ mod tests {
         PathBuf::from("docker/public/")
     }
 
+    const METHODS: [Method; 8] = [
+        Method::CONNECT,
+        Method::DELETE,
+        Method::GET,
+        Method::HEAD,
+        Method::PATCH,
+        Method::POST,
+        Method::PUT,
+        Method::TRACE,
+    ];
+
     #[tokio::test]
     async fn handle_file() {
         let result = static_files::handle(&HandleOpts {
@@ -612,17 +623,7 @@ mod tests {
 
     #[tokio::test]
     async fn handle_file_allowed_disallowed_methods() {
-        let methods = [
-            Method::CONNECT,
-            Method::DELETE,
-            Method::GET,
-            Method::HEAD,
-            Method::PATCH,
-            Method::POST,
-            Method::PUT,
-            Method::TRACE,
-        ];
-        for method in methods {
+        for method in METHODS {
             match static_files::handle(&HandleOpts {
                 method: &method,
                 headers: &HeaderMap::new(),
@@ -1440,6 +1441,81 @@ mod tests {
                 }
                 Err(_) => {
                     panic!("expected a normal response rather than a status error")
+                }
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn handle_disable_symlinks() {
+        let root_dir = PathBuf::from("tests/fixtures/public/");
+        let headers = HeaderMap::new();
+
+        for method in METHODS {
+            match static_files::handle(&HandleOpts {
+                method: &method,
+                headers: &headers,
+                base_path: &root_dir,
+                uri_path: "/symlink",
+                uri_query: None,
+                #[cfg(feature = "directory-listing")]
+                dir_listing: false,
+                #[cfg(feature = "directory-listing")]
+                dir_listing_order: 6,
+                #[cfg(feature = "directory-listing")]
+                dir_listing_format: &DirListFmt::Html,
+                redirect_trailing_slash: true,
+                compression_static: true,
+                ignore_hidden_files: true,
+                disable_symlinks: true,
+                index_files: &["index.html", "index.htm"],
+            })
+            .await
+            {
+                Ok(_) => panic!("unexpected successful response rather than an error"),
+                Err(err) => {
+                    match method {
+                        // The handle only accepts HEAD or GET request methods
+                        Method::GET | Method::HEAD => assert_eq!(err, StatusCode::FORBIDDEN),
+                        _ => assert_eq!(err, StatusCode::METHOD_NOT_ALLOWED),
+                    }
+                }
+            }
+        }
+
+        for method in METHODS {
+            match static_files::handle(&HandleOpts {
+                method: &method,
+                headers: &headers,
+                base_path: &root_dir,
+                uri_path: "/symlink/spécial file.txt~",
+                uri_query: None,
+                #[cfg(feature = "directory-listing")]
+                dir_listing: false,
+                #[cfg(feature = "directory-listing")]
+                dir_listing_order: 6,
+                #[cfg(feature = "directory-listing")]
+                dir_listing_format: &DirListFmt::Html,
+                redirect_trailing_slash: true,
+                compression_static: true,
+                ignore_hidden_files: true,
+                disable_symlinks: false,
+                index_files: &["index.html", "index.htm"],
+            })
+            .await
+            {
+                Ok(result) => {
+                    let res = result.resp;
+                    assert_eq!(res.status(), 200);
+                }
+                Err(err) => {
+                    match method {
+                        // The handle only accepts HEAD or GET request methods
+                        Method::GET | Method::HEAD => {
+                            panic!("unexpected an error response {}", err)
+                        }
+                        _ => assert_eq!(err, StatusCode::METHOD_NOT_ALLOWED),
+                    }
                 }
             }
         }

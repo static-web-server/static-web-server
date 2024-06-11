@@ -272,10 +272,10 @@ mod tests {
 
                     if method == Method::GET {
                         let entries: Vec<FileEntry> = serde_json::from_str(body_str).unwrap();
-                        assert_eq!(entries.len(), 5);
+                        assert_eq!(entries.len(), 6);
 
                         let first_entry = entries.first().unwrap();
-                        assert_eq!(first_entry.name, "spécial-directöry.net");
+                        assert_eq!(first_entry.name, "symlink");
                         assert_eq!(first_entry.typed, "directory");
                         assert!(!first_entry.mtime.is_empty());
                         assert!(first_entry.size.is_none());
