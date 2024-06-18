@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _**Note:** See changelog for v1 under the [1.x](https://github.com/static-web-server/static-web-server/blob/1.x/CHANGELOG.md) branch._
 
+## v2.32.0 - 2024-06-18
+
+This new `v2.32.0` release brings several bug fixes and a new option to disable symlinks as well as other improvements. 
+
+__Fixes__
+
+- [cd5fa1b](https://github.com/static-web-server/static-web-server/commit/cd5fa1b) Bugfix/security dependency updates including hyper, tokio, regex, serde, httparse and other crates (also [c227302](https://github.com/static-web-server/static-web-server/commit/c227302), [6713932](https://github.com/static-web-server/static-web-server/commit/6713932)).
+- [6031a1b](https://github.com/static-web-server/static-web-server/commit/6031a1b) Incorrect `Content-Encoding` for pre-compressed Zstd file requests. PR [#452](https://github.com/static-web-server/static-web-server/pull/452) fixes [#451](https://github.com/static-web-server/static-web-server/issues/451) reported by [@nomeaning777](https://github.com/nomeaning777).
+- [3410365](https://github.com/static-web-server/static-web-server/commit/3410365) Duplicated `Vary` response header for `compression` and `compression-static` features. PR [#453](https://github.com/static-web-server/static-web-server/pull/453).
+
+__Features__
+
+- [eeb88da](https://github.com/static-web-server/static-web-server/commit/eeb88da) Disable symlinks via `--disable-symlinks` option. PR [#454](https://github.com/static-web-server/static-web-server/pull/454). See [docs](https://static-web-server.net/features/disable-symlinks).
+- [b291189](https://github.com/static-web-server/static-web-server/commit/b291189) Installer: Custom install version and directory options for binary installer. PR [#449](https://github.com/static-web-server/static-web-server/pull/449) by [@frankli0324](https://github.com/frankli0324). See [docs](https://static-web-server.net/download-and-install/#binary-installer-linuxbsds).
+
+__Docs__
+
+- [a888397](https://github.com/static-web-server/static-web-server/commit/a888397) Improve download and install page. PR [#450](https://github.com/static-web-server/static-web-server/pull/450) (also [91f8ec06](https://github.com/static-web-server/static-web-server/commit/91f8ec06)). See [docs](https://static-web-server.net/download-and-install/).
+
 ## v2.31.1 - 2024-05-21
 
 This new `v2.31.1` release fixes an issue when running the SWS Linux ARM64 Musl binary on systems with greater memory page sizes than 4KB and re-enables build support for the legacy Windows 7 dropped by the previous release.

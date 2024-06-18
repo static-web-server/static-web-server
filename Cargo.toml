@@ -1,6 +1,6 @@
 [package]
 name = "static-web-server"
-version = "2.31.1"
+version = "2.32.0"
 edition = "2021"
 rust-version = "1.74.0"
 authors = ["Jose Quintana <https://joseluisq.net>"]
@@ -111,7 +111,7 @@ bytes = "1.6"
 serde_json = "1.0"
 
 [build-dependencies]
-shadow-rs = "0.27"
+shadow-rs = "0.28"
 
 [profile.release]
 codegen-units = 1

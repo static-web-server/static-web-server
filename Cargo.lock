@@ -1414,19 +1414,6 @@ dependencies = [
 
 [[package]]
 name = "shadow-rs"
-version = "0.27.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7960cbd6ba74691bb15e7ebf97f7136bd02d1115f5695a58c1f31d5645750128"
-dependencies = [
- "const_format",
- "git2",
- "is_debug",
- "time",
- "tzdb",
-]
-
-[[package]]
-name = "shadow-rs"
 version = "0.28.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1d75516bdaee8f640543ad1f6e292448c23ce57143f812c3736ab4b0874383df"
@@ -1518,7 +1505,7 @@ checksum = "a8f112729512f8e442d81f95a8a7ddf2b7c6b8a1a6f509a95864142b30cab2d3"
 
 [[package]]
 name = "static-web-server"
-version = "2.31.1"
+version = "2.32.0"
 dependencies = [
  "aho-corasick",
  "anyhow",
@@ -1547,8 +1534,7 @@ dependencies = [
  "serde_ignored",
  "serde_json",
  "serde_repr",
- "shadow-rs 0.27.1",
- "shadow-rs 0.28.0",
+ "shadow-rs",
  "signal-hook",
  "signal-hook-tokio",
  "tikv-jemallocator",
