@@ -93,7 +93,7 @@ __Fixes__
 __Features__
 
 - [012ef11](https://github.com/static-web-server/static-web-server/commit/012ef11) Crate: Display platforms-specific documentation on docs.rs.
-- [a197f20](https://github.com/static-web-server/static-web-server/commit/a197f20) CI: Load testing benchmarks comparison for each commit via Github Actions. PR [#355](https://github.com/static-web-server/static-web-server/pull/355) by [@palant](https://github.com/palant).
+- [a197f20](https://github.com/static-web-server/static-web-server/commit/a197f20) CI: Load testing benchmarks comparison for each commit via GitHub Actions. PR [#355](https://github.com/static-web-server/static-web-server/pull/355) by [@palant](https://github.com/palant).
 
 __Refactorings__
 
@@ -660,7 +660,7 @@ __Docs__
 
 **Advice about the new organization change**
 
-Certainly, there is no impact if you still rely on previous Github release links (E.g pre-compiled binaries) because they are always redirected permanently.<br>
+Certainly, there is no impact if you still rely on previous GitHub release links (E.g pre-compiled binaries) because they are always redirected permanently.<br>
 However, since we moved to a [new organization](https://github.com/static-web-server/static-web-server), we highly encourage you to update your links using the new GitHub release address of the `static-web-server` organization.
 
 ## v2.13.1 - 2022-10-17
@@ -1269,7 +1269,7 @@ __Refactorings__
 
 __Codebase__
 
-- [7265f6b](https://github.com/static-web-server/static-web-server/commit/7265f6b) Github Actions as new CI.
+- [7265f6b](https://github.com/static-web-server/static-web-server/commit/7265f6b) GitHub Actions as new CI.
 - [c63b549](https://github.com/static-web-server/static-web-server/commit/c63b549) Remove Travis CI.
 - [65250c0](https://github.com/static-web-server/static-web-server/commit/65250c0) Minor simplications on server module.
 - [b94fe72](https://github.com/static-web-server/static-web-server/commit/b94fe72) Update core modules structure.
