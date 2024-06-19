@@ -16,4 +16,3 @@ compressable = "compressable"
 
 [default.extend-identifiers]
 flate2 = "flate2"
-OdyX = "OdyX"
