@@ -9,6 +9,7 @@ extend-ignore-re = [
     "\\[[0-9a-f]{7}\\]",
     "commit/[0-9a-f]{7}",
     "\\{a,ba,da,k,z\\}sh",
+    "\\[@[a-zA-Z0-9\\-]+\\]",
 ]
 
 [default.extend-words]
