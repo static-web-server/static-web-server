@@ -8,11 +8,14 @@ pub mod tests {
     use hyper::Request;
     use std::net::SocketAddr;
 
-    use static_web_server::testing::fixtures::{fixture_req_handler, REMOTE_ADDR};
+    use static_web_server::testing::fixtures::{
+        fixture_req_handler, fixture_settings, REMOTE_ADDR,
+    };
 
     #[tokio::test]
     async fn experimental_metrics_enabled() {
-        let req_handler = fixture_req_handler("toml/experimental_metrics.toml");
+        let opts = fixture_settings("toml/experimental_metrics.toml");
+        let req_handler = fixture_req_handler(opts.general, opts.advanced);
         let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
 
         let mut req = Request::default();

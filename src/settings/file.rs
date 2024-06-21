@@ -344,6 +344,9 @@ pub struct General {
     /// Ignore hidden files feature.
     pub ignore_hidden_files: Option<bool>,
 
+    /// Prevent following symbolic links of files or directories.
+    pub disable_symlinks: Option<bool>,
+
     /// Health endpoint feature.
     pub health: Option<bool>,
 

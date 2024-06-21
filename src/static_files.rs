@@ -79,6 +79,8 @@ pub struct HandleOpts<'a> {
     pub compression_static: bool,
     /// Ignore hidden files feature.
     pub ignore_hidden_files: bool,
+    /// Prevent following symlinks for files and directories.
+    pub disable_symlinks: bool,
 }
 
 /// Static file response type with additional data.
@@ -114,6 +116,7 @@ pub async fn handle<'a>(opts: &HandleOpts<'a>) -> Result<StaticFileResponse, Sta
         headers_opt,
         opts.compression_static,
         opts.index_files,
+        opts.disable_symlinks,
     )
     .await?;
 
@@ -211,6 +214,7 @@ pub async fn handle<'a>(opts: &HandleOpts<'a>) -> Result<StaticFileResponse, Sta
             dir_listing_order: opts.dir_listing_order,
             dir_listing_format: opts.dir_listing_format,
             ignore_hidden_files: opts.ignore_hidden_files,
+            disable_symlinks: opts.disable_symlinks,
         })
         .await?;
 
@@ -222,20 +226,23 @@ pub async fn handle<'a>(opts: &HandleOpts<'a>) -> Result<StaticFileResponse, Sta
 
     // Check for a pre-compressed file variant if present under the `opts.compression_static` context
     if let Some(precompressed_meta) = precompressed_variant {
-        let (precomp_path, precomp_ext) = precompressed_meta;
-        let mut resp = file_reply(
-            headers_opt,
-            file_path,
-            &metadata,
-            Some(precomp_path),
-            memory_cache,
-        )
-        .await?;
+        let (precomp_path, precomp_encoding) = precompressed_meta;
+        let mut resp = file_reply(headers_opt, file_path, &metadata, Some(precomp_path),
+        memory_cache,).await?;
 
         // Prepare corresponding headers to let know how to decode the payload
         resp.headers_mut().remove(CONTENT_LENGTH);
-        resp.headers_mut()
-            .insert(CONTENT_ENCODING, precomp_ext.parse().unwrap());
+        let encoding = match HeaderValue::from_str(precomp_encoding.as_str()) {
+            Ok(val) => val,
+            Err(err) => {
+                tracing::error!(
+                    "unable to parse header value from content encoding: {:?}",
+                    err
+                );
+                return Err(StatusCode::INTERNAL_SERVER_ERROR);
+            }
+        };
+        resp.headers_mut().insert(CONTENT_ENCODING, encoding);
 
         return Ok(StaticFileResponse {
             resp,
@@ -259,9 +266,20 @@ async fn get_composed_file_metadata<'a>(
     _headers: &'a HeaderMap<HeaderValue>,
     _compression_static: bool,
     mut index_files: &'a [&'a str],
+    disable_symlinks: bool,
 ) -> Result<FileMetadata<'a>, StatusCode> {
     tracing::trace!("getting metadata for file {}", file_path.display());
 
+    // Prevent symlinks access if option is enabled
+    if disable_symlinks && file_path.is_symlink() {
+        tracing::warn!(
+            "file path {} is a symlink, access denied",
+            file_path.display()
+        );
+        return Err(StatusCode::FORBIDDEN);
+    }
+
+    // Try to find the file path on the file system
     match try_metadata(file_path) {
         Ok((mut metadata, is_dir)) => {
             if is_dir {
@@ -292,7 +310,7 @@ async fn get_composed_file_metadata<'a>(
                                 file_path,
                                 metadata: p.metadata,
                                 is_dir: false,
-                                precompressed_variant: Some((p.file_path, p.extension)),
+                                precompressed_variant: Some((p.file_path, p.encoding)),
                             });
                         }
                     }
@@ -340,7 +358,7 @@ async fn get_composed_file_metadata<'a>(
                             file_path,
                             metadata: p.metadata,
                             is_dir: false,
-                            precompressed_variant: Some((p.file_path, p.extension)),
+                            precompressed_variant: Some((p.file_path, p.encoding)),
                         });
                     }
                 }
@@ -371,7 +389,7 @@ async fn get_composed_file_metadata<'a>(
                         file_path,
                         metadata: p.metadata,
                         is_dir: false,
-                        precompressed_variant: Some((p.file_path, p.extension)),
+                        precompressed_variant: Some((p.file_path, p.encoding)),
                     });
                 }
             }
@@ -409,7 +427,7 @@ async fn get_composed_file_metadata<'a>(
                                 file_path,
                                 metadata: p.metadata,
                                 is_dir: false,
-                                precompressed_variant: Some((p.file_path, p.extension)),
+                                precompressed_variant: Some((p.file_path, p.encoding)),
                             });
                         }
                     }

@@ -180,6 +180,7 @@ impl Settings {
         let mut log_remote_address = opts.log_remote_address;
         let mut redirect_trailing_slash = opts.redirect_trailing_slash;
         let mut ignore_hidden_files = opts.ignore_hidden_files;
+        let mut disable_symlinks = opts.disable_symlinks;
         let mut index_files = opts.index_files;
         let mut health = opts.health;
 
@@ -349,6 +350,9 @@ impl Settings {
                 }
                 if let Some(v) = general.ignore_hidden_files {
                     ignore_hidden_files = v
+                }
+                if let Some(v) = general.disable_symlinks {
+                    disable_symlinks = v
                 }
                 if let Some(v) = general.health {
                     health = v
@@ -632,6 +636,7 @@ impl Settings {
                 log_remote_address,
                 redirect_trailing_slash,
                 ignore_hidden_files,
+                disable_symlinks,
                 index_files,
                 health,
                 #[cfg(all(unix, feature = "experimental"))]

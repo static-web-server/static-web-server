@@ -232,6 +232,10 @@ impl Server {
         let ignore_hidden_files = general.ignore_hidden_files;
         server_info!("ignore hidden files: enabled={}", ignore_hidden_files);
 
+        // Disable symlinks option
+        let disable_symlinks = general.disable_symlinks;
+        server_info!("disable symlinks: enabled={}", disable_symlinks);
+
         // Grace period option
         let grace_period = general.grace_period;
         server_info!("grace period before graceful shutdown: {}s", grace_period);
@@ -255,6 +259,7 @@ impl Server {
             log_remote_address,
             redirect_trailing_slash,
             ignore_hidden_files,
+            disable_symlinks,
             index_files,
             advanced_opts,
             ..Default::default()

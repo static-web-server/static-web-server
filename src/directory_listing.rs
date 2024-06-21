@@ -56,6 +56,8 @@ pub struct DirListOpts<'a> {
     pub dir_listing_format: &'a DirListFmt,
     /// Ignore hidden files (dotfiles).
     pub ignore_hidden_files: bool,
+    /// Prevent following symlinks for files and directories.
+    pub disable_symlinks: bool,
 }
 
 /// Initializes directory listings.
@@ -89,16 +91,17 @@ pub fn auto_index(
 
     match std::fs::read_dir(parent) {
         Ok(dir_reader) => Either::Left(async move {
-            let is_head = opts.method.is_head();
-            match read_dir_entries(
+            let dir_opts = DirEntryOpts {
                 dir_reader,
-                opts.current_path,
-                opts.uri_query,
-                is_head,
-                opts.dir_listing_order,
-                opts.dir_listing_format,
-                opts.ignore_hidden_files,
-            ) {
+                base_path: opts.current_path,
+                uri_query: opts.uri_query,
+                is_head: opts.method.is_head(),
+                order_code: opts.dir_listing_order,
+                content_format: opts.dir_listing_format,
+                ignore_hidden_files: opts.ignore_hidden_files,
+                disable_symlinks: opts.disable_symlinks,
+            };
+            match read_dir_entries(dir_opts) {
                 Ok(resp) => Ok(resp),
                 Err(err) => {
                     tracing::error!("error after try to read directory entries: {:?}", err);
@@ -175,22 +178,26 @@ struct SortingAttr<'a> {
     size: &'a str,
 }
 
+/// Defines read directory entries.
+struct DirEntryOpts<'a> {
+    dir_reader: std::fs::ReadDir,
+    base_path: &'a str,
+    uri_query: Option<&'a str>,
+    is_head: bool,
+    order_code: u8,
+    content_format: &'a DirListFmt,
+    ignore_hidden_files: bool,
+    disable_symlinks: bool,
+}
+
 /// It reads a list of directory entries and create an index page content.
 /// Otherwise it returns a status error.
-fn read_dir_entries(
-    dir_reader: std::fs::ReadDir,
-    base_path: &str,
-    uri_query: Option<&str>,
-    is_head: bool,
-    mut order_code: u8,
-    content_format: &DirListFmt,
-    ignore_hidden_files: bool,
-) -> Result<Response<Body>> {
+fn read_dir_entries(mut opt: DirEntryOpts<'_>) -> Result<Response<Body>> {
     let mut dirs_count: usize = 0;
     let mut files_count: usize = 0;
     let mut file_entries: Vec<FileEntry> = vec![];
 
-    for dir_entry in dir_reader {
+    for dir_entry in opt.dir_reader {
         let dir_entry = dir_entry.with_context(|| "unable to read directory entry")?;
         let meta = match dir_entry.metadata() {
             Ok(m) => m,
@@ -206,7 +213,7 @@ fn read_dir_entries(
         let name = dir_entry.file_name();
 
         // Check and ignore the current hidden file/directory (dotfile) if feature enabled
-        if ignore_hidden_files && name.as_encoded_bytes().first().is_some_and(|c| *c == b'.') {
+        if opt.ignore_hidden_files && name.as_encoded_bytes().first().is_some_and(|c| *c == b'.') {
             continue;
         }
 
@@ -216,7 +223,7 @@ fn read_dir_entries(
         } else if meta.is_file() {
             files_count += 1;
             (FileType::File, Some(meta.len()))
-        } else if meta.file_type().is_symlink() {
+        } else if !opt.disable_symlinks && meta.file_type().is_symlink() {
             // NOTE: we resolve the symlink path below to just know if is a directory or not.
             // However, we are still showing the symlink name but not the resolved name.
 
@@ -264,11 +271,12 @@ fn read_dir_entries(
         // entries should contain the "parent/entry-name" as a link format.
         // Otherwise, we just use the "entry-name" as a link (default behavior).
         // Note that in both cases, we add a trailing slash if the entry is a directory.
-        let mut uri = if !base_path.ends_with('/') && !base_path.is_empty() {
-            let parent = base_path
+        let mut uri = if !opt.base_path.ends_with('/') && !opt.base_path.is_empty() {
+            let parent = opt
+                .base_path
                 .rsplit_once('/')
                 .map(|(_, parent)| parent)
-                .unwrap_or(base_path);
+                .unwrap_or(opt.base_path);
             format!("{parent}/{name_encoded}")
         } else {
             name_encoded
@@ -280,24 +288,25 @@ fn read_dir_entries(
 
         let mtime = meta.modified().ok().map(DateTime::<Local>::from);
 
-        file_entries.push(FileEntry {
+        let entry = FileEntry {
             name,
             mtime,
             size,
             r#type,
             uri,
-        });
+        };
+        file_entries.push(entry);
     }
 
     // Check the query request uri for a sorting type. E.g https://blah/?sort=5
-    if let Some(q) = uri_query {
+    if let Some(q) = opt.uri_query {
         let mut parts = form_urlencoded::parse(q.as_bytes());
         if parts.count() > 0 {
             // NOTE: we just pick up the first value (pair)
             if let Some(sort) = parts.next() {
                 if sort.0 == "sort" && !sort.1.trim().is_empty() {
                     match sort.1.parse::<u8>() {
-                        Ok(code) => order_code = code,
+                        Ok(code) => opt.order_code = code,
                         Err(err) => {
                             tracing::error!(
                                 "sorting: query value error when converting to u8: {:?}",
@@ -313,13 +322,13 @@ fn read_dir_entries(
     let mut resp = Response::new(Body::empty());
 
     // Handle directory listing content format
-    let content = match content_format {
+    let content = match opt.content_format {
         DirListFmt::Json => {
             // JSON
             resp.headers_mut()
                 .typed_insert(ContentType::from(mime::APPLICATION_JSON));
 
-            json_auto_index(&mut file_entries, order_code)?
+            json_auto_index(&mut file_entries, opt.order_code)?
         }
         // HTML (default)
         _ => {
@@ -327,11 +336,11 @@ fn read_dir_entries(
                 .typed_insert(ContentType::from(mime::TEXT_HTML_UTF_8));
 
             html_auto_index(
-                base_path,
+                opt.base_path,
                 dirs_count,
                 files_count,
                 &mut file_entries,
-                order_code,
+                opt.order_code,
             )
         }
     };
@@ -340,7 +349,7 @@ fn read_dir_entries(
         .typed_insert(ContentLength(content.len() as u64));
 
     // We skip the body for HEAD requests
-    if is_head {
+    if opt.is_head {
         return Ok(resp);
     }
 

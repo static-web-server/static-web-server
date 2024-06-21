@@ -8,11 +8,14 @@ pub mod tests {
     use hyper::Request;
     use std::net::SocketAddr;
 
-    use static_web_server::testing::fixtures::{fixture_req_handler, REMOTE_ADDR};
+    use static_web_server::testing::fixtures::{
+        fixture_req_handler, fixture_settings, REMOTE_ADDR,
+    };
 
     #[tokio::test]
     async fn custom_headers_apply_for_dir() {
-        let req_handler = fixture_req_handler("toml/handler.toml");
+        let opts = fixture_settings("toml/handler.toml");
+        let req_handler = fixture_req_handler(opts.general, opts.advanced);
         let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
 
         let mut req = Request::default();
@@ -27,6 +30,10 @@ pub mod tests {
                     Some(&HeaderValue::from_static("text/html"))
                 );
                 assert_eq!(
+                    res.headers().get("vary"),
+                    Some(&HeaderValue::from_static("accept-encoding"))
+                );
+                assert_eq!(
                     res.headers().get("server"),
                     Some(&HeaderValue::from_static("Static Web Server"))
                 );
@@ -39,7 +46,8 @@ pub mod tests {
 
     #[tokio::test]
     async fn custom_headers_apply_for_file() {
-        let req_handler = fixture_req_handler("toml/handler.toml");
+        let opts = fixture_settings("toml/handler.toml");
+        let req_handler = fixture_req_handler(opts.general, opts.advanced);
         let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
 
         let mut req = Request::default();
@@ -52,6 +60,14 @@ pub mod tests {
                 assert_eq!(
                     res.headers().get("content-type"),
                     Some(&HeaderValue::from_static("text/html"))
+                );
+                assert_eq!(
+                    res.headers().get("vary"),
+                    Some(&HeaderValue::from_static("accept-encoding"))
+                );
+                assert_eq!(
+                    res.headers().get("cache-control"),
+                    Some(&HeaderValue::from_static("public, max-age=86400"))
                 );
                 assert_eq!(
                     res.headers().get("server"),

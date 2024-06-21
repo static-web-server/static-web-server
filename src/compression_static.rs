@@ -19,13 +19,13 @@ use crate::headers_ext::ContentCoding;
 use crate::Error;
 
 /// It defines the pre-compressed file variant metadata of a particular file path.
-pub struct CompressedFileVariant<'a> {
+pub struct CompressedFileVariant {
     /// Current file path.
     pub file_path: PathBuf,
     /// The metadata of the current file.
     pub metadata: Metadata,
-    /// The file extension.
-    pub extension: &'a str,
+    /// The content encoding based on the file extension.
+    pub encoding: ContentCoding,
 }
 
 /// Initializes static compression.
@@ -45,7 +45,7 @@ pub(crate) fn post_process<T>(
     }
 
     // Compression content encoding varies so use a `Vary` header
-    resp.headers_mut().append(
+    resp.headers_mut().insert(
         hyper::header::VARY,
         HeaderValue::from_name(hyper::header::ACCEPT_ENCODING),
     );
@@ -57,7 +57,7 @@ pub(crate) fn post_process<T>(
 pub async fn precompressed_variant<'a>(
     file_path: &Path,
     headers: &'a HeaderMap<HeaderValue>,
-) -> Option<CompressedFileVariant<'a>> {
+) -> Option<CompressedFileVariant> {
     tracing::trace!(
         "preparing pre-compressed file variant path of {}",
         file_path.display()
@@ -119,7 +119,7 @@ pub async fn precompressed_variant<'a>(
         return Some(CompressedFileVariant {
             file_path,
             metadata,
-            extension: if comp_ext == "gz" { "gzip" } else { comp_ext },
+            encoding,
         });
     }
 
