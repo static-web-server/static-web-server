@@ -20,6 +20,7 @@ use std::time::{Duration, Instant};
 
 use crate::conditional_headers::{ConditionalBody, ConditionalHeaders};
 use crate::fs::stream::FileStreamLite;
+use crate::handler::RequestHandlerOpts;
 use crate::response::{bytes_range, BadRangeError};
 use crate::Result;
 
@@ -50,15 +51,21 @@ impl MemCacheOpts {
 }
 
 /// Make sure to initialize the in-memory cache store.
-pub fn init_store(opts: &MemCacheOpts) -> Result {
-    let cache = match SieveCache::new(opts.max_size) {
-        Ok(v) => v,
-        Err(err) => bail!(err),
-    };
-    if CACHE_STORE.set(Mutex::new(cache)).is_err() {
-        bail!("unable to initialize the in-memory cache store")
+pub(crate) fn init(opts: Option<MemCacheOpts>, handler_opts: &mut RequestHandlerOpts) -> Result {
+    // TODO: better options print -> Result
+    server_info!("in-memory files cache: enabled={}", opts.is_some());
+
+    if let Some(o) = opts {
+        let cache = match SieveCache::new(o.max_size) {
+            Ok(v) => v,
+            Err(err) => bail!(err),
+        };
+        if CACHE_STORE.set(Mutex::new(cache)).is_err() {
+            bail!("unable to initialize the in-memory cache store")
+        }
+        tracing::debug!("the in-memory cache store was initialized successfully");
+        handler_opts.memory_cache = Some(o);
     }
-    tracing::debug!("the in-memory cache store was initialized successfully");
 
     Ok(())
 }
