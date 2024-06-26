@@ -9,8 +9,8 @@ mod tests {
     use http::Method;
     use static_web_server::cors;
 
-    #[tokio::test]
-    async fn allow_methods() {
+    #[test]
+    fn allow_methods() {
         let cors = cors::new("*", "", "").unwrap();
         let headers = HeaderMap::new();
         let methods = &[Method::GET, Method::HEAD, Method::OPTIONS];
@@ -48,8 +48,8 @@ mod tests {
         }
     }
 
-    #[tokio::test]
-    async fn origin_allowed() {
+    #[test]
+    fn origin_allowed() {
         let cors = cors::new("*", "", "").unwrap();
         let mut headers = HeaderMap::new();
         headers.insert("origin", "https://localhost".parse().unwrap());
@@ -65,8 +65,8 @@ mod tests {
         }
     }
 
-    #[tokio::test]
-    async fn origin_not_allowed() {
+    #[test]
+    fn origin_not_allowed() {
         let cors = cors::new("https://localhost.rs", "", "").unwrap();
         let mut headers = HeaderMap::new();
         headers.insert("origin", "https://localhost".parse().unwrap());
@@ -78,8 +78,8 @@ mod tests {
         }
     }
 
-    #[tokio::test]
-    async fn method_allowed() {
+    #[test]
+    fn method_allowed() {
         let cors = cors::new("*", "", "").unwrap();
         let mut headers = HeaderMap::new();
         headers.insert("origin", "https://localhost".parse().unwrap());
@@ -90,8 +90,8 @@ mod tests {
         }
     }
 
-    #[tokio::test]
-    async fn method_disallowed() {
+    #[test]
+    fn method_disallowed() {
         let cors = cors::new("*", "", "").unwrap();
         let mut headers = HeaderMap::new();
         headers.insert("origin", "https://localhost".parse().unwrap());
@@ -108,8 +108,8 @@ mod tests {
         }
     }
 
-    #[tokio::test]
-    async fn headers_allowed() {
+    #[test]
+    fn headers_allowed() {
         let cors = cors::new("*", "", "").unwrap();
         let mut headers = HeaderMap::new();
         headers.insert("origin", "https://localhost".parse().unwrap());
@@ -125,8 +125,8 @@ mod tests {
         }
     }
 
-    #[tokio::test]
-    async fn headers_invalid() {
+    #[test]
+    fn headers_invalid() {
         let cors = cors::new("*", "", "").unwrap();
         let mut headers = HeaderMap::new();
         headers.insert("origin", "https://localhost".parse().unwrap());

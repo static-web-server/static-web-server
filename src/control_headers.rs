@@ -88,8 +88,8 @@ mod tests {
         MAX_AGE_ONE_DAY, MAX_AGE_ONE_HOUR, MAX_AGE_ONE_YEAR,
     };
 
-    #[tokio::test]
-    async fn headers_one_hour() {
+    #[test]
+    fn headers_one_hour() {
         let mut resp = Response::new(Body::empty());
         *resp.status_mut() = StatusCode::OK;
 
@@ -105,8 +105,8 @@ mod tests {
         }
     }
 
-    #[tokio::test]
-    async fn headers_one_day_default() {
+    #[test]
+    fn headers_one_day_default() {
         let mut resp = Response::new(Body::empty());
         *resp.status_mut() = StatusCode::OK;
 
@@ -120,8 +120,8 @@ mod tests {
         );
     }
 
-    #[tokio::test]
-    async fn headers_one_year() {
+    #[test]
+    fn headers_one_year() {
         let mut resp = Response::new(Body::empty());
         *resp.status_mut() = StatusCode::OK;
 

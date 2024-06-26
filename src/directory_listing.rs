@@ -8,14 +8,12 @@
 
 use chrono::{DateTime, Local, Utc};
 use clap::ValueEnum;
-use futures_util::{future, future::Either};
 use headers::{ContentLength, ContentType, HeaderMapExt};
 use hyper::{Body, Method, Response, StatusCode};
 use mime_guess::mime;
 use percent_encoding::{percent_decode_str, percent_encode, AsciiSet, NON_ALPHANUMERIC};
 use serde::{Serialize, Serializer};
 use std::ffi::{OsStr, OsString};
-use std::future::Future;
 use std::io;
 use std::path::Path;
 
@@ -78,9 +76,7 @@ pub fn init(enabled: bool, order: u8, format: DirListFmt, handler_opts: &mut Req
 /// Provides directory listing support for the current request.
 /// Note that this function highly depends on `static_files::composed_file_metadata()` function
 /// which must be called first. See `static_files::handle()` for more details.
-pub fn auto_index(
-    opts: DirListOpts<'_>,
-) -> impl Future<Output = Result<Response<Body>, StatusCode>> + Send + '_ {
+pub fn auto_index(opts: DirListOpts<'_>) -> Result<Response<Body>, StatusCode> {
     // Note: it's safe to call `parent()` here since `filepath`
     // value always refer to a path with file ending and under
     // a root directory boundary.
@@ -90,7 +86,7 @@ pub fn auto_index(
     let parent = filepath.parent().unwrap_or(filepath);
 
     match std::fs::read_dir(parent) {
-        Ok(dir_reader) => Either::Left(async move {
+        Ok(dir_reader) => {
             let dir_opts = DirEntryOpts {
                 dir_reader,
                 base_path: opts.current_path,
@@ -108,7 +104,7 @@ pub fn auto_index(
                     Err(StatusCode::INTERNAL_SERVER_ERROR)
                 }
             }
-        }),
+        }
         Err(err) => {
             let status = match err.kind() {
                 io::ErrorKind::NotFound => {
@@ -136,7 +132,7 @@ pub fn auto_index(
                     StatusCode::INTERNAL_SERVER_ERROR
                 }
             };
-            Either::Right(future::err(status))
+            Err(status)
         }
     }
 }

@@ -507,9 +507,7 @@ impl Server {
                                 async move {
                                     let uri = req.uri();
                                     let method = req.method();
-                                    match https_redirect::redirect_to_https(&req, redirect_opts)
-                                        .await
-                                    {
+                                    match https_redirect::redirect_to_https(&req, redirect_opts) {
                                         Ok(resp) => Ok(resp),
                                         Err(status) => error_page::error_response(
                                             uri, method, &status, &page404, &page50x,
