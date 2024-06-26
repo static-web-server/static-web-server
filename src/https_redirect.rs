@@ -23,7 +23,7 @@ pub struct RedirectOpts {
 }
 
 /// It redirects all requests from HTTP to HTTPS.
-pub async fn redirect_to_https<T>(
+pub fn redirect_to_https<T>(
     req: &Request<T>,
     opts: Arc<RedirectOpts>,
 ) -> Result<Response<Body>, StatusCode> {

@@ -20,7 +20,7 @@ use crate::fs::stream::{optimal_buf_size, FileStream};
 
 /// It converts a file object into a corresponding HTTP response or
 /// returns an error holding an HTTP status code otherwise.
-pub(crate) async fn response_body(
+pub(crate) fn response_body(
     mut file: File,
     path: &PathBuf,
     meta: &Metadata,

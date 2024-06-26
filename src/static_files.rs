@@ -9,10 +9,6 @@
 // Part of the file is borrowed and adapted at a convenience from
 // https://github.com/seanmonstar/warp/blob/master/src/filters/fs.rs
 
-use futures_util::{
-    future,
-    future::{Either, Future},
-};
 use headers::{AcceptRanges, HeaderMap, HeaderMapExt, HeaderValue};
 use hyper::{header::CONTENT_ENCODING, header::CONTENT_LENGTH, Body, Method, Response, StatusCode};
 use std::fs::{File, Metadata};
@@ -113,8 +109,7 @@ pub async fn handle<'a>(opts: &HandleOpts<'a>) -> Result<StaticFileResponse, Sta
         opts.compression_static,
         opts.index_files,
         opts.disable_symlinks,
-    )
-    .await?;
+    )?;
 
     // Check for a hidden file/directory (dotfile) and ignore it if feature enabled
     if opts.ignore_hidden_files && file_path.is_hidden() {
@@ -175,8 +170,7 @@ pub async fn handle<'a>(opts: &HandleOpts<'a>) -> Result<StaticFileResponse, Sta
             dir_listing_format: opts.dir_listing_format,
             ignore_hidden_files: opts.ignore_hidden_files,
             disable_symlinks: opts.disable_symlinks,
-        })
-        .await?;
+        })?;
 
         return Ok(StaticFileResponse {
             resp,
@@ -187,7 +181,7 @@ pub async fn handle<'a>(opts: &HandleOpts<'a>) -> Result<StaticFileResponse, Sta
     // Check for a pre-compressed file variant if present under the `opts.compression_static` context
     if let Some(precompressed_meta) = precompressed_variant {
         let (precomp_path, precomp_encoding) = precompressed_meta;
-        let mut resp = file_reply(headers_opt, file_path, &metadata, Some(precomp_path)).await?;
+        let mut resp = file_reply(headers_opt, file_path, &metadata, Some(precomp_path))?;
 
         // Prepare corresponding headers to let know how to decode the payload
         resp.headers_mut().remove(CONTENT_LENGTH);
@@ -209,7 +203,7 @@ pub async fn handle<'a>(opts: &HandleOpts<'a>) -> Result<StaticFileResponse, Sta
         });
     }
 
-    let resp = file_reply(headers_opt, file_path, &metadata, None).await?;
+    let resp = file_reply(headers_opt, file_path, &metadata, None)?;
 
     Ok(StaticFileResponse {
         resp,
@@ -220,7 +214,7 @@ pub async fn handle<'a>(opts: &HandleOpts<'a>) -> Result<StaticFileResponse, Sta
 /// Returns the final composed metadata containing
 /// the current `file_path` with its file metadata
 /// as well as its optional pre-compressed variant.
-async fn get_composed_file_metadata<'a>(
+fn get_composed_file_metadata<'a>(
     mut file_path: &'a mut PathBuf,
     _headers: &'a HeaderMap<HeaderValue>,
     _compression_static: bool,
@@ -263,7 +257,7 @@ async fn get_composed_file_metadata<'a>(
                     ))]
                     if _compression_static {
                         if let Some(p) =
-                            compression_static::precompressed_variant(file_path, _headers).await
+                            compression_static::precompressed_variant(file_path, _headers)
                         {
                             return Ok(FileMetadata {
                                 file_path,
@@ -310,8 +304,7 @@ async fn get_composed_file_metadata<'a>(
                     feature = "compression-zstd"
                 ))]
                 if _compression_static {
-                    if let Some(p) =
-                        compression_static::precompressed_variant(file_path, _headers).await
+                    if let Some(p) = compression_static::precompressed_variant(file_path, _headers)
                     {
                         return Ok(FileMetadata {
                             file_path,
@@ -341,9 +334,7 @@ async fn get_composed_file_metadata<'a>(
                 feature = "compression-zstd"
             ))]
             if _compression_static {
-                if let Some(p) =
-                    compression_static::precompressed_variant(file_path, _headers).await
-                {
+                if let Some(p) = compression_static::precompressed_variant(file_path, _headers) {
                     return Ok(FileMetadata {
                         file_path,
                         metadata: p.metadata,
@@ -380,7 +371,7 @@ async fn get_composed_file_metadata<'a>(
                     // Last pre-compressed variant check or the suffixed file not found
                     if _compression_static {
                         if let Some(p) =
-                            compression_static::precompressed_variant(file_path, _headers).await
+                            compression_static::precompressed_variant(file_path, _headers)
                         {
                             return Ok(FileMetadata {
                                 file_path,
@@ -418,12 +409,12 @@ fn file_reply<'a>(
     path: &'a PathBuf,
     meta: &'a Metadata,
     path_precompressed: Option<PathBuf>,
-) -> impl Future<Output = Result<Response<Body>, StatusCode>> + Send + 'a {
+) -> Result<Response<Body>, StatusCode> {
     let conditionals = ConditionalHeaders::new(headers);
     let file_path = path_precompressed.as_ref().unwrap_or(path);
 
     match File::open(file_path) {
-        Ok(file) => Either::Left(response_body(file, path, meta, conditionals)),
+        Ok(file) => response_body(file, path, meta, conditionals),
         Err(err) => {
             let status = match err.kind() {
                 io::ErrorKind::NotFound => {
@@ -439,7 +430,7 @@ fn file_reply<'a>(
                     StatusCode::INTERNAL_SERVER_ERROR
                 }
             };
-            Either::Right(future::err(status))
+            Err(status)
         }
     }
 }

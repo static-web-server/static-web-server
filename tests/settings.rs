@@ -8,8 +8,8 @@ mod tests {
     use static_web_server::settings::file::Settings;
     use std::path::{Path, PathBuf};
 
-    #[tokio::test]
-    async fn toml_file_parsing() {
+    #[test]
+    fn toml_file_parsing() {
         let config_path = Path::new("tests/toml/config.toml");
         let settings = Settings::read(config_path).unwrap();
         let root = settings.general.unwrap().root.unwrap();
