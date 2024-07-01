@@ -1,5 +1,8 @@
 name: perfcheck
 on:
+  # merge_group:
+  #   branches:
+  #     - master
   pull_request:
     paths:
       - .github/workflows/perfcheck.yml
@@ -11,8 +14,6 @@ on:
   push:
     branches:
     - master
-    - staging
-    - trying
     paths:
       - .github/workflows/perfcheck.yml
       - .cargo/config.toml
@@ -136,7 +137,7 @@ jobs:
 
     - name: Run SWS benchmark
       run: |
-        NAME=$(${{ env.TARGET_DIR }}/release/static-web-server --version | head -n 1 | sed -e 's/^Version: *//' -e 's/static-web-server/sws/' -e 's/$/ (source)/')
+        NAME=$(${{ env.TARGET_DIR }}/release/static-web-server --version | head -n 1 | sed -e 's/^Version: */sws /' -e 's/static-web-server/sws/' -e 's/$/ (src)/')
         REPORT=report_sws.bin
         ${{ env.TARGET_DIR }}/release/static-web-server --config-file benchmarks-setup/config/sws.toml &
         sleep 2
@@ -147,7 +148,7 @@ jobs:
 
     - name: Run Apache benchmark
       run: |
-        NAME=$(apache2 -v | sed 's/.*: //' | sed 's/ .*//' | sed 's!/! !')
+        NAME=$(apache2 -v | sed 's/.*: //' | sed 's/ .*//' | sed 's!/! !' | tr '[:upper:]' '[:lower:]')
         REPORT=report_apache.bin
         apache2 -D FOREGROUND -f `pwd`/benchmarks-setup/config/apache.conf &
         sleep 2
