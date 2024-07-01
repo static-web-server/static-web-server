@@ -28,7 +28,7 @@ Follow the steps below to adjust your firewall:
 
 1. Configure an [Inbound Port Rule](https://docs.microsoft.com/en-us/windows/security/threat-protection/windows-firewall/create-an-inbound-port-rule) in your Windows firewall so clients can reach the server's port.
 2. In your SWS config file, use the server IP as a host or a non-routable address like `0.0.0.0` if you prefer.
-3. Create a Windows Service following https://sws.joseluisq.net/features/windows-service/ and start it.
+3. Create a Windows Service following https://static-web-server.net/features/windows-service/ and start it.
 4. Finally, restart the service to apply the changes.
 
 Note that the steps above are general and you have to adjust your firewall rule(s) according to your needs.
