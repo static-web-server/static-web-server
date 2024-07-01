@@ -578,7 +578,7 @@ __Fixes__
 
 __Features__
 
-- [40a532e](https://github.com/static-web-server/static-web-server/commit/40a532e) Nix installation support. See [docs](https://sws.joseluisq.net/download-and-install/#nixos).
+- [40a532e](https://github.com/static-web-server/static-web-server/commit/40a532e) Nix installation support. See [docs](https://static-web-server.net/download-and-install/#nixos).
 - [b9fa2bf](https://github.com/static-web-server/static-web-server/commit/b9fa2bf) Support for Tokio's `--max-blocking-threads` via new option. PR [#181](https://github.com/static-web-server/static-web-server/pull/181) by [@syrusakbary](https://github.com/syrusakbary), [@john-sharratt](https://github.com/john-sharratt).
 - [7ed7b03](https://github.com/static-web-server/static-web-server/commit/7ed7b03) Support for `.html` prefixing when a request path doesn't exist. PR [#180](https://github.com/static-web-server/static-web-server/pull/180) by [@syrusakbary](https://github.com/syrusakbary).
 - [87a0896](https://github.com/static-web-server/static-web-server/commit/87a0896) Optional `http2` Cargo feature. PR [#183](https://github.com/static-web-server/static-web-server/pull/183) by [@syrusakbary](https://github.com/syrusakbary), [@john-sharratt](https://github.com/john-sharratt).
@@ -640,7 +640,7 @@ __Breaking__
 
 __Features__
 
-- [800416d](https://github.com/static-web-server/static-web-server/commit/800416d) Ignore hidden files/directories (dotfiles) via the new `--ignore-hidden-files` option. PR [#162](https://github.com/static-web-server/static-web-server/pull/162). See [docs](https://sws.joseluisq.net/features/ignore-files/).
+- [800416d](https://github.com/static-web-server/static-web-server/commit/800416d) Ignore hidden files/directories (dotfiles) via the new `--ignore-hidden-files` option. PR [#162](https://github.com/static-web-server/static-web-server/pull/162). See [docs](https://static-web-server.net/features/ignore-files/).
 
 __Refactorings__
 
@@ -683,8 +683,8 @@ __Fixes__
 
 __Features__
 
-- [f369c80](https://github.com/static-web-server/static-web-server/commit/f369c80) CORS exposed headers support via new `--cors-expose-headers` option. PR [#144](https://github.com/static-web-server/static-web-server/pull/144) by [@nelsonjchen](https://github.com/nelsonjchen). See [docs](https://sws.joseluisq.net/features/cors/#exposed-headers).
-- [997e493](https://github.com/static-web-server/static-web-server/commit/997e493) HTML/JSON support for directory listing entries via new `--directory-listing-format` option. PR [#151](https://github.com/static-web-server/static-web-server/pull/151). See [docs](https://sws.joseluisq.net/features/directory-listing/#output-format).
+- [f369c80](https://github.com/static-web-server/static-web-server/commit/f369c80) CORS exposed headers support via new `--cors-expose-headers` option. PR [#144](https://github.com/static-web-server/static-web-server/pull/144) by [@nelsonjchen](https://github.com/nelsonjchen). See [docs](https://static-web-server.net/features/cors/#exposed-headers).
+- [997e493](https://github.com/static-web-server/static-web-server/commit/997e493) HTML/JSON support for directory listing entries via new `--directory-listing-format` option. PR [#151](https://github.com/static-web-server/static-web-server/pull/151). See [docs](https://static-web-server.net/features/directory-listing/#output-format).
 
 __Refactorings__
 
@@ -708,9 +708,9 @@ __Fixes__
 
 __Features__
 
-- [91b6ba2](https://github.com/static-web-server/static-web-server/commit/91b6ba2) Relative paths for directory listing entries. PR [#137](https://github.com/static-web-server/static-web-server/pull/137) resolves [#136](https://github.com/static-web-server/static-web-server/issues/136) suggested by [@jtackaberry](https://github.com/jtackaberry). See [docs](https://sws.joseluisq.net/features/directory-listing/#relative-paths-for-entries).
-- [5f10771](https://github.com/static-web-server/static-web-server/commit/5f10771) Log Real Remote IP in case of proxies. PR [#138](https://github.com/static-web-server/static-web-server/pull/138) by [@dlvoy](https://github.com/dlvoy). See [docs](https://sws.joseluisq.net/features/logging/#log-real-remote-ip).
-- [48f9458](https://github.com/static-web-server/static-web-server/commit/48f9458) Support for serving pre-compressed (Gzip/Brotli) files. PR [#139](https://github.com/static-web-server/static-web-server/pull/139) resolves [#114](https://github.com/static-web-server/static-web-server/issues/114) suggested by [@JonasGilg](https://github.com/JonasGilg). See [docs](https://sws.joseluisq.net/features/compression-static/).
+- [91b6ba2](https://github.com/static-web-server/static-web-server/commit/91b6ba2) Relative paths for directory listing entries. PR [#137](https://github.com/static-web-server/static-web-server/pull/137) resolves [#136](https://github.com/static-web-server/static-web-server/issues/136) suggested by [@jtackaberry](https://github.com/jtackaberry). See [docs](https://static-web-server.net/features/directory-listing/#relative-paths-for-entries).
+- [5f10771](https://github.com/static-web-server/static-web-server/commit/5f10771) Log Real Remote IP in case of proxies. PR [#138](https://github.com/static-web-server/static-web-server/pull/138) by [@dlvoy](https://github.com/dlvoy). See [docs](https://static-web-server.net/features/logging/#log-real-remote-ip).
+- [48f9458](https://github.com/static-web-server/static-web-server/commit/48f9458) Support for serving pre-compressed (Gzip/Brotli) files. PR [#139](https://github.com/static-web-server/static-web-server/pull/139) resolves [#114](https://github.com/static-web-server/static-web-server/issues/114) suggested by [@JonasGilg](https://github.com/JonasGilg). See [docs](https://static-web-server.net/features/compression-static/).
 
 __Refactorings__
 
@@ -720,13 +720,13 @@ __Refactorings__
 __Docs__
 
 - [59a75e6](https://github.com/static-web-server/static-web-server/commit/59a75e6) Fix documentation typos. PR [#140](https://github.com/static-web-server/static-web-server/pull/140) by [@kianmeng](https://github.com/kianmeng).
-- [3ca743a](https://github.com/static-web-server/static-web-server/commit/3ca743a) Page for pre-compressed files serving feature. See [docs](https://sws.joseluisq.net/features/compression-static/).
-- [88a886f](https://github.com/static-web-server/static-web-server/commit/88a886f) Building project from source now requires Rust `1.59.0` or later. See [docs](https://sws.joseluisq.net/building-from-source/#building-project-from-source).
+- [3ca743a](https://github.com/static-web-server/static-web-server/commit/3ca743a) Page for pre-compressed files serving feature. See [docs](https://static-web-server.net/features/compression-static/).
+- [88a886f](https://github.com/static-web-server/static-web-server/commit/88a886f) Building project from source now requires Rust `1.59.0` or later. See [docs](https://static-web-server.net/building-from-source/#building-project-from-source).
 
 __Codebase__
  
 - [5148da9](https://github.com/static-web-server/static-web-server/commit/5148da9) CI workflow for Rust security audit.
-- [28f8818](https://github.com/static-web-server/static-web-server/commit/28f8818) CI development job for typos. PR [#141](https://github.com/static-web-server/static-web-server/pull/141) by [@kianmeng](https://github.com/kianmeng). See [docs](https://sws.joseluisq.net/features/logging/#log-real-remote-ip).
+- [28f8818](https://github.com/static-web-server/static-web-server/commit/28f8818) CI development job for typos. PR [#141](https://github.com/static-web-server/static-web-server/pull/141) by [@kianmeng](https://github.com/kianmeng). See [docs](https://static-web-server.net/features/logging/#log-real-remote-ip).
 
 ## v2.11.0 - 2022-08-15
 
@@ -737,7 +737,7 @@ __Fixes__
 
 __Features__
 
-- [5163564](https://github.com/static-web-server/static-web-server/commit/5163564) New `redirect-trailing-slash` option. PR [#131](https://github.com/static-web-server/static-web-server/pull/131) by [@phartenfeller](https://github.com/phartenfeller). See [docs](https://sws.joseluisq.net/features/trailing-slash-redirect/).
+- [5163564](https://github.com/static-web-server/static-web-server/commit/5163564) New `redirect-trailing-slash` option. PR [#131](https://github.com/static-web-server/static-web-server/pull/131) by [@phartenfeller](https://github.com/phartenfeller). See [docs](https://static-web-server.net/features/trailing-slash-redirect/).
 
 __Docs__
 
@@ -753,10 +753,10 @@ __Fixes__
 
 __Features__
 
-- [5163564](https://github.com/static-web-server/static-web-server/commit/5163564) URL Rewrites with pattern matching support. PR [#122](https://github.com/static-web-server/static-web-server/pull/122). See [docs](https://sws.joseluisq.net/features/url-rewrites/).
-- [5ef3b62](https://github.com/static-web-server/static-web-server/commit/5ef3b62) URL Redirects with pattern matching. PR [#123](https://github.com/static-web-server/static-web-server/pull/123). See [docs](https://sws.joseluisq.net/features/url-rewrites/).
-- [9072977](https://github.com/static-web-server/static-web-server/commit/9072977) Homebrew installation support for MacOS/Linux. See [docs](https://sws.joseluisq.net/download-and-install/#macos).
-- [975132f](https://github.com/static-web-server/static-web-server/commit/975132f) [Scoop](https://scoop.sh/#/apps?q=static-web-server&s=0&d=1&o=true) installation support for Windows. See [docs](https://sws.joseluisq.net/download-and-install/#windows).
+- [5163564](https://github.com/static-web-server/static-web-server/commit/5163564) URL Rewrites with pattern matching support. PR [#122](https://github.com/static-web-server/static-web-server/pull/122). See [docs](https://static-web-server.net/features/url-rewrites/).
+- [5ef3b62](https://github.com/static-web-server/static-web-server/commit/5ef3b62) URL Redirects with pattern matching. PR [#123](https://github.com/static-web-server/static-web-server/pull/123). See [docs](https://static-web-server.net/features/url-rewrites/).
+- [9072977](https://github.com/static-web-server/static-web-server/commit/9072977) Homebrew installation support for MacOS/Linux. See [docs](https://static-web-server.net/download-and-install/#macos).
+- [975132f](https://github.com/static-web-server/static-web-server/commit/975132f) [Scoop](https://scoop.sh/#/apps?q=static-web-server&s=0&d=1&o=true) installation support for Windows. See [docs](https://static-web-server.net/download-and-install/#windows).
 - [78a5611](https://github.com/static-web-server/static-web-server/commit/78a5611) Alpine 3.16 Docker image.
 
 __Docs__
@@ -771,15 +771,15 @@ __Fixes__
 
 __Features__
 
-- [3d1776d](https://github.com/static-web-server/static-web-server/commit/3d1776d) Windows Service support via new `--windows-service` option. PR [#110](https://github.com/static-web-server/static-web-server/pull/110) resolves [#65](https://github.com/static-web-server/static-web-server/issues/65) suggested by [@bubnenkoff](https://github.com/bubnenkoff). See [docs](https://sws.joseluisq.net/features/windows-service/).
+- [3d1776d](https://github.com/static-web-server/static-web-server/commit/3d1776d) Windows Service support via new `--windows-service` option. PR [#110](https://github.com/static-web-server/static-web-server/pull/110) resolves [#65](https://github.com/static-web-server/static-web-server/issues/65) suggested by [@bubnenkoff](https://github.com/bubnenkoff). See [docs](https://static-web-server.net/features/windows-service/).
 - [bd78034](https://github.com/static-web-server/static-web-server/commit/bd78034) Include request URI on tracing log for 404/50x errors. [#108](https://github.com/static-web-server/static-web-server/issues/108) suggested by [@stappersg](https://github.com/stappersg).
-- [b49395a](https://github.com/static-web-server/static-web-server/commit/b49395a) Log request file with its remote address (IP) via new `--log-remote-address` option. PR [#112](https://github.com/static-web-server/static-web-server/pull/112) resolves [#111](https://github.com/static-web-server/static-web-server/issues/111) suggested by [@nicheath](https://github.com/nicheath). See [docs](https://sws.joseluisq.net/features/logging/#log-remote-addresses).
+- [b49395a](https://github.com/static-web-server/static-web-server/commit/b49395a) Log request file with its remote address (IP) via new `--log-remote-address` option. PR [#112](https://github.com/static-web-server/static-web-server/pull/112) resolves [#111](https://github.com/static-web-server/static-web-server/issues/111) suggested by [@nicheath](https://github.com/nicheath). See [docs](https://static-web-server.net/features/logging/#log-remote-addresses).
 
 __Docs__
 
-- [a793b58](https://github.com/static-web-server/static-web-server/commit/a793b58) Improve basic auth feature page. See [docs](https://sws.joseluisq.net/features/basic-authentication/).
-- [ae0dcfd](https://github.com/static-web-server/static-web-server/commit/ae0dcfd) Windows Service feature page. See [docs](https://sws.joseluisq.net/features/windows-service/).
-- [2d71de6](https://github.com/static-web-server/static-web-server/commit/2d71de6) Log remote address feature. See [docs](https://sws.joseluisq.net/features/logging/#log-remote-addresses).
+- [a793b58](https://github.com/static-web-server/static-web-server/commit/a793b58) Improve basic auth feature page. See [docs](https://static-web-server.net/features/basic-authentication/).
+- [ae0dcfd](https://github.com/static-web-server/static-web-server/commit/ae0dcfd) Windows Service feature page. See [docs](https://static-web-server.net/features/windows-service/).
+- [2d71de6](https://github.com/static-web-server/static-web-server/commit/2d71de6) Log remote address feature. See [docs](https://static-web-server.net/features/logging/#log-remote-addresses).
 
 ## v2.8.0 - 2022-05-04
 
@@ -789,8 +789,8 @@ __Fixes__
 
 __Features__
 
-- [1fd3e48](https://github.com/static-web-server/static-web-server/commit/1fd3e48) Configuration file support. PR [#101](https://github.com/static-web-server/static-web-server/pull/101). See [docs](https://sws.joseluisq.net/configuration/config-file/).
-- [62ebe52](https://github.com/static-web-server/static-web-server/commit/62ebe52) Custom HTTP headers via config file. See [docs](https://sws.joseluisq.net/features/custom-http-headers/).
+- [1fd3e48](https://github.com/static-web-server/static-web-server/commit/1fd3e48) Configuration file support. PR [#101](https://github.com/static-web-server/static-web-server/pull/101). See [docs](https://static-web-server.net/configuration/config-file/).
+- [62ebe52](https://github.com/static-web-server/static-web-server/commit/62ebe52) Custom HTTP headers via config file. See [docs](https://static-web-server.net/features/custom-http-headers/).
 
 __Refactorings__
 
@@ -830,10 +830,10 @@ __Fixes__
 
 __Features__
 
-- [da85b16](https://github.com/static-web-server/static-web-server/commit/da85b16) CORS allowed headers support via the new `-j, --cors-allow-headers` flags. PR [#87](https://github.com/static-web-server/static-web-server/pull/87). See [docs](https://sws.joseluisq.net/features/cors/#allowed-headers).
-- [da85b16](https://github.com/static-web-server/static-web-server/commit/da85b16) Support for HTTP `OPTIONS` method requests. PR [#87](https://github.com/static-web-server/static-web-server/pull/87). See [docs](https://sws.joseluisq.net/features/http-methods/).
-- [6204205](https://github.com/static-web-server/static-web-server/commit/6204205) `Cache-Control` for AVIF and JPEG XL mime types. PR [#88](https://github.com/static-web-server/static-web-server/pull/88) by [@csmith](https://github.com/csmith). See [docs](https://sws.joseluisq.net/features/cache-control-headers/#one-year).
-- [cba4a83](https://github.com/static-web-server/static-web-server/commit/cba4a83) Fallback page option via the new `--page-fallback` flag. PR [#91](https://github.com/static-web-server/static-web-server/pull/91) by [@firstdorsal](https://github.com/firstdorsal). See [docs](https://sws.joseluisq.net/features/error-pages/#fallback-page-for-use-with-client-routers).
+- [da85b16](https://github.com/static-web-server/static-web-server/commit/da85b16) CORS allowed headers support via the new `-j, --cors-allow-headers` flags. PR [#87](https://github.com/static-web-server/static-web-server/pull/87). See [docs](https://static-web-server.net/features/cors/#allowed-headers).
+- [da85b16](https://github.com/static-web-server/static-web-server/commit/da85b16) Support for HTTP `OPTIONS` method requests. PR [#87](https://github.com/static-web-server/static-web-server/pull/87). See [docs](https://static-web-server.net/features/http-methods/).
+- [6204205](https://github.com/static-web-server/static-web-server/commit/6204205) `Cache-Control` for AVIF and JPEG XL mime types. PR [#88](https://github.com/static-web-server/static-web-server/pull/88) by [@csmith](https://github.com/csmith). See [docs](https://static-web-server.net/features/cache-control-headers/#one-year).
+- [cba4a83](https://github.com/static-web-server/static-web-server/commit/cba4a83) Fallback page option via the new `--page-fallback` flag. PR [#91](https://github.com/static-web-server/static-web-server/pull/91) by [@firstdorsal](https://github.com/firstdorsal). See [docs](https://static-web-server.net/features/error-pages/#fallback-page-for-use-with-client-routers).
 
 __Refactorings__
 
@@ -843,8 +843,8 @@ __Refactorings__
 
 __Docs__
 
-- [781ba91](https://github.com/static-web-server/static-web-server/commit/781ba91) CORS allowed headers. See [docs](https://sws.joseluisq.net/features/cors/#allowed-headers).
-- [0957a11](https://github.com/static-web-server/static-web-server/commit/0957a11) HTTP methods section. See [docs](https://sws.joseluisq.net/features/http-methods/).
+- [781ba91](https://github.com/static-web-server/static-web-server/commit/781ba91) CORS allowed headers. See [docs](https://static-web-server.net/features/cors/#allowed-headers).
+- [0957a11](https://github.com/static-web-server/static-web-server/commit/0957a11) HTTP methods section. See [docs](https://static-web-server.net/features/http-methods/).
 
 __Testing__
 
@@ -862,8 +862,8 @@ __Features__
 - [7d32a67](https://github.com/static-web-server/static-web-server/commit/7d32a67) Multi-arch Docker images (Scratch/Alpine). PR [#82](https://github.com/static-web-server/static-web-server/pull/82) resolves [#54](https://github.com/static-web-server/static-web-server/issues/54).
   - New `armv7-unknown-linux-musleabihf` (armv7) and `arm-unknown-linux-musleabihf` (armv6) binary targets.
   - New Docker images for `linux/arm64`, `linux/386`, `linux/arm/v7` and `linux/arm/v6` platforms.
-- [50974fe](https://github.com/static-web-server/static-web-server/commit/50974fe) Compress WebAssembly (`application/wasm`) files. PR [#84](https://github.com/static-web-server/static-web-server/pull/84) by [@acelot](https://github.com/acelot). See [docs](https://sws.joseluisq.net/features/compression/).
-- [70ec60c](https://github.com/static-web-server/static-web-server/commit/70ec60c) Arch Linux [AUR package](https://aur.archlinux.org/packages/static-web-server-bin) support. See [docs](https://sws.joseluisq.net/download-and-install/).
+- [50974fe](https://github.com/static-web-server/static-web-server/commit/50974fe) Compress WebAssembly (`application/wasm`) files. PR [#84](https://github.com/static-web-server/static-web-server/pull/84) by [@acelot](https://github.com/acelot). See [docs](https://static-web-server.net/features/compression/).
+- [70ec60c](https://github.com/static-web-server/static-web-server/commit/70ec60c) Arch Linux [AUR package](https://aur.archlinux.org/packages/static-web-server-bin) support. See [docs](https://static-web-server.net/download-and-install/).
 
 __Refactorings__
 
@@ -872,8 +872,8 @@ __Refactorings__
 
 __Docs__
 
-- [eb482a4](https://github.com/static-web-server/static-web-server/commit/eb482a4) Documentation for Multi-arch Docker images. See [docs](https://sws.joseluisq.net/features/docker/).
-- [70ec60c](https://github.com/static-web-server/static-web-server/commit/70ec60c) Documentation for Arch Linux support. See [docs](https://sws.joseluisq.net/download-and-install/).
+- [eb482a4](https://github.com/static-web-server/static-web-server/commit/eb482a4) Documentation for Multi-arch Docker images. See [docs](https://static-web-server.net/features/docker/).
+- [70ec60c](https://github.com/static-web-server/static-web-server/commit/70ec60c) Documentation for Arch Linux support. See [docs](https://static-web-server.net/download-and-install/).
 
 ## v2.6.0-beta.2 - 2022-02-08
 
@@ -901,7 +901,7 @@ __Fixes__
 
 __Features__
 
-- [3224261](https://github.com/static-web-server/static-web-server/commit/3224261) Configurable grace period support after a `SIGTERM`. PR [#80](https://github.com/static-web-server/static-web-server/pull/80) resolves [#79](https://github.com/static-web-server/static-web-server/issues/79) suggested by [@jtackaberry](https://github.com/jtackaberry). See [docs](https://sws.joseluisq.net/features/graceful-shutdown/#graceful-shutdown) for more details.
+- [3224261](https://github.com/static-web-server/static-web-server/commit/3224261) Configurable grace period support after a `SIGTERM`. PR [#80](https://github.com/static-web-server/static-web-server/pull/80) resolves [#79](https://github.com/static-web-server/static-web-server/issues/79) suggested by [@jtackaberry](https://github.com/jtackaberry). See [docs](https://static-web-server.net/features/graceful-shutdown/#graceful-shutdown) for more details.
 
 __Refactorings__
 
@@ -929,7 +929,7 @@ __Fixes__
 
 __Features__
 
-- [688d1b2](https://github.com/static-web-server/static-web-server/commit/688d1b2) Opt-in sorting by `Name`, `Last Modified` and `File Size` in ascending/descending order via the new `--directory-listing-order` option. More details on [directory listing documentation](https://sws.joseluisq.net/examples/directory-listing/#sorting). PR [#71](https://github.com/static-web-server/static-web-server/pull/71) resolves [#68](https://github.com/static-web-server/static-web-server/issues/68) suggested by [@igoro00](https://github.com/igoro00).
+- [688d1b2](https://github.com/static-web-server/static-web-server/commit/688d1b2) Opt-in sorting by `Name`, `Last Modified` and `File Size` in ascending/descending order via the new `--directory-listing-order` option. More details on [directory listing documentation](https://static-web-server.net/examples/directory-listing/#sorting). PR [#71](https://github.com/static-web-server/static-web-server/pull/71) resolves [#68](https://github.com/static-web-server/static-web-server/issues/68) suggested by [@igoro00](https://github.com/igoro00).
 
 ## v2.2.0 - 2021-11-04
 
@@ -948,7 +948,7 @@ __Refactorings__
 
 __Docs__
 
-- [b501c40](https://github.com/static-web-server/static-web-server/commit/b501c40) Project Website - [sws.joseluisq.net](https://sws.joseluisq.net). PR [#56](https://github.com/static-web-server/static-web-server/pull/56).
+- [b501c40](https://github.com/static-web-server/static-web-server/commit/b501c40) Project Website - [static-web-server.net](https://static-web-server.net). PR [#56](https://github.com/static-web-server/static-web-server/pull/56).
 
 ## v2.1.0 - 2021-10-23
 
