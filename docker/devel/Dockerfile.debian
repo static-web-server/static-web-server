@@ -1,4 +1,4 @@
-FROM debian:12.5-slim
+FROM debian:12.6-slim
 
 ENV SERVER_VERSION=devel
 
