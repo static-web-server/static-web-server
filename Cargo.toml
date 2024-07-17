@@ -74,7 +74,7 @@ headers = "0.3"
 http = "0.2"
 http-serde = "1.1"
 hyper = { version = "0.14", features = ["stream", "http1", "http2", "tcp", "server"] }
-lazy_static = "1.4"
+lazy_static = "1.5"
 listenfd = "1.0"
 maud = { version = "0.26", optional = true }
 mime_guess = "2.0"
@@ -92,10 +92,10 @@ tokio-util = { version = "0.7", default-features = false, features = ["io"] }
 toml = "0.8"
 tracing = { version = "0.1", default-features = false, features = ["std"] }
 tracing-subscriber = { version = "0.3", default-features = false, features = ["smallvec", "registry", "parking_lot", "fmt", "ansi", "tracing-log"] }
-shadow-rs = "0.28"
+shadow-rs = "0.29"
 
 [target.'cfg(all(target_env = "musl", target_pointer_width = "64"))'.dependencies.tikv-jemallocator]
-version = "0.5"
+version = "0.6"
 
 [target.'cfg(unix)'.dependencies]
 signal-hook = { version = "0.3", features = ["extended-siginfo"] }
@@ -111,7 +111,7 @@ bytes = "1.6"
 serde_json = "1.0"
 
 [build-dependencies]
-shadow-rs = "0.28"
+shadow-rs = "0.29"
 
 [profile.release]
 codegen-units = 1
