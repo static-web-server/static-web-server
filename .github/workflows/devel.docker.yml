@@ -1,5 +1,8 @@
 name: devel-docker
 on:
+  merge_group:
+    branches:
+      - master
   pull_request:
     paths:
       - docker/**/Dockerfile
@@ -8,8 +11,6 @@ on:
   push:
     branches:
       - master
-      - staging
-      - trying
     paths:
       - docker/**/Dockerfile
       - scripts/ci/**/*.sh

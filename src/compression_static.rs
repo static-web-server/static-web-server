@@ -54,9 +54,9 @@ pub(crate) fn post_process<T>(
 }
 
 /// Search for the pre-compressed variant of the given file path.
-pub async fn precompressed_variant<'a>(
+pub fn precompressed_variant(
     file_path: &Path,
-    headers: &'a HeaderMap<HeaderValue>,
+    headers: &HeaderMap<HeaderValue>,
 ) -> Option<CompressedFileVariant> {
     tracing::trace!(
         "preparing pre-compressed file variant path of {}",

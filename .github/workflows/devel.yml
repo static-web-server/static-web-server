@@ -1,5 +1,8 @@
 name: devel
 on:
+  merge_group:
+    branches:
+      - master
   pull_request:
     paths:
       - .github/workflows/devel.yml
@@ -11,8 +14,6 @@ on:
   push:
     branches:
     - master
-    - staging
-    - trying
     paths:
       - .github/workflows/devel.yml
       - .cargo/config.toml

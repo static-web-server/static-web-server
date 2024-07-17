@@ -3,8 +3,6 @@ on:
   push:
     branches:
     - master
-    - staging
-    - trying
     paths:
       - .github/workflows/devel.yml
       - .github/workflows/devel.code-analyzer.yml
@@ -13,6 +11,9 @@ on:
       - Cargo.toml
       - src/**
       - tests/**
+  merge_group:
+    branches:
+      - master
   pull_request:
     branches:
     - master
