@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _**Note:** See changelog for v1 under the [1.x](https://github.com/static-web-server/static-web-server/blob/1.x/CHANGELOG.md) branch._
 
+## v2.32.1 - 2024-07-20
+
+This new `v2.32.1` release brings several security and bug fixes as well as other improvements.
+
+__Fixes__
+
+- [cfa3567](https://github.com/static-web-server/static-web-server/commit/cfa3567) Bugfix/security dependency updates including hyper, tokio, rustls, jemallocator, url, zstd, toml, mime_guess and other crates. PR [#463](https://github.com/static-web-server/static-web-server/pull/463).
+- [87ce30d](https://github.com/static-web-server/static-web-server/commit/87ce30d) Docker: Update Debian Docker images to 12.6. PR [#461](https://github.com/static-web-server/static-web-server/pull/461).
+- [057239d](https://github.com/static-web-server/static-web-server/commit/057239d) Docker: Update Alpine Docker images to 3.18.7. PR [#459](https://github.com/static-web-server/static-web-server/pull/459).
+
+__Refactorings__
+
+- [b3fad98](https://github.com/static-web-server/static-web-server/commit/b3fad98) CI: Remove deprecated bors and improve devel workflow. PR [#458](https://github.com/static-web-server/static-web-server/pull/458).
+- [e64076c](https://github.com/static-web-server/static-web-server/commit/e64076c) CI: Improve typos workflow configuration. PR [#456](https://github.com/static-web-server/static-web-server/pull/456) by [@szepeviktor](https://github.com/szepeviktor).
+- [4c805d6](https://github.com/static-web-server/static-web-server/commit/4c805d6) Remove some redundant async function signatures. PR [#457](https://github.com/static-web-server/static-web-server/pull/457).
+
+__Docs__
+
+- [25b1b1c](https://github.com/static-web-server/static-web-server/commit/25b1b1c) Improve feature, versioning pages and remove dead links. PR [#460](https://github.com/static-web-server/static-web-server/pull/460).
+
+For more details see the [v2.32.1 milestone](https://github.com/static-web-server/static-web-server/milestone/21?closed=1) and the full changelog [v2.32.0...v2.32.1](https://github.com/static-web-server/static-web-server/compare/v2.32.0...v2.32.1).
+
 ## v2.32.0 - 2024-06-18
 
 This new `v2.32.0` release brings several bug fixes and a new option to disable symlinks as well as other improvements. 
