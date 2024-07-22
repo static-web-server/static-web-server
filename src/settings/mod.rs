@@ -100,7 +100,21 @@ impl Settings {
     /// It also takes care to initialize the logging system with its level
     /// once the `general` settings are determined.
     pub fn get(log_init: bool) -> Result<Settings> {
-        let opts = General::parse();
+        Self::read(log_init, true)
+    }
+
+    /// Reads CLI/Env and config file options returning the server settings
+    /// without parsing arguments useful for testing.
+    pub fn get_unparsed(log_init: bool) -> Result<Settings> {
+        Self::read(log_init, false)
+    }
+
+    fn read(log_init: bool, parse_args: bool) -> Result<Settings> {
+        let opts = if parse_args {
+            General::parse()
+        } else {
+            General::parse_from([""])
+        };
 
         // Define the general CLI/file options
         let version = opts.version;
