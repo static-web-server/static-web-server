@@ -325,7 +325,7 @@ mod tests {
         assert_eq!(headers["accept-ranges"], "bytes");
         assert!(!headers["last-modified"].is_empty());
         assert_eq!(
-            &headers["content-type"], "application/javascript",
+            &headers["content-type"], "text/javascript",
             "content-type is not javascript"
         );
 

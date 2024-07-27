@@ -155,7 +155,7 @@ pub struct General {
         default_value = "false",
         default_missing_value("true"),
         num_args(0..=1),
-        require_equals(true),
+        require_equals(false),
         action = clap::ArgAction::Set,
         env = "SERVER_HTTP2_TLS",
     )]
@@ -181,7 +181,7 @@ pub struct General {
         default_value = "false",
         default_missing_value("true"),
         num_args(0..=1),
-        require_equals(true),
+        require_equals(false),
         action = clap::ArgAction::Set,
         requires_if("true", "http2"),
         env = "SERVER_HTTPS_REDIRECT"
@@ -252,7 +252,7 @@ pub struct General {
         default_value = "true",
         default_missing_value("true"),
         num_args(0..=1),
-        require_equals(true),
+        require_equals(false),
         action = clap::ArgAction::Set,
         env = "SERVER_COMPRESSION",
     )]
@@ -302,7 +302,7 @@ pub struct General {
         default_value = "false",
         default_missing_value("true"),
         num_args(0..=1),
-        require_equals(true),
+        require_equals(false),
         action = clap::ArgAction::Set,
         env = "SERVER_COMPRESSION_STATIC",
     )]
@@ -318,7 +318,7 @@ pub struct General {
         default_value = "false",
         default_missing_value("true"),
         num_args(0..=1),
-        require_equals(true),
+        require_equals(false),
         action = clap::ArgAction::Set,
         env = "SERVER_DIRECTORY_LISTING",
     )]
@@ -355,7 +355,7 @@ pub struct General {
         default_value_if("http2", "true", Some("true")),
         default_missing_value("true"),
         num_args(0..=1),
-        require_equals(true),
+        require_equals(false),
         action = clap::ArgAction::Set,
         env = "SERVER_SECURITY_HEADERS",
     )]
@@ -376,7 +376,7 @@ pub struct General {
         default_value = "true",
         default_missing_value("true"),
         num_args(0..=1),
-        require_equals(true),
+        require_equals(false),
         action = clap::ArgAction::Set,
         env = "SERVER_CACHE_CONTROL_HEADERS",
     )]
@@ -407,7 +407,7 @@ pub struct General {
         default_value = "false",
         default_missing_value("true"),
         num_args(0..=1),
-        require_equals(true),
+        require_equals(false),
         action = clap::ArgAction::Set,
         env = "SERVER_LOG_REMOTE_ADDRESS",
     )]
@@ -419,7 +419,7 @@ pub struct General {
         default_value = "true",
         default_missing_value("true"),
         num_args(0..=1),
-        require_equals(true),
+        require_equals(false),
         action = clap::ArgAction::Set,
         env = "SERVER_REDIRECT_TRAILING_SLASH",
     )]
@@ -431,7 +431,7 @@ pub struct General {
         default_value = "false",
         default_missing_value("true"),
         num_args(0..=1),
-        require_equals(true),
+        require_equals(false),
         action = clap::ArgAction::Set,
         env = "SERVER_IGNORE_HIDDEN_FILES",
     )]
@@ -443,7 +443,7 @@ pub struct General {
         default_value = "false",
         default_missing_value("true"),
         num_args(0..=1),
-        require_equals(true),
+        require_equals(false),
         action = clap::ArgAction::Set,
         env = "SERVER_DISABLE_SYMLINKS",
     )]
@@ -455,7 +455,7 @@ pub struct General {
         default_value = "false",
         default_missing_value("true"),
         num_args(0..=1),
-        require_equals(true),
+        require_equals(false),
         action = clap::ArgAction::Set,
         env = "SERVER_HEALTH",
     )]
@@ -469,7 +469,7 @@ pub struct General {
         default_value = "false",
         default_missing_value("true"),
         num_args(0..=1),
-        require_equals(true),
+        require_equals(false),
         action = clap::ArgAction::Set,
         env = "SERVER_EXPERIMENTAL_METRICS",
     )]
@@ -481,7 +481,7 @@ pub struct General {
         default_value = "false",
         default_missing_value("true"),
         num_args(0..=1),
-        require_equals(true),
+        require_equals(false),
         action = clap::ArgAction::Set,
         env = "SERVER_MAINTENANCE_MODE"
     )]
@@ -530,7 +530,7 @@ pub struct General {
         default_value = "false",
         default_missing_value("true"),
         num_args(0..=1),
-        require_equals(true),
+        require_equals(false),
         action = clap::ArgAction::Set,
         env = "SERVER_WINDOWS_SERVICE",
     )]

@@ -26,7 +26,7 @@ pub mod fixtures {
         // Replace default config file and load the fixture TOML settings
         let f = PathBuf::from("tests/fixtures").join(fixture_toml);
         std::env::set_var("SERVER_CONFIG_FILE", f);
-        Settings::get(false).unwrap()
+        Settings::get_unparsed(false).unwrap()
     }
 
     /// Create a `RequestHandler` from a custom TOML config file (fixture).

@@ -3,6 +3,7 @@
 #![deny(rust_2018_idioms)]
 #![deny(dead_code)]
 
+#[cfg(test)]
 pub mod tests {
     use hyper::Request;
     use std::net::SocketAddr;
@@ -121,7 +122,7 @@ pub mod tests {
         match req_handler.handle(&mut req, remote_addr).await {
             Ok(mut res) => {
                 assert_eq!(res.status(), 200);
-                assert_eq!(res.headers()["content-type"], "application/javascript");
+                assert_eq!(res.headers()["content-type"], "text/javascript");
 
                 let body = hyper::body::to_bytes(res.body_mut())
                     .await

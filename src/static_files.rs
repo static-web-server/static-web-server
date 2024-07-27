@@ -87,6 +87,10 @@ pub struct StaticFileResponse {
     pub file_path: PathBuf,
 }
 
+use tokio::sync::Semaphore;
+
+static PERMITS: Semaphore = Semaphore::const_new(1);
+
 /// The server entry point to handle incoming requests which map to specific files
 /// on file system and return a file response.
 pub async fn handle<'a>(opts: &HandleOpts<'a>) -> Result<StaticFileResponse, StatusCode> {
@@ -102,10 +106,10 @@ pub async fn handle<'a>(opts: &HandleOpts<'a>) -> Result<StaticFileResponse, Sta
     let mut file_path = sanitize_path(opts.base_path, uri_path)?;
     let memory_cache = opts.memory_cache;
 
-    println!("HOLA!");
+    // println!("HOLA!");
     // In-memory file cache feature with eviction policy
     if memory_cache.is_some() {
-        println!("mem cache!");
+        // println!("mem cache!");
         if let Some(file_path_str) = file_path.to_str() {
             let mut cache_store = CACHE_STORE.get().unwrap().lock();
             match cache_store.get(file_path_str) {
@@ -139,6 +143,11 @@ pub async fn handle<'a>(opts: &HandleOpts<'a>) -> Result<StaticFileResponse, Sta
                 }
             }
         }
+    }
+
+    // let _permit = PERMITS.acquire().await.unwrap();
+    if memory_cache.is_some() {
+        let _permit = PERMITS.acquire().await.unwrap();
     }
 
     let FileMetadata {

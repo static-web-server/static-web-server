@@ -3,6 +3,7 @@
 #![deny(rust_2018_idioms)]
 #![deny(dead_code)]
 
+#[cfg(test)]
 pub mod tests {
     use headers::HeaderValue;
     use hyper::Request;

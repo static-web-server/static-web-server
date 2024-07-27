@@ -342,9 +342,9 @@ impl Server {
 
         // Memory cache option
         mem_cache::init(
-            MemCacheOpts::new(max_size, file_max_size, file_ttl),
+            Some(MemCacheOpts::new(500usize, 8u64, 40u64)),
             &mut handler_opts,
-        );
+        )?;
 
         // Create a service router for Hyper
         let router_service = RouterService::new(RequestHandler {
