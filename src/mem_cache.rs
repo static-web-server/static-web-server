@@ -8,14 +8,15 @@
 //!
 
 use bytes::Bytes;
+use compact_str::CompactString;
 use headers::{
     AcceptRanges, ContentLength, ContentRange, ContentType, HeaderMap, HeaderMapExt, LastModified,
 };
 use hyper::{Body, Response, StatusCode};
-use once_cell::sync::OnceCell;
-use parking_lot::Mutex;
-use sieve_cache::SieveCache;
+use lazy_static::lazy_static;
+use mini_moka::sync::Cache;
 use std::io::{Read, Seek, SeekFrom};
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use crate::conditional_headers::{ConditionalBody, ConditionalHeaders};
@@ -24,9 +25,19 @@ use crate::handler::RequestHandlerOpts;
 use crate::response::{bytes_range, BadRangeError};
 use crate::Result;
 
-/// Global cache that stores all files in memory.
-/// It provides eviction policy using the SIEVE algorithm and TTL (Time-to-live) support.
-pub(crate) static CACHE_STORE: OnceCell<Mutex<SieveCache<String, MemFile>>> = OnceCell::new();
+lazy_static! {
+    /// Global cache that stores all files in memory.
+    /// It provides eviction policy using the SIEVE algorithm and TTL (Time-to-live) support.
+    /// TODO: provide options via config
+    pub static ref CACHE_STORE: Cache<CompactString, Arc<MemFile>> = Cache::builder()
+        .max_capacity(500)
+        // Time to live (TTL): 30 minutes
+        .time_to_live(Duration::from_secs(30 * 60))
+        // Time to idle (TTI):  5 minutes
+        .time_to_idle(Duration::from_secs(5 * 60))
+        // Create the cache.
+        .build();
+}
 
 /// It defines the in-memory files cache options.
 pub struct MemCacheOpts {
@@ -51,22 +62,16 @@ impl MemCacheOpts {
 }
 
 /// Make sure to initialize the in-memory cache store.
-pub(crate) fn init(opts: Option<MemCacheOpts>, handler_opts: &mut RequestHandlerOpts) -> Result {
-    // TODO: better options print -> Result
-    server_info!("in-memory files cache: enabled={}", opts.is_some());
-
-    if let Some(o) = opts {
-        let cache = match SieveCache::new(o.max_size) {
-            Ok(v) => v,
-            Err(err) => bail!(err),
-        };
-        if CACHE_STORE.set(Mutex::new(cache)).is_err() {
-            bail!("unable to initialize the in-memory cache store")
-        }
-        tracing::debug!("the in-memory cache store was initialized successfully");
-        handler_opts.memory_cache = Some(o);
+pub(crate) fn init(
+    enabled: bool,
+    opts: Option<MemCacheOpts>,
+    handler_opts: &mut RequestHandlerOpts,
+) -> Result {
+    // TODO: better options printing
+    if enabled {
+        server_info!("in-memory files cache: enabled={enabled}");
+        handler_opts.memory_cache = opts;
     }
-
     Ok(())
 }
 
@@ -96,7 +101,7 @@ impl MemFileTempOpts {
 
 /// In-memory file representation to be store in the cache.
 #[derive(Debug)]
-pub(crate) struct MemFile {
+pub struct MemFile {
     /// Bytes of the the current file.
     data: Bytes,
     /// Buffer size for the current file.

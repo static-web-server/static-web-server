@@ -11,7 +11,6 @@ use headers::{
     AcceptRanges, ContentLength, ContentRange, ContentType, HeaderMapExt, LastModified, Range,
 };
 use hyper::{Body, Response, StatusCode};
-use parking_lot::Mutex;
 use std::fs::{File, Metadata};
 use std::io::{BufReader, Read, Seek, SeekFrom};
 use std::ops::Bound;
@@ -68,8 +67,7 @@ pub(crate) fn response_body(
                                 let file_ttl = mem_cache_opts.file_ttl;
                                 let file_path = path_str.to_owned();
 
-                                let data = Some(BytesMut::with_capacity(len as usize));
-                                mem_file_data = Some(Mutex::new(data));
+                                mem_file_data = Some(BytesMut::with_capacity(len as usize));
                                 mem_file_opts = Some(MemFileTempOpts::new(
                                     file_ttl,
                                     file_path,

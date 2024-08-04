@@ -341,7 +341,9 @@ impl Server {
         security_headers::init(general.security_headers, &mut handler_opts);
 
         // Memory cache option
+        // TODO: provide arguments from config
         mem_cache::init(
+            general.memory_cache,
             Some(MemCacheOpts::new(500usize, 8u64, 40u64)),
             &mut handler_opts,
         )?;

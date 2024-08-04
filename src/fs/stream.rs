@@ -8,10 +8,10 @@
 
 use bytes::{BufMut, Bytes, BytesMut};
 use futures_util::Stream;
-use parking_lot::Mutex;
 use std::fs::Metadata;
 use std::io::Read;
 use std::pin::Pin;
+use std::sync::Arc;
 use std::task::{Context, Poll};
 
 use crate::mem_cache::{MemFile, MemFileTempOpts, CACHE_STORE};
@@ -27,7 +27,7 @@ const DEFAULT_READ_BUF_SIZE: usize = 8_192;
 pub(crate) struct FileStream<T> {
     pub(crate) reader: T,
     pub(crate) buf_size: usize,
-    pub(crate) mem_file_data: Option<Mutex<Option<BytesMut>>>,
+    pub(crate) mem_file_data: Option<BytesMut>,
     pub(crate) mem_file_opts: Option<MemFileTempOpts>,
 }
 
@@ -48,29 +48,29 @@ impl<T: Read + Unpin> Stream for FileStream<T> {
                     let buf = buf.freeze();
 
                     if this.mem_file_opts.is_some() {
-                        let mut guard = this.mem_file_data.as_ref().unwrap().lock();
-                        let tmp_data = guard.as_mut().unwrap();
-                        tmp_data.put(buf.clone());
+                        // TODO: add error handling
+                        let tmp_buf = this.mem_file_data.as_mut().unwrap();
+                        tmp_buf.put(buf.clone());
 
-                        if tmp_data.len() == tmp_data.capacity() {
-                            let data = guard.take().unwrap().freeze();
+                        if tmp_buf.len() == tmp_buf.capacity() {
+                            let tmp_data_owned = this.mem_file_data.take().unwrap();
+                            let tmp_data = tmp_data_owned.freeze();
                             let mem_file_opts = this.mem_file_opts.clone().unwrap();
 
-                            let mem_file = MemFile::new(
-                                data,
+                            let mem_file = Arc::new(MemFile::new(
+                                tmp_data,
                                 buf_size,
                                 mem_file_opts.content_type,
                                 mem_file_opts.last_modified,
                                 mem_file_opts.file_ttl,
-                            );
+                            ));
 
                             tracing::debug!(
                                 "file `{}` is inserted to in-memory cache store: {:?}",
                                 mem_file_opts.file_path,
                                 mem_file
                             );
-                            let mut cache_store = CACHE_STORE.get().unwrap().lock();
-                            cache_store.insert(mem_file_opts.file_path, mem_file);
+                            CACHE_STORE.insert(mem_file_opts.file_path.into(), mem_file);
                         }
                     }
 

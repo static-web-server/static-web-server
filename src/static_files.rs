@@ -9,6 +9,7 @@
 // Part of the file is borrowed and adapted at a convenience from
 // https://github.com/seanmonstar/warp/blob/master/src/filters/fs.rs
 
+use compact_str::CompactString;
 use headers::{AcceptRanges, HeaderMap, HeaderMapExt, HeaderValue};
 use hyper::{header::CONTENT_ENCODING, header::CONTENT_LENGTH, Body, Method, Response, StatusCode};
 use std::fs::{File, Metadata};
@@ -106,13 +107,10 @@ pub async fn handle<'a>(opts: &HandleOpts<'a>) -> Result<StaticFileResponse, Sta
     let mut file_path = sanitize_path(opts.base_path, uri_path)?;
     let memory_cache = opts.memory_cache;
 
-    // println!("HOLA!");
     // In-memory file cache feature with eviction policy
     if memory_cache.is_some() {
-        // println!("mem cache!");
         if let Some(file_path_str) = file_path.to_str() {
-            let mut cache_store = CACHE_STORE.get().unwrap().lock();
-            match cache_store.get(file_path_str) {
+            match CACHE_STORE.get::<CompactString>(&file_path_str.into()) {
                 Some(mem_file) => {
                     if !mem_file.has_expired() {
                         tracing::debug!(
@@ -129,7 +127,7 @@ pub async fn handle<'a>(opts: &HandleOpts<'a>) -> Result<StaticFileResponse, Sta
 
                     // Otherwise, if the file has expired due to TTL
                     // then remove it from the cache store and continue
-                    cache_store.remove(file_path_str);
+                    CACHE_STORE.invalidate::<CompactString>(&file_path_str.into());
                     tracing::debug!(
                         "file `{}` found in the in-memory cache store but TTL has expired, removed",
                         file_path_str
@@ -143,11 +141,10 @@ pub async fn handle<'a>(opts: &HandleOpts<'a>) -> Result<StaticFileResponse, Sta
                 }
             }
         }
-    }
 
-    // let _permit = PERMITS.acquire().await.unwrap();
-    if memory_cache.is_some() {
-        let _permit = PERMITS.acquire().await.unwrap();
+        // Otherwise if file is not cached then continue with normal workflow below or
+        // wait until an outstanding permit is dropped
+        let _ = PERMITS.acquire().await.unwrap();
     }
 
     let FileMetadata {
