@@ -31,7 +31,7 @@ use crate::{
     control_headers, cors, custom_headers, error_page, health,
     http_ext::MethodExt,
     log_addr, maintenance_mode,
-    mem_cache::MemCacheOpts,
+    mem_cache::cache::MemCacheOpts,
     redirects, rewrites, security_headers,
     settings::Advanced,
     static_files::{self, HandleOpts},

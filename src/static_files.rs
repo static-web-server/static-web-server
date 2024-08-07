@@ -20,7 +20,7 @@ use crate::conditional_headers::ConditionalHeaders;
 use crate::fs::meta::{try_metadata, try_metadata_with_html_suffix, FileMetadata};
 use crate::fs::path::{sanitize_path, PathExt};
 use crate::http_ext::{MethodExt, HTTP_SUPPORTED_METHODS};
-use crate::mem_cache::{MemCacheOpts, CACHE_STORE};
+use crate::mem_cache::cache::{MemCacheOpts, CACHE_STORE};
 use crate::response::response_body;
 use crate::Result;
 

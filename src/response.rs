@@ -18,7 +18,10 @@ use std::path::PathBuf;
 
 use crate::conditional_headers::{ConditionalBody, ConditionalHeaders};
 use crate::fs::stream::{optimal_buf_size, FileStream};
-use crate::mem_cache::{MemCacheOpts, MemFileTempOpts};
+use crate::mem_cache::{
+    cache::{MemCacheOpts, MemFileTempOpts},
+    stream::MemCacheFileStream,
+};
 
 /// It converts a file object into a corresponding HTTP response or
 /// returns an error holding an HTTP status code otherwise.
@@ -57,37 +60,40 @@ pub(crate) fn response_body(
                     // - if the feature is enabled and
                     // - if the file size does not exceed the maximum permitted and
                     // - if the file is not found in the cache store
-                    let mut mem_file_opts = None;
-                    let mut mem_file_data = None;
+                    // TODO: make this a feature
+                    let body = match memory_cache {
+                        // Cache the file only if does not exceed the max size
+                        Some(mem_cache_opts) if len <= mem_cache_opts.file_max_size => {
+                            match path.to_str() {
+                                Some(path_str) => {
+                                    let content_type = content_type.clone();
+                                    let file_ttl = mem_cache_opts.file_ttl;
+                                    let file_path = path_str.to_owned();
 
-                    if let Some(mem_cache_opts) = memory_cache {
-                        if len <= mem_cache_opts.file_max_size {
-                            if let Some(path_str) = path.to_str() {
-                                let content_type = content_type.clone();
-                                let file_ttl = mem_cache_opts.file_ttl;
-                                let file_path = path_str.to_owned();
-
-                                mem_file_data = Some(BytesMut::with_capacity(len as usize));
-                                mem_file_opts = Some(MemFileTempOpts::new(
-                                    file_ttl,
-                                    file_path,
-                                    content_type,
-                                    modified,
-                                ));
-                                tracing::debug!(
-                                    "preparing `{}` to be inserted in-memory cache store",
-                                    path_str,
-                                );
+                                    let mem_buf = Some(BytesMut::with_capacity(len as usize));
+                                    let mem_opts = Some(MemFileTempOpts::new(
+                                        file_ttl,
+                                        file_path,
+                                        content_type,
+                                        modified,
+                                    ));
+                                    tracing::debug!(
+                                        "preparing `{}` to be inserted in-memory cache store",
+                                        path_str,
+                                    );
+                                    Body::wrap_stream(MemCacheFileStream {
+                                        reader,
+                                        buf_size,
+                                        mem_opts,
+                                        mem_buf,
+                                    })
+                                }
+                                _ => Body::wrap_stream(FileStream { reader, buf_size }),
                             }
                         }
-                    }
+                        _ => Body::wrap_stream(FileStream { reader, buf_size }),
+                    };
 
-                    let body = Body::wrap_stream(FileStream {
-                        reader,
-                        buf_size,
-                        mem_file_opts,
-                        mem_file_data,
-                    });
                     let mut resp = Response::new(body);
 
                     if sub_len != len {

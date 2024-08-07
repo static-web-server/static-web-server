@@ -20,7 +20,7 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use crate::conditional_headers::{ConditionalBody, ConditionalHeaders};
-use crate::fs::stream::FileStreamLite;
+use crate::fs::stream::FileStream;
 use crate::handler::RequestHandlerOpts;
 use crate::response::{bytes_range, BadRangeError};
 use crate::Result;
@@ -145,9 +145,9 @@ impl MemFile {
         match conditionals.check(modified) {
             ConditionalBody::NoBody(resp) => Ok(resp),
             ConditionalBody::WithBody(range) => {
-                let data = self.data.clone();
-                let mut len = data.len() as u64;
-                let mut reader = std::io::Cursor::new(data);
+                let mem_buf = self.data.clone();
+                let mut len = mem_buf.len() as u64;
+                let mut reader = std::io::Cursor::new(mem_buf);
                 let buf_size = self.buf_size;
 
                 bytes_range(range, len)
@@ -163,7 +163,7 @@ impl MemFile {
                         let sub_len = end - start;
                         let reader = reader.take(sub_len);
 
-                        let body = Body::wrap_stream(FileStreamLite { reader, buf_size });
+                        let body = Body::wrap_stream(FileStream { reader, buf_size });
                         let mut resp = Response::new(body);
 
                         if sub_len != len {

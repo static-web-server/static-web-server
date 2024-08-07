@@ -13,7 +13,8 @@ use std::sync::Arc;
 use tokio::sync::{watch::Receiver, Mutex};
 
 use crate::handler::{RequestHandler, RequestHandlerOpts};
-use crate::mem_cache::MemCacheOpts;
+use crate::mem_cache::cache::MemCacheOpts;
+
 #[cfg(all(unix, feature = "experimental"))]
 use crate::metrics;
 #[cfg(any(unix, windows))]
@@ -342,7 +343,7 @@ impl Server {
 
         // Memory cache option
         // TODO: provide arguments from config
-        mem_cache::init(
+        mem_cache::cache::init(
             general.memory_cache,
             Some(MemCacheOpts::new(500usize, 8u64, 40u64)),
             &mut handler_opts,
