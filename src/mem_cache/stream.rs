@@ -47,7 +47,6 @@ impl<T: Read + Unpin> Stream for MemCacheFileStream<T> {
                                 buf_size,
                                 mem_file_opts.content_type,
                                 mem_file_opts.last_modified,
-                                mem_file_opts.file_ttl,
                             ));
 
                             tracing::debug!(
@@ -55,7 +54,10 @@ impl<T: Read + Unpin> Stream for MemCacheFileStream<T> {
                                 mem_file_opts.file_path,
                                 mem_file
                             );
-                            CACHE_STORE.insert(mem_file_opts.file_path.into(), mem_file);
+                            CACHE_STORE
+                                .get()
+                                .unwrap()
+                                .insert(mem_file_opts.file_path.into(), mem_file);
                         }
                     }
 

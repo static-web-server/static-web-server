@@ -67,12 +67,10 @@ pub(crate) fn response_body(
                             match path.to_str() {
                                 Some(path_str) => {
                                     let content_type = content_type.clone();
-                                    let file_ttl = mem_cache_opts.file_ttl;
                                     let file_path = path_str.to_owned();
 
                                     let mem_buf = Some(BytesMut::with_capacity(len as usize));
                                     let mem_opts = Some(MemFileTempOpts::new(
-                                        file_ttl,
                                         file_path,
                                         content_type,
                                         modified,

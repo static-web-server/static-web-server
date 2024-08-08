@@ -3,8 +3,11 @@
 // See https://static-web-server.net/ for more information
 // Copyright (C) 2019-present Jose Quintana <joseluisq.net>
 
-//! It provides in-memory files cache functionality with eviction policy
-//! using the SIEVE algorithm and TTL (Time-to-live) support.
+//! It provides in-memory files cache functionality with expiration policies support
+//! such as Time to live (TTL) and Time to idle (TTI).
+//!
+//! Admission to a cache is controlled by the Least Frequently Used (LFU) policy.
+//! and the eviction from a cache is controlled by the Least Recently Used (LRU) policy.
 //!
 
 use bytes::Bytes;
@@ -13,11 +16,10 @@ use headers::{
     AcceptRanges, ContentLength, ContentRange, ContentType, HeaderMap, HeaderMapExt, LastModified,
 };
 use hyper::{Body, Response, StatusCode};
-use lazy_static::lazy_static;
 use mini_moka::sync::Cache;
 use std::io::{Read, Seek, SeekFrom};
-use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::sync::{Arc, OnceLock};
+use std::time::Duration;
 
 use crate::conditional_headers::{ConditionalBody, ConditionalHeaders};
 use crate::fs::stream::FileStream;
@@ -25,24 +27,14 @@ use crate::handler::RequestHandlerOpts;
 use crate::response::{bytes_range, BadRangeError};
 use crate::Result;
 
-lazy_static! {
-    /// Global cache that stores all files in memory.
-    /// It provides eviction policy using the SIEVE algorithm and TTL (Time-to-live) support.
-    /// TODO: provide options via config
-    pub static ref CACHE_STORE: Cache<CompactString, Arc<MemFile>> = Cache::builder()
-        .max_capacity(500)
-        // Time to live (TTL): 30 minutes
-        .time_to_live(Duration::from_secs(30 * 60))
-        // Time to idle (TTI):  5 minutes
-        .time_to_idle(Duration::from_secs(5 * 60))
-        // Create the cache.
-        .build();
-}
+/// Global cache that stores all files in memory.
+/// It provides expiration policies like Time to live (TTL) and Time to idle (TTI) support.
+pub(crate) static CACHE_STORE: OnceLock<Cache<CompactString, Arc<MemFile>>> = OnceLock::new();
 
 /// It defines the in-memory files cache options.
 pub struct MemCacheOpts {
     /// The maximum size of the cache entries.
-    pub max_size: usize,
+    pub max_size: u64,
     /// The maximum size per file in bytes.
     pub file_max_size: u64,
     /// The TTL per file in seconds.
@@ -52,7 +44,7 @@ pub struct MemCacheOpts {
 impl MemCacheOpts {
     /// Creates a new instance of `MemCacheOpts`.
     #[inline]
-    pub fn new(max_size: usize, file_max_size: u64, file_ttl: u64) -> Self {
+    pub fn new(max_size: u64, file_max_size: u64, file_ttl: u64) -> Self {
         Self {
             max_size,
             file_max_size: 1024 * 1024 * file_max_size,
@@ -67,9 +59,25 @@ pub(crate) fn init(
     opts: Option<MemCacheOpts>,
     handler_opts: &mut RequestHandlerOpts,
 ) -> Result {
-    // TODO: better options printing
     if enabled {
         server_info!("in-memory files cache: enabled={enabled}");
+
+        // TODO: provide options via config
+        // TODO: better options printing
+        if let Some(opts) = opts.as_ref() {
+            let cache = Cache::builder()
+                .max_capacity(opts.max_size)
+                // Time to live (TTL): 30 minutes
+                .time_to_live(Duration::from_secs(opts.file_ttl))
+                // Time to idle (TTI):  5 minutes
+                .time_to_idle(Duration::from_secs(5 * 60))
+                .build();
+
+            if CACHE_STORE.set(cache).is_err() {
+                bail!("unable to initialize the in-memory cache store")
+            }
+        }
+
         handler_opts.memory_cache = opts;
     }
     Ok(())
@@ -80,12 +88,10 @@ pub(crate) struct MemFileTempOpts {
     pub(crate) file_path: String,
     pub(crate) content_type: ContentType,
     pub(crate) last_modified: Option<LastModified>,
-    pub(crate) file_ttl: u64,
 }
 
 impl MemFileTempOpts {
     pub(crate) fn new(
-        file_ttl: u64,
         file_path: String,
         content_type: ContentType,
         last_modified: Option<LastModified>,
@@ -94,14 +100,13 @@ impl MemFileTempOpts {
             file_path,
             content_type,
             last_modified,
-            file_ttl,
         }
     }
 }
 
 /// In-memory file representation to be store in the cache.
 #[derive(Debug)]
-pub struct MemFile {
+pub(crate) struct MemFile {
     /// Bytes of the the current file.
     data: Bytes,
     /// Buffer size for the current file.
@@ -110,8 +115,6 @@ pub struct MemFile {
     content_type: ContentType,
     /// `Last Modified` header for the current file.
     last_modified: Option<LastModified>,
-    /// Expiration time (TTL) of the current file in memory.
-    expiration: Instant,
 }
 
 impl MemFile {
@@ -121,21 +124,13 @@ impl MemFile {
         buf_size: usize,
         content_type: ContentType,
         last_modified: Option<LastModified>,
-        file_ttl: u64,
     ) -> Self {
-        let expiration = Instant::now() + Duration::new(file_ttl, 0);
         Self {
             data,
             buf_size,
             content_type,
             last_modified,
-            expiration,
         }
-    }
-
-    #[inline]
-    pub(crate) fn has_expired(&self) -> bool {
-        Instant::now() > self.expiration
     }
 
     pub(crate) fn response_body(&self, headers: &HeaderMap) -> Result<Response<Body>, StatusCode> {

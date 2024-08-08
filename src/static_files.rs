@@ -110,28 +110,22 @@ pub async fn handle<'a>(opts: &HandleOpts<'a>) -> Result<StaticFileResponse, Sta
     // In-memory file cache feature with eviction policy
     if memory_cache.is_some() {
         if let Some(file_path_str) = file_path.to_str() {
-            match CACHE_STORE.get::<CompactString>(&file_path_str.into()) {
+            match CACHE_STORE
+                .get()
+                .unwrap()
+                .get::<CompactString>(&file_path_str.into())
+            {
                 Some(mem_file) => {
-                    if !mem_file.has_expired() {
-                        tracing::debug!(
+                    tracing::debug!(
                             "file `{}` found in the in-memory cache store and valid, returning it immediately",
                             file_path_str
                         );
-                        let resp = mem_file.response_body(headers_opt)?;
-                        return Ok(StaticFileResponse {
-                            resp,
-                            // file_path: resp_file_path,
-                            file_path,
-                        });
-                    }
-
-                    // Otherwise, if the file has expired due to TTL
-                    // then remove it from the cache store and continue
-                    CACHE_STORE.invalidate::<CompactString>(&file_path_str.into());
-                    tracing::debug!(
-                        "file `{}` found in the in-memory cache store but TTL has expired, removed",
-                        file_path_str
-                    );
+                    let resp = mem_file.response_body(headers_opt)?;
+                    return Ok(StaticFileResponse {
+                        resp,
+                        // file_path: resp_file_path,
+                        file_path,
+                    });
                 }
                 _ => {
                     tracing::debug!(

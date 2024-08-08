@@ -345,7 +345,7 @@ impl Server {
         // TODO: provide arguments from config
         mem_cache::cache::init(
             general.memory_cache,
-            Some(MemCacheOpts::new(500usize, 8u64, 40u64)),
+            Some(MemCacheOpts::new(500, 8, 40)),
             &mut handler_opts,
         )?;
 
