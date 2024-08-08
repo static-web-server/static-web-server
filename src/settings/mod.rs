@@ -204,6 +204,7 @@ impl Settings {
         let mut maintenance_mode = opts.maintenance_mode;
         let mut maintenance_mode_status = opts.maintenance_mode_status;
         let mut maintenance_mode_file = opts.maintenance_mode_file;
+        let mut memory_cache = opts.memory_cache;
 
         // Windows-only options
         #[cfg(windows)]
@@ -386,6 +387,9 @@ impl Settings {
                 }
                 if let Some(v) = general.maintenance_mode_file {
                     maintenance_mode_file = v
+                }
+                if let Some(v) = general.memory_cache {
+                    memory_cache = v
                 }
 
                 // Windows-only options
@@ -654,6 +658,7 @@ impl Settings {
                 maintenance_mode,
                 maintenance_mode_status,
                 maintenance_mode_file,
+                memory_cache,
 
                 // Windows-only options and commands
                 #[cfg(windows)]
