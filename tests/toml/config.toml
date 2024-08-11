@@ -70,7 +70,7 @@ index-files = "index.html, index.htm"
 
 #### Maintenance Mode
 maintenance-mode = false
-# maintenance-mode-status = 503 
+# maintenance-mode-status = 503
 # maintenance-mode-file = "maintenance.html"
 
 ### Windows Only
@@ -153,3 +153,12 @@ root = "docker"
 [[advanced.virtual-hosts]]
 host = "localhost"
 root = "docker/abc"
+
+[advanced.memory-cache]
+capacity = 100
+# 30min
+ttl = 1800
+# 5min
+tti = 300
+# 8mb
+max-file-size = 8192

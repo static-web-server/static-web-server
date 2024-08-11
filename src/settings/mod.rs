@@ -25,7 +25,7 @@ pub use cli::Commands;
 
 use cli::General;
 
-use self::file::{RedirectsKind, Settings as FileSettings};
+use self::file::{MemoryCache, RedirectsKind, Settings as FileSettings};
 
 #[cfg(any(
     feature = "compression",
@@ -85,6 +85,8 @@ pub struct Advanced {
     pub redirects: Option<Vec<Redirects>>,
     /// Name-based virtual hosting
     pub virtual_hosts: Option<Vec<VirtualHosts>>,
+    /// In-memory cache feature.
+    pub memory_cache: Option<MemoryCache>,
 }
 
 /// The full server CLI and File options.
@@ -204,7 +206,6 @@ impl Settings {
         let mut maintenance_mode = opts.maintenance_mode;
         let mut maintenance_mode_status = opts.maintenance_mode_status;
         let mut maintenance_mode_file = opts.maintenance_mode_file;
-        let mut memory_cache = opts.memory_cache;
 
         // Windows-only options
         #[cfg(windows)]
@@ -388,9 +389,6 @@ impl Settings {
                 if let Some(v) = general.maintenance_mode_file {
                     maintenance_mode_file = v
                 }
-                if let Some(v) = general.memory_cache {
-                    memory_cache = v
-                }
 
                 // Windows-only options
                 #[cfg(windows)]
@@ -573,6 +571,7 @@ impl Settings {
                     rewrites: rewrites_entries,
                     redirects: redirects_entries,
                     virtual_hosts: vhosts_entries,
+                    memory_cache: advanced.memory_cache,
                 });
             }
         } else if log_init {
@@ -658,7 +657,6 @@ impl Settings {
                 maintenance_mode,
                 maintenance_mode_status,
                 maintenance_mode_file,
-                memory_cache,
 
                 // Windows-only options and commands
                 #[cfg(windows)]

@@ -33,52 +33,55 @@ pub(crate) static CACHE_STORE: OnceLock<Cache<CompactString, Arc<MemFile>>> = On
 
 /// It defines the in-memory files cache options.
 pub struct MemCacheOpts {
-    /// The maximum size of the cache entries.
-    pub max_size: u64,
     /// The maximum size per file in bytes.
-    pub file_max_size: u64,
-    /// The TTL per file in seconds.
-    pub file_ttl: u64,
+    pub max_file_size: u64,
 }
 
 impl MemCacheOpts {
     /// Creates a new instance of `MemCacheOpts`.
     #[inline]
-    pub fn new(max_size: u64, file_max_size: u64, file_ttl: u64) -> Self {
+    pub fn new(max_file_size: u64) -> Self {
         Self {
-            max_size,
-            file_max_size: 1024 * 1024 * file_max_size,
-            file_ttl,
+            max_file_size: 1024 * 1024 * max_file_size,
         }
     }
 }
 
 /// Make sure to initialize the in-memory cache store.
-pub(crate) fn init(
-    enabled: bool,
-    opts: Option<MemCacheOpts>,
-    handler_opts: &mut RequestHandlerOpts,
-) -> Result {
-    if enabled {
-        server_info!("in-memory files cache: enabled={enabled}");
+pub(crate) fn init(handler_opts: &mut RequestHandlerOpts) -> Result {
+    if let Some(advanced_opts) = handler_opts.advanced_opts.as_ref() {
+        let enabled = advanced_opts.memory_cache.is_some();
+        server_info!("in-memory files cache: enabled={}", enabled);
 
         // TODO: provide options via config
         // TODO: better options printing
-        if let Some(opts) = opts.as_ref() {
+
+        if let Some(opts) = advanced_opts.memory_cache.as_ref() {
+            // Default 256 entries max
+            let capacity = opts.capacity.unwrap_or(256);
+            // Default 30min
+            let ttl = opts.ttl.unwrap_or(1800);
+            // Default 5min
+            let tti = opts.tti.unwrap_or(300);
+            // Default 8mb
+            let max_file_size = opts.max_file_size.unwrap_or(8192);
+
+            let mem_opts = MemCacheOpts::new(max_file_size);
+
             let cache = Cache::builder()
-                .max_capacity(opts.max_size)
+                .max_capacity(capacity)
                 // Time to live (TTL): 30 minutes
-                .time_to_live(Duration::from_secs(opts.file_ttl))
+                .time_to_live(Duration::from_secs(ttl))
                 // Time to idle (TTI):  5 minutes
-                .time_to_idle(Duration::from_secs(5 * 60))
+                .time_to_idle(Duration::from_secs(tti))
                 .build();
 
             if CACHE_STORE.set(cache).is_err() {
                 bail!("unable to initialize the in-memory cache store")
             }
-        }
 
-        handler_opts.memory_cache = opts;
+            handler_opts.memory_cache = Some(mem_opts);
+        }
     }
     Ok(())
 }

@@ -63,7 +63,7 @@ pub(crate) fn response_body(
                     // TODO: make this a feature
                     let body = match memory_cache {
                         // Cache the file only if does not exceed the max size
-                        Some(mem_cache_opts) if len <= mem_cache_opts.file_max_size => {
+                        Some(mem_cache_opts) if len <= mem_cache_opts.max_file_size => {
                             match path.to_str() {
                                 Some(path_str) => {
                                     let content_type = content_type.clone();

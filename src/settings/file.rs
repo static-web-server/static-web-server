@@ -160,6 +160,20 @@ pub struct VirtualHosts {
     pub root: Option<PathBuf>,
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "kebab-case")]
+/// Represents the in-memory file cache feature.
+pub struct MemoryCache {
+    /// Maximum capacity entries of the memory cache store.
+    pub capacity: Option<u64>,
+    /// Time to live in seconds of a cached file entry.
+    pub ttl: Option<u64>,
+    /// Time to idle in seconds of a cached file entry.
+    pub tti: Option<u64>,
+    /// Maximum size in bytes for a file entry to be cached.
+    pub max_file_size: Option<u64>,
+}
+
 /// Advanced server options only available in configuration file mode.
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "kebab-case")]
@@ -172,6 +186,8 @@ pub struct Advanced {
     pub redirects: Option<Vec<Redirects>>,
     /// Name-based virtual hosting
     pub virtual_hosts: Option<Vec<VirtualHosts>>,
+    /// In-memory cache feature.
+    pub memory_cache: Option<MemoryCache>,
 }
 
 /// General server options available in configuration file mode.

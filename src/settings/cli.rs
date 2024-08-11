@@ -508,18 +508,6 @@ pub struct General {
     /// Provide a custom maintenance mode HTML file. If not provided then a generic message will be displayed.
     pub maintenance_mode_file: PathBuf,
 
-    #[arg(
-        long,
-        default_value = "false",
-        default_missing_value("true"),
-        num_args(0..=1),
-        require_equals(true),
-        action = clap::ArgAction::Set,
-        env = "SERVER_MEMORY_CACHE"
-    )]
-    /// Enable in-memory cache files functionality using the `SIEVE` eviction algorithm.
-    pub memory_cache: bool,
-
     //
     // Windows specific arguments and commands
     //

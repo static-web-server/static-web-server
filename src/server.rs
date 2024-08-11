@@ -13,7 +13,6 @@ use std::sync::Arc;
 use tokio::sync::{watch::Receiver, Mutex};
 
 use crate::handler::{RequestHandler, RequestHandlerOpts};
-use crate::mem_cache::cache::MemCacheOpts;
 
 #[cfg(all(unix, feature = "experimental"))]
 use crate::metrics;
@@ -343,11 +342,7 @@ impl Server {
 
         // Memory cache option
         // TODO: provide arguments from config
-        mem_cache::cache::init(
-            general.memory_cache,
-            Some(MemCacheOpts::new(500, 8, 40)),
-            &mut handler_opts,
-        )?;
+        mem_cache::cache::init(&mut handler_opts)?;
 
         // Create a service router for Hyper
         let router_service = RouterService::new(RequestHandler {
