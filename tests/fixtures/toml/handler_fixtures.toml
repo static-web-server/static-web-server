@@ -1,0 +1,9 @@
+[general]
+
+root = "tests/fixtures/public"
+
+[advanced]
+
+[[advanced.headers]]
+source = "**/*.{html,htm}"
+headers = { Server = "Static Web Server" }

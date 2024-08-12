@@ -16,7 +16,7 @@ pub mod tests {
 
     #[tokio::test]
     async fn compression_file() {
-        let opts = fixture_settings("toml/handler.toml");
+        let opts = fixture_settings("toml/handler_fixtures.toml");
         let general = General {
             compression: true,
             compression_static: true,
