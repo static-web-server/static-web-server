@@ -98,6 +98,11 @@ pub(crate) fn post_process<T>(
         return Ok(resp);
     }
 
+    let is_precompressed = resp.headers().get(CONTENT_ENCODING).is_some();
+    if is_precompressed {
+        return Ok(resp);
+    }
+
     // Compression content encoding varies so use a `Vary` header
     resp.headers_mut().insert(
         hyper::header::VARY,
