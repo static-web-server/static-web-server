@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _**Note:** See changelog for v1 under the [1.x](https://github.com/static-web-server/static-web-server/blob/1.x/CHANGELOG.md) branch._
 
+## v2.32.2 - 2024-08-13
+
+This new `v2.32.2` release brings several security and bug fixes as well as other improvements.
+
+__Fixes__
+
+- [634dd98](https://github.com/static-web-server/static-web-server/commit/634dd98) Bugfix/security dependency updates including tokio, rustls, serde, toml, zstd, clap and other crates. PR [#472](https://github.com/static-web-server/static-web-server/pull/472).
+- [a72c7b3](https://github.com/static-web-server/static-web-server/commit/a72c7b3) Wrong `Content-Encoding` when serving a pre-compressed file if `compression` and `compression-static` features are enabled. PR [#471](https://github.com/static-web-server/static-web-server/pull/471) fixes [#470](https://github.com/static-web-server/static-web-server/issues/470) reported by [@davinkevin](https://github.com/davinkevin).
+- [dd48972](https://github.com/static-web-server/static-web-server/commit/dd48972) CLI (regression): Boolean flags without explicit values do not work. PR [#468](https://github.com/static-web-server/static-web-server/pull/468) fixes [#467](https://github.com/static-web-server/static-web-server/issues/467) reported by [@stardustman](https://github.com/stardustman).
+- [915d040](https://github.com/static-web-server/static-web-server/commit/915d040) Tests: Not able to run tests via Cargo when passing non-SWS arguments. PR [#466](https://github.com/static-web-server/static-web-server/pull/466) fixes [#465](https://github.com/static-web-server/static-web-server/issues/465) reported by [@fpletz](https://github.com/fpletz).
+
+__Refactorings__
+
+- [f228a7a](https://github.com/static-web-server/static-web-server/commit/f228a7a) Misc: Add Make a task for building all development Docker images.
+
+For more details see the [v2.32.2 milestone](https://github.com/static-web-server/static-web-server/milestone/22?closed=1) and the full changelog [v2.32.1...v2.32.2](https://github.com/static-web-server/static-web-server/compare/v2.32.1...v2.32.2).
+
 ## v2.32.1 - 2024-07-20
 
 This new `v2.32.1` release brings several security and bug fixes as well as other improvements.
@@ -19,7 +36,7 @@ __Fixes__
 
 __Refactorings__
 
-- [b3fad98](https://github.com/static-web-server/static-web-server/commit/b3fad98) CI: Remove deprecated bors and improve devel workflow. PR [#458](https://github.com/static-web-server/static-web-server/pull/458).
+- [b3fad98](https://github.com/static-web-server/static-web-server/commit/b3fad98) CI: Remove deprecated bors and improve devel workflow. PR [#458](https://github.com/static-web-server/static-web-server/pull/458).tokio, 
 - [e64076c](https://github.com/static-web-server/static-web-server/commit/e64076c) CI: Improve typos workflow configuration. PR [#456](https://github.com/static-web-server/static-web-server/pull/456) by [@szepeviktor](https://github.com/szepeviktor).
 - [4c805d6](https://github.com/static-web-server/static-web-server/commit/4c805d6) Remove some redundant async function signatures. PR [#457](https://github.com/static-web-server/static-web-server/pull/457).
 
