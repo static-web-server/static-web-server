@@ -18,8 +18,10 @@ use headers::{
 use hyper::{Body, Response, StatusCode};
 use mini_moka::sync::Cache;
 use std::io::{Read, Seek, SeekFrom};
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, OnceLock};
 use std::time::Duration;
+use tokio::sync::Semaphore;
 
 use crate::conditional_headers::{ConditionalBody, ConditionalHeaders};
 use crate::fs::stream::FileStream;
@@ -30,6 +32,8 @@ use crate::Result;
 /// Global cache that stores all files in memory.
 /// It provides expiration policies like Time to live (TTL) and Time to idle (TTI) support.
 pub(crate) static CACHE_STORE: OnceLock<Cache<CompactString, Arc<MemFile>>> = OnceLock::new();
+
+static CACHE_PERMITS: Semaphore = Semaphore::const_new(1);
 
 /// It defines the in-memory files cache options.
 pub struct MemCacheOpts {
@@ -84,6 +88,47 @@ pub(crate) fn init(handler_opts: &mut RequestHandlerOpts) -> Result {
         }
     }
     Ok(())
+}
+
+/// It acquires a permit from the semaphore (one at a time)
+/// until an outstanding permit is dropped meaning that a file was read.
+pub(crate) async fn acquire_on_first_read() -> Result<(), StatusCode> {
+    match CACHE_PERMITS.acquire().await {
+        Ok(_) => Ok(()),
+        Err(err) => {
+            tracing::error!("seek file from start error: {:?}", err);
+            Err(StatusCode::INTERNAL_SERVER_ERROR)
+        }
+    }
+}
+
+/// Try to get the cached file by a path.
+pub(crate) fn get_by_path(
+    file_path: &Path,
+    headers_opt: &HeaderMap,
+) -> Option<Result<Response<Body>, StatusCode>> {
+    let file_path_str = file_path.to_str().or(None)?;
+    match CACHE_STORE
+        .get()
+        .unwrap()
+        .get::<CompactString>(&file_path_str.into())
+    {
+        Some(mem_file) => {
+            tracing::debug!(
+                "file `{}` found in the in-memory cache store and valid, returning it immediately",
+                file_path_str
+            );
+            let resp = mem_file.response_body(headers_opt);
+            return Some(resp);
+        }
+        _ => {
+            tracing::debug!(
+                "file `{}` was not found in the in-memory cache store, continuing",
+                file_path_str
+            );
+        }
+    }
+    None
 }
 
 #[derive(Debug, Clone)]

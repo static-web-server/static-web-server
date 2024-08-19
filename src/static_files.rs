@@ -20,7 +20,7 @@ use crate::conditional_headers::ConditionalHeaders;
 use crate::fs::meta::{try_metadata, try_metadata_with_html_suffix, FileMetadata};
 use crate::fs::path::{sanitize_path, PathExt};
 use crate::http_ext::{MethodExt, HTTP_SUPPORTED_METHODS};
-use crate::mem_cache::cache::{MemCacheOpts, CACHE_STORE};
+use crate::mem_cache::cache::{self, MemCacheOpts, CACHE_STORE};
 use crate::response::response_body;
 use crate::Result;
 
@@ -88,10 +88,6 @@ pub struct StaticFileResponse {
     pub file_path: PathBuf,
 }
 
-use tokio::sync::Semaphore;
-
-static PERMITS: Semaphore = Semaphore::const_new(1);
-
 /// The server entry point to handle incoming requests which map to specific files
 /// on file system and return a file response.
 pub async fn handle<'a>(opts: &HandleOpts<'a>) -> Result<StaticFileResponse, StatusCode> {
@@ -105,40 +101,20 @@ pub async fn handle<'a>(opts: &HandleOpts<'a>) -> Result<StaticFileResponse, Sta
 
     let headers_opt = opts.headers;
     let mut file_path = sanitize_path(opts.base_path, uri_path)?;
-    let memory_cache = opts.memory_cache;
 
     // In-memory file cache feature with eviction policy
+    let memory_cache = opts.memory_cache;
     if memory_cache.is_some() {
-        if let Some(file_path_str) = file_path.to_str() {
-            match CACHE_STORE
-                .get()
-                .unwrap()
-                .get::<CompactString>(&file_path_str.into())
-            {
-                Some(mem_file) => {
-                    tracing::debug!(
-                            "file `{}` found in the in-memory cache store and valid, returning it immediately",
-                            file_path_str
-                        );
-                    let resp = mem_file.response_body(headers_opt)?;
-                    return Ok(StaticFileResponse {
-                        resp,
-                        // file_path: resp_file_path,
-                        file_path,
-                    });
-                }
-                _ => {
-                    tracing::debug!(
-                        "file `{}` was not found in the in-memory cache store, continuing",
-                        file_path_str
-                    );
-                }
-            }
+        if let Some(result) = cache::get_by_path(file_path.as_path(), headers_opt) {
+            return Ok(StaticFileResponse {
+                resp: result?,
+                // file_path: resp_file_path,
+                file_path,
+            });
         }
 
-        // Otherwise if file is not cached then continue with normal workflow below or
-        // wait until an outstanding permit is dropped
-        let _ = PERMITS.acquire().await.unwrap();
+        // Otherwise, if a file is not cached then continue with the normal and wait on first read
+        cache::acquire_on_first_read().await?;
     }
 
     let FileMetadata {
