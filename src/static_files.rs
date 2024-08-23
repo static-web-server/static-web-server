@@ -9,7 +9,6 @@
 // Part of the file is borrowed and adapted at a convenience from
 // https://github.com/seanmonstar/warp/blob/master/src/filters/fs.rs
 
-use compact_str::CompactString;
 use headers::{AcceptRanges, HeaderMap, HeaderMapExt, HeaderValue};
 use hyper::{header::CONTENT_ENCODING, header::CONTENT_LENGTH, Body, Method, Response, StatusCode};
 use std::fs::{File, Metadata};
@@ -20,7 +19,7 @@ use crate::conditional_headers::ConditionalHeaders;
 use crate::fs::meta::{try_metadata, try_metadata_with_html_suffix, FileMetadata};
 use crate::fs::path::{sanitize_path, PathExt};
 use crate::http_ext::{MethodExt, HTTP_SUPPORTED_METHODS};
-use crate::mem_cache::cache::{self, MemCacheOpts, CACHE_STORE};
+use crate::mem_cache::cache::{self, MemCacheOpts};
 use crate::response::response_body;
 use crate::Result;
 
@@ -105,16 +104,13 @@ pub async fn handle<'a>(opts: &HandleOpts<'a>) -> Result<StaticFileResponse, Sta
     // In-memory file cache feature with eviction policy
     let memory_cache = opts.memory_cache;
     if memory_cache.is_some() {
-        if let Some(result) = cache::get_by_path(file_path.as_path(), headers_opt) {
+        if let Some(result) = cache::get_or_acquire(file_path.as_path(), headers_opt).await {
             return Ok(StaticFileResponse {
                 resp: result?,
                 // file_path: resp_file_path,
                 file_path,
             });
         }
-
-        // Otherwise, if a file is not cached then continue with the normal and wait on first read
-        cache::acquire_on_first_read().await?;
     }
 
     let FileMetadata {

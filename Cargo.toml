@@ -79,7 +79,7 @@ lazy_static = "1.5"
 listenfd = "1.0"
 maud = { version = "0.26", optional = true }
 mime_guess = "2.0"
-mini-moka = "0.10"
+mini-moka = "0.10.3"
 percent-encoding = "2.3"
 pin-project = "1.1"
 regex = "1.10"

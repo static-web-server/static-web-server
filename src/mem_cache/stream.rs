@@ -49,15 +49,15 @@ impl<T: Read + Unpin> Stream for MemCacheFileStream<T> {
                                 mem_file_opts.last_modified,
                             ));
 
+                            let file_path = mem_file_opts.file_path;
                             tracing::debug!(
-                                "file `{}` is inserted to in-memory cache store: {:?}",
-                                mem_file_opts.file_path,
-                                mem_file
+                                "file `{}` is inserted to the in-memory cache store",
+                                file_path
                             );
                             CACHE_STORE
                                 .get()
                                 .unwrap()
-                                .insert(mem_file_opts.file_path.into(), mem_file);
+                                .insert(file_path.into(), mem_file);
                         }
                     }
 
