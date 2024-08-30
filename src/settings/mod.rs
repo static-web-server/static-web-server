@@ -20,7 +20,6 @@ pub mod cli;
 pub mod cli_output;
 pub mod file;
 
-#[cfg(windows)]
 pub use cli::Commands;
 
 use cli::General;
@@ -661,7 +660,6 @@ impl Settings {
                 // Windows-only options and commands
                 #[cfg(windows)]
                 windows_service,
-                #[cfg(windows)]
                 commands: opts.commands,
             },
             advanced: settings_advanced,

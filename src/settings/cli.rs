@@ -525,10 +525,9 @@ pub struct General {
     /// Tell the web server to run in a Windows Service context. Note that the `install` subcommand will enable this option automatically.
     pub windows_service: bool,
 
-    // Windows commands
-    #[cfg(windows)]
+    // Subcommands
     #[command(subcommand)]
-    /// Subcommands to install or uninstall the SWS Windows Service.
+    /// Subcommands for additional maintenance tasks, like installing and uninstalling the SWS Windows Service and generation of completions and man pages
     pub commands: Option<Commands>,
 
     #[arg(
@@ -542,17 +541,31 @@ pub struct General {
     pub version: bool,
 }
 
-#[cfg(windows)]
 #[derive(Debug, clap::Subcommand)]
-/// Subcommands to install or uninstall the SWS Windows Service.
+/// Subcommands for additional maintenance tasks, like installing and uninstalling the SWS Windows Service and generation of completions and man pages
 pub enum Commands {
     /// Install a Windows Service for the web server.
+    #[cfg(windows)]
     #[command(name = "install")]
     Install {},
 
     /// Uninstall the current Windows Service.
+    #[cfg(windows)]
     #[command(name = "uninstall")]
     Uninstall {},
+
+    /// Generate man pages and shell completions
+    #[command(name = "generate")]
+    Generate {
+        /// Generate shell completions
+        #[arg(long)]
+        completions: bool,
+        /// Generate man pages
+        #[arg(long)]
+        man_pages: bool,
+        /// Path to write generated artifacts to
+        out_dir: PathBuf,
+    },
 }
 
 fn value_parser_pathbuf(s: &str) -> Result<PathBuf, String> {
