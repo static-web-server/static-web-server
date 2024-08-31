@@ -104,6 +104,12 @@ pub async fn handle<'a>(opts: &HandleOpts<'a>) -> Result<StaticFileResponse, Sta
     // In-memory file cache feature with eviction policy
     let memory_cache = opts.memory_cache;
     if memory_cache.is_some() {
+        // NOTE: we only support a default auto index for directory requests
+        // when working on a memory-cache context.
+        if opts.redirect_trailing_slash && uri_path.ends_with('/') {
+            file_path.push("index.html");
+        }
+
         if let Some(result) = cache::get_or_acquire(file_path.as_path(), headers_opt).await {
             return Ok(StaticFileResponse {
                 resp: result?,

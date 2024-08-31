@@ -3,10 +3,10 @@
 // See https://static-web-server.net/ for more information
 // Copyright (C) 2019-present Jose Quintana <joseluisq.net>
 
-//! It provides in-memory files cache functionality with expiration policies support
+//! It provides in-memory files cache functionality with expiration policy support
 //! such as Time to live (TTL) and Time to idle (TTI).
 //!
-//! Admission to a cache is controlled by the Least Frequently Used (LFU) policy.
+//! Admission to a cache is controlled by the Least Frequently Used (LFU) policy
 //! and the eviction from a cache is controlled by the Least Recently Used (LRU) policy.
 //!
 
@@ -55,12 +55,6 @@ impl MemCacheOpts {
 /// Make sure to initialize the in-memory cache store.
 pub(crate) fn init(handler_opts: &mut RequestHandlerOpts) -> Result {
     if let Some(advanced_opts) = handler_opts.advanced_opts.as_ref() {
-        let enabled = advanced_opts.memory_cache.is_some();
-        server_info!("in-memory files cache: enabled={}", enabled);
-
-        // TODO: provide options via config
-        // TODO: better options printing
-
         if let Some(opts) = advanced_opts.memory_cache.as_ref() {
             // Default 256 entries max
             let capacity = opts.capacity.unwrap_or(256);
@@ -70,6 +64,10 @@ pub(crate) fn init(handler_opts: &mut RequestHandlerOpts) -> Result {
             let tti = opts.tti.unwrap_or(300);
             // Default 8mb
             let max_file_size = opts.max_file_size.unwrap_or(8192);
+
+            server_info!(
+                "in-memory cache: enabled=true, capacity={capacity}, ttl={ttl}, tti={tti}, max_file_size={max_file_size}"
+            );
 
             let mem_opts = MemCacheOpts::new(max_file_size);
 
@@ -86,13 +84,18 @@ pub(crate) fn init(handler_opts: &mut RequestHandlerOpts) -> Result {
             }
 
             handler_opts.memory_cache = Some(mem_opts);
+
+            return Ok(());
         }
     }
+
+    server_info!("in-memory cache: enabled=false");
+
     Ok(())
 }
 
-/// Try to get the file from the cache store by a path or
-/// acquires a permit to ensure that the file is read first (once).
+/// Try to get the file in a form of a response from the cache store by a path or
+/// acquires a permit to ensure to hold until the file is read first (once).
 ///
 /// If the file is not found in the cache store then
 /// a cache permit is acquired internally (one at a time)
@@ -108,7 +111,7 @@ pub(crate) async fn get_or_acquire(
     match store.get::<CompactString>(&file_path_str.into()) {
         Some(mem_file) => {
             tracing::debug!(
-                "file `{}` found in the in-memory cache store and valid, returning it immediately",
+                "file `{}` found in the in-memory cache store, returning it directly",
                 file_path_str
             );
             Some(mem_file.response_body(headers_opt))

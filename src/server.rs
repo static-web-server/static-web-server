@@ -340,8 +340,7 @@ impl Server {
         // Security Headers option
         security_headers::init(general.security_headers, &mut handler_opts);
 
-        // Memory cache option
-        // TODO: provide arguments from config
+        // In-Memory cache option
         mem_cache::cache::init(&mut handler_opts)?;
 
         // Create a service router for Hyper
