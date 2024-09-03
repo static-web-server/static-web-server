@@ -32,28 +32,29 @@ impl<T: Read + Unpin> Stream for MemCacheFileStream<T> {
                     buf.truncate(n);
                     let buf = buf.freeze();
 
-                    if pinned.mem_opts.is_some() {
-                        // TODO: add error handling
-                        let tmp_buf = pinned.mem_buf.as_mut().unwrap();
-                        tmp_buf.put(buf.clone());
+                    // Handle in-memory cache if enabled
+                    if pinned.mem_opts.is_some() && pinned.mem_buf.is_some() {
+                        let buf_data_mut = pinned.mem_buf.as_mut().unwrap();
+                        buf_data_mut.put(buf.clone());
 
-                        if tmp_buf.len() == tmp_buf.capacity() {
-                            let tmp_data_owned = pinned.mem_buf.take().unwrap();
-                            let tmp_data = tmp_data_owned.freeze();
-                            let mem_file_opts = pinned.mem_opts.clone().unwrap();
+                        // If file size is reached then proceed cache it
+                        if buf_data_mut.len() == buf_data_mut.capacity() {
+                            let buf_data = pinned.mem_buf.take().unwrap().freeze();
+                            let mem_file_opts = pinned.mem_opts.as_ref().unwrap();
 
                             let mem_file = Arc::new(MemFile::new(
-                                tmp_data,
+                                buf_data,
                                 buf_size,
-                                mem_file_opts.content_type,
+                                mem_file_opts.content_type.to_owned(),
                                 mem_file_opts.last_modified,
                             ));
 
-                            let file_path = mem_file_opts.file_path;
+                            let file_path = mem_file_opts.file_path.as_str();
                             tracing::debug!(
                                 "file `{}` is inserted to the in-memory cache store",
                                 file_path
                             );
+
                             CACHE_STORE
                                 .get()
                                 .unwrap()
