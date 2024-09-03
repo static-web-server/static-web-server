@@ -30,7 +30,9 @@ use crate::metrics;
 use crate::{
     control_headers, cors, custom_headers, error_page, health,
     http_ext::MethodExt,
-    log_addr, maintenance_mode, redirects, rewrites, security_headers,
+    log_addr, maintenance_mode,
+    mem_cache::cache::MemCacheOpts,
+    redirects, rewrites, security_headers,
     settings::Advanced,
     static_files::{self, HandleOpts},
     virtual_hosts, Error, Result,
@@ -44,6 +46,8 @@ pub struct RequestHandlerOpts {
     // General options
     /// Root directory of static files.
     pub root_dir: PathBuf,
+    /// In-memory cache feature (experimental).
+    pub memory_cache: Option<MemCacheOpts>,
     /// Compression feature.
     pub compression: bool,
     #[cfg(any(
@@ -134,6 +138,7 @@ impl Default for RequestHandlerOpts {
             #[cfg(feature = "directory-listing")]
             dir_listing_format: DirListFmt::Html,
             cors: None,
+            memory_cache: None,
             security_headers: false,
             cache_control_headers: true,
             page404: PathBuf::from("./404.html"),
@@ -183,6 +188,7 @@ impl RequestHandler {
         let ignore_hidden_files = self.opts.ignore_hidden_files;
         let disable_symlinks = self.opts.disable_symlinks;
         let index_files: Vec<&str> = self.opts.index_files.iter().map(|s| s.as_str()).collect();
+        let memory_cache = self.opts.memory_cache.as_ref();
 
         log_addr::pre_process(&self.opts, req, remote_addr);
 
@@ -251,6 +257,7 @@ impl RequestHandler {
             let (resp, file_path) = match static_files::handle(&HandleOpts {
                 method: req.method(),
                 headers: req.headers(),
+                memory_cache,
                 base_path,
                 uri_path: req.uri().path(),
                 uri_query: req.uri().query(),

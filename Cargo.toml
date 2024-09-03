@@ -2,7 +2,7 @@
 name = "static-web-server"
 version = "2.32.2"
 edition = "2021"
-rust-version = "1.74.0"
+rust-version = "1.76.0"
 authors = ["Jose Quintana <https://joseluisq.net>"]
 license = "MIT OR Apache-2.0"
 description = "A cross-platform, high-performance and asynchronous web server for static files-serving."
@@ -67,6 +67,7 @@ bcrypt = { version = "0.15", optional = true }
 bytes = "1.6"
 chrono = { version = "0.4", default-features = false, features = ["std", "clock"], optional = true }
 clap = { version = "4.5", features = ["derive", "env"] }
+compact_str = "0.8"
 form_urlencoded = "1.2"
 futures-util = { version = "0.3", default-features = false }
 globset = { version = "0.4", features = ["serde1"] }
@@ -78,6 +79,7 @@ lazy_static = "1.5"
 listenfd = "1.0"
 maud = { version = "0.26", optional = true }
 mime_guess = "2.0"
+mini-moka = "0.10.3"
 percent-encoding = "2.3"
 pin-project = "1.1"
 regex = "1.10"
@@ -86,13 +88,13 @@ serde = { version = "1.0", default-features = false, features = ["derive"] }
 serde_ignored = "0.1"
 serde_json = "1.0"
 serde_repr = "0.1"
+shadow-rs = "0.29"
 tokio = { version = "1", default-features = false, features = ["rt-multi-thread", "macros", "fs", "io-util", "signal"] }
 tokio-rustls = { version = "0.26", optional = true, default-features = false, features = ["logging", "tls12", "ring"] }
 tokio-util = { version = "0.7", default-features = false, features = ["io"] }
 toml = "0.8"
 tracing = { version = "0.1", default-features = false, features = ["std"] }
 tracing-subscriber = { version = "0.3", default-features = false, features = ["smallvec", "registry", "parking_lot", "fmt", "ansi", "tracing-log"] }
-shadow-rs = "0.29"
 
 [target.'cfg(all(target_env = "musl", target_pointer_width = "64"))'.dependencies.tikv-jemallocator]
 version = "0.6"

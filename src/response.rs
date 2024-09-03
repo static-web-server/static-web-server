@@ -6,6 +6,7 @@
 //! Module to transition files into HTTP responses.
 //!
 
+use bytes::BytesMut;
 use headers::{
     AcceptRanges, ContentLength, ContentRange, ContentType, HeaderMapExt, LastModified, Range,
 };
@@ -17,6 +18,10 @@ use std::path::PathBuf;
 
 use crate::conditional_headers::{ConditionalBody, ConditionalHeaders};
 use crate::fs::stream::{optimal_buf_size, FileStream};
+use crate::mem_cache::{
+    cache::{MemCacheOpts, MemFileTempOpts},
+    stream::MemCacheFileStream,
+};
 
 /// It converts a file object into a corresponding HTTP response or
 /// returns an error holding an HTTP status code otherwise.
@@ -25,6 +30,7 @@ pub(crate) fn response_body(
     path: &PathBuf,
     meta: &Metadata,
     conditionals: ConditionalHeaders,
+    memory_cache: Option<&MemCacheOpts>,
 ) -> Result<Response<Body>, StatusCode> {
     let mut len = meta.len();
     let modified = meta.modified().ok().map(LastModified::from);
@@ -33,6 +39,7 @@ pub(crate) fn response_body(
         ConditionalBody::NoBody(resp) => Ok(resp),
         ConditionalBody::WithBody(range) => {
             let buf_size = optimal_buf_size(meta);
+
             bytes_range(range, len)
                 .map(|(start, end)| {
                     match file.seek(SeekFrom::Start(start)) {
@@ -45,9 +52,46 @@ pub(crate) fn response_body(
 
                     let sub_len = end - start;
                     let reader = BufReader::new(file).take(sub_len);
-                    let stream = FileStream { reader, buf_size };
 
-                    let body = Body::wrap_stream(stream);
+                    let mime = mime_guess::from_path(path).first_or_octet_stream();
+                    let content_type = ContentType::from(mime);
+
+                    // Add the file to the in-memory cache only under these conditions:
+                    // - if the feature is enabled and
+                    // - if the file size does not exceed the maximum permitted and
+                    // - if the file is not found in the cache store
+                    // TODO: make this a feature
+                    let body = match memory_cache {
+                        // Cache the file only if does not exceed the max size
+                        Some(mem_cache_opts) if len <= mem_cache_opts.max_file_size => {
+                            match path.to_str() {
+                                Some(path_str) => {
+                                    let content_type = content_type.clone();
+                                    let file_path = path_str.to_owned();
+
+                                    let mem_buf = Some(BytesMut::with_capacity(len as usize));
+                                    let mem_opts = Some(MemFileTempOpts::new(
+                                        file_path,
+                                        content_type,
+                                        modified,
+                                    ));
+                                    tracing::debug!(
+                                        "preparing `{}` to be inserted in-memory cache store",
+                                        path_str,
+                                    );
+                                    Body::wrap_stream(MemCacheFileStream {
+                                        reader,
+                                        buf_size,
+                                        mem_opts,
+                                        mem_buf,
+                                    })
+                                }
+                                _ => Body::wrap_stream(FileStream { reader, buf_size }),
+                            }
+                        }
+                        _ => Body::wrap_stream(FileStream { reader, buf_size }),
+                    };
+
                     let mut resp = Response::new(body);
 
                     if sub_len != len {
@@ -69,10 +113,8 @@ pub(crate) fn response_body(
                         len = sub_len;
                     }
 
-                    let mime = mime_guess::from_path(path).first_or_octet_stream();
-
                     resp.headers_mut().typed_insert(ContentLength(len));
-                    resp.headers_mut().typed_insert(ContentType::from(mime));
+                    resp.headers_mut().typed_insert(content_type);
                     resp.headers_mut().typed_insert(AcceptRanges::bytes());
 
                     if let Some(last_modified) = modified {
@@ -81,7 +123,7 @@ pub(crate) fn response_body(
 
                     Ok(resp)
                 })
-                .unwrap_or_else(|BadRange| {
+                .unwrap_or_else(|BadRangeError| {
                     // bad byte range
                     let mut resp = Response::new(Body::empty());
                     *resp.status_mut() = StatusCode::RANGE_NOT_SATISFIABLE;
@@ -93,11 +135,11 @@ pub(crate) fn response_body(
     }
 }
 
-struct BadRange;
+pub(crate) struct BadRangeError;
 
 /// It handles the `Range` header returning the corresponding start/end-range bytes
 /// or returns an error for bad ranges otherwise.
-fn bytes_range(range: Option<Range>, max_len: u64) -> Result<(u64, u64), BadRange> {
+pub(crate) fn bytes_range(range: Option<Range>, max_len: u64) -> Result<(u64, u64), BadRangeError> {
     let range = if let Some(range) = range {
         range
     } else {
@@ -114,7 +156,7 @@ fn bytes_range(range: Option<Range>, max_len: u64) -> Result<(u64, u64), BadRang
                 (Bound::Included(a), Bound::Included(b)) => {
                     // `start` can not be greater than `end`
                     if a > b {
-                        return Err(BadRange);
+                        return Err(BadRangeError);
                     }
                     // For the special case where b == the file size
                     (a, if b == max_len { b } else { b + 1 })
@@ -151,11 +193,11 @@ fn bytes_range(range: Option<Range>, max_len: u64) -> Result<(u64, u64), BadRang
                 return Ok((start, max_len));
             }
 
-            Err(BadRange)
+            Err(BadRangeError)
         })
         .next()
-        // NOTE: default to `BadRange` in case of wrong `Range` bytes format
-        .unwrap_or(Err(BadRange));
+        // NOTE: default to `BadRangeError` in case of wrong `Range` bytes format
+        .unwrap_or(Err(BadRangeError));
 
     resp
 }

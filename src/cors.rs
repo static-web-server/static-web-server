@@ -214,7 +214,7 @@ impl Default for Cors {
 }
 
 #[derive(Clone, Debug)]
-/// CORS is configurated.
+/// CORS configured.
 pub struct Configured {
     cors: Cors,
     allowed_headers: AccessControlAllowHeaders,

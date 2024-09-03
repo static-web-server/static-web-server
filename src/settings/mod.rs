@@ -25,7 +25,7 @@ pub use cli::Commands;
 
 use cli::General;
 
-use self::file::{RedirectsKind, Settings as FileSettings};
+use self::file::{MemoryCache, RedirectsKind, Settings as FileSettings};
 
 #[cfg(any(
     feature = "compression",
@@ -85,6 +85,8 @@ pub struct Advanced {
     pub redirects: Option<Vec<Redirects>>,
     /// Name-based virtual hosting
     pub virtual_hosts: Option<Vec<VirtualHosts>>,
+    /// In-memory cache feature (experimental).
+    pub memory_cache: Option<MemoryCache>,
 }
 
 /// The full server CLI and File options.
@@ -569,6 +571,7 @@ impl Settings {
                     rewrites: rewrites_entries,
                     redirects: redirects_entries,
                     virtual_hosts: vhosts_entries,
+                    memory_cache: advanced.memory_cache,
                 });
             }
         } else if log_init {

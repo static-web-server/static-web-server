@@ -13,6 +13,7 @@ use std::sync::Arc;
 use tokio::sync::{watch::Receiver, Mutex};
 
 use crate::handler::{RequestHandler, RequestHandlerOpts};
+
 #[cfg(all(unix, feature = "experimental"))]
 use crate::metrics;
 #[cfg(any(unix, windows))]
@@ -44,7 +45,8 @@ use crate::{compression, compression_static};
 use crate::basic_auth;
 
 use crate::{
-    control_headers, cors, health, helpers, log_addr, maintenance_mode, security_headers, Settings,
+    control_headers, cors, health, helpers, log_addr, maintenance_mode, mem_cache,
+    security_headers, Settings,
 };
 use crate::{service::RouterService, Context, Result};
 
@@ -337,6 +339,9 @@ impl Server {
 
         // Security Headers option
         security_headers::init(general.security_headers, &mut handler_opts);
+
+        // In-Memory cache option
+        mem_cache::cache::init(&mut handler_opts)?;
 
         // Create a service router for Hyper
         let router_service = RouterService::new(RequestHandler {

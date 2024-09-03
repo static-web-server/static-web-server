@@ -19,6 +19,7 @@ use crate::conditional_headers::ConditionalHeaders;
 use crate::fs::meta::{try_metadata, try_metadata_with_html_suffix, FileMetadata};
 use crate::fs::path::{sanitize_path, PathExt};
 use crate::http_ext::{MethodExt, HTTP_SUPPORTED_METHODS};
+use crate::mem_cache::cache::{self, MemCacheOpts};
 use crate::response::response_body;
 use crate::Result;
 
@@ -44,6 +45,8 @@ const DEFAULT_INDEX_FILES: &[&str; 1] = &["index.html"];
 pub struct HandleOpts<'a> {
     /// Request method.
     pub method: &'a Method,
+    /// In-memory files cache feature (experimental).
+    pub memory_cache: Option<&'a MemCacheOpts>,
     /// Request headers.
     pub headers: &'a HeaderMap<HeaderValue>,
     /// Request base path.
@@ -97,6 +100,24 @@ pub async fn handle<'a>(opts: &HandleOpts<'a>) -> Result<StaticFileResponse, Sta
 
     let headers_opt = opts.headers;
     let mut file_path = sanitize_path(opts.base_path, uri_path)?;
+
+    // In-memory file cache feature with eviction policy
+    let memory_cache = opts.memory_cache;
+    if memory_cache.is_some() {
+        // NOTE: we only support a default auto index for directory requests
+        // when working on a memory-cache context.
+        if opts.redirect_trailing_slash && uri_path.ends_with('/') {
+            file_path.push("index.html");
+        }
+
+        if let Some(result) = cache::get_or_acquire(file_path.as_path(), headers_opt).await {
+            return Ok(StaticFileResponse {
+                resp: result?,
+                // file_path: resp_file_path,
+                file_path,
+            });
+        }
+    }
 
     let FileMetadata {
         file_path,
@@ -181,7 +202,13 @@ pub async fn handle<'a>(opts: &HandleOpts<'a>) -> Result<StaticFileResponse, Sta
     // Check for a pre-compressed file variant if present under the `opts.compression_static` context
     if let Some(precompressed_meta) = precompressed_variant {
         let (precomp_path, precomp_encoding) = precompressed_meta;
-        let mut resp = file_reply(headers_opt, file_path, &metadata, Some(precomp_path))?;
+        let mut resp = file_reply(
+            headers_opt,
+            file_path,
+            &metadata,
+            Some(precomp_path),
+            memory_cache,
+        )?;
 
         // Prepare corresponding headers to let know how to decode the payload
         resp.headers_mut().remove(CONTENT_LENGTH);
@@ -203,7 +230,7 @@ pub async fn handle<'a>(opts: &HandleOpts<'a>) -> Result<StaticFileResponse, Sta
         });
     }
 
-    let resp = file_reply(headers_opt, file_path, &metadata, None)?;
+    let resp = file_reply(headers_opt, file_path, &metadata, None, memory_cache)?;
 
     Ok(StaticFileResponse {
         resp,
@@ -409,12 +436,13 @@ fn file_reply<'a>(
     path: &'a PathBuf,
     meta: &'a Metadata,
     path_precompressed: Option<PathBuf>,
+    memory_cache: Option<&'a MemCacheOpts>,
 ) -> Result<Response<Body>, StatusCode> {
     let conditionals = ConditionalHeaders::new(headers);
     let file_path = path_precompressed.as_ref().unwrap_or(path);
 
     match File::open(file_path) {
-        Ok(file) => response_body(file, path, meta, conditionals),
+        Ok(file) => response_body(file, path, meta, conditionals, memory_cache),
         Err(err) => {
             let status = match err.kind() {
                 io::ErrorKind::NotFound => {
