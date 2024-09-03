@@ -46,7 +46,7 @@ pub struct RequestHandlerOpts {
     // General options
     /// Root directory of static files.
     pub root_dir: PathBuf,
-    /// In-memory cache feature.
+    /// In-memory cache feature (experimental).
     pub memory_cache: Option<MemCacheOpts>,
     /// Compression feature.
     pub compression: bool,

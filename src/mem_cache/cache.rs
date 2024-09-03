@@ -56,17 +56,19 @@ impl MemCacheOpts {
 pub(crate) fn init(handler_opts: &mut RequestHandlerOpts) -> Result {
     if let Some(advanced_opts) = handler_opts.advanced_opts.as_ref() {
         if let Some(opts) = advanced_opts.memory_cache.as_ref() {
-            // Default 256 entries max
+            // TODO: define maximum values
+
+            // Default 256 entries
             let capacity = opts.capacity.unwrap_or(256);
-            // Default 30min
-            let ttl = opts.ttl.unwrap_or(1800);
+            // Default 1h
+            let ttl = opts.ttl.unwrap_or(3600);
             // Default 5min
             let tti = opts.tti.unwrap_or(300);
             // Default 8mb
             let max_file_size = opts.max_file_size.unwrap_or(8192);
 
             server_info!(
-                "in-memory cache: enabled=true, capacity={capacity}, ttl={ttl}, tti={tti}, max_file_size={max_file_size}"
+                "in-memory cache (experimental): enabled=true, capacity={capacity}, ttl={ttl}, tti={tti}, max_file_size={max_file_size}"
             );
 
             let mem_opts = MemCacheOpts::new(max_file_size);
@@ -89,7 +91,7 @@ pub(crate) fn init(handler_opts: &mut RequestHandlerOpts) -> Result {
         }
     }
 
-    server_info!("in-memory cache: enabled=false");
+    server_info!("in-memory cache (experimental): enabled=false");
 
     Ok(())
 }

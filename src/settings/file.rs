@@ -186,7 +186,7 @@ pub struct Advanced {
     pub redirects: Option<Vec<Redirects>>,
     /// Name-based virtual hosting
     pub virtual_hosts: Option<Vec<VirtualHosts>>,
-    /// In-memory cache feature.
+    /// In-memory cache feature (experimental).
     pub memory_cache: Option<MemoryCache>,
 }
 

@@ -45,7 +45,7 @@ const DEFAULT_INDEX_FILES: &[&str; 1] = &["index.html"];
 pub struct HandleOpts<'a> {
     /// Request method.
     pub method: &'a Method,
-    /// In-memory files cache feature.
+    /// In-memory files cache feature (experimental).
     pub memory_cache: Option<&'a MemCacheOpts>,
     /// Request headers.
     pub headers: &'a HeaderMap<HeaderValue>,
