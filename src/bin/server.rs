@@ -25,6 +25,8 @@ fn main() -> Result {
     }
 
     if let Some(commands) = opts.general.commands {
+        use static_web_server::server_info;
+
         match commands {
             #[cfg(windows)]
             Commands::Install {} => {
@@ -43,13 +45,13 @@ fn main() -> Result {
                     let mut comp_dir = out_dir.clone();
                     comp_dir.push("completions");
                     clap_allgen::render_shell_completions::<General>(&comp_dir)?;
-                    tracing::info!("Wrote completions to {}", comp_dir.to_string_lossy());
+                    server_info!("wrote completions to {}", comp_dir.to_string_lossy());
                 }
                 if man_pages || !completions {
                     let mut man_dir = out_dir.clone();
                     man_dir.push("man");
                     clap_allgen::render_manpages::<General>(&man_dir)?;
-                    tracing::info!("Wrote man pages to {}", man_dir.to_string_lossy());
+                    server_info!("wrote man pages to {}", man_dir.to_string_lossy());
                 }
                 return Ok(());
             }
