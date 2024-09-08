@@ -166,6 +166,7 @@ nav:
     - 'Multiple Index Files': 'features/multiple-index-files.md'
     - 'Maintenance Mode': 'features/maintenance-mode.md'
     - 'WebAssembly': 'features/webassembly.md'
+    - 'Man Pages and Shell Completions': 'features/man-pages-completions.md'
   - 'Platforms & Architectures': 'platforms-architectures.md'
   - 'Migrating from v1 to v2': 'migration.md'
   - 'Changelog v2 (stable)': 'https://github.com/static-web-server/static-web-server/blob/master/CHANGELOG.md'

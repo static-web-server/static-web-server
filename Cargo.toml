@@ -67,6 +67,7 @@ bcrypt = { version = "0.15", optional = true }
 bytes = "1.6"
 chrono = { version = "0.4", default-features = false, features = ["std", "clock"], optional = true }
 clap = { version = "4.5", features = ["derive", "env"] }
+clap_allgen = "0.2.0"
 compact_str = "0.8"
 form_urlencoded = "1.2"
 futures-util = { version = "0.3", default-features = false }

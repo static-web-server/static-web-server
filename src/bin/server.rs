@@ -12,7 +12,10 @@
 #[global_allocator]
 static GLOBAL: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
 
-use static_web_server::{Result, Settings};
+use static_web_server::{
+    settings::{cli::General, Commands},
+    Result, Settings,
+};
 
 fn main() -> Result {
     let opts = Settings::get(true)?;
@@ -21,23 +24,43 @@ fn main() -> Result {
         return static_web_server::settings::cli_output::display_version();
     }
 
-    #[cfg(windows)]
-    {
-        use static_web_server::settings::Commands;
-        use static_web_server::winservice;
+    if let Some(commands) = opts.general.commands {
+        use static_web_server::server_info;
 
-        if let Some(commands) = opts.general.commands {
-            match commands {
-                Commands::Install {} => {
-                    return winservice::install_service(&opts.general.config_file);
-                }
-                Commands::Uninstall {} => {
-                    return winservice::uninstall_service();
-                }
+        match commands {
+            #[cfg(windows)]
+            Commands::Install {} => {
+                return static_web_server::winservice::install_service(&opts.general.config_file);
             }
-        } else if opts.general.windows_service {
-            return winservice::run_server_as_service();
+            #[cfg(windows)]
+            Commands::Uninstall {} => {
+                return static_web_server::winservice::uninstall_service();
+            }
+            Commands::Generate {
+                completions,
+                man_pages,
+                out_dir,
+            } => {
+                if completions || !man_pages {
+                    let mut comp_dir = out_dir.clone();
+                    comp_dir.push("completions");
+                    clap_allgen::render_shell_completions::<General>(&comp_dir)?;
+                    server_info!("wrote completions to {}", comp_dir.to_string_lossy());
+                }
+                if man_pages || !completions {
+                    let mut man_dir = out_dir.clone();
+                    man_dir.push("man");
+                    clap_allgen::render_manpages::<General>(&man_dir)?;
+                    server_info!("wrote man pages to {}", man_dir.to_string_lossy());
+                }
+                return Ok(());
+            }
         }
+    }
+
+    #[cfg(windows)]
+    if opts.general.windows_service {
+        return static_web_server::winservice::run_server_as_service();
     }
 
     // Run the server by default
