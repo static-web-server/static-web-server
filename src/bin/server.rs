@@ -28,11 +28,11 @@ fn main() -> Result {
         match commands {
             #[cfg(windows)]
             Commands::Install {} => {
-                return winservice::install_service(&opts.general.config_file);
+                return static_web_server::winservice::install_service(&opts.general.config_file);
             }
             #[cfg(windows)]
             Commands::Uninstall {} => {
-                return winservice::uninstall_service();
+                return static_web_server::winservice::uninstall_service();
             }
             Commands::Generate {
                 completions,
@@ -58,7 +58,7 @@ fn main() -> Result {
 
     #[cfg(windows)]
     if opts.general.windows_service {
-        return winservice::run_server_as_service();
+        return static_web_server::winservice::run_server_as_service();
     }
 
     // Run the server by default
