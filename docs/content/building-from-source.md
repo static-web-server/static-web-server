@@ -55,10 +55,10 @@ For example, if you want to run or build SWS without the default features like `
 # run
 cargo run --no-default-features -- -h
 
-# or build
+# build
 cargo build --release --no-default-features
 
-# or including all features (example)
+# or build including all features (example)
 RUSTFLAGS="--cfg tokio_unstable" \
     cargo build -vv --release --features all 
 ```
@@ -87,8 +87,13 @@ Built binaries can be found under the corresponding toolchain directory inside `
 ```sh
 # run tests for default features
 cargo test
+
+# run all tests without default features
+cargo test --tests --no-default-features
+
 # or run tests for all features including experimental ones
 RUSTFLAGS="--cfg tokio_unstable" cargo test --features all
+
 # or run specific tests
 cargo test --test rewrites
 ```

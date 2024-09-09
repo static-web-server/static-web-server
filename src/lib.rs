@@ -162,13 +162,6 @@ pub mod error_page;
 pub mod fallback_page;
 pub(crate) mod fs;
 pub mod handler;
-#[cfg(any(
-    feature = "compression",
-    feature = "compression-gzip",
-    feature = "compression-brotli",
-    feature = "compression-zstd",
-    feature = "compression-deflate"
-))]
 pub(crate) mod headers_ext;
 pub(crate) mod health;
 pub(crate) mod http_ext;

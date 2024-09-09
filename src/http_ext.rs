@@ -15,6 +15,7 @@ pub trait MethodExt {
     /// If method is allowed.
     fn is_allowed(&self) -> bool;
     /// If method is `GET`.
+    #[allow(unused)]
     fn is_get(&self) -> bool;
     /// If method is `HEAD`.
     fn is_head(&self) -> bool;

@@ -3,6 +3,13 @@
 #![deny(rust_2018_idioms)]
 #![deny(dead_code)]
 
+#[cfg(any(
+    feature = "compression",
+    feature = "compression-gzip",
+    feature = "compression-brotli",
+    feature = "compression-zstd",
+    feature = "compression-deflate"
+))]
 #[cfg(test)]
 pub mod tests {
     use headers::HeaderValue;
