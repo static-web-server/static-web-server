@@ -30,6 +30,13 @@ pub mod tests {
                     res.headers().get("content-type"),
                     Some(&HeaderValue::from_static("text/html"))
                 );
+                #[cfg(any(
+                    feature = "compression",
+                    feature = "compression-deflate",
+                    feature = "compression-gzip",
+                    feature = "compression-brotli",
+                    feature = "compression-zstd"
+                ))]
                 assert_eq!(
                     res.headers().get("vary"),
                     Some(&HeaderValue::from_static("accept-encoding"))
@@ -62,6 +69,13 @@ pub mod tests {
                     res.headers().get("content-type"),
                     Some(&HeaderValue::from_static("text/html"))
                 );
+                #[cfg(any(
+                    feature = "compression",
+                    feature = "compression-deflate",
+                    feature = "compression-gzip",
+                    feature = "compression-brotli",
+                    feature = "compression-zstd"
+                ))]
                 assert_eq!(
                     res.headers().get("vary"),
                     Some(&HeaderValue::from_static("accept-encoding"))

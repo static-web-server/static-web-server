@@ -27,7 +27,6 @@ use crate::Result;
     feature = "compression",
     feature = "compression-deflate",
     feature = "compression-gzip",
-    feature = "compression-deflate",
     feature = "compression-brotli",
     feature = "compression-zstd"
 ))]
@@ -278,7 +277,6 @@ fn get_composed_file_metadata<'a>(
                         feature = "compression",
                         feature = "compression-deflate",
                         feature = "compression-gzip",
-                        feature = "compression-deflate",
                         feature = "compression-brotli",
                         feature = "compression-zstd"
                     ))]
@@ -326,7 +324,6 @@ fn get_composed_file_metadata<'a>(
                     feature = "compression",
                     feature = "compression-deflate",
                     feature = "compression-gzip",
-                    feature = "compression-deflate",
                     feature = "compression-brotli",
                     feature = "compression-zstd"
                 ))]
@@ -356,7 +353,6 @@ fn get_composed_file_metadata<'a>(
                 feature = "compression",
                 feature = "compression-deflate",
                 feature = "compression-gzip",
-                feature = "compression-deflate",
                 feature = "compression-brotli",
                 feature = "compression-zstd"
             ))]
@@ -381,7 +377,6 @@ fn get_composed_file_metadata<'a>(
                 feature = "compression",
                 feature = "compression-deflate",
                 feature = "compression-gzip",
-                feature = "compression-deflate",
                 feature = "compression-brotli",
                 feature = "compression-zstd"
             ))]
