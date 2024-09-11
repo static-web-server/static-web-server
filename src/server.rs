@@ -350,7 +350,8 @@ impl Server {
 
         #[cfg(windows)]
         let (sender, receiver) = tokio::sync::watch::channel(());
-        // ctrl+c listening
+
+        // Windows ctrl+c listening
         #[cfg(windows)]
         let ctrlc_task = tokio::spawn(async move {
             if !general.windows_service {
@@ -604,17 +605,15 @@ impl Server {
         ));
 
         #[cfg(windows)]
-        let http1_cancel_recv = Arc::new(Mutex::new(_cancel_recv));
-        #[cfg(windows)]
-        let http1_ctrlc_recv = Arc::new(Mutex::new(Some(receiver)));
-
-        #[cfg(windows)]
         let http1_server = http1_server.with_graceful_shutdown(async move {
-            if general.windows_service {
-                signals::wait_for_ctrl_c(http1_cancel_recv, grace_period).await;
+            let http1_cancel_recv = if general.windows_service {
+                // http1_cancel_recv
+                Arc::new(Mutex::new(_cancel_recv))
             } else {
-                signals::wait_for_ctrl_c(http1_ctrlc_recv, grace_period).await;
-            }
+                // http1_ctrlc_recv
+                Arc::new(Mutex::new(Some(receiver)))
+            };
+            signals::wait_for_ctrl_c(http1_cancel_recv, grace_period).await;
         });
 
         server_info!(
@@ -625,7 +624,18 @@ impl Server {
 
         server_info!("press ctrl+c to shut down the server");
 
+        #[cfg(unix)]
         http1_server.await?;
+
+        #[cfg(windows)]
+        let http1_server_task = tokio::spawn(async move {
+            if let Err(err) = http1_server.await {
+                tracing::error!("http1 server failed to start up: {:?}", err);
+                std::process::exit(1)
+            }
+        });
+        #[cfg(windows)]
+        tokio::try_join!(ctrlc_task, http1_server_task)?;
 
         #[cfg(windows)]
         _cancel_fn();

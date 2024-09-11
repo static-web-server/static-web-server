@@ -7,6 +7,8 @@
 //! header.
 //!
 
+#![allow(unused)]
+
 mod accept_encoding;
 mod content_coding;
 mod quality_value;

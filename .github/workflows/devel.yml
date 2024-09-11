@@ -263,6 +263,37 @@ jobs:
           ;;
         esac
 
+    - name: Turn off default features
+      shell: bash
+      run: |
+        echo "CARGO_FEATURES=--no-default-features" >> $GITHUB_ENV
+
+    - name: Run tests without default features
+      shell: bash
+      run: |
+        ${{ env.CARGO_BIN }} test --verbose ${{ env.CARGO_FEATURES }} ${{ env.TARGET_FLAGS }} ${{ env.SKIP_TESTS }}
+
+    - name: Run build without default features
+      shell: bash
+      run: |
+        ${{ env.CARGO_BIN }} build --bin static-web-server -vv ${{ env.CARGO_FEATURES }} ${{ env.TARGET_FLAGS }}
+
+    - name: Run executable without default features
+      shell: bash
+      run: |
+        case "${{ matrix.build }}" in
+          *-arm*|*bsd*|*illumos*|*ppc64*|*s390x*)
+            echo "arm,bsd,illumos,ppc64,s390x are unable to execute on CI for now!"
+          ;;
+          *)
+            if [[ "${{ matrix.os }}" == "windows-2022" ]]; then
+              target/${{ matrix.target }}/debug/static-web-server.exe -h
+            else
+              target/${{ matrix.target }}/debug/static-web-server -h
+            fi
+          ;;
+        esac
+
   checks:
     name: checks
     runs-on: ubuntu-22.04

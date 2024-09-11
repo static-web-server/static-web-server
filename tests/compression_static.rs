@@ -7,7 +7,6 @@
     feature = "compression",
     feature = "compression-deflate",
     feature = "compression-gzip",
-    feature = "compression-deflate",
     feature = "compression-brotli",
     feature = "compression-zstd"
 ))]
@@ -57,7 +56,6 @@ mod tests {
                 feature = "compression",
                 feature = "compression-deflate",
                 feature = "compression-gzip",
-                feature = "compression-deflate",
                 feature = "compression-brotli",
                 feature = "compression-zstd"
             ))]
@@ -129,7 +127,6 @@ mod tests {
                 feature = "compression",
                 feature = "compression-deflate",
                 feature = "compression-gzip",
-                feature = "compression-deflate",
                 feature = "compression-brotli",
                 feature = "compression-zstd"
             ))]
@@ -198,7 +195,6 @@ mod tests {
                 feature = "compression",
                 feature = "compression-deflate",
                 feature = "compression-gzip",
-                feature = "compression-deflate",
                 feature = "compression-brotli",
                 feature = "compression-zstd"
             ))]
@@ -298,7 +294,6 @@ mod tests {
                 feature = "compression",
                 feature = "compression-deflate",
                 feature = "compression-gzip",
-                feature = "compression-deflate",
                 feature = "compression-brotli",
                 feature = "compression-zstd"
             ))]
