@@ -55,9 +55,9 @@ directory-listing = ["chrono", "maud"]
 basic-auth = ["bcrypt"]
 # Fallback Page
 fallback-page = []
-# Experimental features
+# Experimental features (requires: `RUSTFLAGS="--cfg tokio_unstable"`)
 # --experimental-metrics
-experimental = ["tokio-metrics-collector", "prometheus"]
+experimental = ["tokio-metrics-collector", "prometheus", "compact_str", "mini-moka"]
 
 [dependencies]
 aho-corasick = "1.1"
@@ -68,7 +68,7 @@ bytes = "1.7"
 chrono = { version = "0.4", default-features = false, features = ["std", "clock"], optional = true }
 clap = { version = "4.5", features = ["derive", "env"] }
 clap_allgen = "0.2.0"
-compact_str = "0.8"
+compact_str = { version = "0.8.0", optional = true }
 form_urlencoded = "1.2"
 futures-util = { version = "0.3", default-features = false }
 globset = { version = "0.4", features = ["serde1"] }
@@ -80,7 +80,7 @@ lazy_static = "1.5"
 listenfd = "1.0"
 maud = { version = "0.26", optional = true }
 mime_guess = "2.0"
-mini-moka = "0.10.3"
+mini-moka = { version = "0.10.3", optional = true }
 percent-encoding = "2.3"
 pin-project = "1.1"
 regex = "1.10"

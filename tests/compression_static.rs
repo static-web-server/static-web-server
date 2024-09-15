@@ -44,6 +44,7 @@ mod tests {
             base_path: &public_dir(),
             uri_path: "index.html",
             uri_query: None,
+            #[cfg(feature = "experimental")]
             memory_cache: None,
             #[cfg(feature = "directory-listing")]
             dir_listing: false,
@@ -115,6 +116,7 @@ mod tests {
             base_path: &public_dir(),
             uri_path: "404.html",
             uri_query: None,
+            #[cfg(feature = "experimental")]
             memory_cache: None,
             #[cfg(feature = "directory-listing")]
             dir_listing: false,
@@ -183,6 +185,7 @@ mod tests {
             base_path: &public_dir().join("assets/"),
             uri_path: "index.html",
             uri_query: None,
+            #[cfg(feature = "experimental")]
             memory_cache: None,
             #[cfg(feature = "directory-listing")]
             dir_listing: false,
@@ -249,6 +252,7 @@ mod tests {
             base_path: &base_path,
             uri_path: "/",
             uri_query: None,
+            #[cfg(feature = "experimental")]
             memory_cache: None,
             dir_listing: true,
             dir_listing_order: 6,
@@ -282,6 +286,7 @@ mod tests {
             base_path: &public_dir(),
             uri_path: "main.js",
             uri_query: None,
+            #[cfg(feature = "experimental")]
             memory_cache: None,
             #[cfg(feature = "directory-listing")]
             dir_listing: false,
