@@ -170,6 +170,7 @@ pub(crate) mod http_ext;
 pub mod https_redirect;
 pub(crate) mod log_addr;
 pub mod maintenance_mode;
+#[cfg(feature = "experimental")]
 pub(crate) mod mem_cache;
 #[cfg(all(unix, feature = "experimental"))]
 pub(crate) mod metrics;

@@ -160,6 +160,7 @@ pub struct VirtualHosts {
     pub root: Option<PathBuf>,
 }
 
+#[cfg(feature = "experimental")]
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "kebab-case")]
 /// Represents the in-memory file cache feature.
@@ -186,6 +187,7 @@ pub struct Advanced {
     pub redirects: Option<Vec<Redirects>>,
     /// Name-based virtual hosting
     pub virtual_hosts: Option<Vec<VirtualHosts>>,
+    #[cfg(feature = "experimental")]
     /// In-memory cache feature (experimental).
     pub memory_cache: Option<MemoryCache>,
 }
@@ -379,6 +381,7 @@ pub struct General {
     /// Custom maintenance mode HTML file.
     pub maintenance_mode_file: Option<PathBuf>,
 
+    #[cfg(feature = "experimental")]
     /// In-memory files cache feature.
     pub memory_cache: Option<bool>,
 

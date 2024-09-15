@@ -44,9 +44,11 @@ use crate::{compression, compression_static};
 #[cfg(feature = "basic-auth")]
 use crate::basic_auth;
 
+#[cfg(feature = "experimental")]
+use crate::mem_cache;
+
 use crate::{
-    control_headers, cors, health, helpers, log_addr, maintenance_mode, mem_cache,
-    security_headers, Settings,
+    control_headers, cors, health, helpers, log_addr, maintenance_mode, security_headers, Settings,
 };
 use crate::{service::RouterService, Context, Result};
 
@@ -341,6 +343,7 @@ impl Server {
         security_headers::init(general.security_headers, &mut handler_opts);
 
         // In-Memory cache option
+        #[cfg(feature = "experimental")]
         mem_cache::cache::init(&mut handler_opts)?;
 
         // Create a service router for Hyper

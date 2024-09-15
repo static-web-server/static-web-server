@@ -6,7 +6,6 @@
 //! Module to transition files into HTTP responses.
 //!
 
-use bytes::BytesMut;
 use headers::{
     AcceptRanges, ContentLength, ContentRange, ContentType, HeaderMapExt, LastModified, Range,
 };
@@ -18,9 +17,14 @@ use std::path::PathBuf;
 
 use crate::conditional_headers::{ConditionalBody, ConditionalHeaders};
 use crate::fs::stream::{optimal_buf_size, FileStream};
-use crate::mem_cache::{
-    cache::{MemCacheOpts, MemFileTempOpts},
-    stream::MemCacheFileStream,
+
+#[cfg(feature = "experimental")]
+use {
+    crate::mem_cache::{
+        cache::{MemCacheOpts, MemFileTempOpts},
+        stream::MemCacheFileStream,
+    },
+    bytes::BytesMut,
 };
 
 /// It converts a file object into a corresponding HTTP response or
@@ -30,7 +34,7 @@ pub(crate) fn response_body(
     path: &PathBuf,
     meta: &Metadata,
     conditionals: ConditionalHeaders,
-    memory_cache: Option<&MemCacheOpts>,
+    #[cfg(feature = "experimental")] memory_cache: Option<&MemCacheOpts>,
 ) -> Result<Response<Body>, StatusCode> {
     let mut len = meta.len();
     let modified = meta.modified().ok().map(LastModified::from);
@@ -61,6 +65,7 @@ pub(crate) fn response_body(
                     // - if the file size does not exceed the maximum permitted and
                     // - if the file is not found in the cache store
                     // TODO: make this a feature
+                    #[cfg(feature = "experimental")]
                     let body = match memory_cache {
                         // Cache the file only if does not exceed the max size
                         Some(mem_cache_opts) if len <= mem_cache_opts.max_file_size => {
@@ -91,6 +96,9 @@ pub(crate) fn response_body(
                         }
                         _ => Body::wrap_stream(FileStream { reader, buf_size }),
                     };
+
+                    #[cfg(not(feature = "experimental"))]
+                    let body = Body::wrap_stream(FileStream { reader, buf_size });
 
                     let mut resp = Response::new(body);
 
