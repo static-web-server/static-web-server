@@ -1,7 +1,11 @@
 # Generated CLI documentation
-**`SWS`** is capable of generating documentation for its command line interface in the form of man pages and shell completions.
 
-You can generate completions for these shells and completion engines using `static-web-server generate --completions <output_path>`:
+**`SWS`** can generate documentation for its command-line interface through man pages and shell completions.
+
+## Completions
+
+You can generate completions for these shells and completion engines:
+
 - bash
 - carapace
 - elvish
@@ -11,6 +15,23 @@ You can generate completions for these shells and completion engines using `stat
 - powershell
 - zsh
 
-You can generate man pages using `static-web-server generate --man-pages <output_path>`.
+By typing the following command, all completions will be exported to a specific directory path:
 
-Finally, if you want both to be generated, you can just use `static-web-server generate <output_path>` without specifying `--completions` or `--man-pages`.
+
+```sh
+static-web-server generate --completions /my-completions-dir
+```
+
+## Man Pages
+
+You can also generate man pages and export them to a specific directory path:
+
+```sh
+static-web-server generate --man-pages /my-man-pages-dir
+```
+
+Additionally, if you want both to be generated then just type:
+
+```sh
+static-web-server generate ./my-cli-docs-dir
+```
