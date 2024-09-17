@@ -24,9 +24,13 @@ __Features__
 - [5bdfcd4](https://github.com/static-web-server/static-web-server/commit/5bdfcd4) Advanced: Experimental in-memory files cache with eviction policy support via a new advanced config option. See PR [#328](https://github.com/static-web-server/static-web-server/pull/328) description for usage and details.
 - [ec85abd](https://github.com/static-web-server/static-web-server/commit/ec85abd) Crate: Add in-memory files cache to the `experimental` Cargo feature. See PR [#482](https://github.com/static-web-server/static-web-server/pull/482) description for more details.
   - **MSRV update**: Note that due to this change, the SWS's *Minimum Supported Rust Version* is now `1.76.0` when building from source or using it as a library. See [docs](https://static-web-server.net/building-from-source/).
-- [d567b4e](https://github.com/static-web-server/static-web-server/commit/d567b4e) CLI: Support for generating man pages and shell completions via new `generate` subcomand. PR [#475](https://github.com/static-web-server/static-web-server/pull/475) by [@jcgruenhage](https://github.com/jcgruenhage). See [docs](https://static-web-server.net/features/man-pages-**completions**/).
+- [d567b4e](https://github.com/static-web-server/static-web-server/commit/d567b4e) CLI: Support for generating man pages and shell completions via new `generate` subcomand. PR [#475](https://github.com/static-web-server/static-web-server/pull/475) by [@jcgruenhage](https://github.com/jcgruenhage). See [docs](https://static-web-server.net/features/man-pages-completions/).
 
 For more details see the [v2.33.0 milestone](https://github.com/static-web-server/static-web-server/milestone/23?closed=1) and the full changelog [v2.32.2...v2.33.0](https://github.com/static-web-server/static-web-server/compare/v2.32.2...v2.33.0).
+
+**Acknowledgments**
+
+Thanks to our new donor [@ramkumarkb](https://github.com/ramkumarkb) for supporting the project.
 
 ## v2.32.2 - 2024-08-13
 
