@@ -12,7 +12,11 @@ $ static-web-server -h
 
 A cross-platform, high-performance and asynchronous web server for static files-serving.
 
-Usage: static-web-server [OPTIONS]
+Usage: static-web-server [OPTIONS] [COMMAND]
+
+Commands:
+  generate  Generate man pages and shell completions
+  help      Print this message or the help of the given subcommand(s)
 
 Options:
   -a, --host <HOST>
@@ -41,13 +45,13 @@ Options:
           Specify an optional CORS list of allowed headers separated by commas. Default "origin, content-type". It requires `--cors-allow-origins` to be used along with [env: SERVER_CORS_ALLOW_HEADERS=] [default: "origin, content-type, authorization"]
       --cors-expose-headers <CORS_EXPOSE_HEADERS>
           Specify an optional CORS list of exposed headers separated by commas. Default "origin, content-type". It requires `--cors-expose-origins` to be used along with [env: SERVER_CORS_EXPOSE_HEADERS=] [default: "origin, content-type"]
-  -t, --http2[=<HTTP2>]
+  -t, --http2 [<HTTP2>]
           Enable HTTP/2 with TLS support [env: SERVER_HTTP2_TLS=] [default: false] [possible values: true, false]
       --http2-tls-cert <HTTP2_TLS_CERT>
           Specify the file path to read the certificate [env: SERVER_HTTP2_TLS_CERT=]
       --http2-tls-key <HTTP2_TLS_KEY>
           Specify the file path to read the private key [env: SERVER_HTTP2_TLS_KEY=]
-      --https-redirect[=<HTTPS_REDIRECT>]
+      --https-redirect [<HTTPS_REDIRECT>]
           Redirect all requests with scheme "http" to "https" for the current server instance. It depends on "http2" to be enabled [env: SERVER_HTTPS_REDIRECT=] [default: false] [possible values: true, false]
       --https-redirect-host <HTTPS_REDIRECT_HOST>
           Canonical host name or IP of the HTTPS (HTTPS/2) server. It depends on "https_redirect" to be enabled [env: SERVER_HTTPS_REDIRECT_HOST=] [default: localhost]
@@ -57,21 +61,21 @@ Options:
           List of host names or IPs allowed to redirect from. HTTP requests must contain the HTTP 'Host' header and match against this list. It depends on "https_redirect" to be enabled [env: SERVER_HTTPS_REDIRECT_FROM_HOSTS=] [default: localhost]
       --index-files <INDEX_FILES>
           List of files that will be used as an index for requests ending with the slash character (‘/’). Files are checked in the specified order [env: SERVER_INDEX_FILES=] [default: index.html]
-  -x, --compression[=<COMPRESSION>]
+  -x, --compression [<COMPRESSION>]
           Gzip, Deflate, Brotli or Zstd compression on demand determined by the Accept-Encoding header and applied to text-based web file types only [env: SERVER_COMPRESSION=] [default: true] [possible values: true, false]
       --compression-level <COMPRESSION_LEVEL>
           Compression level to apply for Gzip, Deflate, Brotli or Zstd compression [env: SERVER_COMPRESSION_LEVEL=] [default: default] [possible values: fastest, best, default]
-      --compression-static[=<COMPRESSION_STATIC>]
+      --compression-static [<COMPRESSION_STATIC>]
           Look up the pre-compressed file variant (`.gz`, `.br` or `.zst`) on disk of a requested file and serves it directly if available. The compression type is determined by the `Accept-Encoding` header [env: SERVER_COMPRESSION_STATIC=] [default: false] [possible values: true, false]
-  -z, --directory-listing[=<DIRECTORY_LISTING>]
+  -z, --directory-listing [<DIRECTORY_LISTING>]
           Enable directory listing for all requests ending with the slash character (‘/’) [env: SERVER_DIRECTORY_LISTING=] [default: false] [possible values: true, false]
       --directory-listing-order <DIRECTORY_LISTING_ORDER>
           Specify a default code number to order directory listing entries per `Name`, `Last modified` or `Size` attributes (columns). Code numbers supported: 0 (Name asc), 1 (Name desc), 2 (Last modified asc), 3 (Last modified desc), 4 (Size asc), 5 (Size desc). Default 6 (unordered) [env: SERVER_DIRECTORY_LISTING_ORDER=] [default: 6]
       --directory-listing-format <DIRECTORY_LISTING_FORMAT>
           Specify a content format for directory listing entries. Formats supported: "html" or "json". Default "html" [env: SERVER_DIRECTORY_LISTING_FORMAT=] [default: html] [possible values: html, json]
-      --security-headers[=<SECURITY_HEADERS>]
+      --security-headers [<SECURITY_HEADERS>]
           Enable security headers by default when HTTP/2 feature is activated. Headers included: "Strict-Transport-Security: max-age=63072000; includeSubDomains; preload" (2 years max-age), "X-Frame-Options: DENY" and "Content-Security-Policy: frame-ancestors 'self'" [env: SERVER_SECURITY_HEADERS=] [default: false] [possible values: true, false]
-  -e, --cache-control-headers[=<CACHE_CONTROL_HEADERS>]
+  -e, --cache-control-headers [<CACHE_CONTROL_HEADERS>]
           Enable cache control headers for incoming requests based on a set of file types. The file type list can be found on `src/control_headers.rs` file [env: SERVER_CACHE_CONTROL_HEADERS=] [default: true] [possible values: true, false]
       --basic-auth <BASIC_AUTH>
           It provides The "Basic" HTTP Authentication scheme using credentials as "user-id:password" pairs. Password must be encoded using the "BCrypt" password-hashing function [env: SERVER_BASIC_AUTH=] [default: ]
@@ -79,17 +83,17 @@ Options:
           Defines a grace period in seconds after a `SIGTERM` signal is caught which will delay the server before to shut it down gracefully. The maximum value is 255 seconds [env: SERVER_GRACE_PERIOD=] [default: 0]
   -w, --config-file <CONFIG_FILE>
           Server TOML configuration file path [env: SERVER_CONFIG_FILE=] [default: ./config.toml]
-      --log-remote-address[=<LOG_REMOTE_ADDRESS>]
+      --log-remote-address [<LOG_REMOTE_ADDRESS>]
           Log incoming requests information along with its remote address if available using the `info` log level [env: SERVER_LOG_REMOTE_ADDRESS=] [default: false] [possible values: true, false]
-      --redirect-trailing-slash[=<REDIRECT_TRAILING_SLASH>]
+      --redirect-trailing-slash [<REDIRECT_TRAILING_SLASH>]
           Check for a trailing slash in the requested directory URI and redirect permanently (308) to the same path with a trailing slash suffix if it is missing [env: SERVER_REDIRECT_TRAILING_SLASH=] [default: true] [possible values: true, false]
-      --ignore-hidden-files[=<IGNORE_HIDDEN_FILES>]
+      --ignore-hidden-files [<IGNORE_HIDDEN_FILES>]
           Ignore hidden files/directories (dotfiles), preventing them to be served and being included in auto HTML index pages (directory listing) [env: SERVER_IGNORE_HIDDEN_FILES=] [default: false] [possible values: true, false]
-      --disable-symlinks[=<DISABLE_SYMLINKS>]
+      --disable-symlinks [<DISABLE_SYMLINKS>]
           Prevent following files or directories if any path name component is a symbolic link [env: SERVER_DISABLE_SYMLINKS=] [default: false] [possible values: true, false]
-      --health[=<HEALTH>]
+      --health [<HEALTH>]
           Add a /health endpoint that doesn't generate any log entry and returns a 200 status code. This is especially useful with Kubernetes liveness and readiness probes [env: SERVER_HEALTH=] [default: false] [possible values: true, false]
-      --maintenance-mode[=<MAINTENANCE_MODE>]
+      --maintenance-mode [<MAINTENANCE_MODE>]
           Enable the server's maintenance mode functionality [env: SERVER_MAINTENANCE_MODE=] [default: false] [possible values: true, false]
       --maintenance-mode-status <MAINTENANCE_MODE_STATUS>
           Provide a custom HTTP status code when entering into maintenance mode. Default 503 [env: SERVER_MAINTENANCE_MODE_STATUS=] [default: 503]
