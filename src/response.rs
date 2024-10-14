@@ -37,7 +37,13 @@ pub(crate) fn response_body(
     #[cfg(feature = "experimental")] memory_cache: Option<&MemCacheOpts>,
 ) -> Result<Response<Body>, StatusCode> {
     let mut len = meta.len();
-    let modified = meta.modified().ok().map(LastModified::from);
+    // If the file's modified time is the UNIX epoch, then it's likely not valid and should
+    // not be included in the Last-Modified header to avoid cache revalidation issues.
+    let modified = meta
+        .modified()
+        .ok()
+        .filter(|&t| t != std::time::UNIX_EPOCH)
+        .map(LastModified::from);
 
     match conditionals.check(modified) {
         ConditionalBody::NoBody(resp) => Ok(resp),
