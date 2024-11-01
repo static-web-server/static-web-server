@@ -8,6 +8,7 @@ freebsd_instance:
 task:
   only_if: $CIRRUS_TAG == '' && changesIncludeOnly('.cirrus.yml', 'src/**', 'tests/**', 'Cargo.toml', 'Cargo.lock', '.cargo/config.toml')
   env:
+    TOOLCHAIN: "1.81.0"
     RUSTFLAGS: -Dwarnings --cfg tokio_unstable
     CARGO_FEATURES: "--features=all"
     RUST_BACKTRACE: "1"
@@ -21,7 +22,7 @@ task:
   setup_script:
     - pkg install -y bash
     - curl https://sh.rustup.rs -sSf --output rustup.sh
-    - sh rustup.sh -y --profile minimal --default-toolchain stable
+    - sh rustup.sh -y --profile minimal --default-toolchain=$TOOLCHAIN
     - . $HOME/.cargo/env
     - cp -r .cargo/config.toml $HOME/.cargo/
     - rustc --version
@@ -44,6 +45,7 @@ task:
 task:
   only_if: $CIRRUS_TAG != ''
   env:
+    TOOLCHAIN: "1.81.0"
     RUSTFLAGS: -Dwarnings --cfg tokio_unstable
     CARGO_FEATURES: "--features=all"
     GITHUB_TOKEN: ENCRYPTED[d1766ef328d83729917d2ffb875d64c35d1c0177edf8f32e66ec464daf5c1b7b145d65fc6c044a73fffe2235d3b38349]
@@ -57,7 +59,7 @@ task:
   setup_script:
     - pkg install -y bash jq
     - curl https://sh.rustup.rs -sSf --output rustup.sh
-    - sh rustup.sh -y --profile minimal --default-toolchain stable
+    - sh rustup.sh -y --profile minimal --default-toolchain=$TOOLCHAIN
     - . $HOME/.cargo/env
     - cp -r .cargo/config.toml $HOME/.cargo/
     - rustc --version
