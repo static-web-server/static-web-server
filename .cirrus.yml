@@ -10,6 +10,7 @@ task:
   env:
     RUSTFLAGS: -Dwarnings --cfg tokio_unstable
     CARGO_FEATURES: "--features=all"
+    RUST_BACKTRACE: "1"
   matrix:
     - name: freebsd-amd64-test
       env:
