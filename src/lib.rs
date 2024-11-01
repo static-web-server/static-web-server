@@ -164,7 +164,6 @@ pub(crate) mod fs;
 pub mod handler;
 pub(crate) mod headers_ext;
 pub(crate) mod health;
-pub(crate) mod http_ext;
 #[cfg(feature = "http2")]
 #[cfg_attr(docsrs, doc(cfg(feature = "http2")))]
 pub mod https_redirect;
@@ -199,6 +198,8 @@ pub mod error;
 // Private modules
 #[doc(hidden)]
 mod helpers;
+#[doc(hidden)]
+pub mod http_ext;
 #[doc(hidden)]
 pub mod testing;
 
