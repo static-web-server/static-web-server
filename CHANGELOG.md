@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _**Note:** See changelog for v1 under the [1.x](https://github.com/static-web-server/static-web-server/blob/1.x/CHANGELOG.md) branch._
 
+## v2.33.1 - 2024-11-02
+
+This new `v2.33.1` release brings several security and bug fixes as well as other minor improvements.
+
+__Fixes__
+
+- [93479ba](https://github.com/static-web-server/static-web-server/commit/93479ba) Bugfix/security dependency updates including hyper, tokio, httparse, rustls, regex, once_cell, flate2, async-compression and other crates. PR [#490](https://github.com/static-web-server/static-web-server/pull/490).
+
+__Refactorings__
+
+- [de8482d](https://github.com/static-web-server/static-web-server/commit/de8482d) Do not set `Last-Modified` header if mtime is Unix epoch. PR [#488](https://github.com/static-web-server/static-web-server/pull/488) by [@akhilles](https://github.com/akhilles).
+
+__Docs__
+
+- [30a6409](https://github.com/static-web-server/static-web-server/commit/30a6409) Minor tweaks to `man-pages-completions.md` page.
+
 ## v2.33.0 - 2024-09-17
 
 This new `v2.33.0` release brings several security and bug fixes. New features like experimental in-memory files cache with eviction policy support, new subcomand to generate man pages and shell completions as well as other improvements.
