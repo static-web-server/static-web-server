@@ -28,6 +28,13 @@ impl Transport for AddrStream {
     }
 }
 
+impl crate::transport::Transport for tokio::net::UnixStream {
+    fn remote_addr(&self) -> Option<SocketAddr> {
+        // Not applicable for unix socket connections
+        None
+    }
+}
+
 /// Type to support `Transport`, `AsyncRead` and `AsyncWrite`.
 pub struct LiftIo<T>(pub T);
 
