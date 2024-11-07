@@ -189,6 +189,5 @@ spec:
           port: http
 ```
 
-## TrueNAS SCALE
-
-If you use Kubernetes with [TrueNAS SCALE](https://www.truenas.com/truenas-scale/) then check out the [TrueCharts Community Website](https://truecharts.org/charts/stable/static-web-server/) and its [Introduction to SCALE](https://truecharts.org/manual/SCALE/guides/scale-intro) page to deploy an SWS application in your instance.  
+### TrueCharts
+The [TrueCharts Community](https://truecharts.org) also provides a ready-to-use [Static Web Server Helm-Chart](https://truecharts.org/charts/stable/static-web-server/) that you can easily deploy in your Kubernetes.
