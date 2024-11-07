@@ -189,3 +189,5 @@ spec:
           port: http
 ```
 
+### TrueCharts
+The [TrueCharts Community](https://truecharts.org) also provides a ready-to-use [Static Web Server Helm-Chart](https://truecharts.org/charts/stable/static-web-server/) that you can easily deploy in your Kubernetes.
