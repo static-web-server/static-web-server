@@ -14,7 +14,18 @@ use crate::{handler::RequestHandlerOpts, health};
 /// Initializes the log address module.
 pub(crate) fn init(enabled: bool, handler_opts: &mut RequestHandlerOpts) {
     handler_opts.log_remote_address = enabled;
-    server_info!("log requests with remote and real IP addresses: enabled={enabled}");
+    let trusted = if handler_opts.trusted_proxies.is_empty() {
+        "all".to_owned()
+    } else {
+        format!("{:?}", handler_opts.trusted_proxies)
+    };
+
+    server_info!("log requests with remote IP addresses: enabled={enabled}");
+    server_info!(
+        "log X-Forwarded-For real remote IP addresses: enabled={}",
+        handler_opts.log_forwarded_for
+    );
+    server_info!("trusted IPs for X-Forwarded-For: {trusted}");
 }
 
 /// It logs remote and real IP addresses if available.
@@ -23,23 +34,27 @@ pub(crate) fn pre_process<T>(
     req: &Request<T>,
     remote_addr: Option<SocketAddr>,
 ) {
-    let remote_addrs = if opts.log_remote_address {
-        // Add a Remote IP if available
-        let remote_addr = remote_addr.map_or("".to_owned(), |ip| format!(" remote_addr={ip}"));
+    let mut remote_addrs = String::new();
 
-        // Add also a Real Remote IP if available
-        let real_remote_addr = req
+    if opts.log_remote_address {
+        if let Some(addr) = remote_addr {
+            remote_addrs.push_str(format!(" remote_addr={addr}").as_str());
+        }
+    }
+    if opts.log_forwarded_for
+        && (opts.trusted_proxies.is_empty()
+            || remote_addr.is_some_and(|addr| opts.trusted_proxies.contains(&addr.ip())))
+    {
+        if let Some(real_ip) = req
             .headers()
             .get("X-Forwarded-For")
             .and_then(|h| h.to_str().ok())
             .and_then(|s| s.split(',').next())
             .and_then(|s| s.trim().parse::<IpAddr>().ok())
-            .map_or("".to_owned(), |ip| format!(" real_remote_ip={ip}"));
-
-        [remote_addr, real_remote_addr].concat()
-    } else {
-        String::new()
-    };
+        {
+            remote_addrs.push_str(format!(" real_remote_ip={real_ip}").as_str());
+        }
+    }
 
     // Log incoming requests in debug mode only if the health option is enabled
     if opts.health && health::is_health_endpoint(req) {

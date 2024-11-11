@@ -259,6 +259,12 @@ impl Server {
         // Log remote address option
         let log_remote_address = general.log_remote_address;
 
+        // Log the X-Forwarded-For header.
+        let log_forwarded_for = general.log_forwarded_for;
+
+        // Trusted IPs for remote addresses.
+        let trusted_proxies = general.trusted_proxies;
+
         // Log redirect trailing slash option
         let redirect_trailing_slash = general.redirect_trailing_slash;
         server_info!(
@@ -295,6 +301,8 @@ impl Server {
             page404: page404.clone(),
             page50x: page50x.clone(),
             log_remote_address,
+            log_forwarded_for,
+            trusted_proxies,
             redirect_trailing_slash,
             ignore_hidden_files,
             disable_symlinks,

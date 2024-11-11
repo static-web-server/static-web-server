@@ -27,55 +27,85 @@ Log entry example:
 2022-05-23T22:24:50.519540Z  INFO static_web_server::handler: incoming request: method=GET uri=/ remote_addr=192.168.1.126:57625
 ```
 
-Below is an example of how to enable Remote Address (IP) logging. Note the last two entries.
+Below is an example of how to enable Remote Address (IP) logging.
 
 ```sh
 static-web-server -a "0.0.0.0" -p 8080 -d docker/public/ -g info --log-remote-address=true
-# 2022-05-23T22:24:44.523057Z  INFO static_web_server::logger: logging level: info
-# 2022-05-23T22:24:44.523856Z  INFO static_web_server::server: server bound to TCP socket 0.0.0.0:8080
-# 2022-05-23T22:24:44.523962Z  INFO static_web_server::server: runtime worker threads: 4
-# 2022-05-23T22:24:44.523989Z  INFO static_web_server::server: security headers: enabled=false
-# 2022-05-23T22:24:44.524006Z  INFO static_web_server::server: auto compression: enabled=true
-# 2022-05-23T22:24:44.524061Z  INFO static_web_server::server: directory listing: enabled=false
-# 2022-05-23T22:24:44.524097Z  INFO static_web_server::server: directory listing order code: 6
-# 2022-05-23T22:24:44.524133Z  INFO static_web_server::server: cache control headers: enabled=true
-# 2022-05-23T22:24:44.524191Z  INFO static_web_server::server: basic authentication: enabled=false
-# 2022-05-23T22:24:44.524210Z  INFO static_web_server::server: grace period before graceful shutdown: 0s
-# 2022-05-23T22:24:44.524527Z  INFO Server::start_server{addr_str="0.0.0.0:8080" threads=4}: static_web_server::server: close time.busy=0.00ns time.idle=10.6µs
-# 2022-05-23T22:24:44.524585Z  INFO static_web_server::server: listening on http://0.0.0.0:8080
-# 2022-05-23T22:24:44.524614Z  INFO static_web_server::server: press ctrl+c to shut down the server
-# 2022-05-23T22:24:50.519540Z  INFO static_web_server::handler: incoming request: method=GET uri=/ remote_addr=192.168.1.126:57625
-# 2022-05-23T22:25:26.516841Z  INFO static_web_server::handler: incoming request: method=GET uri=/favicon.ico remote_addr=192.168.1.126:57625
+```
+
+The relevant log output:
+```log
+INFO static_web_server::logger: logging level: info
+<...>
+INFO static_web_server::info: log requests with remote IP addresses: enabled=true
+<...>
+INFO static_web_server::handler: incoming request: method=GET uri=/ remote_addr=192.168.1.126:57625
+INFO static_web_server::handler: incoming request: method=GET uri=/favicon.ico remote_addr=192.168.1.126:57625
 ```
 ## Log Real Remote IP
 
-When used behind reverse proxy, reported `remote_addr` indicate proxy internal IP address and port, and not client real remote IP.
-Proxy server can be configured to provide [X-Forwarded-For header](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Forwarded-For), containing comma-separated list of IP addresses, starting with *client real remote IP*, and all following intermediate proxies (if any).
+When used behind a reverse proxy the reported `remote_addr` indicates the proxies IP address and port, not the clients real IP.
+The Proxy server can be configured to provide the [X-Forwarded-For header](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Forwarded-For), containing a comma-separated list of IP addresses, starting with the *real remote client IP*, and all following intermediate proxies (if any).
 
-When *Remote Address (IP) logging* [is enabled](#log-remote-addresses), and `X-Forwarded-For` header is present and correctly formatted, then log entries for requests will contain a `real_remote_ip` section with IP of remote client, **as reported by this header**. 
+
+To enable logging of the real remote IP, enable the `--log-forwarded-for` option or the equivalent [SERVER_LOG_FORWARDED_FOR](/docs/content/configuration/environment-variables.md#serverlogforwardedfor) env. By default this will log all requests which have a correctly formatted `X-Forwarded-For` header. 
+
+Since the content of the `X-Forwarded-For` header can be changed by all proxies in the chain, the remote IP address reported may not be trusted.
+
+To restrict the logging to only trusted proxy IPs, you can use the `--trusted-proxies` option, or the equivalent [SERVER_TRUSTED_PROXIES](/docs/content/configuration/environment-variables.md#servertrustedproxies) env. This should be a list of IPs, separated by commas. An empty list (the default) indicates that all IPs should be trusted.
+
+Command used for the following examples:
+```sh
+static-web-server -a "::" --log-forwarded-for=true --trusted-proxies="::1" -p 8080 -d docker/public/ -g info
+```
+
+Look for these lines in the log output:
+```log
+<...>
+INFO static_web_server::info: log level: info
+INFO static_web_server::info: log requests with remote IP addresses: enabled=false
+INFO static_web_server::info: log X-Forwarded-For real remote IP addresses: enabled=true
+INFO static_web_server::info: trusted IPs for X-Forwarded-For: [::1]
+<...>
+```
 
 We can simulate request as from behind reverse proxy with additional intermediate-proxy with following command:
 
 ```sh
-curl --header "X-Forwarded-For: 203.0.113.195, 2001:db8:85a3:8d3:1319:8a2e:370:7348" http://0.0.0.0:8080
+curl "http://[::1]:8080" --header "X-Forwarded-For: 203.0.113.195, 2001:db8:85a3:8d3:1319:8a2e:370:7348"
 ```
 
-Log entry for such case will look like:
+Log entry for this request will look like:
 
 ```log
-2022-05-23T22:24:50.519540Z  INFO static_web_server::handler: incoming request: method=GET uri=/ remote_addr=192.168.1.126:57625 real_remote_ip=203.0.113.195
+INFO static_web_server::handler: incoming request: method=GET uri=/ real_remote_ip=203.0.113.195
 ```
 
-**`SWS`** will parse `X-Forwarded-For` header, and if format of provided IP is invalid - it will be ignored to prevent log poisoning attacks. In such case `real_remote_ip` section will not be added.
+---
+
+If we send the request from `127.0.0.1` instead:
+```sh
+curl "http://127.0.0.1:8080" --header "X-Forwarded-For: 203.0.113.195, 2001:db8:85a3:8d3:1319:8a2e:370:7348"
+```
+
+we get the following log output:
+```log
+INFO static_web_server::handler: incoming request: method=GET uri=/
+```
+`127.0.0.1` is not in the `trusted_proxies`, so we dont get a `real_remote_address` in the log.
+
+Note the absence of the proxies remote address in these examples. If you want to log the remote address and the real remote address, you need to specify both `--log-remote-address` and `--log-forwarded-for`.
+
+---
+
+**`SWS`** will parse the `X-Forwarded-For` header and if the provided client IP is invalid, it will be ignored to prevent log poisoning attacks. In such cases the `real_remote_ip` section will not be added.
 
 Example from above, but with invalid header:
 
 ```sh
-curl --header "X-Forwarded-For: <iframe src=//malware.attack>" http://0.0.0.0:8080
+curl "http://[::1]:8080" --header "X-Forwarded-For: <iframe src=//malware.attack>"
 ```
 
 ```log
-2022-05-23T22:24:50.519540Z  INFO static_web_server::handler: incoming request: method=GET uri=/ remote_addr=192.168.1.126:57625
+2022-05-23T22:24:50.519540Z  INFO static_web_server::handler: incoming request: method=GET uri=/
 ```
-
-Be aware, that contents of `X-Forwarded-For` header can be augumented by all proxies in the chain, and as such - remote IP address reported by it may not be trusted.

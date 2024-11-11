@@ -104,10 +104,6 @@ Via [Wasmer](https://wasmer.io/wasmer/static-web-server/)
 wasmer run wasmer/static-web-server --net --enable-threads --mapdir /public:/my/host/dir -- --port 8787
 ```
 
-### TrueNAS SCALE
-
-If you use [TrueNAS SCALE](https://www.truenas.com/truenas-scale/) then visit [TrueCharts Community Website](https://truecharts.org/charts/stable/static-web-server/) and its [Introduction to SCALE](https://truecharts.org/manual/SCALE/guides/scale-intro) page to install SWS application in your instance.  
-
 ## Binaries
 
 Pre-compiled binaries grouped by CPU architectures.
