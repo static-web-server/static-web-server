@@ -7,7 +7,7 @@
 
 use clap::Parser;
 use hyper::StatusCode;
-use std::path::PathBuf;
+use std::{net::IpAddr, path::PathBuf};
 
 #[cfg(feature = "directory-listing")]
 use crate::directory_listing::DirListFmt;
@@ -413,6 +413,28 @@ pub struct General {
     )]
     /// Log incoming requests information along with its remote address if available using the `info` log level.
     pub log_remote_address: bool,
+
+    #[arg(
+        long,
+        default_value = "false",
+        default_missing_value("true"),
+        num_args(0..=1),
+        require_equals(false),
+        action = clap::ArgAction::Set,
+        env = "SERVER_LOG_FORWARDED_FOR",
+    )]
+    /// Log the X-Forwarded-For header for remote IP information
+    pub log_forwarded_for: bool,
+
+    #[arg(
+        long,
+        require_equals(false),
+        value_delimiter(','),
+        action = clap::ArgAction::Set,
+        env = "SERVER_TRUSTED_PROXIES",
+    )]
+    /// List of IPs to use X-Forwarded-For from. The default is to trust all
+    pub trusted_proxies: Vec<IpAddr>,
 
     #[arg(
         long,

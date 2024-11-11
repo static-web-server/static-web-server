@@ -197,6 +197,8 @@ impl Settings {
         let mut page_fallback = opts.page_fallback;
 
         let mut log_remote_address = opts.log_remote_address;
+        let mut log_forwarded_for = opts.log_forwarded_for;
+        let mut trusted_proxies = opts.trusted_proxies;
         let mut redirect_trailing_slash = opts.redirect_trailing_slash;
         let mut ignore_hidden_files = opts.ignore_hidden_files;
         let mut disable_symlinks = opts.disable_symlinks;
@@ -362,6 +364,12 @@ impl Settings {
                 }
                 if let Some(v) = general.log_remote_address {
                     log_remote_address = v
+                }
+                if let Some(v) = general.log_forwarded_for {
+                    log_forwarded_for = v
+                }
+                if let Some(v) = general.trusted_proxies {
+                    trusted_proxies = v
                 }
                 if let Some(v) = general.redirect_trailing_slash {
                     redirect_trailing_slash = v
@@ -651,6 +659,8 @@ impl Settings {
                 #[cfg(feature = "fallback-page")]
                 page_fallback,
                 log_remote_address,
+                log_forwarded_for,
+                trusted_proxies,
                 redirect_trailing_slash,
                 ignore_hidden_files,
                 disable_symlinks,
