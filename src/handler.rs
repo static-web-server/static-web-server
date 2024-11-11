@@ -7,7 +7,12 @@
 //!
 
 use hyper::{Body, Request, Response, StatusCode};
-use std::{future::Future, net::SocketAddr, path::PathBuf, sync::Arc};
+use std::{
+    future::Future,
+    net::{IpAddr, SocketAddr},
+    path::PathBuf,
+    sync::Arc,
+};
 
 #[cfg(any(
     feature = "compression",
@@ -97,6 +102,10 @@ pub struct RequestHandlerOpts {
     pub index_files: Vec<String>,
     /// Log remote address feature.
     pub log_remote_address: bool,
+    /// Log the X-Forwarded-For header.
+    pub log_forwarded_for: bool,
+    /// Trusted IPs for remote addresses.
+    pub trusted_proxies: Vec<IpAddr>,
     /// Redirect trailing slash feature.
     pub redirect_trailing_slash: bool,
     /// Ignore hidden files feature.
@@ -152,6 +161,8 @@ impl Default for RequestHandlerOpts {
             basic_auth: String::new(),
             index_files: vec!["index.html".into()],
             log_remote_address: false,
+            log_forwarded_for: false,
+            trusted_proxies: Vec::new(),
             redirect_trailing_slash: true,
             ignore_hidden_files: false,
             disable_symlinks: false,

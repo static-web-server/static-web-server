@@ -8,6 +8,7 @@
 use headers::HeaderMap;
 use serde::Deserialize;
 use serde_repr::{Deserialize_repr, Serialize_repr};
+use std::net::IpAddr;
 use std::path::Path;
 use std::{collections::BTreeSet, path::PathBuf};
 
@@ -355,6 +356,12 @@ pub struct General {
 
     /// Log remote address feature.
     pub log_remote_address: Option<bool>,
+
+    /// Log the X-Forwarded-For header.
+    pub log_forwarded_for: Option<bool>,
+
+    /// Trusted IPs for remote addresses.
+    pub trusted_proxies: Option<Vec<IpAddr>>,
 
     /// Redirect trailing slash feature.
     pub redirect_trailing_slash: Option<bool>,

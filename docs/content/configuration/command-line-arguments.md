@@ -85,6 +85,10 @@ Options:
           Server TOML configuration file path [env: SERVER_CONFIG_FILE=] [default: ./config.toml]
       --log-remote-address [<LOG_REMOTE_ADDRESS>]
           Log incoming requests information along with its remote address if available using the `info` log level [env: SERVER_LOG_REMOTE_ADDRESS=] [default: false] [possible values: true, false]
+      --log-forwarded-for [<LOG_FORWARDED_FOR>]
+          Log real IP from X-Forwarded-For header [env: SERVER_LOG_FORWARDED_FOR] [default: false] [possible values: true, false]
+      --trusted-proxies <TRUSTED_PROXIES>
+          A comma separated list of IP addresses to accept the X-Forwarded-For header from. Empty means trust all IPs [env: SERVER_TRUSTED_PROXIES] [default: ""]
       --redirect-trailing-slash [<REDIRECT_TRAILING_SLASH>]
           Check for a trailing slash in the requested directory URI and redirect permanently (308) to the same path with a trailing slash suffix if it is missing [env: SERVER_REDIRECT_TRAILING_SLASH=] [default: true] [possible values: true, false]
       --ignore-hidden-files [<IGNORE_HIDDEN_FILES>]

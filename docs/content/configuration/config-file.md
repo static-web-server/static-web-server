@@ -75,6 +75,12 @@ grace-period = 0
 #### Log request Remote Address if available
 log-remote-address = false
 
+#### Log real IP from X-Forwarded-For header if available
+log-forwarded-for = false
+
+#### IPs to accept the X-Forwarded-For header from. Empty means all
+trusted-proxies = []
+
 #### Redirect to trailing slash in the requested directory uri
 redirect-trailing-slash = true
 
