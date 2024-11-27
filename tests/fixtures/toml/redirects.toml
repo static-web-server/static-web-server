@@ -52,3 +52,9 @@ kind = 302
 source = "**/{*}.{*}"
 destination = "http://localhost/new-generic/$2.$3"
 kind = 301
+
+# Glob groups generic 2
+[[advanced.redirects]]
+source = "/{*}/{*}/"
+destination = "http://localhost/archive/$1/$2/"
+kind = 301

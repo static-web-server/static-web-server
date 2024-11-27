@@ -7,7 +7,7 @@
 //!
 
 use clap::Parser;
-use globset::{Glob, GlobMatcher};
+use globset::{Glob, GlobBuilder, GlobMatcher};
 use headers::HeaderMap;
 use hyper::StatusCode;
 use regex::Regex;
@@ -506,7 +506,9 @@ impl Settings {
 
                         // Compile a glob pattern for each redirect sources entry
                         for redirects_entry in redirects_entries.iter() {
-                            let source = Glob::new(&redirects_entry.source)
+                            let source = GlobBuilder::new(&redirects_entry.source)
+                                .literal_separator(true)
+                                .build()
                                 .with_context(|| {
                                     format!(
                                         "can not compile glob pattern for redirect source: {}",
