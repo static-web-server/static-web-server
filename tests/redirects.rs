@@ -151,14 +151,14 @@ pub mod tests {
         let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
 
         let mut req = Request::default();
-        *req.uri_mut() = "http://localhost/images/avatar.jpeg".parse().unwrap();
+        *req.uri_mut() = "http://localhost/old/images/avatar.jpeg".parse().unwrap();
 
         match req_handler.handle(&mut req, remote_addr).await {
             Ok(res) => {
                 assert_eq!(res.status(), 302);
                 assert_eq!(
                     res.headers()["location"],
-                    "http://localhost/new-images/images/avatar.jpeg"
+                    "http://localhost/new-images/avatar.jpeg"
                 );
             }
             Err(err) => {
@@ -174,14 +174,14 @@ pub mod tests {
         let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
 
         let mut req = Request::default();
-        *req.uri_mut() = "http://localhost/fonts/title.ttf".parse().unwrap();
+        *req.uri_mut() = "http://localhost/old/fonts/title.ttf".parse().unwrap();
 
         match req_handler.handle(&mut req, remote_addr).await {
             Ok(res) => {
                 assert_eq!(res.status(), 302);
                 assert_eq!(
                     res.headers()["location"],
-                    "http://localhost/new-fonts/fonts/title.woff"
+                    "http://localhost/new-fonts/title.woff"
                 );
             }
             Err(err) => {
