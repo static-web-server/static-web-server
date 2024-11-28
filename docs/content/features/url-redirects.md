@@ -34,6 +34,12 @@ The glob pattern functionality is powered by the [globset](https://docs.rs/globs
 !!! tip "Glob pattern syntax"
     For more details about the Glob pattern syntax check out https://docs.rs/globset/latest/globset/#syntax
 
+!!! warning "Matching of path separator in `*`"
+    Up to version 2.33.1 the wildcard `*` was matching the path separator.
+    For example, `/{*}/{*}/` matched `/assets/images/logo/`.
+
+    In later versions, the default has changed such that `*` does not match the path separator.
+
 ### Destination
 
 The value can be either a local file path that maps to an existing file on the system or an external URL.
@@ -104,7 +110,7 @@ Then the server logs should look something like this:
 ```log
 2023-07-11T21:11:22.217358Z  INFO static_web_server::handler: incoming request: method=HEAD uri=/abcdef.jpeg
 2023-07-11T21:11:22.217974Z DEBUG static_web_server::handler: url redirects glob pattern: ["$0", "$1", "$2"]
-2023-07-11T21:11:22.217992Z DEBUG static_web_server::handler: url redirects regex equivalent: (?-u:\b)(?:/?|.*/)(.*)\.(jpeg|jpg)$
+2023-07-11T21:11:22.217992Z DEBUG static_web_server::handler: url redirects regex equivalent: (?-u)^(?:/?|.*/)(?:[^/]*)\.(?:svg|jpeg|jpg)$
 2023-07-11T21:11:22.218002Z DEBUG static_web_server::handler: url redirects glob pattern captures: ["abcdef.jpeg", "abcdef", "jpeg"]
 2023-07-11T21:11:22.218076Z DEBUG static_web_server::handler: url redirects glob pattern destination: "http://localhost/assets/$1.$2"
 2023-07-11T21:11:22.218712Z DEBUG static_web_server::handler: url redirects glob pattern destination replaced: "http://localhost/assets/abcdef.jpeg"
