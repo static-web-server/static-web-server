@@ -254,4 +254,50 @@ pub mod tests {
             }
         };
     }
+
+    #[tokio::test]
+    async fn redirects_glob_groups_ranges_1() {
+        let opts = fixture_settings("toml/redirects.toml");
+        let req_handler = fixture_req_handler(opts.general, opts.advanced);
+        let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
+
+        let mut req = Request::default();
+        *req.uri_mut() = "http://localhost/2/a/random/".parse().unwrap();
+
+        match req_handler.handle(&mut req, remote_addr).await {
+            Ok(res) => {
+                assert_eq!(res.status(), 301);
+                assert_eq!(
+                    res.headers()["location"],
+                    "http://localhost/new-range/random/"
+                );
+            }
+            Err(err) => {
+                panic!("unexpected error: {err}")
+            }
+        };
+    }
+
+    #[tokio::test]
+    async fn redirects_glob_groups_ranges_2() {
+        let opts = fixture_settings("toml/redirects.toml");
+        let req_handler = fixture_req_handler(opts.general, opts.advanced);
+        let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
+
+        let mut req = Request::default();
+        *req.uri_mut() = "http://localhost/crop-x/image.png".parse().unwrap();
+
+        match req_handler.handle(&mut req, remote_addr).await {
+            Ok(res) => {
+                assert_eq!(res.status(), 301);
+                assert_eq!(
+                    res.headers()["location"],
+                    "http://localhost/new-crop/x/image.png"
+                );
+            }
+            Err(err) => {
+                panic!("unexpected error: {err}")
+            }
+        };
+    }
 }

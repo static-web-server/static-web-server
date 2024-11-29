@@ -47,6 +47,19 @@ source = "**/{*}.{ttf,otf,woff}"
 destination = "http://localhost/new-fonts/$2.woff"
 kind = 302
 
+# Glob groups ranges 1
+[[advanced.redirects]]
+source = "/[0-9]/[a-z]/{*}/"
+destination = "http://localhost/new-range/$1/"
+kind = 301
+
+# Glob groups ranges 2
+[[advanced.redirects]]
+source = "/crop-{[!0-9]}/{*}.{png,gif}"
+destination = "http://localhost/new-crop/$1/$2.$3"
+kind = 301
+
+# Generic globs need to be at the end
 # Glob groups generic 1
 [[advanced.redirects]]
 source = "**/{*}.{*}"
