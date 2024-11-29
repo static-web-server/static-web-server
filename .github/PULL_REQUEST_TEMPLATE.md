@@ -1,4 +1,5 @@
 <!--- Provide a general summary of your changes in the Title above -->
+<!--- Read the docs/PULL_REQUESTS.md -->
 
 ## Description
 <!--- Describe your changes but try to be as concise as possible -->

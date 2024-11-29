@@ -319,7 +319,7 @@ impl Configured {
                     Err(Forbidden::Origin)
                 }
             }
-            (None, _) => {
+            _ => {
                 // No `ORIGIN` header means this isn't CORS!
                 Ok((HeaderMap::new(), Validated::NotCors))
             }
@@ -369,7 +369,7 @@ pub trait IntoOrigin {
     fn into_origin(self) -> Origin;
 }
 
-impl<'a> IntoOrigin for &'a str {
+impl IntoOrigin for &str {
     fn into_origin(self) -> Origin {
         let mut parts = self.splitn(2, "://");
         let scheme = parts.next().expect("cors::into_origin: missing url scheme");
