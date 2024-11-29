@@ -27,7 +27,7 @@ This feature depends on `--cors-allow-origins` to be used along with this featur
 
 !!! info "Tips"
     - The default allowed headers value is `origin, content-type, authorization`.
-    - The server also supports [preflight requests](https://developer.mozilla.org/en-US/docs/Glossary/Preflight_request) via the `OPTIONS` method. See [Preflighted requests in CORS](./http-methods.md#preflighted-requests-in-cors).
+    - The server also supports [preflight requests](https://developer.mozilla.org/en-US/docs/Glossary/Preflight_request) via the `OPTIONS` method. See [Preflighted requests in CORS](./http-methods.md#preflight-requests-in-cors).
 
 Below is an example of how to CORS.
 
@@ -47,7 +47,7 @@ This feature depends on `--cors-allow-origins` to be used along with this featur
 
 !!! info "Tips"
     - The default exposed header's is `origin, content-type`.
-    - The server also supports [preflight requests](https://developer.mozilla.org/en-US/docs/Glossary/Preflight_request) via the `OPTIONS` method. See [Preflighted requests in CORS](./http-methods.md#preflighted-requests-in-cors).
+    - The server also supports [preflight requests](https://developer.mozilla.org/en-US/docs/Glossary/Preflight_request) via the `OPTIONS` method. See [Preflighted requests in CORS](./http-methods.md#preflight-requests-in-cors).
 
 Below is an example of how to CORS.
 

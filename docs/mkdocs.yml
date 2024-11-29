@@ -175,3 +175,13 @@ nav:
   - 'Report Security Issues': 'report-security-issues.md'
   - 'Contributions': 'contributions.md'
   - 'License': 'license.md'
+
+not_in_nav: |
+  download-and-install.template.md
+
+# https://www.mkdocs.org/user-guide/configuration/#validation
+validation:
+  omitted_files: warn
+  absolute_links: warn
+  unrecognized_links: warn
+  anchors: warn
