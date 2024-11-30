@@ -293,7 +293,7 @@ docs-deploy:
 		-v $(PWD)/docs/content:/docs/docs/content \
 		-v $(PWD)/docs/mkdocs.yml:/docs/mkdocs.yml \
 		-v /tmp/docs:/tmp/docs \
-			static-web-server-docs mkdocs build --strict
+			static-web-server-docs mkdocs build
 	@git checkout gh-pages
 	@git clean -fdx
 	@rm -rf docs/

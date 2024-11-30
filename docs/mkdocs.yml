@@ -3,13 +3,13 @@ site_name: Static Web Server
 site_description: 'A cross-platform, high-performance and asynchronous web server for static files-serving ⚡'
 site_author: 'Jose Quintana'
 site_url: https://static-web-server.net
-dev_addr: 0.0.0.0:8000
 
 # Repository
 repo_name: static-web-server/static-web-server
 repo_url: https://github.com/static-web-server/static-web-server/
 edit_uri: edit/master/docs/content/
 
+strict: true
 docs_dir: 'docs/content'
 site_dir: '/tmp/docs'
 extra_css:
