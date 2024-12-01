@@ -9,6 +9,7 @@ on:
       - .cargo/config.toml
       - Cargo.lock
       - Cargo.toml
+      - docs/**
       - src/**
       - tests/**
   push:
@@ -19,6 +20,7 @@ on:
       - .cargo/config.toml
       - Cargo.lock
       - Cargo.toml
+      - docs/**
       - src/**
       - tests/**
   schedule:
@@ -326,3 +328,7 @@ jobs:
     - name: Check crate docs
       run: |
         cargo doc --lib --no-deps
+
+    - name: Check mkdocs
+      run: |
+        docker compose -f docs/docker-compose.yml run --rm server mkdocs build
