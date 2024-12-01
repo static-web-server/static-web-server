@@ -35,7 +35,7 @@ The glob pattern functionality is powered by the [globset](https://docs.rs/globs
     For more details about the Glob pattern syntax check out https://docs.rs/globset/latest/globset/#syntax
 
 !!! warning "Matching of path separator in `*`"
-    Up to version 2.33.1 the wildcard `*` was matching the path separator.
+    Up to version `2.33.1` the wildcard `*` was matching the path separator.
     For example, `/{*}/{*}/` matched `/assets/images/logo/`.
 
     In later versions, the default has changed such that `*` does not match the path separator.

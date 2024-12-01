@@ -26,6 +26,12 @@ The glob pattern functionality is powered by the [globset](https://docs.rs/globs
 !!! tip "Glob pattern syntax"
     For more details about the Glob pattern syntax check out https://docs.rs/globset/latest/globset/#syntax
 
+!!! warning "Matching of path separator in `*`"
+    Up to version `2.33.1` the wildcard `*` was matching the path separator.
+    For example, `/{*}/{*}/` matched `/assets/images/logo/`.
+
+    In later versions, the default has changed such that `*` does not match the path separator.
+
 ### Destination
 
 The value should be a relative or absolute URL. A relative URL could look like `/some/directory/file.html`. An absolute URL can be `https://external.example.com/` for example.
@@ -119,7 +125,7 @@ Then the server logs should look something like this:
 ```log
 2023-07-08T20:31:36.606035Z  INFO static_web_server::handler: incoming request: method=HEAD uri=/abcdef.png
 2023-07-08T20:31:36.608439Z DEBUG static_web_server::handler: url rewrites glob patterns: ["$0", "$1", "$2"]
-2023-07-08T20:31:36.608491Z DEBUG static_web_server::handler: url rewrites regex equivalent: (?-u:\b)(?:/?|.*/)(.*)\.(gif|png)$
+2023-07-08T20:31:36.608491Z DEBUG static_web_server::handler: url rewrites regex equivalent: (?-u)^(?:/?|.*/)(?:[^/]*)\.(?:jpeg|jpg)$
 2023-07-08T20:31:36.608525Z DEBUG static_web_server::handler: url rewrites glob pattern captures: ["abcdef.png", "abcdef", "png"]
 2023-07-08T20:31:36.608561Z DEBUG static_web_server::handler: url rewrites glob pattern destination: "/assets/$1.$2"
 2023-07-08T20:31:36.609655Z DEBUG static_web_server::handler: url rewrites glob patterns destination replaced: "/assets/abcdef.png"

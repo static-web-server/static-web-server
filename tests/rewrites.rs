@@ -163,14 +163,14 @@ pub mod tests {
         let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
 
         let mut req = Request::default();
-        *req.uri_mut() = "http://localhost/fonts/text.ttf".parse().unwrap();
+        *req.uri_mut() = "http://localhost/old/fonts/text.ttf".parse().unwrap();
 
         match req_handler.handle(&mut req, remote_addr).await {
             Ok(res) => {
                 assert_eq!(res.status(), 302);
                 assert_eq!(
                     res.headers()["location"],
-                    "http://localhost/new-fonts/fonts/text.woff"
+                    "http://localhost/new-fonts/text.woff"
                 );
             }
             Err(err) => {
