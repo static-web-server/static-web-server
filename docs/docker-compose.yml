@@ -1,4 +1,3 @@
-version: "3.3"
 services:
   server:
     container_name: static-web-server-docs

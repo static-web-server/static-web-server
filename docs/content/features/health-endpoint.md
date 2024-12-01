@@ -5,7 +5,7 @@ When the  `/health` is requested, SWS will generate a log only at the `debug` le
 
 The HTTP methods supported are `GET` and `HEAD`.
 
-This feature is disabled by default and can be controlled by the boolean `--health` option or the equivalent [SERVER_HEALTH](./../configuration/environment-variables.md#health) env.
+This feature is disabled by default and can be controlled by the boolean `--health` option or the equivalent [SERVER_HEALTH](../configuration/environment-variables.md#server_health) env.
 
 ## Usage with Kubernetes liveness probe
 

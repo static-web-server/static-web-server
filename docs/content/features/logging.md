@@ -48,11 +48,11 @@ When used behind a reverse proxy the reported `remote_addr` indicates the proxie
 The Proxy server can be configured to provide the [X-Forwarded-For header](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Forwarded-For), containing a comma-separated list of IP addresses, starting with the *real remote client IP*, and all following intermediate proxies (if any).
 
 
-To enable logging of the real remote IP, enable the `--log-forwarded-for` option or the equivalent [SERVER_LOG_FORWARDED_FOR](/docs/content/configuration/environment-variables.md#serverlogforwardedfor) env. By default this will log all requests which have a correctly formatted `X-Forwarded-For` header. 
+To enable logging of the real remote IP, enable the `--log-forwarded-for` option or the equivalent [SERVER_LOG_FORWARDED_FOR](../configuration/environment-variables.md#server_log_forwarded_for) env. By default this will log all requests which have a correctly formatted `X-Forwarded-For` header. 
 
 Since the content of the `X-Forwarded-For` header can be changed by all proxies in the chain, the remote IP address reported may not be trusted.
 
-To restrict the logging to only trusted proxy IPs, you can use the `--trusted-proxies` option, or the equivalent [SERVER_TRUSTED_PROXIES](/docs/content/configuration/environment-variables.md#servertrustedproxies) env. This should be a list of IPs, separated by commas. An empty list (the default) indicates that all IPs should be trusted.
+To restrict the logging to only trusted proxy IPs, you can use the `--trusted-proxies` option, or the equivalent [SERVER_TRUSTED_PROXIES](../configuration/environment-variables.md#server_trusted_proxies) env. This should be a list of IPs, separated by commas. An empty list (the default) indicates that all IPs should be trusted.
 
 Command used for the following examples:
 ```sh
