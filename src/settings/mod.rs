@@ -458,7 +458,9 @@ impl Settings {
 
                         // Compile a glob pattern for each rewrite sources entry
                         for rewrites_entry in rewrites_entries.iter() {
-                            let source = Glob::new(&rewrites_entry.source)
+                            let source = GlobBuilder::new(&rewrites_entry.source)
+                                .literal_separator(true)
+                                .build()
                                 .with_context(|| {
                                     format!(
                                         "can not compile glob pattern for rewrite source: {}",
