@@ -1,0 +1,38 @@
+.md-main__inner {
+    margin-top: 0;
+}
+
+.md-button.md-button-sm {
+    min-width: 7.5rem;
+    text-align: center;
+    margin-bottom: 0.5em;
+    padding: 0.2em 0.4em;
+}
+.featured-downloads {
+    text-align: center;
+}
+
+.md-header__button.md-logo {
+    padding: 0;
+}
+
+[dir=ltr] .md-header__title {
+    margin-left: 0.5rem;
+}
+
+@media screen and (max-width: 76.1875em) {
+    .md-nav--primary .md-nav__title {
+        text-align: center;
+    }
+    .md-nav--primary .md-nav__title img {
+        margin: 0 auto;
+    }
+}
+
+body[data-md-color-scheme="slate"] .sws-logo svg path {
+    fill: #fff;
+}
+
+h1.sws-title {
+    margin-bottom: 1rem;
+}
