@@ -52,7 +52,8 @@ jobs:
 
 
   docker-image-debian:
-    needs: ['build-release']
+    # needs: ['build-release']
+    needs: ['docker-image-scratch']
     runs-on: ubuntu-22.04
     steps:
       - name: Checkout repository
@@ -124,8 +125,8 @@ jobs:
             # joseluisq/static-web-server
             ghcr.io/static-web-server/static-web-server
           tags: |
-            # type=edge,branch=$repo.default_branch
-            type=ref,event=branch
+            type=edge,branch=$repo.default_branch
+            type=ref,event=pr
       - name: Login to ghcr.io
         uses: docker/login-action@v3
         with:
