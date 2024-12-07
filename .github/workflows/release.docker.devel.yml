@@ -73,7 +73,7 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: |
-            joseluisq/static-web-server
+            # joseluisq/static-web-server
             ghcr.io/static-web-server/static-web-server
           flavor: |
             latest=false
