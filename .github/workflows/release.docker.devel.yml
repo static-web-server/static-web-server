@@ -26,7 +26,7 @@ jobs:
       CARGO_FEATURES: "--features=all"
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 1
       - name: Install Linux/BSD tools
@@ -56,7 +56,7 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 1
       - name: Restore cache
@@ -70,7 +70,7 @@ jobs:
         run: mv ${{ env.TARGET_DIR }}/release/static-web-server ./docker/devel/
       - name: Docker meta debian
         id: meta_debian
-        uses: docker/metadata-action@v4
+        uses: docker/metadata-action@v5
         with:
           images: |
             joseluisq/static-web-server
@@ -81,18 +81,18 @@ jobs:
           tags: |
             type=edge,branch=master
       - name: Login to ghcr.io
-        uses: docker/login-action@v2
+        uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       #- name: Login to DockerHub
-      #  uses: docker/login-action@v2
+      #  uses: docker/login-action@v3
       #  with:
       #    username: ${{ secrets.DOCKERHUB_USERNAME }}
       #    password: ${{ secrets.DOCKERHUB_TOKEN }}
       - name: Build and push (debian)
-        uses: docker/build-push-action@v4
+        uses: docker/build-push-action@v6
         with:
           push: true
           context: .
@@ -101,11 +101,12 @@ jobs:
           tags: devel
 
   docker-image-scratch:
-    needs: ['docker-image-debian']
+    # needs: ['docker-image-debian']
+    needs: ['build-release']
     runs-on: ubuntu-22.04
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 1
       - name: Restore cache
@@ -117,7 +118,7 @@ jobs:
         run: mv ${{ env.TARGET_DIR }}/release/static-web-server ./docker/devel/
       - name: Docker meta scratch
         id: meta_scratch
-        uses: docker/metadata-action@v4
+        uses: docker/metadata-action@v5
         with:
           images: |
             joseluisq/static-web-server
@@ -125,18 +126,18 @@ jobs:
           tags: |
             type=edge,branch=master
       - name: Login to ghcr.io
-        uses: docker/login-action@v2
+        uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       #- name: Login to DockerHub
-      #  uses: docker/login-action@v2
+      #  uses: docker/login-action@v3
       #  with:
       #    username: ${{ secrets.DOCKERHUB_USERNAME }}
       #    password: ${{ secrets.DOCKERHUB_TOKEN }}
       - name: Build and push (scratch)
-        uses: docker/build-push-action@v4
+        uses: docker/build-push-action@v6
         with:
           push: true
           context: .
