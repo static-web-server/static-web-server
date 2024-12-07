@@ -50,6 +50,8 @@ jobs:
     needs: ['build-release']
     runs-on: ubuntu-22.04
     steps:
+      - name: Test
+        run: ls -la .
       - name: Checkout repository
         uses: actions/checkout@v3
         with:
@@ -88,7 +90,7 @@ jobs:
           context: .
           platforms: linux/amd64
           file: ./docker/devel/Dockerfile.debian
-          tags: ${{ steps.meta_debian.outputs.tags }}
+          tags: devel
           build-args: |
             SERVER_VERSION=${{ env.SERVER_VERSION }}
 
@@ -131,6 +133,6 @@ jobs:
           context: .
           platforms: linux/amd64
           file: ./docker/devel/Dockerfile.scratch
-          tags: ${{ steps.meta_scratch.outputs.tags }}
+          tags: devel
           build-args: |
             SERVER_VERSION=devel
