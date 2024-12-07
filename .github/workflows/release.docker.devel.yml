@@ -12,6 +12,37 @@ on:
       - Cargo.toml
       - src/**
 jobs:
+  build-release:
+    runs-on: ubuntu-22.04
+    env:
+      CARGO_BIN: cargo
+      # When CARGO_BIN is set to CROSS, this is set to `--target matrix.target`.
+      TARGET_FLAGS: ""
+      # When CARGO_BIN is set to CROSS, TARGET_DIR includes matrix.target.
+      TARGET_DIR: ./target
+      # Emit backtraces on panics.
+      RUST_BACKTRACE: 1
+      # SWS features for Cargo build
+      CARGO_FEATURES: "--features=all"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 1
+      - name: Install Linux/BSD tools
+        run: scripts/ci/install_tools.sh --target=x86_64-unknown-linux-gnu
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+          target: x86_64-unknown-linux-gnu
+      - name: Show command used for Cargo
+        run: |
+          echo "cargo command is: ${{ env.CARGO_BIN }}"
+          echo "target flag is: ${{ env.TARGET_FLAGS }}"
+          echo "target dir is: ${{ env.TARGET_DIR }}"
+      - name: Build release binary
+        run: ${{ env.CARGO_BIN }} build --bin static-web-server -vv --release ${{ env.CARGO_FEATURES }} ${{ env.TARGET_FLAGS }}
   docker-image-alpine:
     runs-on: ubuntu-22.04
     steps:
@@ -35,9 +66,7 @@ jobs:
             latest=false
             suffix=-alpine
           tags: |
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=semver,pattern={{major}}
+            devel
       -
         name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
