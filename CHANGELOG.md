@@ -7,6 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _**Note:** See changelog for v1 under the [1.x](https://github.com/static-web-server/static-web-server/blob/1.x/CHANGELOG.md) branch._
 
+## v2.34.0 - 2024-12-04
+
+This new `v2.34.0` release brings several security and bug fixes. Better `X-Forwarded-For` handling and other improvements.
+
+__Breaking__
+
+- **URL Redirects/Rewrites:** Single Glob wildcard (`*`) will no longer match a path separator (`/`) `source` but double wildcard (`**`) can be used instead if wanted. See docs below.
+- **Log Remote Address:** `log-remote-address` option will no longer logging from the `X-Forwarded-For` header by default. It has to be opted-in along with the new `log-forwarded-for` option. See docs below.
+
+__Fixes__
+
+- [93479ba](https://github.com/static-web-server/static-web-server/commit/93479ba) Bugfix/security dependency updates including tokio, rustls, regex, tracing, flate2, serde, async-compression and other crates. PR [#502](https://github.com/static-web-server/static-web-server/pull/502).
+- [4ed4bb4](https://github.com/static-web-server/static-web-server/commit/4ed4bb4) Docker: Update Alpine (3.19.4) and Debian (12.8) Docker images. PR [#505](https://github.com/static-web-server/static-web-server/pull/505).
+- [0768c20](https://github.com/static-web-server/static-web-server/commit/0768c20) CI: Update deprecated `macos-12` Github Actions runner to `macos-14`.
+
+__Features__
+
+- [13e3f38](https://github.com/static-web-server/static-web-server/commit/13e3f38) Better `X-Forwarded-For` handling via the new `log-forwarded-for` and `trusted-proxies` options. PR [#495](https://github.com/static-web-server/static-web-server/pull/495) by [@Jeidnx](https://github.com/Jeidnx). See [docs](https://static-web-server.net/features/logging/#log-remote-addresses).
+
+__Refactorings__
+
+- [96ed7df](https://github.com/static-web-server/static-web-server/commit/96ed7df) **breaking:** Prevent single Glob wildcard (`*`) from matching a path separator in URL Redirect's `source`. PR [#501](https://github.com/static-web-server/static-web-server/pull/501) by [@mschoettle](https://github.com/mschoettle). See [docs](https://static-web-server.net/features/url-redirects/).
+- [2737f4c](https://github.com/static-web-server/static-web-server/commit/2737f4c) **breaking:** Prevent single Glob wildcard (`*`) from matching a path separator in URL Rewrite's `source`. PR [#506](https://github.com/static-web-server/static-web-server/pull/506) by [@mschoettle](https://github.com/mschoettle). See [docs](https://static-web-server.net/features/url-rewrites/).
+- [5516b6a](https://github.com/static-web-server/static-web-server/commit/5516b6a) Misc: Improve tests for URL Redirects feature. PR [#503](https://github.com/static-web-server/static-web-server/pull/503) by [@mschoettle](https://github.com/mschoettle).
+
+__Docs__
+
+- [e1a73c0](https://github.com/static-web-server/static-web-server/commit/e1a73c0) Add contributing, code of conduct and code guidelines pages.
+- [12387a8](https://github.com/static-web-server/static-web-server/commit/12387a8) Improve docs configuration and fix some anchor links. PR [#504](https://github.com/static-web-server/static-web-server/pull/504) by [@mschoettle](https://github.com/mschoettle). See [docs](https://static-web-server.net/).
+- [cd11bd6](https://github.com/static-web-server/static-web-server/commit/cd11bd6) Replace deprecated TrueNAS Scale option with TrueCharts. PR [#486](https://github.com/static-web-server/static-web-server/pull/486) by [@ctag](https://github.com/ctag). See [docs](https://static-web-server.net/features/docker/#truecharts).
+
+For more details see the [v2.34.0 milestone](https://github.com/static-web-server/static-web-server/milestone/25?closed=1) and the full changelog [v2.33.1...v2.34.0](https://github.com/static-web-server/static-web-server/compare/v2.33.1...v2.34.0).
+
 ## v2.33.1 - 2024-11-02
 
 This new `v2.33.1` release brings several security and bug fixes as well as other minor improvements.

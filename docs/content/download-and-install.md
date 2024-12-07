@@ -1,13 +1,13 @@
 <!-- Content generated. DO NOT EDIT. -->
 # Download and Install
 
-Latest **v2.33.1** release `2024-11-02` ([changelog](https://github.com/static-web-server/static-web-server/releases/tag/v2.33.1), [sha256sum](https://github.com/static-web-server/static-web-server/releases/download/v2.33.1/static-web-server-v2.33.1-SHA256SUM))
+Latest **v2.34.0** release `2024-12-04` ([changelog](https://github.com/static-web-server/static-web-server/releases/tag/v2.34.0), [sha256sum](https://github.com/static-web-server/static-web-server/releases/download/v2.34.0/static-web-server-v2.34.0-SHA256SUM))
 
 <div class="featured-downloads">
 
-<a class="md-button md-button-sm" href="https://github.com/static-web-server/static-web-server/releases/download/v2.33.1/static-web-server-v2.33.1-x86_64-unknown-linux-gnu.tar.gz">Linux 64-bit</a> <a class="md-button md-button-sm" href="https://github.com/static-web-server/static-web-server/releases/download/v2.33.1/static-web-server-v2.33.1-x86_64-apple-darwin.tar.gz">macOS 64-bit</a>
-<a class="md-button md-button-sm" href="https://github.com/static-web-server/static-web-server/releases/download/v2.33.1/static-web-server-v2.33.1-x86_64-pc-windows-msvc.zip">Windows 64-bit</a>
-<a class="md-button md-button-sm" href="https://github.com/static-web-server/static-web-server/releases/download/v2.33.1/static-web-server-v2.33.1-x86_64-unknown-freebsd.tar.gz">FreeBSD 64-bit</a>
+<a class="md-button md-button-sm" href="https://github.com/static-web-server/static-web-server/releases/download/v2.34.0/static-web-server-v2.34.0-x86_64-unknown-linux-gnu.tar.gz">Linux 64-bit</a> <a class="md-button md-button-sm" href="https://github.com/static-web-server/static-web-server/releases/download/v2.34.0/static-web-server-v2.34.0-x86_64-apple-darwin.tar.gz">macOS 64-bit</a>
+<a class="md-button md-button-sm" href="https://github.com/static-web-server/static-web-server/releases/download/v2.34.0/static-web-server-v2.34.0-x86_64-pc-windows-msvc.zip">Windows 64-bit</a>
+<a class="md-button md-button-sm" href="https://github.com/static-web-server/static-web-server/releases/download/v2.34.0/static-web-server-v2.34.0-x86_64-unknown-freebsd.tar.gz">FreeBSD 64-bit</a>
 
 </div>
 
@@ -31,7 +31,7 @@ curl --proto '=https' --tlsv1.2 -sSfL https://get.static-web-server.net | sh
 Alternatively, you can install a specific version of SWS to a custom location by setting environment variables.
 
 ```sh
-export SWS_INSTALL_VERSION="2.33.1" # full list at https://github.com/static-web-server/static-web-server/tags
+export SWS_INSTALL_VERSION="2.34.0" # full list at https://github.com/static-web-server/static-web-server/tags
 export SWS_INSTALL_DIR="~/.local/bin"
 curl --proto '=https' --tlsv1.2 -sSfL https://get.static-web-server.net | sh
 ```
@@ -103,7 +103,7 @@ Via [Wasmer](https://wasmer.io/wasmer/static-web-server/)
 
 ```sh
 wasmer run wasmer/static-web-server --net --enable-threads --mapdir /public:/my/host/dir -- --port 8787
-``` 
+```
 
 ## Binaries
 
@@ -111,69 +111,69 @@ Pre-compiled binaries grouped by CPU architectures.
 
 ### x86_64
 
-- [static-web-server-v2.33.1-x86_64-apple-darwin.tar.gz](https://github.com/static-web-server/static-web-server/releases/download/v2.33.1/static-web-server-v2.33.1-x86_64-apple-darwin.tar.gz)<br>
-<small>**SHA256SUM:** `ca8499065c6b5fbe3c7bbe69dfb02eed27d2779a38c43373f916f41e2188240b`</small>
-- [static-web-server-v2.33.1-x86_64-pc-windows-gnu.zip](https://github.com/static-web-server/static-web-server/releases/download/v2.33.1/static-web-server-v2.33.1-x86_64-pc-windows-gnu.zip)<br>
-<small>**SHA256SUM:** `bdcd36e1075850feef581d32f113a4e36aa4c74772fb47141b0f437cf17a48ab`</small>
-- [static-web-server-v2.33.1-x86_64-pc-windows-msvc.zip](https://github.com/static-web-server/static-web-server/releases/download/v2.33.1/static-web-server-v2.33.1-x86_64-pc-windows-msvc.zip)<br>
-<small>**SHA256SUM:** `dd16fe2f1cd18b05c290ef46477f58757d03ccd2d1fa2f1b34d2196e3b8a639a`</small>
-- [static-web-server-v2.33.1-x86_64-unknown-freebsd.tar.gz](https://github.com/static-web-server/static-web-server/releases/download/v2.33.1/static-web-server-v2.33.1-x86_64-unknown-freebsd.tar.gz)<br>
-<small>**SHA256SUM:** `abb81d3fce9232abc48cee03a69e56b40feeffa93ba1225d93c433dcfb1f36aa`</small>
-- [static-web-server-v2.33.1-x86_64-unknown-linux-gnu.tar.gz](https://github.com/static-web-server/static-web-server/releases/download/v2.33.1/static-web-server-v2.33.1-x86_64-unknown-linux-gnu.tar.gz)<br>
-<small>**SHA256SUM:** `9a1cbad49f7cb5499e7411d764e5b014e7cdc5f6abad29b11bd8a22b808dce5b`</small>
-- [static-web-server-v2.33.1-x86_64-unknown-linux-musl.tar.gz](https://github.com/static-web-server/static-web-server/releases/download/v2.33.1/static-web-server-v2.33.1-x86_64-unknown-linux-musl.tar.gz)<br>
-<small>**SHA256SUM:** `9ada6578e8a3992925c6c5cac729c11c6a10be550599167f40c57d9953db2712`</small>
-- [static-web-server-v2.33.1-x86_64-unknown-netbsd.tar.gz](https://github.com/static-web-server/static-web-server/releases/download/v2.33.1/static-web-server-v2.33.1-x86_64-unknown-netbsd.tar.gz)<br>
-<small>**SHA256SUM:** `dff0426f2af17a9455116345fcd5073f8448fceec81e3a301812db8e892f7836`</small>
-- [static-web-server-v2.33.1-x86_64-unknown-illumos.tar.gz](https://github.com/static-web-server/static-web-server/releases/download/v2.33.1/static-web-server-v2.33.1-x86_64-unknown-illumos.tar.gz)<br>
-<small>**SHA256SUM:** `ba5f2096d71cdc062a814251728d16b6a97643cc79e2273fe3a1c32a9d048140`</small>
+- [static-web-server-v2.34.0-x86_64-apple-darwin.tar.gz](https://github.com/static-web-server/static-web-server/releases/download/v2.34.0/static-web-server-v2.34.0-x86_64-apple-darwin.tar.gz)<br>
+<small>**SHA256SUM:** `c11bb6315d897f0dbd4be461694062e73b968141e208159e6af85ee4707b7a11`</small>
+- [static-web-server-v2.34.0-x86_64-pc-windows-gnu.zip](https://github.com/static-web-server/static-web-server/releases/download/v2.34.0/static-web-server-v2.34.0-x86_64-pc-windows-gnu.zip)<br>
+<small>**SHA256SUM:** `34fb2a3d34846330946e2e962483f747edec520d4e740d8346df9b4955cf871d`</small>
+- [static-web-server-v2.34.0-x86_64-pc-windows-msvc.zip](https://github.com/static-web-server/static-web-server/releases/download/v2.34.0/static-web-server-v2.34.0-x86_64-pc-windows-msvc.zip)<br>
+<small>**SHA256SUM:** `ea8199311e4564bd481f6807d8cfa5e5ed2776fa0748a1f18b3edfbf83c7d7e8`</small>
+- [static-web-server-v2.34.0-x86_64-unknown-freebsd.tar.gz](https://github.com/static-web-server/static-web-server/releases/download/v2.34.0/static-web-server-v2.34.0-x86_64-unknown-freebsd.tar.gz)<br>
+<small>**SHA256SUM:** `62000f4ccdde3336f5c4da97f3386ac214e8152f236daef03b787fe4c504baf6`</small>
+- [static-web-server-v2.34.0-x86_64-unknown-linux-gnu.tar.gz](https://github.com/static-web-server/static-web-server/releases/download/v2.34.0/static-web-server-v2.34.0-x86_64-unknown-linux-gnu.tar.gz)<br>
+<small>**SHA256SUM:** `ea19d9be9abcdea29c4eaad182c62689808db654b01b5aac1baff07329b38514`</small>
+- [static-web-server-v2.34.0-x86_64-unknown-linux-musl.tar.gz](https://github.com/static-web-server/static-web-server/releases/download/v2.34.0/static-web-server-v2.34.0-x86_64-unknown-linux-musl.tar.gz)<br>
+<small>**SHA256SUM:** `b5360c8332f3e7f15735321388e1a5c60be18dd66c73b51edd35ee7880f5bdfa`</small>
+- [static-web-server-v2.34.0-x86_64-unknown-netbsd.tar.gz](https://github.com/static-web-server/static-web-server/releases/download/v2.34.0/static-web-server-v2.34.0-x86_64-unknown-netbsd.tar.gz)<br>
+<small>**SHA256SUM:** `407f465e0b7caa493a639b7d90b1a63e865791b2fc20e8c432607c1140eb1da2`</small>
+- [static-web-server-v2.34.0-x86_64-unknown-illumos.tar.gz](https://github.com/static-web-server/static-web-server/releases/download/v2.34.0/static-web-server-v2.34.0-x86_64-unknown-illumos.tar.gz)<br>
+<small>**SHA256SUM:** `232b8006f64dcb75f9ee04174957e9ec07deba9cb81137f82fd630eaf8f56146`</small>
 
 ### ARM64
 
-- [static-web-server-v2.33.1-aarch64-unknown-linux-gnu.tar.gz](https://github.com/static-web-server/static-web-server/releases/download/v2.33.1/static-web-server-v2.33.1-aarch64-unknown-linux-gnu.tar.gz)<br>
-<small>**SHA256SUM:** `6b7b1fdcd521f9e7a85c3aa4e9fc6cee0f54e8055e7e4dc8e148fe15fc9843ee`</small>
-- [static-web-server-v2.33.1-aarch64-unknown-linux-musl.tar.gz](https://github.com/static-web-server/static-web-server/releases/download/v2.33.1/static-web-server-v2.33.1-aarch64-unknown-linux-musl.tar.gz)<br>
-<small>**SHA256SUM:** `7ce44c4c0875a831def185c44973bbfed9cb92adc7b2eacf717687fa1cb696c2`</small>
-- [static-web-server-v2.33.1-aarch64-apple-darwin.tar.gz](https://github.com/static-web-server/static-web-server/releases/download/v2.33.1/static-web-server-v2.33.1-aarch64-apple-darwin.tar.gz)<br>
-<small>**SHA256SUM:** `33c0fb54a6d88abc496a441c2822d60a498cdf1f3da0ce36beefccae071e4ba0`</small>
-- [static-web-server-v2.33.1-aarch64-linux-android.tar.gz](https://github.com/static-web-server/static-web-server/releases/download/v2.33.1/static-web-server-v2.33.1-aarch64-linux-android.tar.gz)<br>
-<small>**SHA256SUM:** `26e47cb2df989f9252743128b40a62191d7ffb1207ebda204d51bb9384e18b0f`</small>
-- [static-web-server-v2.33.1-aarch64-pc-windows-msvc.zip](https://github.com/static-web-server/static-web-server/releases/download/v2.33.1/static-web-server-v2.33.1-aarch64-pc-windows-msvc.zip)<br>
-<small>**SHA256SUM:** `26622a404447706308fcaf63f7342a30b861cf9d4089f9c3816c7b820c8160ba`</small>
+- [static-web-server-v2.34.0-aarch64-unknown-linux-gnu.tar.gz](https://github.com/static-web-server/static-web-server/releases/download/v2.34.0/static-web-server-v2.34.0-aarch64-unknown-linux-gnu.tar.gz)<br>
+<small>**SHA256SUM:** `846685f2875fb2dbe3dac49845737f964fc8bf7f0f6a28756e10a4b7850e00a9`</small>
+- [static-web-server-v2.34.0-aarch64-unknown-linux-musl.tar.gz](https://github.com/static-web-server/static-web-server/releases/download/v2.34.0/static-web-server-v2.34.0-aarch64-unknown-linux-musl.tar.gz)<br>
+<small>**SHA256SUM:** `17b6d321a368d8777b54a932345fe9b157d357d60edae30341be1457f2f713d4`</small>
+- [static-web-server-v2.34.0-aarch64-apple-darwin.tar.gz](https://github.com/static-web-server/static-web-server/releases/download/v2.34.0/static-web-server-v2.34.0-aarch64-apple-darwin.tar.gz)<br>
+<small>**SHA256SUM:** `c7a9328ae913fbc110bddefbce8a98748329a977f9793aae6e8c40b58efbd19a`</small>
+- [static-web-server-v2.34.0-aarch64-linux-android.tar.gz](https://github.com/static-web-server/static-web-server/releases/download/v2.34.0/static-web-server-v2.34.0-aarch64-linux-android.tar.gz)<br>
+<small>**SHA256SUM:** `1316896add4e3727b47efa346ed73a2edde24e6d83b669988b7eeba0785bdade`</small>
+- [static-web-server-v2.34.0-aarch64-pc-windows-msvc.zip](https://github.com/static-web-server/static-web-server/releases/download/v2.34.0/static-web-server-v2.34.0-aarch64-pc-windows-msvc.zip)<br>
+<small>**SHA256SUM:** `741e8cd3f78f6e24951ff532837b16665f1956d02ae5bdb64555b02a5e9b03fd`</small>
 
 ### x86
 
-- [static-web-server-v2.33.1-i686-pc-windows-msvc.zip](https://github.com/static-web-server/static-web-server/releases/download/v2.33.1/static-web-server-v2.33.1-i686-pc-windows-msvc.zip)<br>
-<small>**SHA256SUM:** `135cf2315c4dc3700be66f3b7f8c15e0dff7b1344d403e42bff6e6630d9c443e`</small>
-- [static-web-server-v2.33.1-i686-unknown-freebsd.tar.gz](https://github.com/static-web-server/static-web-server/releases/download/v2.33.1/static-web-server-v2.33.1-i686-unknown-freebsd.tar.gz)<br>
-<small>**SHA256SUM:** `b14e3c30ee7b665e2766e0352533ae5758949737449d52b1ed8815e4b5dcac9d`</small>
-- [static-web-server-v2.33.1-i686-unknown-linux-gnu.tar.gz](https://github.com/static-web-server/static-web-server/releases/download/v2.33.1/static-web-server-v2.33.1-i686-unknown-linux-gnu.tar.gz)<br>
-<small>**SHA256SUM:** `00775b48c71e9953de814681256cef7fe413d9960d613aefafff090fe78b08fc`</small>
-- [static-web-server-v2.33.1-i686-unknown-linux-musl.tar.gz](https://github.com/static-web-server/static-web-server/releases/download/v2.33.1/static-web-server-v2.33.1-i686-unknown-linux-musl.tar.gz)<br>
-<small>**SHA256SUM:** `83b8ddf0c8bc562b06df71537aa4fbf01a3258c45bf6985b0e6fcc0aa873de28`</small>
+- [static-web-server-v2.34.0-i686-pc-windows-msvc.zip](https://github.com/static-web-server/static-web-server/releases/download/v2.34.0/static-web-server-v2.34.0-i686-pc-windows-msvc.zip)<br>
+<small>**SHA256SUM:** `9dff84a007f05348c93228f092c8827801afd872acc8768507136d6329d7a0c5`</small>
+- [static-web-server-v2.34.0-i686-unknown-freebsd.tar.gz](https://github.com/static-web-server/static-web-server/releases/download/v2.34.0/static-web-server-v2.34.0-i686-unknown-freebsd.tar.gz)<br>
+<small>**SHA256SUM:** `06d75bd2e109a4787bdda5cfff99705e39301f790961dc9a62ee7dc80aa49677`</small>
+- [static-web-server-v2.34.0-i686-unknown-linux-gnu.tar.gz](https://github.com/static-web-server/static-web-server/releases/download/v2.34.0/static-web-server-v2.34.0-i686-unknown-linux-gnu.tar.gz)<br>
+<small>**SHA256SUM:** `5f7f877a0385844192e1d55524cf95299962328ae52a34f242b17927c63b3734`</small>
+- [static-web-server-v2.34.0-i686-unknown-linux-musl.tar.gz](https://github.com/static-web-server/static-web-server/releases/download/v2.34.0/static-web-server-v2.34.0-i686-unknown-linux-musl.tar.gz)<br>
+<small>**SHA256SUM:** `46b6ef7f3da3a88f10d3d54f8d919bdc703abc34748609483f9dc741a63cf1ee`</small>
 
 ### ARM
 
-- [static-web-server-v2.33.1-arm-unknown-linux-gnueabihf.tar.gz](https://github.com/static-web-server/static-web-server/releases/download/v2.33.1/static-web-server-v2.33.1-arm-unknown-linux-gnueabihf.tar.gz)<br>
-<small>**SHA256SUM:** `032d79f06dfcb549ce1d9a823e8072c622862c44114eb77236dd44fce1efa7e8`</small>
-- [static-web-server-v2.33.1-arm-unknown-linux-musleabihf.tar.gz](https://github.com/static-web-server/static-web-server/releases/download/v2.33.1/static-web-server-v2.33.1-arm-unknown-linux-musleabihf.tar.gz)<br>
-<small>**SHA256SUM:** `75dcefb85ee98f08e2297a9b014e900c12e67cffccb21ac1b792969a4f3e734c`</small>
-- [static-web-server-v2.33.1-armv7-unknown-linux-musleabihf.tar.gz](https://github.com/static-web-server/static-web-server/releases/download/v2.33.1/static-web-server-v2.33.1-armv7-unknown-linux-musleabihf.tar.gz)<br>
-<small>**SHA256SUM:** `b9a75022c2559132d3c50ae0ee5b9b52401f5c4e9870195c411a342b1900f893`</small>
+- [static-web-server-v2.34.0-arm-unknown-linux-gnueabihf.tar.gz](https://github.com/static-web-server/static-web-server/releases/download/v2.34.0/static-web-server-v2.34.0-arm-unknown-linux-gnueabihf.tar.gz)<br>
+<small>**SHA256SUM:** `0817ee4c08810036f3418c4ee05f9ee642121917fdf7a87c4f0acbd57feaaee9`</small>
+- [static-web-server-v2.34.0-arm-unknown-linux-musleabihf.tar.gz](https://github.com/static-web-server/static-web-server/releases/download/v2.34.0/static-web-server-v2.34.0-arm-unknown-linux-musleabihf.tar.gz)<br>
+<small>**SHA256SUM:** `0d0e08a3b0e5a51ce0eb77e2c6456554add19de86f23614597d558aa2f45bcfa`</small>
+- [static-web-server-v2.34.0-armv7-unknown-linux-musleabihf.tar.gz](https://github.com/static-web-server/static-web-server/releases/download/v2.34.0/static-web-server-v2.34.0-armv7-unknown-linux-musleabihf.tar.gz)<br>
+<small>**SHA256SUM:** `579bd2a9ca795237f91ff6f17bbca2356c0203f320ed777e9a20d4413e5dd709`</small>
 
 ### PowerPC
 
-- [static-web-server-v2.33.1-powerpc64le-unknown-linux-gnu.tar.gz](https://github.com/static-web-server/static-web-server/releases/download/v2.33.1/static-web-server-v2.33.1-powerpc64le-unknown-linux-gnu.tar.gz)<br>
-<small>**SHA256SUM:** `d005c2762c0c7f7f22a80a2d0577755157063232e920f05021edf8bd393a8b1c`</small>
+- [static-web-server-v2.34.0-powerpc64le-unknown-linux-gnu.tar.gz](https://github.com/static-web-server/static-web-server/releases/download/v2.34.0/static-web-server-v2.34.0-powerpc64le-unknown-linux-gnu.tar.gz)<br>
+<small>**SHA256SUM:** `228bae47bfedfb19653f3bfa370091e5ba0887a88909401cf7949cfdcdf5f486`</small>
 
 ### S390X
 
-- [static-web-server-v2.33.1-s390x-unknown-linux-gnu.tar.gz](https://github.com/static-web-server/static-web-server/releases/download/v2.33.1/static-web-server-v2.33.1-s390x-unknown-linux-gnu.tar.gz)<br>
-<small>**SHA256SUM:** `41e8be6e69da11111875e8fb948ced513a926712740e4e1a299784b1e87cc679`</small>
+- [static-web-server-v2.34.0-s390x-unknown-linux-gnu.tar.gz](https://github.com/static-web-server/static-web-server/releases/download/v2.34.0/static-web-server-v2.34.0-s390x-unknown-linux-gnu.tar.gz)<br>
+<small>**SHA256SUM:** `b59dbf00d99097d04820f24f3c3f060e070454b9044ec2e28f64848b537bb3dd`</small>
 
 ## Source files
 
-- [static-web-server-2.33.1.tar.gz](https://github.com/static-web-server/static-web-server/archive/refs/tags/v2.33.1.tar.gz)<br>
-<small>**SHA256SUM:** `f23865f4245070f7ec3a549c0dc527f2d73ef23f6fc518f3b568772eaa021b6c`</small>
-- [static-web-server-2.33.1.zip](https://github.com/static-web-server/static-web-server/archive/refs/tags/v2.33.1.zip)<br>
-<small>**SHA256SUM:** `4f3844fb8d203a305eb2be20ae86029a06769c74856d70f615a35dbed5009c17`</small>
+- [static-web-server-2.34.0.tar.gz](https://github.com/static-web-server/static-web-server/archive/refs/tags/v2.34.0.tar.gz)<br>
+<small>**SHA256SUM:** `f0b6ef64f68445c98f1ffd22265d5675e64157e572431fa4fd362970199d0b5e`</small>
+- [static-web-server-2.34.0.zip](https://github.com/static-web-server/static-web-server/archive/refs/tags/v2.34.0.zip)<br>
+<small>**SHA256SUM:** `7f6ac3d0af0ee10a119b802f3403c38e8b34ffaf3ebcdd8f0dcc932be26fd9da`</small>

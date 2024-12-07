@@ -139,11 +139,11 @@ jobs:
             rust: stable
             target: x86_64-unknown-illumos
           - build: macos
-            os: macos-12
+            os: macos-14
             rust: stable
             target: x86_64-apple-darwin
           - build: macos-arm64
-            os: macos-12
+            os: macos-14
             rust: stable
             target: aarch64-apple-darwin
           - build: windows-msvc
