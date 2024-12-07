@@ -55,6 +55,10 @@ jobs:
     needs: ['build-release']
     runs-on: ubuntu-22.04
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 1
       - name: Restore cache
         uses: actions/cache/restore@v4
         with:
@@ -62,10 +66,8 @@ jobs:
           key: cache-${{ github.sha }}
       - name: Test
         run: ls -la . && ls -la ./target/release
-      - name: Checkout repository
-        uses: actions/checkout@v3
-        with:
-          fetch-depth: 1
+      - name: Move binary
+        run: mv ${{ env.TARGET_DIR }}/release/static-web-server ./docker/devel/
       - name: Docker meta debian
         id: meta_debian
         uses: docker/metadata-action@v4
@@ -102,15 +104,17 @@ jobs:
     needs: ['docker-image-debian']
     runs-on: ubuntu-22.04
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 1
       - name: Restore cache
         uses: actions/cache/restore@v4
         with:
           path: ${{ env.TARGET_DIR }}/release
           key: cache-${{ github.sha }}
-      - name: Checkout repository
-        uses: actions/checkout@v3
-        with:
-          fetch-depth: 1
+      - name: Move binary
+        run: mv ${{ env.TARGET_DIR }}/release/static-web-server ./docker/devel/
       - name: Docker meta scratch
         id: meta_scratch
         uses: docker/metadata-action@v4
