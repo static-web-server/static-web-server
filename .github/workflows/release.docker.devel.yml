@@ -121,10 +121,11 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: |
-            joseluisq/static-web-server
+            # joseluisq/static-web-server
             ghcr.io/static-web-server/static-web-server
           tags: |
-            type=edge,branch=master
+            # type=edge,branch=$repo.default_branch
+            type=ref,event=branch
       - name: Login to ghcr.io
         uses: docker/login-action@v3
         with:
@@ -136,10 +137,6 @@ jobs:
       #  with:
       #    username: ${{ secrets.DOCKERHUB_USERNAME }}
       #    password: ${{ secrets.DOCKERHUB_TOKEN }}
-      - name: Test
-        run: |
-          echo ${{ steps.meta_scratch.outputs.tags }}
-          echo ${{ steps.meta_scratch.outputs.images }}
       - name: Build and push (scratch)
         uses: docker/build-push-action@v6
         with:
@@ -147,5 +144,5 @@ jobs:
           context: .
           platforms: linux/amd64
           file: ./docker/devel/Dockerfile.scratch
-          tags: devel
-          # tags: ${{ steps.meta_alpine.outputs.images }}
+          # tags: devel
+          tags: ${{ steps.meta_scratch.outputs.tags }}
