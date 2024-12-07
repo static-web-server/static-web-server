@@ -11,15 +11,15 @@ on:
       - Cargo.lock
       - Cargo.toml
       - src/**
+
+env:
+  TARGET_DIR: ./target
+
 jobs:
   build-release:
     runs-on: ubuntu-22.04
     env:
       CARGO_BIN: cargo
-      # When CARGO_BIN is set to CROSS, this is set to `--target matrix.target`.
-      TARGET_FLAGS: ""
-      # When CARGO_BIN is set to CROSS, TARGET_DIR includes matrix.target.
-      TARGET_DIR: ./target
       # Emit backtraces on panics.
       RUST_BACKTRACE: 1
       # SWS features for Cargo build
@@ -42,16 +42,27 @@ jobs:
           echo "target flag is: ${{ env.TARGET_FLAGS }}"
           echo "target dir is: ${{ env.TARGET_DIR }}"
       - name: Build release binary
-        run: ${{ env.CARGO_BIN }} build --bin static-web-server -vv --release ${{ env.CARGO_FEATURES }} ${{ env.TARGET_FLAGS }}
-      - name: Test
-        run: ls -la .
+        run: |
+          ${{ env.CARGO_BIN }} build --bin static-web-server -vv --release ${{ env.CARGO_FEATURES }}
+      - name: Cache binary
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.TARGET_DIR }}
+          # short-lived cache: https://github.com/actions/cache/blob/main/caching-strategies.md#creating-a-short-lived-cache
+          key: cache-${{ github.sha }}
+
 
   docker-image-debian:
     needs: ['build-release']
     runs-on: ubuntu-22.04
     steps:
+      - name: Restore cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ env.TARGET_DIR }}
+          key: cache-${{ github.sha }}
       - name: Test
-        run: ls -la .
+        run: ls -la . && ls -la ./target
       - name: Checkout repository
         uses: actions/checkout@v3
         with:
@@ -79,10 +90,6 @@ jobs:
       #  with:
       #    username: ${{ secrets.DOCKERHUB_USERNAME }}
       #    password: ${{ secrets.DOCKERHUB_TOKEN }}
-      - name: Prepare Docker envs
-        shell: bash
-        run: |
-          echo "SERVER_VERSION=devel" >> $GITHUB_ENV
       - name: Build and push (debian)
         uses: docker/build-push-action@v4
         with:
@@ -91,13 +98,18 @@ jobs:
           platforms: linux/amd64
           file: ./docker/devel/Dockerfile.debian
           tags: devel
-          build-args: |
-            SERVER_VERSION=${{ env.SERVER_VERSION }}
 
   docker-image-scratch:
     needs: ['docker-image-debian']
     runs-on: ubuntu-22.04
     steps:
+      - name: Restore cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ env.TARGET_DIR }}
+          key: cache-${{ github.sha }}
+      - name: Test
+        run: ls -la . && ls -la ./target
       - name: Checkout repository
         uses: actions/checkout@v3
         with:
@@ -122,10 +134,6 @@ jobs:
       #  with:
       #    username: ${{ secrets.DOCKERHUB_USERNAME }}
       #    password: ${{ secrets.DOCKERHUB_TOKEN }}
-      - name: Prepare Docker envs
-        shell: bash
-        run: |
-          echo "SERVER_VERSION=devel" >> $GITHUB_ENV
       - name: Build and push (scratch)
         uses: docker/build-push-action@v4
         with:
@@ -134,5 +142,3 @@ jobs:
           platforms: linux/amd64
           file: ./docker/devel/Dockerfile.scratch
           tags: devel
-          build-args: |
-            SERVER_VERSION=devel
