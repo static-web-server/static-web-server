@@ -136,6 +136,10 @@ jobs:
       #  with:
       #    username: ${{ secrets.DOCKERHUB_USERNAME }}
       #    password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Test
+        run: |
+          echo ${{ steps.meta_scratch.outputs.tags }}
+          echo ${{ steps.meta_scratch.outputs.images }}
       - name: Build and push (scratch)
         uses: docker/build-push-action@v6
         with:
@@ -144,3 +148,4 @@ jobs:
           platforms: linux/amd64
           file: ./docker/devel/Dockerfile.scratch
           tags: devel
+          # tags: ${{ steps.meta_alpine.outputs.images }}
