@@ -438,7 +438,7 @@ fn html_auto_index<'a>(
                                 }
                             }
                         }
-    
+
                         @if base_path != "/" {
                             tr {
                                 td colspan="3" {
@@ -448,7 +448,7 @@ fn html_auto_index<'a>(
                                 }
                             }
                         }
-    
+
                         @for entry in entries {
                             tr {
                                 td {
