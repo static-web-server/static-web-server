@@ -52,8 +52,10 @@ jobs:
 
 
   docker-image-debian:
-    # needs: ['build-release']
-    needs: ['docker-image-scratch']
+    needs: ['build-release']
+    permissions: 
+      contents: read
+      packages: write
     runs-on: ubuntu-22.04
     steps:
       - name: Checkout repository
@@ -69,29 +71,13 @@ jobs:
         run: ls -la . && ls -la ./target/release
       - name: Move binary
         run: mv ${{ env.TARGET_DIR }}/release/static-web-server ./docker/devel/
-      - name: Docker meta debian
-        id: meta_debian
-        uses: docker/metadata-action@v5
-        with:
-          images: |
-            # joseluisq/static-web-server
-            ghcr.io/static-web-server/static-web-server
-          flavor: |
-            latest=false
-            suffix=-debian
-          tags: |
-            type=edge,branch=master
+
       - name: Login to ghcr.io
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      #- name: Login to DockerHub
-      #  uses: docker/login-action@v3
-      #  with:
-      #    username: ${{ secrets.DOCKERHUB_USERNAME }}
-      #    password: ${{ secrets.DOCKERHUB_TOKEN }}
       - name: Build and push (debian)
         uses: docker/build-push-action@v6
         with:
@@ -99,11 +85,10 @@ jobs:
           context: .
           platforms: linux/amd64
           file: ./docker/devel/Dockerfile.debian
-          tags: devel
+          tags: ghcr.io/static-web-server/static-web-server:devel-debian
 
   docker-image-scratch:
-    # needs: ['docker-image-debian']
-    needs: ['build-release']
+    needs: ['docker-image-debian']
     permissions: 
       contents: read
       packages: write
@@ -120,27 +105,12 @@ jobs:
           key: cache-${{ github.sha }}
       - name: Move binary
         run: mv ${{ env.TARGET_DIR }}/release/static-web-server ./docker/devel/
-      - name: Docker meta scratch
-        id: meta_scratch
-        uses: docker/metadata-action@v5
-        with:
-          images: |
-            # joseluisq/static-web-server
-            ghcr.io/static-web-server/static-web-server
-          tags: |
-            type=edge,branch=$repo.default_branch
-            type=ref,event=pr
       - name: Login to ghcr.io
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      #- name: Login to DockerHub
-      #  uses: docker/login-action@v3
-      #  with:
-      #    username: ${{ secrets.DOCKERHUB_USERNAME }}
-      #    password: ${{ secrets.DOCKERHUB_TOKEN }}
       - name: Build and push (scratch)
         uses: docker/build-push-action@v6
         with:
@@ -148,5 +118,4 @@ jobs:
           context: .
           platforms: linux/amd64
           file: ./docker/devel/Dockerfile.scratch
-          # tags: devel
-          tags: ${{ steps.meta_scratch.outputs.tags }}
+          tags: ghcr.io/static-web-server/static-web-server:devel
