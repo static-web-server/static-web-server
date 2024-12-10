@@ -67,8 +67,6 @@ jobs:
         with:
           path: ${{ env.TARGET_DIR }}/release
           key: cache-${{ github.sha }}
-      - name: Test
-        run: ls -la . && ls -la ./target/release
       - name: Move binary
         run: mv ${{ env.TARGET_DIR }}/release/static-web-server ./docker/devel/
 
