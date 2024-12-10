@@ -104,6 +104,9 @@ jobs:
   docker-image-scratch:
     # needs: ['docker-image-debian']
     needs: ['build-release']
+    permissions: 
+      contents: read
+      packages: write
     runs-on: ubuntu-22.04
     steps:
       - name: Checkout repository
