@@ -1,0 +1,116 @@
+name: release-docker-devel
+
+on:
+  push:
+    branches:
+      - master-ci
+    paths:
+      - release.docker.devel.yml
+      - .cargo/config.toml
+      - Cargo.lock
+      - Cargo.toml
+      - src/**
+
+env:
+  TARGET_DIR: ./target
+
+jobs:
+  build-release:
+    runs-on: ubuntu-22.04
+    env:
+      CARGO_BIN: cargo
+      # Emit backtraces on panics.
+      RUST_BACKTRACE: 1
+      # SWS features for Cargo build
+      CARGO_FEATURES: "--features=all"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+          target: x86_64-unknown-linux-gnu
+      - name: Show command used for Cargo
+        run: |
+          echo "cargo command is: ${{ env.CARGO_BIN }}"
+          echo "target dir is: ${{ env.TARGET_DIR }}"
+      - name: Build release binary
+        run: |
+          ${{ env.CARGO_BIN }} build --bin static-web-server -vv --release ${{ env.CARGO_FEATURES }}
+      - name: Cache binary
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.TARGET_DIR }}/release
+          # short-lived cache: https://github.com/actions/cache/blob/main/caching-strategies.md#creating-a-short-lived-cache
+          key: cache-${{ github.sha }}
+
+
+  docker-image-debian:
+    needs: ['build-release']
+    permissions: 
+      contents: read
+      packages: write
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - name: Restore cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ env.TARGET_DIR }}/release
+          key: cache-${{ github.sha }}
+      - name: Move binary
+        run: mv ${{ env.TARGET_DIR }}/release/static-web-server ./docker/devel/
+
+      - name: Login to ghcr.io
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and push (debian)
+        uses: docker/build-push-action@v6
+        with:
+          push: true
+          context: .
+          platforms: linux/amd64
+          file: ./docker/devel/Dockerfile.debian
+          tags: ghcr.io/static-web-server/static-web-server:devel-debian
+
+  docker-image-scratch:
+    needs: ['docker-image-debian']
+    permissions: 
+      contents: read
+      packages: write
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - name: Restore cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ env.TARGET_DIR }}/release
+          key: cache-${{ github.sha }}
+      - name: Move binary
+        run: mv ${{ env.TARGET_DIR }}/release/static-web-server ./docker/devel/
+      - name: Login to ghcr.io
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and push (scratch)
+        uses: docker/build-push-action@v6
+        with:
+          push: true
+          context: .
+          platforms: linux/amd64
+          file: ./docker/devel/Dockerfile.scratch
+          tags: ghcr.io/static-web-server/static-web-server:devel
