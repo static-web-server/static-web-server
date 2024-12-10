@@ -1,0 +1,136 @@
+name: release-docker-devel
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - .github/workflows/release.docker.devel.yml
+      - .cargo/config.toml
+      - Cargo.lock
+      - Cargo.toml
+      - src/**
+
+env:
+  TARGET_DIR: ./target
+
+jobs:
+  build-release:
+    runs-on: ubuntu-22.04
+    env:
+      CARGO_BIN: cargo
+      # Emit backtraces on panics.
+      RUST_BACKTRACE: 1
+      # SWS features for Cargo build
+      CARGO_FEATURES: "--features=all"
+      # When CARGO_BIN is set to CROSS, this is set to `--target matrix.target`.
+      TARGET_FLAGS: ""
+    strategy:
+      matrix:
+        build:
+          # DOCKER: jobs just work only for one target.
+          # If multiple targets are needed then refactor the workflow and the 'devel' Dockerfile to be Docker Multiarch.
+          - linux-musl
+        include:
+        - build: linux-musl
+          arch: linux/amd64
+          rust: stable
+          target: x86_64-unknown-linux-musl
+
+    outputs:
+      target: ${{ steps.target.outputs.target }}
+      arch: ${{ steps.arch.outputs.arch }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ matrix.rust }}
+          target: ${{ matrix.target }}
+      - name: Set up Cross
+        shell: bash
+        run: |
+          echo "Installing cross..."
+          curl -sSL \
+            "https://github.com/cross-rs/cross/releases/download/v0.2.5/cross-${{ matrix.target }}.tar.gz" \
+            | sudo tar zxf - -C /usr/local/bin/ cross cross-util
+          cross -V
+          echo "CARGO_BIN=/usr/local/bin/cross" >> $GITHUB_ENV
+          echo "TARGET_FLAGS=--target=${{ matrix.target }}" >> $GITHUB_ENV
+          echo "TARGET_DIR=${{ env.TARGET_DIR }}/${{ matrix.target }}" >> $GITHUB_ENV
+
+      - name: Show command used for Cargo
+        run: |
+          echo "cargo command is: ${{ env.CARGO_BIN }}"
+          echo "target dir is: ${{ env.TARGET_DIR }}"
+      - name: Build release binary
+        run: |
+          ${{ env.CARGO_BIN }} build --bin static-web-server -vv --release ${{ env.CARGO_FEATURES }} ${{ env.TARGET_FLAGS }}
+      - name: Define target output
+        id: target
+        run: |
+          echo 'target=${{ matrix.target }}' >> "$GITHUB_OUTPUT"
+      - name: Define arch output
+        id: arch
+        run: |
+          echo 'arch=${{ matrix.arch }}' >> "$GITHUB_OUTPUT"
+      - name: Cache binary
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.TARGET_DIR }}/release
+          # short-lived cache: https://github.com/actions/cache/blob/main/caching-strategies.md#creating-a-short-lived-cache
+          key: cache-${{ github.sha }}-${{ matrix.target }}
+
+  # NOTE: only one arch/target per Docker "kind" is supported.
+  # If multiple targets are needed then refactor the workflow and the 'devel' Dockerfile to be Docker Multiarch.
+  docker-image:
+    needs: ['build-release']
+    runs-on: ubuntu-22.04
+    permissions: 
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        kind:
+          - scratch
+          - debian
+        include:
+          - kind: scratch
+            tag: devel
+          - kind: debian
+            tag: devel-debian
+        target:
+          - ${{ needs.build-release.outputs.target }}
+        arch:
+          - ${{ needs.build-release.outputs.arch }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - name: Restore cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ env.TARGET_DIR }}/${{ matrix.target }}/release
+          key: cache-${{ github.sha }}-${{ matrix.target }}
+      - name: Copy binary
+        run: cp ${{ env.TARGET_DIR }}/${{ matrix.target }}/release/static-web-server ./docker/devel/
+
+      - name: Login to ghcr.io
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and push (${{ matrix.kind }})
+        uses: docker/build-push-action@v6
+        with:
+          push: true
+          context: .
+          platforms: ${{ matrix.arch }}
+          file: ./docker/devel/Dockerfile.${{ matrix.kind }}
+          tags: ghcr.io/static-web-server/static-web-server:${{ matrix.tag }}
