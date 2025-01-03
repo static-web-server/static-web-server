@@ -10,7 +10,6 @@ jobs:
     name: create-release
     runs-on: ubuntu-22.04
     outputs:
-      upload_url: ${{ steps.release.outputs.upload_url }}
       sws_version: ${{ env.SWS_VERSION }}
     steps:
       - name: Get the release version from the tag
@@ -23,14 +22,10 @@ jobs:
           echo "SWS_VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
           echo "version is: ${{ env.SWS_VERSION }}"
       - name: Create GitHub release
-        id: release
-        uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ env.SWS_VERSION }}
-          draft: true
-          release_name: ${{ env.SWS_VERSION }}
+        run: |
+          gh release create ${{ env.SWS_VERSION }} --verify-tag --draft --title="${{ env.SWS_VERSION }}"
 
   build-release:
     name: build-release
@@ -160,7 +155,7 @@ jobs:
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         fetch-depth: 1
 
@@ -240,11 +235,7 @@ jobs:
         fi
 
     - name: Upload release archive
-      uses: actions/upload-release-asset@v1.0.1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ needs.create-release.outputs.upload_url }}
-        asset_path: ${{ env.ASSET }}
-        asset_name: ${{ env.ASSET }}
-        asset_content_type: application/octet-stream
+      run: |
+        gh release upload ${{ env.SWS_VERSION }} ${{ env.ASSET }}
