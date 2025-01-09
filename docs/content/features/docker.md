@@ -31,7 +31,7 @@ To give the server a quick try just run the following commands.
 
 To run SWS, there are several Docker image variants that you can use.
 
-**Scratch** (just the binary)
+### Scratch (just the binary)
 
 ```sh
 docker run --rm -it -p 8787:80 joseluisq/static-web-server:2 -g info
@@ -39,7 +39,7 @@ docker run --rm -it -p 8787:80 joseluisq/static-web-server:2 -g info
 docker run --rm -it -p 8787:80 ghcr.io/static-web-server/static-web-server:2 -g info
 ```
 
-**Alpine**
+### Alpine
 
 ```sh
 docker run --rm -it -p 8787:80 joseluisq/static-web-server:2-alpine -g info
@@ -47,12 +47,23 @@ docker run --rm -it -p 8787:80 joseluisq/static-web-server:2-alpine -g info
 docker run --rm -it -p 8787:80 ghcr.io/static-web-server/static-web-server:2-alpine -g info
 ```
 
-**Debian**
+### Debian
 
 ```sh
 docker run --rm -it -p 8787:80 joseluisq/static-web-server:2-debian -g info
 # or
 docker run --rm -it -p 8787:80 ghcr.io/static-web-server/static-web-server:2-debian -g info
+```
+
+### Development
+
+Additionally, we publish **development** Docker images based on `master` branch changes.
+
+```sh
+# Scratch (just the binary)
+docker run --rm -it -p 8787:80 ghcr.io/static-web-server/static-web-server:devel -g info
+# Debian
+docker run --rm -it -p 8787:80 ghcr.io/static-web-server/static-web-server:devel-debian -g info
 ```
 
 ## Dockerfile
