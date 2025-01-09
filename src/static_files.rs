@@ -91,7 +91,7 @@ pub struct StaticFileResponse {
 
 /// The server entry point to handle incoming requests which map to specific files
 /// on file system and return a file response.
-pub async fn handle<'a>(opts: &HandleOpts<'a>) -> Result<StaticFileResponse, StatusCode> {
+pub async fn handle(opts: &HandleOpts<'_>) -> Result<StaticFileResponse, StatusCode> {
     let method = opts.method;
     let uri_path = opts.uri_path;
 
