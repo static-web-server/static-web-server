@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _**Note:** See changelog for v1 under the [1.x](https://github.com/static-web-server/static-web-server/blob/1.x/CHANGELOG.md) branch._
 
+## v2.35.0 - 2025-01-10
+
+This new `v2.35.0` release brings several security and bug fixes. A bugfix for the directory listing, new development Docker images as well as other improvements.
+
+__Fixes__
+
+- [c236674](https://github.com/static-web-server/static-web-server/commit/c236674) Bugfix/security dependency updates including hyper, tokio, rustls, glob, serde, time and other crates. PR [#515](https://github.com/static-web-server/static-web-server/pull/515).
+- [206900b](https://github.com/static-web-server/static-web-server/commit/206900b) Directory listing HTML content outside of body tag. PR [#511](https://github.com/static-web-server/static-web-server/pull/511) by [@alxv-su](https://github.com/alxv-su).
+- [35bb607](https://github.com/static-web-server/static-web-server/commit/35bb607) CI: NetBSD 9.2 broken source link used by `cross` CI cross-compiling tool. PR [#513](https://github.com/static-web-server/static-web-server/pull/513)
+
+__Features__
+
+- [b46a7a0](https://github.com/static-web-server/static-web-server/commit/b46a7a0) Docker: Development Docker images based on `master` branch changes. PR [#512](https://github.com/static-web-server/static-web-server/pull/512) by @joseluisq and co-authored by [@mschoettle](https://github.com/mschoettle). See [docs](https://static-web-server.net/features/docker/#development).
+
+__Refactorings__
+
+- [1c4929d](https://github.com/static-web-server/static-web-server/commit/1c4929d) CI: Improve GitHub CI workflows. PR [#514](https://github.com/static-web-server/static-web-server/pull/514) by @joseluisq and co-authored by [@mschoettle](https://github.com/mschoettle). See [docs](https://static-web-server.net/features/docker/#development).
+
+__Docs__
+
+- [284eb50](https://github.com/static-web-server/static-web-server/commit/284eb50) Development Docker images description. PR [#516](https://github.com/static-web-server/static-web-server/pull/516). See [docs](https://static-web-server.net/features/docker/#development).
+
+For more details see the [v2.35.0 milestone](https://github.com/static-web-server/static-web-server/milestone/26?closed=1) and the full changelog [v2.34.0...v2.35.0](https://github.com/static-web-server/static-web-server/compare/v2.34.0...v2.35.0).
+
+__Acknowledgments__
+
+Thanks to our new donor [@thumbert](https://github.com/thumbert) for supporting the project.
+
 ## v2.34.0 - 2024-12-04
 
 This new `v2.34.0` release brings several security and bug fixes. Better `X-Forwarded-For` handling and other improvements.
