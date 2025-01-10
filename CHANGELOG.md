@@ -23,7 +23,7 @@ __Features__
 
 __Refactorings__
 
-- [1c4929d](https://github.com/static-web-server/static-web-server/commit/1c4929d) CI: Improve GitHub CI workflows. PR [#514](https://github.com/static-web-server/static-web-server/pull/514) by @joseluisq and co-authored by [@mschoettle](https://github.com/mschoettle). See [docs](https://static-web-server.net/features/docker/#development).
+- [1c4929d](https://github.com/static-web-server/static-web-server/commit/1c4929d) CI: Improve GitHub CI workflows. PR [#514](https://github.com/static-web-server/static-web-server/pull/514).
 
 __Docs__
 
