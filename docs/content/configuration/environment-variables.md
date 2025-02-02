@@ -30,8 +30,11 @@ Specify a logging level in lowercase. Possible values are `error`, `warn`, `info
 ### SERVER_LOG_REMOTE_ADDRESS
 Log incoming request information along with its Remote Address (IP) if available using the `info` log level. Default `false`.
 
+### SERVER_LOG_X_REAL_IP
+Log the X-Real-IP header if available using the `info` log level. Default `false`.
+
 ### SERVER_LOG_FORWARDED_FOR
-Log real IP from X-Forwarded-For header if available using the `info` log level. Default `false`
+Log the X-Forwarded-For header if available using the `info` log level. Default `false`.
 
 ### SERVER_TRUSTED_PROXIES
 A comma separated list of IP addresses to accept the X-Forwarded-For header from. An empty string means trust all IPs. Default `""`
