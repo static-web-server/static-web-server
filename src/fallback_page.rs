@@ -14,13 +14,22 @@ use std::path::Path;
 use crate::{handler::RequestHandlerOpts, helpers, http_ext::MethodExt, Error};
 
 /// Initializes fallback page processing
-pub(crate) fn init(path: &Path, handler_opts: &mut RequestHandlerOpts) {
-    handler_opts.page_fallback = helpers::read_bytes_default(path);
+pub(crate) fn init(file_path: &Path, handler_opts: &mut RequestHandlerOpts) {
+    let found = file_path.is_file();
+    if found {
+        handler_opts.page_fallback =
+            String::from_utf8_lossy(&helpers::read_bytes_default(file_path))
+                .trim()
+                .as_bytes()
+                .to_owned();
+    } else {
+        tracing::debug!("fallback page path not found or not a regular file");
+    }
 
     server_info!(
         "fallback page: enabled={}, value=\"{}\"",
-        !handler_opts.page_fallback.is_empty(),
-        path.to_string_lossy()
+        found,
+        file_path.display()
     );
 }
 
