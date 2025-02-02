@@ -102,6 +102,8 @@ pub struct RequestHandlerOpts {
     pub index_files: Vec<String>,
     /// Log remote address feature.
     pub log_remote_address: bool,
+    /// Log the X-Real-IP header.
+    pub log_x_real_ip: bool,
     /// Log the X-Forwarded-For header.
     pub log_forwarded_for: bool,
     /// Trusted IPs for remote addresses.
@@ -161,6 +163,7 @@ impl Default for RequestHandlerOpts {
             basic_auth: String::new(),
             index_files: vec!["index.html".into()],
             log_remote_address: false,
+            log_x_real_ip: false,
             log_forwarded_for: false,
             trusted_proxies: Vec::new(),
             redirect_trailing_slash: true,
