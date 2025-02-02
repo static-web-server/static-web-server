@@ -197,6 +197,7 @@ impl Settings {
         let mut page_fallback = opts.page_fallback;
 
         let mut log_remote_address = opts.log_remote_address;
+        let mut log_x_real_ip = opts.log_x_real_ip;
         let mut log_forwarded_for = opts.log_forwarded_for;
         let mut trusted_proxies = opts.trusted_proxies;
         let mut redirect_trailing_slash = opts.redirect_trailing_slash;
@@ -364,6 +365,9 @@ impl Settings {
                 }
                 if let Some(v) = general.log_remote_address {
                     log_remote_address = v
+                }
+                if let Some(v) = general.log_x_real_ip {
+                    log_x_real_ip = v
                 }
                 if let Some(v) = general.log_forwarded_for {
                     log_forwarded_for = v
@@ -663,6 +667,7 @@ impl Settings {
                 #[cfg(feature = "fallback-page")]
                 page_fallback,
                 log_remote_address,
+                log_x_real_ip,
                 log_forwarded_for,
                 trusted_proxies,
                 redirect_trailing_slash,

@@ -22,7 +22,11 @@ pub(crate) fn init(enabled: bool, handler_opts: &mut RequestHandlerOpts) {
 
     server_info!("log requests with remote IP addresses: enabled={enabled}");
     server_info!(
-        "log X-Forwarded-For real remote IP addresses: enabled={}",
+        "log X-Real-IP header: enabled={}",
+        handler_opts.log_forwarded_for
+    );
+    server_info!(
+        "log X-Forwarded-For header: enabled={}",
         handler_opts.log_forwarded_for
     );
     server_info!("trusted IPs for X-Forwarded-For: {trusted}");
@@ -41,18 +45,31 @@ pub(crate) fn pre_process<T>(
             remote_addrs.push_str(format!(" remote_addr={addr}").as_str());
         }
     }
-    if opts.log_forwarded_for
+    if opts.log_x_real_ip
         && (opts.trusted_proxies.is_empty()
             || remote_addr.is_some_and(|addr| opts.trusted_proxies.contains(&addr.ip())))
     {
         if let Some(real_ip) = req
+            .headers()
+            .get("X-Real-IP")
+            .and_then(|h| h.to_str().ok())
+            .and_then(|s| s.trim().parse::<IpAddr>().ok())
+        {
+            remote_addrs.push_str(format!(" x_real_ip={real_ip}").as_str());
+        }
+    }
+    if opts.log_forwarded_for
+        && (opts.trusted_proxies.is_empty()
+            || remote_addr.is_some_and(|addr| opts.trusted_proxies.contains(&addr.ip())))
+    {
+        if let Some(forwarded_for) = req
             .headers()
             .get("X-Forwarded-For")
             .and_then(|h| h.to_str().ok())
             .and_then(|s| s.split(',').next())
             .and_then(|s| s.trim().parse::<IpAddr>().ok())
         {
-            remote_addrs.push_str(format!(" real_remote_ip={real_ip}").as_str());
+            remote_addrs.push_str(format!(" real_remote_ip={forwarded_for}").as_str());
         }
     }
 

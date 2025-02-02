@@ -9,7 +9,6 @@ The server can be configured via the following command-line arguments.
 
 ```
 $ static-web-server -h
-
 A cross-platform, high-performance and asynchronous web server for static files-serving.
 
 Usage: static-web-server [OPTIONS] [COMMAND]
@@ -85,8 +84,10 @@ Options:
           Server TOML configuration file path [env: SERVER_CONFIG_FILE=] [default: ./config.toml]
       --log-remote-address [<LOG_REMOTE_ADDRESS>]
           Log incoming requests information along with its remote address if available using the `info` log level [env: SERVER_LOG_REMOTE_ADDRESS=] [default: false] [possible values: true, false]
+      --log-x-real-ip [<LOG_X_REAL_IP>]
+          Log the X-Real-IP header for remote IP information [env: SERVER_LOG_X_REAL_IP=] [default: false] [possible values: true, false]
       --log-forwarded-for [<LOG_FORWARDED_FOR>]
-          Log real IP from X-Forwarded-For header [env: SERVER_LOG_FORWARDED_FOR] [default: false] [possible values: true, false]
+          Log the X-Forwarded-For header for remote IP information [env: SERVER_LOG_FORWARDED_FOR=] [default: false] [possible values: true, false]
       --trusted-proxies <TRUSTED_PROXIES>
           A comma separated list of IP addresses to accept the X-Forwarded-For header from. Empty means trust all IPs [env: SERVER_TRUSTED_PROXIES] [default: ""]
       --redirect-trailing-slash [<REDIRECT_TRAILING_SLASH>]

@@ -13,6 +13,8 @@ static-web-server \
     --log-level "trace"
 ```
 
+> Note: The log format is not well defined and is subject to change.
+
 ## Log Remote Addresses
 
 SWS provides *Remote Address (IP)* logging for every request via an `INFO` log level.
@@ -42,9 +44,28 @@ INFO static_web_server::info: log requests with remote IP addresses: enabled=tru
 INFO static_web_server::handler: incoming request: method=GET uri=/ remote_addr=192.168.1.126:57625
 INFO static_web_server::handler: incoming request: method=GET uri=/favicon.ico remote_addr=192.168.1.126:57625
 ```
-## Log Real Remote IP
 
-When used behind a reverse proxy the reported `remote_addr` indicates the proxies IP address and port, not the clients real IP.
+## Logging Client IP from X-Real-IP header
+
+Some upstream proxies will report the client's real IP address in the `X-Real-IP` header.
+
+To enable logging of the X-Real-IP header, enable the `--log-x-real-ip` option or the equivalent [SERVER_LOG_X_REAL_IP](../configuration/environment-variables.md#server_log_x_real_ip) environment variable.
+
+When enabled, the log entries will look like:
+
+```log
+INFO static_web_server::handler: incoming request: method=GET uri=/ x_real_ip=203.0.113.195
+```
+
+If the value of the `X-Real-IP` header does not parse as an IP address, no value will be logged.
+
+To restrict the logging to only requests that originate from trusted proxy IPs, you can use the `--trusted-proxies` option, or the equivalent [SERVER_TRUSTED_PROXIES](../configuration/environment-variables.md#server_trusted_proxies) env. This should be a list of IPs, separated by commas. An empty list (the default) indicates that all IPs should be trusted.
+
+## Logging Client IP from X-Forwarded-For header
+
+> Note: This header should only be trusted when you know your upstream is handling X-Forwarded-For securely and when using the `--trusted-proxies` option.
+
+When used behind a reverse proxy the reported `remote_addr` indicates the proxies IP address and port, not the client's real IP.
 The Proxy server can be configured to provide the [X-Forwarded-For header](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Forwarded-For), containing a comma-separated list of IP addresses, starting with the *real remote client IP*, and all following intermediate proxies (if any).
 
 
@@ -52,7 +73,7 @@ To enable logging of the real remote IP, enable the `--log-forwarded-for` option
 
 Since the content of the `X-Forwarded-For` header can be changed by all proxies in the chain, the remote IP address reported may not be trusted.
 
-To restrict the logging to only trusted proxy IPs, you can use the `--trusted-proxies` option, or the equivalent [SERVER_TRUSTED_PROXIES](../configuration/environment-variables.md#server_trusted_proxies) env. This should be a list of IPs, separated by commas. An empty list (the default) indicates that all IPs should be trusted.
+To restrict the logging to only requests that originate from trusted proxy IPs, you can use the `--trusted-proxies` option, or the equivalent [SERVER_TRUSTED_PROXIES](../configuration/environment-variables.md#server_trusted_proxies) env. This should be a list of IPs, separated by commas. An empty list (the default) indicates that all IPs should be trusted.
 
 Command used for the following examples:
 ```sh

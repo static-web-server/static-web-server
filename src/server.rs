@@ -225,6 +225,9 @@ impl Server {
         // Log remote address option
         let log_remote_address = general.log_remote_address;
 
+        // Log the X-Real-IP header.
+        let log_x_real_ip = general.log_x_real_ip;
+
         // Log the X-Forwarded-For header.
         let log_forwarded_for = general.log_forwarded_for;
 
@@ -267,6 +270,7 @@ impl Server {
             page404: page404.clone(),
             page50x: page50x.clone(),
             log_remote_address,
+            log_x_real_ip,
             log_forwarded_for,
             trusted_proxies,
             redirect_trailing_slash,
