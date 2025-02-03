@@ -144,7 +144,8 @@ pub async fn handle(opts: &HandleOpts<'_>) -> Result<StaticFileResponse, StatusC
     // Check for a trailing slash on the current directory path
     // and redirect if that path doesn't end with the slash char
     if is_dir && opts.redirect_trailing_slash && !uri_path.ends_with('/') {
-        let uri = [uri_path, "/"].concat();
+        let query = opts.uri_query.map_or(String::new(), |s| ["?", s].concat());
+        let uri = [uri_path, "/", query.as_str()].concat();
         let loc = match HeaderValue::from_str(uri.as_str()) {
             Ok(val) => val,
             Err(err) => {
