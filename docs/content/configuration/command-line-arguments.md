@@ -35,7 +35,7 @@ Options:
       --page404 <PAGE404>
           HTML file path for 404 errors. If the path is not specified or simply doesn't exist then the server will use a generic HTML error message. If a relative path is used then it will be resolved under the root directory [env: SERVER_ERROR_PAGE_404=] [default: ./404.html]
       --page-fallback <PAGE_FALLBACK>
-          HTML file path that is used for GET requests when the requested path doesn't exist. The fallback page is served with a 200 status code, useful when using client routers. If the path is not specified or simply doesn't exist then this feature will not be active [env: SERVER_FALLBACK_PAGE=] [default: ]
+          A HTML file path (not relative to the root) used for GET requests when the requested path doesn't exist. The fallback page is served with a 200 status code, useful when using client routers. If the path doesn't exist then the feature is not activated [env: SERVER_FALLBACK_PAGE=] [default: ]
   -g, --log-level <LOG_LEVEL>
           Specify a logging level in lower case. Values: error, warn, info, debug or trace [env: SERVER_LOG_LEVEL=] [default: error]
   -c, --cors-allow-origins <CORS_ALLOW_ORIGINS>
@@ -89,7 +89,7 @@ Options:
       --log-forwarded-for [<LOG_FORWARDED_FOR>]
           Log the X-Forwarded-For header for remote IP information [env: SERVER_LOG_FORWARDED_FOR=] [default: false] [possible values: true, false]
       --trusted-proxies <TRUSTED_PROXIES>
-          A comma separated list of IP addresses to accept the X-Forwarded-For header from. Empty means trust all IPs [env: SERVER_TRUSTED_PROXIES] [default: ""]
+          List of IPs to use X-Forwarded-For from. The default is to trust all [env: SERVER_TRUSTED_PROXIES=]
       --redirect-trailing-slash [<REDIRECT_TRAILING_SLASH>]
           Check for a trailing slash in the requested directory URI and redirect permanently (308) to the same path with a trailing slash suffix if it is missing [env: SERVER_REDIRECT_TRAILING_SLASH=] [default: true] [possible values: true, false]
       --ignore-hidden-files [<IGNORE_HIDDEN_FILES>]
