@@ -19,7 +19,12 @@ static-web-server \
 
 ## Fallback Page for use with Client Routers
 
-An HTML file path that is used for `GET` requests when the requested path doesn't exist. The fallback page is served with a `200` status code, useful when using client routers like `React Router` or similar. If the path is not specified or simply doesn't exist then this feature will not be active.
+It is possible to provide a HTML file to be used as fallback page when `GET` request paths dont exist.
+The fallback page will be served with a `200` status code, useful when using client routers like `React Router` or similar.
+If the path is not specified or simply doesn't exist then this feature will not be activated.
+
+!!! info "The fallback page path is not relative to the root"
+    The fallback page is an independent path, so provide a valid relative or absolute path.
 
 It can be set with the `SERVER_FALLBACK_PAGE` environment variable or with the CLI argument `--page-fallback`.
 

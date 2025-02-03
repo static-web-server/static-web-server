@@ -116,7 +116,7 @@ pub struct General {
     #[cfg(feature = "fallback-page")]
     #[cfg_attr(docsrs, doc(cfg(feature = "fallback-page")))]
     #[arg(long, default_value = "", value_parser = value_parser_pathbuf, env = "SERVER_FALLBACK_PAGE")]
-    /// HTML file path that is used for GET requests when the requested path doesn't exist. The fallback page is served with a 200 status code, useful when using client routers. If the path is not specified or simply doesn't exist then this feature will not be active.
+    /// A HTML file path (not relative to the root) used for GET requests when the requested path doesn't exist. The fallback page is served with a 200 status code, useful when using client routers. If the path doesn't exist then the feature is not activated.
     pub page_fallback: PathBuf,
 
     #[arg(long, short = 'g', default_value = "error", env = "SERVER_LOG_LEVEL")]
