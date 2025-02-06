@@ -21,6 +21,7 @@ cd $release_dir
 server_version_num=$(echo $SERVER_VERSION | sed "s/v//")
 
 # Download precompiled binary assets
+echo "Downloading release target assets..."
 while read -r file_url; do
     curl -LO --progress-bar $file_url
 done < <(cat $release_json | jq -r ".assets[] | .browser_download_url")
@@ -92,9 +93,9 @@ rm -rf docs/content/*.bk
 echo "Download and install page generated!"
 
 # Update current installer script version
-sed -i$sed_bk -e "s/version=\".*\"/version=\"$server_version_num\"/g" $cwd/scripts/installer.sh
-rm -rf $cwd/scripts/*.bk
-echo "Installer script $server_version_num version updated!"
+sed -i$sed_bk -e "s/SWS_INSTALL_VERSION\:\-\".*\"/SWS_INSTALL_VERSION\:\-\"$server_version_num\"/g" $cwd/scripts/installer.sh
+rm -rf scripts/*.bk
+echo "Installer script's version was updated to $server_version_num!"
 
 echo
 
