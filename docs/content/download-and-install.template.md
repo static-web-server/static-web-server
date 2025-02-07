@@ -30,7 +30,7 @@ curl --proto '=https' --tlsv1.2 -sSfL https://get.static-web-server.net | sh
 Alternatively, you can install a specific version of SWS to a custom location by setting environment variables.
 
 ```sh
-export SWS_INSTALL_VERSION="2.35.0" # full list at https://github.com/static-web-server/static-web-server/tags
+export SWS_INSTALL_VERSION="{{RELEASE_VERSION_NUM}}" # full list at https://github.com/static-web-server/static-web-server/tags
 export SWS_INSTALL_DIR="~/.local/bin"
 curl --proto '=https' --tlsv1.2 -sSfL https://get.static-web-server.net | sh
 ```
