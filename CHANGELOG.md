@@ -26,6 +26,8 @@ __Refactorings__
 - [8fa9cda](https://github.com/static-web-server/static-web-server/commit/8fa9cda) Improve fallback page path checking and logging. PR [#522](https://github.com/static-web-server/static-web-server/pull/522).
 - [0053d74](https://github.com/static-web-server/static-web-server/commit/0053d74) CI: Improve post release updates workflow. PR [#525](https://github.com/static-web-server/static-web-server/pull/525).
 
+For more details see the [v2.36.0 milestone](https://github.com/static-web-server/static-web-server/milestone/27?closed=1) and the full changelog [v2.35.0...v2.36.0](https://github.com/static-web-server/static-web-server/compare/v2.35.0...v2.36.0).
+
 ## v2.35.0 - 2025-01-10
 
 This new `v2.35.0` release brings several security and bug fixes. A bugfix for the directory listing, new development Docker images as well as other improvements.
