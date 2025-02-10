@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _**Note:** See changelog for v1 under the [1.x](https://github.com/static-web-server/static-web-server/blob/1.x/CHANGELOG.md) branch._
 
+## v2.36.0 - 2025-02-10
+
+This new `v2.36.0` release brings several security and bug fixes. A bugfix for the trailing slash redirect, new feature to log from the `X-Real-IP` header as well as other improvements.
+
+__Fixes__
+
+- [aadca81](https://github.com/static-web-server/static-web-server/commit/aadca81) Bugfix/security dependency updates including httparse, rustls, clap, bcrypt, maud, bytes and other crates. PR [#524](https://github.com/static-web-server/static-web-server/pull/524).
+- [99aa74d](https://github.com/static-web-server/static-web-server/commit/99aa74d) Docker: Update Alpine (3.19.6) and Debian (12.9) Docker images. PR [#518](https://github.com/static-web-server/static-web-server/pull/518).
+- [a639039](https://github.com/static-web-server/static-web-server/commit/a639039) Add missing query string to the URI trailing slash redirect. PR [#523](https://github.com/static-web-server/static-web-server/pull/523).
+
+__Features__
+
+- [134db39](https://github.com/static-web-server/static-web-server/commit/134db39) Log from `X-Real-IP` header via new `--log-x-real-ip` option. PR [#521](https://github.com/static-web-server/static-web-server/pull/521) by [@dctaf](https://github.com/dctaf). See [docs](https://static-web-server.net/features/logging/#logging-client-ip-from-x-real-ip-header).
+
+__Refactorings__
+
+- [8fa9cda](https://github.com/static-web-server/static-web-server/commit/8fa9cda) Improve fallback page path checking and logging. PR [#522](https://github.com/static-web-server/static-web-server/pull/522).
+- [0053d74](https://github.com/static-web-server/static-web-server/commit/0053d74) CI: Improve post release updates workflow. PR [#525](https://github.com/static-web-server/static-web-server/pull/525).
+
 ## v2.35.0 - 2025-01-10
 
 This new `v2.35.0` release brings several security and bug fixes. A bugfix for the directory listing, new development Docker images as well as other improvements.
