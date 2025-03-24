@@ -45,10 +45,16 @@ pub(crate) fn post_process<T>(
     }
 
     // Compression content encoding varies so use a `Vary` header
-    resp.headers_mut().insert(
-        hyper::header::VARY,
+    let value = resp.headers().get(hyper::header::VARY).map_or(
         HeaderValue::from_name(hyper::header::ACCEPT_ENCODING),
+        |h| {
+            let mut s = h.to_str().unwrap_or_default().to_owned();
+            s.push(',');
+            s.push_str(hyper::header::ACCEPT_ENCODING.as_str());
+            HeaderValue::from_str(s.as_str()).unwrap()
+        },
     );
+    resp.headers_mut().insert(hyper::header::VARY, value);
 
     Ok(resp)
 }
