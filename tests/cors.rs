@@ -5,9 +5,15 @@
 
 #[cfg(test)]
 mod tests {
-    use headers::HeaderMap;
-    use http::Method;
+    use headers::{HeaderMap, HeaderValue};
+    use hyper::{Method, Request};
+    use std::net::SocketAddr;
+
     use static_web_server::cors;
+    use static_web_server::http_ext::MethodExt;
+    use static_web_server::testing::fixtures::{
+        fixture_req_handler, fixture_req_handler_opts, fixture_settings, REMOTE_ADDR,
+    };
 
     #[test]
     fn allow_methods() {
@@ -23,7 +29,21 @@ mod tests {
         headers.insert("origin", "https://localhost".parse().unwrap());
         headers.insert("access-control-request-method", "GET".parse().unwrap());
         for method in methods {
-            assert!(cors.check_request(method, &headers).is_ok());
+            let res = cors.check_request(method, &headers);
+            assert!(res.is_ok());
+
+            let (res_headers, _) = res.unwrap();
+            let allow_methods = res_headers
+                .get("access-control-allow-methods")
+                .unwrap()
+                .to_str()
+                .unwrap()
+                .rsplit(',')
+                .map(|f| f.trim())
+                .collect::<Vec<_>>();
+
+            const EXPECTED: [&str; 3] = ["GET", "OPTIONS", "HEAD"];
+            EXPECTED.iter().all(|s| allow_methods.contains(s));
         }
     }
 
@@ -162,6 +182,92 @@ mod tests {
             } else {
                 assert!(res.is_ok())
             }
+        }
+    }
+
+    #[tokio::test]
+    async fn handler_allowed_methods() {
+        let mut settings = fixture_settings("toml/handler.toml");
+        let origin = "http://localhost".to_owned();
+        settings.general.cors_allow_origins = origin.clone();
+
+        let mut req_handler_opts = fixture_req_handler_opts(settings.general, settings.advanced);
+        req_handler_opts.cors = cors::new("*", "", "");
+        let req_handler = fixture_req_handler(req_handler_opts);
+
+        let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
+
+        let methods = [
+            Method::CONNECT,
+            Method::DELETE,
+            Method::GET,
+            Method::HEAD,
+            Method::PATCH,
+            Method::POST,
+            Method::PUT,
+            Method::TRACE,
+        ];
+        for method in methods {
+            let mut req = Request::default();
+            let mut headers = HeaderMap::new();
+            headers.insert("origin", HeaderValue::from_str(origin.as_str()).unwrap());
+            headers.insert(
+                "access-control-request-method",
+                "GET, HEAD, OPTIONS".parse().unwrap(),
+            );
+            *req.method_mut() = method.clone();
+            *req.headers_mut() = headers;
+            *req.uri_mut() = "http://localhost/assets/index.html".parse().unwrap();
+
+            match req_handler.handle(&mut req, remote_addr).await {
+                Ok(resp) => {
+                    if method.is_allowed() {
+                        assert_eq!(resp.status(), 200);
+                        assert_eq!(
+                            resp.headers().get("content-type"),
+                            Some(&HeaderValue::from_static("text/html"))
+                        );
+                        assert_eq!(
+                            resp.headers().get("server"),
+                            Some(&HeaderValue::from_static("Static Web Server"))
+                        );
+
+                        let allow_methods = resp
+                            .headers()
+                            .get("access-control-allow-methods")
+                            .unwrap()
+                            .to_str()
+                            .unwrap()
+                            .rsplit(',')
+                            .map(|f| f.trim())
+                            .collect::<Vec<_>>();
+                        const METHODS: [&str; 3] = ["GET", "OPTIONS", "HEAD"];
+                        assert!(METHODS.iter().all(|s| allow_methods.contains(s)));
+
+                        let vary_values = resp
+                            .headers()
+                            .get("vary")
+                            .unwrap()
+                            .to_str()
+                            .unwrap()
+                            .rsplit(',')
+                            .map(|f| f.trim())
+                            .collect::<Vec<_>>();
+
+                        #[cfg(not(feature = "compression"))]
+                        const EXPECTED: [&str; 1] = ["origin"];
+                        #[cfg(feature = "compression")]
+                        const EXPECTED: [&str; 2] = ["origin", "accept-encoding"];
+
+                        assert!(EXPECTED.iter().all(|s| vary_values.contains(s)));
+                    } else {
+                        assert_eq!(resp.status(), 405);
+                    }
+                }
+                Err(err) => {
+                    panic!("unexpected error: {err}")
+                }
+            };
         }
     }
 }

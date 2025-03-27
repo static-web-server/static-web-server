@@ -18,7 +18,9 @@ pub mod tests {
 
     use static_web_server::{
         settings::cli::General,
-        testing::fixtures::{fixture_req_handler, fixture_settings, REMOTE_ADDR},
+        testing::fixtures::{
+            fixture_req_handler, fixture_req_handler_opts, fixture_settings, REMOTE_ADDR,
+        },
     };
 
     #[tokio::test]
@@ -29,7 +31,8 @@ pub mod tests {
             compression_static: true,
             ..opts.general
         };
-        let req_handler = fixture_req_handler(general, opts.advanced);
+        let req_handler_opts = fixture_req_handler_opts(general, opts.advanced);
+        let req_handler = fixture_req_handler(req_handler_opts);
         let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
 
         let mut req = Request::default();
@@ -63,10 +66,20 @@ pub mod tests {
                     res.headers().get("server"),
                     Some(&HeaderValue::from_static("Static Web Server"))
                 );
+
+                let vary_values = res
+                    .headers()
+                    .get("vary")
+                    .unwrap()
+                    .to_str()
+                    .unwrap()
+                    .rsplit(',')
+                    .map(|f| f.trim())
+                    .collect::<Vec<_>>();
+                const EXPECTED: [&str; 1] = ["accept-encoding"];
+                assert!(EXPECTED.iter().all(|s| vary_values.contains(s)));
             }
-            Err(err) => {
-                panic!("unexpected error: {err}")
-            }
+            Err(err) => panic!("unexpected error: {err}"),
         };
     }
 }
