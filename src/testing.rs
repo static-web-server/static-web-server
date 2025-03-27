@@ -29,8 +29,11 @@ pub mod fixtures {
         Settings::get_unparsed(false).unwrap()
     }
 
-    /// Create a `RequestHandler` from a custom TOML config file (fixture).
-    pub fn fixture_req_handler(general: General, advanced: Option<Advanced>) -> RequestHandler {
+    /// Create a `RequestHandlerOpts` from the given options (fixture).
+    pub fn fixture_req_handler_opts(
+        general: General,
+        advanced: Option<Advanced>,
+    ) -> RequestHandlerOpts {
         #[cfg(not(any(
             feature = "compression",
             feature = "compression-gzip",
@@ -64,7 +67,7 @@ pub mod fixtures {
         ))]
         let compression_static = general.compression_static;
 
-        let req_handler_opts = RequestHandlerOpts {
+        RequestHandlerOpts {
             root_dir: general.root,
             compression,
             compression_static,
@@ -110,8 +113,11 @@ pub mod fixtures {
             #[cfg(feature = "experimental")]
             memory_cache: None,
             advanced_opts: advanced,
-        };
+        }
+    }
 
+    /// Create a `RequestHandler` from a custom TOML config file (fixture).
+    pub fn fixture_req_handler(req_handler_opts: RequestHandlerOpts) -> RequestHandler {
         RequestHandler {
             opts: Arc::from(req_handler_opts),
         }

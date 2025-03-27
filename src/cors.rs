@@ -429,6 +429,10 @@ pub(crate) fn post_process<T>(
                 for (k, v) in headers.iter() {
                     resp.headers_mut().insert(k, v.to_owned());
                 }
+                resp.headers_mut().insert(
+                    hyper::header::VARY,
+                    HeaderValue::from_name(hyper::header::ORIGIN),
+                );
                 resp.headers_mut().remove(http::header::ALLOW);
             }
         }
