@@ -40,7 +40,7 @@ doc = false
 # All features enabled by default
 default = ["compression", "http2", "directory-listing", "basic-auth", "fallback-page"]
 # Include all features (used when building SWS binaries)
-all = ["default"]
+all = ["default", "experimental"]
 # HTTP2
 http2 = ["tokio-rustls", "rustls-pemfile"]
 # Compression
@@ -109,7 +109,7 @@ version = "0.6"
 signal-hook = { version = "0.3", features = ["extended-siginfo"] }
 signal-hook-tokio = { version = "0.3", features = ["futures-v0_3"], default-features = false }
 tokio-metrics-collector = { version = "0.3", optional = true }
-prometheus = { version = "0.13.4", default-features = false, optional = true }
+prometheus = { version = "0.14.0", default-features = false, optional = true }
 
 [target.'cfg(windows)'.dependencies]
 windows-service = "0.7"

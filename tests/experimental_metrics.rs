@@ -9,13 +9,14 @@ pub mod tests {
     use std::net::SocketAddr;
 
     use static_web_server::testing::fixtures::{
-        fixture_req_handler, fixture_settings, REMOTE_ADDR,
+        fixture_req_handler, fixture_req_handler_opts, fixture_settings, REMOTE_ADDR,
     };
 
     #[tokio::test]
     async fn experimental_metrics_enabled() {
         let opts = fixture_settings("toml/experimental_metrics.toml");
-        let req_handler = fixture_req_handler(opts.general, opts.advanced);
+        let req_handler_opts = fixture_req_handler_opts(opts.general, opts.advanced);
+        let req_handler = fixture_req_handler(req_handler_opts);
         let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
 
         let mut req = Request::default();
