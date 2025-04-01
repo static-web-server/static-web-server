@@ -7,9 +7,9 @@
 //!
 
 use hyper::server::Server as HyperServer;
-use listenfd::ListenFd;
 use std::net::{IpAddr, SocketAddr, TcpListener};
 use std::sync::Arc;
+use tokio::net::{UnixListener, UnixStream};
 use tokio::sync::{watch::Receiver, Mutex};
 
 use crate::handler::{RequestHandler, RequestHandlerOpts};
@@ -52,11 +52,41 @@ use crate::{
 };
 use crate::{service::RouterService, Context, Result};
 
+/// Different types of servers
+pub enum ServerType {
+    /// Http1
+    Http1(TcpListener, String),
+    /// Http2 with TLS
+    #[cfg(feature = "http2")]
+    Http2(TcpListener, String),
+    /// Unix domain socket
+    #[cfg(unix)]
+    Uds(UnixExt),
+}
+
 /// Define a multi-threaded HTTP or HTTP/2 web server.
 pub struct Server {
     opts: Settings,
     worker_threads: usize,
     max_blocking_threads: usize,
+}
+
+/// Wrapper around UnixListener
+pub struct UnixExt {
+    /// The contained UnixListener
+    listener: UnixListener,
+}
+
+impl hyper::server::accept::Accept for UnixExt {
+    type Conn = UnixStream;
+    type Error = tokio::io::Error;
+
+    fn poll_accept(
+        self: std::pin::Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<Option<std::result::Result<Self::Conn, Self::Error>>> {
+        self.listener.poll_accept(cx).map(|s| Some(s.map(|e| e.0)))
+    }
 }
 
 impl Server {
@@ -159,31 +189,35 @@ impl Server {
             );
         }
 
-        // Determine TCP listener either file descriptor or TCP socket
-        let (tcp_listener, addr_str);
-        match general.fd {
-            Some(fd) => {
-                addr_str = format!("@FD({fd})");
-                tcp_listener = ListenFd::from_env()
-                    .take_tcp_listener(fd)?
-                    .with_context(|| "failed to convert inherited 'fd' into a 'tcp' listener")?;
-                server_info!(
-                    "converted inherited file descriptor {} to a 'tcp' listener",
-                    fd
-                );
-            }
-            None => {
-                let ip = general
-                    .host
-                    .parse::<IpAddr>()
-                    .with_context(|| format!("failed to parse {} address", general.host))?;
-                let addr = SocketAddr::from((ip, general.port));
-                tcp_listener = TcpListener::bind(addr)
-                    .with_context(|| format!("failed to bind to {addr} address"))?;
-                addr_str = addr.to_string();
-                server_info!("server bound to tcp socket {}", addr_str);
-            }
-        }
+        let listener = UnixListener::bind("/tmp/sws.sock")?;
+        let server_type = ServerType::Uds(UnixExt { listener });
+        //TODO: figure this out
+
+        // // Determine TCP listener either file descriptor or TCP socket
+        // let (tcp_listener, addr_str);
+        // match general.fd {
+        //     Some(fd) => {
+        //         addr_str = format!("@FD({fd})");
+        //         tcp_listener = ListenFd::from_env()
+        //             .take_tcp_listener(fd)?
+        //             .with_context(|| "failed to convert inherited 'fd' into a 'tcp' listener")?;
+        //         server_info!(
+        //             "converted inherited file descriptor {} to a 'tcp' listener",
+        //             fd
+        //         );
+        //     }
+        //     None => {
+        //         let ip = general
+        //             .host
+        //             .parse::<IpAddr>()
+        //             .with_context(|| format!("failed to parse {} address", general.host))?;
+        //         let addr = SocketAddr::from((ip, general.port));
+        //         tcp_listener = TcpListener::bind(addr)
+        //             .with_context(|| format!("failed to bind to {addr} address"))?;
+        //         addr_str = addr.to_string();
+        //         server_info!("server bound to tcp socket {}", addr_str);
+        //     }
+        // }
 
         // Number of worker threads option
         let threads = self.worker_threads;
@@ -379,286 +413,316 @@ impl Server {
             }
         });
 
-        // Run the corresponding HTTP Server asynchronously with its given options
-        #[cfg(feature = "http2")]
-        if general.http2 {
-            // HTTP to HTTPS redirect option
-            let https_redirect = general.https_redirect;
-            server_info!("http to https redirect: enabled={}", https_redirect);
-            server_info!(
-                "http to https redirect host: {}",
-                general.https_redirect_host
-            );
-            server_info!(
-                "http to https redirect from port: {}",
-                general.https_redirect_from_port
-            );
-            server_info!(
-                "http to https redirect from hosts: {}",
-                general.https_redirect_from_hosts
-            );
-
-            // HTTP/2 + TLS
-            tcp_listener
-                .set_nonblocking(true)
-                .with_context(|| "failed to set TCP non-blocking mode")?;
-            let listener = tokio::net::TcpListener::from_std(tcp_listener)
-                .with_context(|| "failed to create tokio::net::TcpListener")?;
-            let mut incoming = AddrIncoming::from_listener(listener).with_context(|| {
-                "failed to create an AddrIncoming from the current tokio::net::TcpListener"
-            })?;
-            incoming.set_nodelay(true);
-
-            let http2_tls_cert = match general.http2_tls_cert {
-                Some(v) => v,
-                _ => bail!("failed to initialize TLS because cert file missing"),
-            };
-            let http2_tls_key = match general.http2_tls_key {
-                Some(v) => v,
-                _ => bail!("failed to initialize TLS because key file missing"),
-            };
-
-            let tls = TlsConfigBuilder::new()
-                .cert_path(&http2_tls_cert)
-                .key_path(&http2_tls_key)
-                .build()
-                .with_context(|| {
-                    "failed to initialize TLS probably because invalid cert or key file"
-                })?;
-
-            #[cfg(unix)]
-            let signals = signals::create_signals()
-                .with_context(|| "failed to register termination signals")?;
-            #[cfg(unix)]
-            let handle = signals.handle();
-
-            let http2_server =
-                HyperServer::builder(TlsAcceptor::new(tls, incoming)).serve(router_service);
-
-            #[cfg(unix)]
-            let http2_cancel_recv = Arc::new(Mutex::new(_cancel_recv));
-            #[cfg(unix)]
-            let redirect_cancel_recv = http2_cancel_recv.clone();
-
-            #[cfg(unix)]
-            let http2_server = http2_server.with_graceful_shutdown(signals::wait_for_signals(
-                signals,
-                grace_period,
-                http2_cancel_recv,
-            ));
-
-            #[cfg(windows)]
-            let http2_cancel_recv = Arc::new(Mutex::new(_cancel_recv));
-            #[cfg(windows)]
-            let redirect_cancel_recv = http2_cancel_recv.clone();
-
-            #[cfg(windows)]
-            let http2_ctrlc_recv = Arc::new(Mutex::new(Some(receiver)));
-            #[cfg(windows)]
-            let redirect_ctrlc_recv = http2_ctrlc_recv.clone();
-
-            #[cfg(windows)]
-            let http2_server = http2_server.with_graceful_shutdown(async move {
-                if general.windows_service {
-                    signals::wait_for_ctrl_c(http2_cancel_recv, grace_period).await;
-                } else {
-                    signals::wait_for_ctrl_c(http2_ctrlc_recv, grace_period).await;
-                }
-            });
-
-            server_info!(
-                parent: tracing::info_span!("Server::start_server", ?addr_str, ?threads),
-                "http2 server is listening on https://{}",
-                addr_str
-            );
-
-            // HTTP to HTTPS redirect server
-            if general.https_redirect {
-                let ip = general
-                    .host
-                    .parse::<IpAddr>()
-                    .with_context(|| format!("failed to parse {} address", general.host))?;
-                let addr = SocketAddr::from((ip, general.https_redirect_from_port));
-                let tcp_listener = TcpListener::bind(addr)
-                    .with_context(|| format!("failed to bind to {addr} address"))?;
-                server_info!(
-                    parent: tracing::info_span!("Server::start_server", ?addr, ?threads),
-                    "http1 redirect server is listening on http://{}",
-                    addr
-                );
-                tcp_listener
-                    .set_nonblocking(true)
-                    .with_context(|| "failed to set TCP non-blocking mode")?;
-
-                #[cfg(unix)]
-                let redirect_signals = signals::create_signals()
-                    .with_context(|| "failed to register termination signals")?;
-                #[cfg(unix)]
-                let redirect_handle = redirect_signals.handle();
-
-                // Allowed redirect hosts
-                let redirect_allowed_hosts = general
-                    .https_redirect_from_hosts
-                    .split(',')
-                    .map(|s| s.trim().to_owned())
-                    .collect::<Vec<_>>();
-                if redirect_allowed_hosts.is_empty() {
-                    bail!("https redirect allowed hosts is empty, provide at least one host or IP")
-                }
-
-                // Redirect options
-                let redirect_opts = Arc::new(https_redirect::RedirectOpts {
-                    https_hostname: general.https_redirect_host,
-                    https_port: general.port,
-                    allowed_hosts: redirect_allowed_hosts,
-                });
-
-                let server_redirect = HyperServer::from_tcp(tcp_listener)
-                    .unwrap()
-                    .tcp_nodelay(true)
-                    .serve(make_service_fn(move |_: &AddrStream| {
-                        let redirect_opts = redirect_opts.clone();
-                        let page404 = page404.clone();
-                        let page50x = page50x.clone();
-                        async move {
-                            Ok::<_, error::Error>(service_fn(move |req| {
-                                let redirect_opts = redirect_opts.clone();
-                                let page404 = page404.clone();
-                                let page50x = page50x.clone();
-                                async move {
-                                    let uri = req.uri();
-                                    let method = req.method();
-                                    match https_redirect::redirect_to_https(&req, redirect_opts) {
-                                        Ok(resp) => Ok(resp),
-                                        Err(status) => error_page::error_response(
-                                            uri, method, &status, &page404, &page50x,
-                                        ),
-                                    }
-                                }
-                            }))
-                        }
-                    }));
-
-                #[cfg(unix)]
-                let server_redirect = server_redirect.with_graceful_shutdown(
-                    signals::wait_for_signals(redirect_signals, grace_period, redirect_cancel_recv),
-                );
-                #[cfg(windows)]
-                let server_redirect = server_redirect.with_graceful_shutdown(async move {
-                    if general.windows_service {
-                        signals::wait_for_ctrl_c(redirect_cancel_recv, grace_period).await;
-                    } else {
-                        signals::wait_for_ctrl_c(redirect_ctrlc_recv, grace_period).await;
-                    }
-                });
-
-                // HTTP/2 server task
-                let server_task = tokio::spawn(async move {
-                    if let Err(err) = http2_server.await {
-                        tracing::error!("http2 server failed to start up: {:?}", err);
-                        std::process::exit(1)
-                    }
-                });
-
-                // HTTP/1 redirect server task
-                let redirect_server_task = tokio::spawn(async move {
-                    if let Err(err) = server_redirect.await {
-                        tracing::error!("http1 redirect server failed to start up: {:?}", err);
-                        std::process::exit(1)
-                    }
-                });
-
-                server_info!("press ctrl+c to shut down the servers");
-
-                #[cfg(windows)]
-                tokio::try_join!(ctrlc_task, server_task, redirect_server_task)?;
-                #[cfg(unix)]
-                tokio::try_join!(server_task, redirect_server_task)?;
-
-                #[cfg(unix)]
-                redirect_handle.close();
-            } else {
-                server_info!("press ctrl+c to shut down the server");
-                http2_server.await?;
-            }
-
-            #[cfg(unix)]
-            handle.close();
-
-            #[cfg(windows)]
-            _cancel_fn();
-
-            server_warn!("termination signal caught, shutting down the server execution");
-            return Ok(());
-        }
-
-        // HTTP/1
-
         #[cfg(unix)]
         let signals =
             signals::create_signals().with_context(|| "failed to register termination signals")?;
         #[cfg(unix)]
         let handle = signals.handle();
 
-        tcp_listener
-            .set_nonblocking(true)
-            .with_context(|| "failed to set TCP non-blocking mode")?;
+        return match server_type {
+            ServerType::Http1(tcp_listener, addr_str) => {
+                tcp_listener
+                    .set_nonblocking(true)
+                    .with_context(|| "failed to set TCP non-blocking mode")?;
 
-        let http1_server = HyperServer::from_tcp(tcp_listener)
-            .unwrap()
-            .tcp_nodelay(true)
-            .serve(router_service);
+                let http1_server = HyperServer::from_tcp(tcp_listener)
+                    .unwrap()
+                    .tcp_nodelay(true)
+                    .serve(router_service);
 
-        #[cfg(unix)]
-        let http1_cancel_recv = Arc::new(Mutex::new(_cancel_recv));
+                #[cfg(unix)]
+                let http1_cancel_recv = Arc::new(Mutex::new(_cancel_recv));
 
-        #[cfg(unix)]
-        let http1_server = http1_server.with_graceful_shutdown(signals::wait_for_signals(
-            signals,
-            grace_period,
-            http1_cancel_recv,
-        ));
+                #[cfg(unix)]
+                let http1_server = http1_server.with_graceful_shutdown(signals::wait_for_signals(
+                    signals,
+                    grace_period,
+                    http1_cancel_recv,
+                ));
 
-        #[cfg(windows)]
-        let http1_server = http1_server.with_graceful_shutdown(async move {
-            let http1_cancel_recv = if general.windows_service {
-                // http1_cancel_recv
-                Arc::new(Mutex::new(_cancel_recv))
-            } else {
-                // http1_ctrlc_recv
-                Arc::new(Mutex::new(Some(receiver)))
-            };
-            signals::wait_for_ctrl_c(http1_cancel_recv, grace_period).await;
-        });
+                #[cfg(windows)]
+                let http1_server = http1_server.with_graceful_shutdown(async move {
+                    let http1_cancel_recv = if general.windows_service {
+                        // http1_cancel_recv
+                        Arc::new(Mutex::new(_cancel_recv))
+                    } else {
+                        // http1_ctrlc_recv
+                        Arc::new(Mutex::new(Some(receiver)))
+                    };
+                    signals::wait_for_ctrl_c(http1_cancel_recv, grace_period).await;
+                });
 
-        server_info!(
-            parent: tracing::info_span!("Server::start_server", ?addr_str, ?threads),
-            "http1 server is listening on http://{}",
-            addr_str
-        );
+                server_info!(
+                    parent: tracing::info_span!("Server::start_server", ?addr_str, ?threads),
+                    "http1 server is listening on http://{}",
+                    addr_str
+                );
 
-        server_info!("press ctrl+c to shut down the server");
+                server_info!("press ctrl+c to shut down the server");
 
-        #[cfg(unix)]
-        http1_server.await?;
+                #[cfg(unix)]
+                http1_server.await?;
 
-        #[cfg(windows)]
-        let http1_server_task = tokio::spawn(async move {
-            if let Err(err) = http1_server.await {
-                tracing::error!("http1 server failed to start up: {:?}", err);
-                std::process::exit(1)
+                #[cfg(windows)]
+                let http1_server_task = tokio::spawn(async move {
+                    if let Err(err) = http1_server.await {
+                        tracing::error!("http1 server failed to start up: {:?}", err);
+                        std::process::exit(1)
+                    }
+                });
+                #[cfg(windows)]
+                tokio::try_join!(ctrlc_task, http1_server_task)?;
+
+                #[cfg(windows)]
+                _cancel_fn();
+
+                #[cfg(unix)]
+                handle.close();
+
+                server_warn!("termination signal caught, shutting down the server execution");
+                Ok(())
             }
-        });
-        #[cfg(windows)]
-        tokio::try_join!(ctrlc_task, http1_server_task)?;
+            #[cfg(feature = "http2")]
+            ServerType::Http2(tcp_listener, addr_str) => {
+                // HTTP to HTTPS redirect option
+                let https_redirect = general.https_redirect;
+                server_info!("http to https redirect: enabled={}", https_redirect);
+                server_info!(
+                    "http to https redirect host: {}",
+                    general.https_redirect_host
+                );
+                server_info!(
+                    "http to https redirect from port: {}",
+                    general.https_redirect_from_port
+                );
+                server_info!(
+                    "http to https redirect from hosts: {}",
+                    general.https_redirect_from_hosts
+                );
 
-        #[cfg(windows)]
-        _cancel_fn();
+                // HTTP/2 + TLS
+                tcp_listener
+                    .set_nonblocking(true)
+                    .with_context(|| "failed to set TCP non-blocking mode")?;
+                let listener = tokio::net::TcpListener::from_std(tcp_listener)
+                    .with_context(|| "failed to create tokio::net::TcpListener")?;
+                let mut incoming = AddrIncoming::from_listener(listener).with_context(|| {
+                    "failed to create an AddrIncoming from the current tokio::net::TcpListener"
+                })?;
+                incoming.set_nodelay(true);
 
-        #[cfg(unix)]
-        handle.close();
+                let http2_tls_cert = match general.http2_tls_cert {
+                    Some(v) => v,
+                    _ => bail!("failed to initialize TLS because cert file missing"),
+                };
+                let http2_tls_key = match general.http2_tls_key {
+                    Some(v) => v,
+                    _ => bail!("failed to initialize TLS because key file missing"),
+                };
 
-        server_warn!("termination signal caught, shutting down the server execution");
-        Ok(())
+                let tls = TlsConfigBuilder::new()
+                    .cert_path(&http2_tls_cert)
+                    .key_path(&http2_tls_key)
+                    .build()
+                    .with_context(|| {
+                        "failed to initialize TLS probably because invalid cert or key file"
+                    })?;
+
+                let http2_server =
+                    HyperServer::builder(TlsAcceptor::new(tls, incoming)).serve(router_service);
+
+                #[cfg(unix)]
+                let http2_cancel_recv = Arc::new(Mutex::new(_cancel_recv));
+                #[cfg(unix)]
+                let redirect_cancel_recv = http2_cancel_recv.clone();
+
+                #[cfg(unix)]
+                let http2_server = http2_server.with_graceful_shutdown(signals::wait_for_signals(
+                    signals,
+                    grace_period,
+                    http2_cancel_recv,
+                ));
+
+                #[cfg(windows)]
+                let http2_cancel_recv = Arc::new(Mutex::new(_cancel_recv));
+                #[cfg(windows)]
+                let redirect_cancel_recv = http2_cancel_recv.clone();
+
+                #[cfg(windows)]
+                let http2_ctrlc_recv = Arc::new(Mutex::new(Some(receiver)));
+                #[cfg(windows)]
+                let redirect_ctrlc_recv = http2_ctrlc_recv.clone();
+
+                #[cfg(windows)]
+                let http2_server = http2_server.with_graceful_shutdown(async move {
+                    if general.windows_service {
+                        signals::wait_for_ctrl_c(http2_cancel_recv, grace_period).await;
+                    } else {
+                        signals::wait_for_ctrl_c(http2_ctrlc_recv, grace_period).await;
+                    }
+                });
+
+                server_info!(
+                    parent: tracing::info_span!("Server::start_server", ?addr_str, ?threads),
+                    "http2 server is listening on https://{}",
+                    addr_str
+                );
+
+                // HTTP to HTTPS redirect server
+                if general.https_redirect {
+                    let ip = general
+                        .host
+                        .parse::<IpAddr>()
+                        .with_context(|| format!("failed to parse {} address", general.host))?;
+                    let addr = SocketAddr::from((ip, general.https_redirect_from_port));
+                    let tcp_listener = TcpListener::bind(addr)
+                        .with_context(|| format!("failed to bind to {addr} address"))?;
+                    server_info!(
+                        parent: tracing::info_span!("Server::start_server", ?addr, ?threads),
+                        "http1 redirect server is listening on http://{}",
+                        addr
+                    );
+                    tcp_listener
+                        .set_nonblocking(true)
+                        .with_context(|| "failed to set TCP non-blocking mode")?;
+
+                    #[cfg(unix)]
+                    let redirect_signals = signals::create_signals()
+                        .with_context(|| "failed to register termination signals")?;
+                    #[cfg(unix)]
+                    let redirect_handle = redirect_signals.handle();
+
+                    // Allowed redirect hosts
+                    let redirect_allowed_hosts = general
+                        .https_redirect_from_hosts
+                        .split(',')
+                        .map(|s| s.trim().to_owned())
+                        .collect::<Vec<_>>();
+                    if redirect_allowed_hosts.is_empty() {
+                        bail!("https redirect allowed hosts is empty, provide at least one host or IP")
+                    }
+
+                    // Redirect options
+                    let redirect_opts = Arc::new(https_redirect::RedirectOpts {
+                        https_hostname: general.https_redirect_host,
+                        https_port: general.port,
+                        allowed_hosts: redirect_allowed_hosts,
+                    });
+
+                    let server_redirect = HyperServer::from_tcp(tcp_listener)
+                        .unwrap()
+                        .tcp_nodelay(true)
+                        .serve(make_service_fn(move |_: &AddrStream| {
+                            let redirect_opts = redirect_opts.clone();
+                            let page404 = page404.clone();
+                            let page50x = page50x.clone();
+                            async move {
+                                Ok::<_, error::Error>(service_fn(move |req| {
+                                    let redirect_opts = redirect_opts.clone();
+                                    let page404 = page404.clone();
+                                    let page50x = page50x.clone();
+                                    async move {
+                                        let uri = req.uri();
+                                        let method = req.method();
+                                        match https_redirect::redirect_to_https(&req, redirect_opts)
+                                        {
+                                            Ok(resp) => Ok(resp),
+                                            Err(status) => error_page::error_response(
+                                                uri, method, &status, &page404, &page50x,
+                                            ),
+                                        }
+                                    }
+                                }))
+                            }
+                        }));
+
+                    #[cfg(unix)]
+                    let server_redirect =
+                        server_redirect.with_graceful_shutdown(signals::wait_for_signals(
+                            redirect_signals,
+                            grace_period,
+                            redirect_cancel_recv,
+                        ));
+                    #[cfg(windows)]
+                    let server_redirect = server_redirect.with_graceful_shutdown(async move {
+                        if general.windows_service {
+                            signals::wait_for_ctrl_c(redirect_cancel_recv, grace_period).await;
+                        } else {
+                            signals::wait_for_ctrl_c(redirect_ctrlc_recv, grace_period).await;
+                        }
+                    });
+
+                    // HTTP/2 server task
+                    let server_task = tokio::spawn(async move {
+                        if let Err(err) = http2_server.await {
+                            tracing::error!("http2 server failed to start up: {:?}", err);
+                            std::process::exit(1)
+                        }
+                    });
+
+                    // HTTP/1 redirect server task
+                    let redirect_server_task = tokio::spawn(async move {
+                        if let Err(err) = server_redirect.await {
+                            tracing::error!("http1 redirect server failed to start up: {:?}", err);
+                            std::process::exit(1)
+                        }
+                    });
+
+                    server_info!("press ctrl+c to shut down the servers");
+
+                    #[cfg(windows)]
+                    tokio::try_join!(ctrlc_task, server_task, redirect_server_task)?;
+                    #[cfg(unix)]
+                    tokio::try_join!(server_task, redirect_server_task)?;
+
+                    #[cfg(unix)]
+                    redirect_handle.close();
+                } else {
+                    server_info!("press ctrl+c to shut down the server");
+                    http2_server.await?;
+                }
+
+                #[cfg(unix)]
+                handle.close();
+
+                #[cfg(windows)]
+                _cancel_fn();
+
+                server_warn!("termination signal caught, shutting down the server execution");
+                return Ok(());
+            }
+            #[cfg(unix)]
+            ServerType::Uds(unix_listener) => {
+                let addr = unix_listener.listener.local_addr()?;
+                let http1_server = HyperServer::builder(unix_listener).serve(router_service);
+                let http1_cancel_recv = Arc::new(Mutex::new(_cancel_recv));
+
+                let http1_server = http1_server.with_graceful_shutdown(signals::wait_for_signals(
+                    signals,
+                    grace_period,
+                    http1_cancel_recv,
+                ));
+
+                server_info!(
+                    parent: tracing::info_span!("Server::start_server", ?threads),
+                    "http1 server is listening at {:?}",
+                    addr
+                );
+
+                server_info!("press ctrl+c to shut down the server");
+
+                http1_server.await?;
+
+                handle.close();
+
+                if let Some(path) = addr.as_pathname() {
+                    tokio::fs::remove_file(path).await?;
+                }
+
+                server_warn!("termination signal caught, shutting down the server execution");
+                Ok(())
+            }
+        };
+        // Run the corresponding HTTP Server asynchronously with its given options
     }
 }
