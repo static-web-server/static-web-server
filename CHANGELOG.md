@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _**Note:** See changelog for v1 under the [1.x](https://github.com/static-web-server/static-web-server/blob/1.x/CHANGELOG.md) branch._
 
+## v2.36.1 - 2025-03-02
+
+This new `v2.36.1` release brings several security and bug fixes and is the last version supporting legacy Windows 7, 8, 8.1 platforms.
+
+**Security patch for RUSTSEC-2024-0437**
+
+This release removes the [`experimental`](https://static-web-server.net/building-from-source/#cargo-features) Cargo feature from the resulting `static-web-server` binary temporarily (but not the Cargo feature itself) to prevent shipping the security `RUSTSEC-2024-0437` vulnerability ([#530](https://github.com/static-web-server/static-web-server/pull/530)) in this release.
+
+The `experimental` Cargo feature (that includes experimental metrics and in-memory cache features) will be restored to be part of the binary again in the next release.
+
+**End support for unmaintained Windows 7, 8, 8.1 platforms**
+
+As we mentioned a year ago ([#447](https://github.com/static-web-server/static-web-server/pull/447)), SWS would not continue supporting legacy Windows 7, 8, and 8.1 platforms for so long as [Microsoft stopped support for Windows 7 in 2020](https://learn.microsoft.com/en-us/lifecycle/products/windows-7) and Rust requires *Windows 10* as the minimum supported platform since [1.78](https://blog.rust-lang.org/2024/02/26/Windows-7.html).
+
+Today, we announce that `v2.36.1` release is the last version supporting such legacy platforms and having Rust `1.76.0` as MSRV.
+Future releases will bump up the MSRV when convenient and will require *Windows 10* as the minimum supported platform.
+However, although we will *try* to provide a patch for users wanting to build SWS manually for those legacy platforms in the future, we *cannot* fully guarantee that SWS will continue building for the aforementioned platforms.
+
+__Fixes__
+
+- [ad4c171](https://github.com/static-web-server/static-web-server/commit/ad4c171) Bugfix/security dependency updates including tokio, httparse, ring, rustls, bytes, serde and other crates. PR [#532](https://github.com/static-web-server/static-web-server/pull/532).
+- [5fbd0c5](https://github.com/static-web-server/static-web-server/commit/5fbd0c5) CORS: Add missing `Origin` to the `Vary` header value when CORS feature enabled. PR [#534](https://github.com/static-web-server/static-web-server/pull/534) resolves [#533](https://github.com/static-web-server/static-web-server/issues/533) reported by [@rbozan](https://github.com/rbozan)
+
+For more details see the [v2.36.1 milestone](https://github.com/static-web-server/static-web-server/milestone/28?closed=1) and the full changelog [v2.36.0...v2.36.1](https://github.com/static-web-server/static-web-server/compare/v2.36.0...v2.36.1).
+
 ## v2.36.0 - 2025-02-10
 
 This new `v2.36.0` release brings several security and bug fixes. A bugfix for the trailing slash redirect, new feature to log from the `X-Real-IP` header as well as other improvements.
