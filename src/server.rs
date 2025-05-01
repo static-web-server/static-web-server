@@ -139,19 +139,19 @@ impl Server {
         F: FnOnce(),
     {
         tracing::trace!("starting web server");
-        server_info!("{} {}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"));
+        tracing::info!("{} {}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"));
 
         // Config "general" options
         let general = self.opts.general;
         // Config-file "advanced" options
         let advanced_opts = self.opts.advanced;
 
-        server_info!("log level: {}", general.log_level);
+        tracing::info!("log level: {}", general.log_level);
 
         // Config file option
         let config_file = general.config_file;
         if config_file.is_file() {
-            server_info!("config file used: {}", config_file.display());
+            tracing::info!("config file used: {}", config_file.display());
         } else {
             tracing::debug!(
                 "config file path not found or not a regular file: {}",
@@ -167,7 +167,7 @@ impl Server {
                 tcp_listener = ListenFd::from_env()
                     .take_tcp_listener(fd)?
                     .with_context(|| "failed to convert inherited 'fd' into a 'tcp' listener")?;
-                server_info!(
+                tracing::info!(
                     "converted inherited file descriptor {} to a 'tcp' listener",
                     fd
                 );
@@ -181,16 +181,16 @@ impl Server {
                 tcp_listener = TcpListener::bind(addr)
                     .with_context(|| format!("failed to bind to {addr} address"))?;
                 addr_str = addr.to_string();
-                server_info!("server bound to tcp socket {}", addr_str);
+                tracing::info!("server bound to tcp socket {}", addr_str);
             }
         }
 
         // Number of worker threads option
         let threads = self.worker_threads;
-        server_info!("runtime worker threads: {}", threads);
+        tracing::info!("runtime worker threads: {}", threads);
 
         // Maximum number of blocking threads
-        server_info!(
+        tracing::info!(
             "runtime max blocking threads: {}",
             general.max_blocking_threads
         );
@@ -236,22 +236,22 @@ impl Server {
 
         // Log redirect trailing slash option
         let redirect_trailing_slash = general.redirect_trailing_slash;
-        server_info!(
+        tracing::info!(
             "redirect trailing slash: enabled={}",
             redirect_trailing_slash
         );
 
         // Ignore hidden files option
         let ignore_hidden_files = general.ignore_hidden_files;
-        server_info!("ignore hidden files: enabled={}", ignore_hidden_files);
+        tracing::info!("ignore hidden files: enabled={}", ignore_hidden_files);
 
         // Disable symlinks option
         let disable_symlinks = general.disable_symlinks;
-        server_info!("disable symlinks: enabled={}", disable_symlinks);
+        tracing::info!("disable symlinks: enabled={}", disable_symlinks);
 
         // Grace period option
         let grace_period = general.grace_period;
-        server_info!("grace period before graceful shutdown: {}s", grace_period);
+        tracing::info!("grace period before graceful shutdown: {}s", grace_period);
 
         // Index files option
         let index_files = general
@@ -262,7 +262,7 @@ impl Server {
         if index_files.is_empty() {
             bail!("index files list is empty, provide at least one index file")
         }
-        server_info!("index files: {}", general.index_files);
+        tracing::info!("index files: {}", general.index_files);
 
         // Request handler options, some settings will be filled in by modules
         let mut handler_opts = RequestHandlerOpts {
@@ -370,11 +370,11 @@ impl Server {
         #[cfg(windows)]
         let ctrlc_task = tokio::spawn(async move {
             if !general.windows_service {
-                server_info!("installing graceful shutdown ctrl+c signal handler");
+                tracing::info!("installing graceful shutdown ctrl+c signal handler");
                 tokio::signal::ctrl_c()
                     .await
                     .expect("failed to install ctrl+c signal handler");
-                server_info!("installing graceful shutdown ctrl+c signal handler");
+                tracing::info!("installing graceful shutdown ctrl+c signal handler");
                 let _ = sender.send(());
             }
         });
@@ -384,16 +384,16 @@ impl Server {
         if general.http2 {
             // HTTP to HTTPS redirect option
             let https_redirect = general.https_redirect;
-            server_info!("http to https redirect: enabled={}", https_redirect);
-            server_info!(
+            tracing::info!("http to https redirect: enabled={}", https_redirect);
+            tracing::info!(
                 "http to https redirect host: {}",
                 general.https_redirect_host
             );
-            server_info!(
+            tracing::info!(
                 "http to https redirect from port: {}",
                 general.https_redirect_from_port
             );
-            server_info!(
+            tracing::info!(
                 "http to https redirect from hosts: {}",
                 general.https_redirect_from_hosts
             );
@@ -466,7 +466,7 @@ impl Server {
                 }
             });
 
-            server_info!(
+            tracing::info!(
                 parent: tracing::info_span!("Server::start_server", ?addr_str, ?threads),
                 "http2 server is listening on https://{}",
                 addr_str
@@ -481,7 +481,7 @@ impl Server {
                 let addr = SocketAddr::from((ip, general.https_redirect_from_port));
                 let tcp_listener = TcpListener::bind(addr)
                     .with_context(|| format!("failed to bind to {addr} address"))?;
-                server_info!(
+                tracing::info!(
                     parent: tracing::info_span!("Server::start_server", ?addr, ?threads),
                     "http1 redirect server is listening on http://{}",
                     addr
@@ -568,7 +568,7 @@ impl Server {
                     }
                 });
 
-                server_info!("press ctrl+c to shut down the servers");
+                tracing::info!("press ctrl+c to shut down the servers");
 
                 #[cfg(windows)]
                 tokio::try_join!(ctrlc_task, server_task, redirect_server_task)?;
@@ -578,7 +578,7 @@ impl Server {
                 #[cfg(unix)]
                 redirect_handle.close();
             } else {
-                server_info!("press ctrl+c to shut down the server");
+                tracing::info!("press ctrl+c to shut down the server");
                 http2_server.await?;
             }
 
@@ -588,7 +588,7 @@ impl Server {
             #[cfg(windows)]
             _cancel_fn();
 
-            server_warn!("termination signal caught, shutting down the server execution");
+            tracing::warn!("termination signal caught, shutting down the server execution");
             return Ok(());
         }
 
@@ -631,13 +631,13 @@ impl Server {
             signals::wait_for_ctrl_c(http1_cancel_recv, grace_period).await;
         });
 
-        server_info!(
+        tracing::info!(
             parent: tracing::info_span!("Server::start_server", ?addr_str, ?threads),
             "http1 server is listening on http://{}",
             addr_str
         );
 
-        server_info!("press ctrl+c to shut down the server");
+        tracing::info!("press ctrl+c to shut down the server");
 
         #[cfg(unix)]
         http1_server.await?;
@@ -658,7 +658,7 @@ impl Server {
         #[cfg(unix)]
         handle.close();
 
-        server_warn!("termination signal caught, shutting down the server execution");
+        tracing::warn!("termination signal caught, shutting down the server execution");
         Ok(())
     }
 }

@@ -82,7 +82,7 @@ pub fn init(enabled: bool, level: CompressionLevel, handler_opts: &mut RequestHa
         #[cfg(any(feature = "compression", feature = "compression-zstd"))]
         "zstd",
     ];
-    server_info!(
+    tracing::info!(
         "auto compression: enabled={enabled}, formats={}, compression level={level:?}",
         FORMATS.join(",")
     );

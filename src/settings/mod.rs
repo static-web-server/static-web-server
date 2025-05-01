@@ -422,7 +422,7 @@ impl Settings {
             tracing::debug!("config file path resolved: {}", config_file.display());
 
             if !has_general_settings {
-                server_warn!(
+                tracing::warn!(
                     "config file empty or no `general` settings found, using default values"
                 );
             }

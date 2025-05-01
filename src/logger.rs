@@ -35,12 +35,7 @@ fn configure(level: &str) -> Result {
         .with_writer(std::io::stderr)
         .with_span_events(FmtSpan::CLOSE)
         .with_ansi(enable_ansi)
-        .with_filter(
-            Targets::default()
-                .with_default(level)
-                .with_target("static_web_server::info", Level::INFO)
-                .with_target("static_web_server::warn", Level::WARN),
-        );
+        .with_filter(Targets::default().with_default(level));
 
     match tracing_subscriber::registry()
         .with(filtered_layer)
@@ -49,26 +44,4 @@ fn configure(level: &str) -> Result {
         Err(err) => Err(anyhow!(err)),
         _ => Ok(()),
     }
-}
-
-/// Custom info level macro.
-#[macro_export]
-macro_rules! server_info {
-    ($($arg:tt)*) => {
-        tracing::info!(
-            target: "static_web_server::info",
-            $($arg)*
-        )
-    };
-}
-
-/// Custom warn level macro.
-#[macro_export]
-macro_rules! server_warn {
-    ($($arg:tt)*) => {
-        tracing::warn!(
-            target: "static_web_server::warn",
-            $($arg)*
-        )
-    };
 }

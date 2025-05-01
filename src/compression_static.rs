@@ -31,7 +31,7 @@ pub struct CompressedFileVariant {
 /// Initializes static compression.
 pub fn init(enabled: bool, handler_opts: &mut RequestHandlerOpts) {
     handler_opts.compression_static = enabled;
-    server_info!("compression static: enabled={enabled}");
+    tracing::info!("compression static: enabled={enabled}");
 }
 
 /// Post-processing to add Vary header if necessary.

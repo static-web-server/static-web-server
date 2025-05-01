@@ -20,16 +20,16 @@ pub(crate) fn init(enabled: bool, handler_opts: &mut RequestHandlerOpts) {
         format!("{:?}", handler_opts.trusted_proxies)
     };
 
-    server_info!("log requests with remote IP addresses: enabled={enabled}");
-    server_info!(
+    tracing::info!("log requests with remote IP addresses: enabled={enabled}");
+    tracing::info!(
         "log X-Real-IP header: enabled={}",
         handler_opts.log_forwarded_for
     );
-    server_info!(
+    tracing::info!(
         "log X-Forwarded-For header: enabled={}",
         handler_opts.log_forwarded_for
     );
-    server_info!("trusted IPs for X-Forwarded-For: {trusted}");
+    tracing::info!("trusted IPs for X-Forwarded-For: {trusted}");
 }
 
 /// It logs remote and real IP addresses if available.

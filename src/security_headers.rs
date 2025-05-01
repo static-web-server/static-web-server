@@ -15,7 +15,7 @@ use crate::{handler::RequestHandlerOpts, Error};
 
 pub(crate) fn init(enabled: bool, handler_opts: &mut RequestHandlerOpts) {
     handler_opts.security_headers = enabled;
-    server_info!("security headers: enabled={enabled}");
+    tracing::info!("security headers: enabled={enabled}");
 }
 
 /// Appends security headers to a response if necessary

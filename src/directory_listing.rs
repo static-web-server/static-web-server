@@ -61,13 +61,13 @@ pub struct DirListOpts<'a> {
 /// Initializes directory listings.
 pub fn init(enabled: bool, order: u8, format: DirListFmt, handler_opts: &mut RequestHandlerOpts) {
     handler_opts.dir_listing = enabled;
-    server_info!("directory listing: enabled={enabled}");
+    tracing::info!("directory listing: enabled={enabled}");
 
     handler_opts.dir_listing_order = order;
-    server_info!("directory listing order code: {order}");
+    tracing::info!("directory listing order code: {order}");
 
     handler_opts.dir_listing_format = format;
-    server_info!(
+    tracing::info!(
         "directory listing format: {:?}",
         handler_opts.dir_listing_format
     );

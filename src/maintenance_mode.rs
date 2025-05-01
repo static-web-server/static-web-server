@@ -25,15 +25,15 @@ pub(crate) fn init(
     handler_opts.maintenance_mode = maintenance_mode;
     handler_opts.maintenance_mode_status = maintenance_mode_status;
     handler_opts.maintenance_mode_file = maintenance_mode_file;
-    server_info!(
+    tracing::info!(
         "maintenance mode: enabled={}",
         handler_opts.maintenance_mode
     );
-    server_info!(
+    tracing::info!(
         "maintenance mode status: {}",
         handler_opts.maintenance_mode_status.as_str()
     );
-    server_info!(
+    tracing::info!(
         "maintenance mode file: \"{}\"",
         handler_opts.maintenance_mode_file.display()
     );
