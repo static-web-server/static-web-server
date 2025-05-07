@@ -26,7 +26,7 @@ pub(crate) fn init(file_path: &Path, handler_opts: &mut RequestHandlerOpts) {
         tracing::debug!("fallback page path not found or not a regular file");
     }
 
-    server_info!(
+    tracing::info!(
         "fallback page: enabled={}, value=\"{}\"",
         found,
         file_path.display()

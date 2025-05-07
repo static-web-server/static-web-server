@@ -71,7 +71,7 @@ pub fn new(
         };
 
         if cors_res.is_some() {
-            server_info!(
+            tracing::info!(
                     "cors enabled=true, allow_methods=[GET,HEAD,OPTIONS], allow_origins={}, allow_headers=[{}], expose_headers=[{}]",
                     origins_str,
                     allow_headers_str,

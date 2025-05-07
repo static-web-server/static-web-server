@@ -15,7 +15,7 @@ use crate::{error_page, handler::RequestHandlerOpts, http_ext::MethodExt, Error}
 /// Initializes `Basic` HTTP Authorization handling
 pub(crate) fn init(credentials: &str, handler_opts: &mut RequestHandlerOpts) {
     credentials.trim().clone_into(&mut handler_opts.basic_auth);
-    server_info!(
+    tracing::info!(
         "basic authentication: enabled={}",
         !handler_opts.basic_auth.is_empty()
     );

@@ -15,7 +15,7 @@ use crate::{handler::RequestHandlerOpts, http_ext::MethodExt, Error};
 /// Initializes the metrics endpoint.
 pub fn init(enabled: bool, handler_opts: &mut RequestHandlerOpts) {
     handler_opts.experimental_metrics = enabled;
-    server_info!("metrics endpoint (experimental): enabled={enabled}");
+    tracing::info!("metrics endpoint (experimental): enabled={enabled}");
 
     if enabled {
         default_registry()

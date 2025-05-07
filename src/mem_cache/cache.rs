@@ -67,7 +67,7 @@ pub(crate) fn init(handler_opts: &mut RequestHandlerOpts) -> Result {
             // Default 8mb
             let max_file_size = opts.max_file_size.unwrap_or(8192);
 
-            server_info!(
+            tracing::info!(
                 "in-memory cache (experimental): enabled=true, capacity={capacity}, ttl={ttl}, tti={tti}, max_file_size={max_file_size}"
             );
 
@@ -91,7 +91,7 @@ pub(crate) fn init(handler_opts: &mut RequestHandlerOpts) -> Result {
         }
     }
 
-    server_info!("in-memory cache (experimental): enabled=false");
+    tracing::info!("in-memory cache (experimental): enabled=false");
 
     Ok(())
 }
