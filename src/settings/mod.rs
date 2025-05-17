@@ -127,6 +127,7 @@ impl Settings {
         let mut port = opts.port;
         let mut root = opts.root;
         let mut log_level = opts.log_level;
+        let mut log_with_ansi = opts.log_with_ansi;
         let mut config_file = opts.config_file.clone();
         let mut cache_control_headers = opts.cache_control_headers;
 
@@ -241,6 +242,9 @@ impl Settings {
                 }
                 if let Some(ref v) = general.log_level {
                     log_level = v.name().to_lowercase();
+                }
+                if let Some(v) = general.log_with_ansi {
+                    log_with_ansi = v;
                 }
                 if let Some(v) = general.cache_control_headers {
                     cache_control_headers = v
@@ -414,7 +418,7 @@ impl Settings {
 
             // Logging system initialization in config file context
             if log_init {
-                logger::init(log_level.as_str())?;
+                logger::init(log_level.as_str(), log_with_ansi)?;
             }
 
             tracing::debug!("config file read successfully");
@@ -596,7 +600,7 @@ impl Settings {
             }
         } else if log_init {
             // Logging system initialization on demand
-            logger::init(log_level.as_str())?;
+            logger::init(log_level.as_str(), log_with_ansi)?;
         }
 
         Ok(Settings {
@@ -606,6 +610,7 @@ impl Settings {
                 port,
                 root,
                 log_level,
+                log_with_ansi,
                 config_file,
                 cache_control_headers,
                 #[cfg(any(

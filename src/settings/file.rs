@@ -205,8 +205,10 @@ pub struct General {
     /// Root directory path.
     pub root: Option<PathBuf>,
 
-    /// Logging.
+    /// Logging level.
     pub log_level: Option<LogLevel>,
+    /// Enable/disable ANSI escape codes for log output.
+    pub log_with_ansi: Option<bool>,
 
     /// Cache Control headers.
     pub cache_control_headers: Option<bool>,
