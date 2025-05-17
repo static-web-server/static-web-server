@@ -15,6 +15,16 @@ static-web-server \
 
 > Note: The log format is not well defined and is subject to change.
 
+## Log output with ANSI
+
+SWS does not output ANSI escape codes by default. However, If you want ANSI escape for colors and other text formatting when logging then use the boolean `--log-with-ansi` CLI option and its equivalent [SERVER_LOG_WITH_ANSI](./../configuration/environment-variables.md#server_log_with_ansi) env.
+
+For example, if you want colored log output then use the `--log-with-ansi` option as follows:
+
+```sh
+static-web-server -p 8788 -d ./public/ -g trace -z --log-with-ansi
+```
+
 ## Log Remote Addresses
 
 SWS provides *Remote Address (IP)* logging for every request via an `INFO` log level.
@@ -76,6 +86,7 @@ Since the content of the `X-Forwarded-For` header can be changed by all proxies 
 To restrict the logging to only requests that originate from trusted proxy IPs, you can use the `--trusted-proxies` option, or the equivalent [SERVER_TRUSTED_PROXIES](../configuration/environment-variables.md#server_trusted_proxies) env. This should be a list of IPs, separated by commas. An empty list (the default) indicates that all IPs should be trusted.
 
 Command used for the following examples:
+
 ```sh
 static-web-server -a "::" --log-forwarded-for=true --trusted-proxies="::1" -p 8080 -d docker/public/ -g info
 ```

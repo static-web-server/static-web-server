@@ -125,6 +125,18 @@ pub struct General {
 
     #[arg(
         long,
+        default_value = "false",
+        default_missing_value("true"),
+        num_args(0..=1),
+        require_equals(false),
+        action = clap::ArgAction::Set,
+        env = "SERVER_LOG_WITH_ANSI",
+    )]
+    /// Enable or disable ANSI escape codes for colors and other text formatting of the log output.
+    pub log_with_ansi: bool,
+
+    #[arg(
+        long,
         short = 'c',
         default_value = "",
         env = "SERVER_CORS_ALLOW_ORIGINS"

@@ -27,6 +27,9 @@ Defines a grace period in seconds after a `SIGTERM` signal is caught which will 
 ### SERVER_LOG_LEVEL
 Specify a logging level in lowercase. Possible values are `error`, `warn`, `info`, `debug` or `trace`. Default `error`.
 
+### SERVER_LOG_WITH_ANSI
+Enable or disable ANSI escape codes for colors and other text formatting of the log output.
+
 ### SERVER_LOG_REMOTE_ADDRESS
 Log incoming request information along with its Remote Address (IP) if available using the `info` log level. Default `false`.
 
