@@ -294,6 +294,15 @@ fn read_dir_entries(mut opt: DirEntryOpts<'_>) -> Result<Response<Body>> {
         file_entries.push(entry);
     }
 
+    // TODO: check enable dir-archive feature
+    file_entries.push(FileEntry {
+        name: "(download as .tar.gz)".into(),
+        mtime: None,
+        size: None,
+        r#type: FileType::File, // TODO: do we need special handling?
+        uri: ".tar.gz".into(),
+    });
+
     // Check the query request uri for a sorting type. E.g https://blah/?sort=5
     if let Some(q) = opt.uri_query {
         let mut parts = form_urlencoded::parse(q.as_bytes());

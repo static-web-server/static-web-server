@@ -9,14 +9,24 @@
 // Part of the file is borrowed and adapted at a convenience from
 // https://github.com/seanmonstar/warp/blob/master/src/filters/fs.rs
 
-use headers::{AcceptRanges, HeaderMap, HeaderMapExt, HeaderValue};
+use async_compression::tokio::write::GzipEncoder;
+use async_tar::Builder;
+use bytes::BytesMut;
+use headers::{AcceptRanges, ContentType, HeaderMap, HeaderMapExt, HeaderValue};
+use hyper::body::Sender;
 use hyper::{header::CONTENT_ENCODING, header::CONTENT_LENGTH, Body, Method, Response, StatusCode};
+use mime_guess::Mime;
 use std::fs::{File, Metadata};
-use std::io;
 use std::path::PathBuf;
+use std::str::FromStr;
+use tokio::io::{self, AsyncWriteExt};
+use tokio_util::compat::TokioAsyncWriteCompatExt;
 
 use crate::conditional_headers::ConditionalHeaders;
-use crate::fs::meta::{try_metadata, try_metadata_with_html_suffix, FileMetadata};
+use crate::fs::meta::{
+    try_metadata, try_metadata_with_html_suffix, try_metadata_without_dir_archive_suffix,
+    FileMetadata,
+};
 use crate::fs::path::{sanitize_path, PathExt};
 use crate::http_ext::{MethodExt, HTTP_SUPPORTED_METHODS};
 use crate::response::response_body;
@@ -39,6 +49,46 @@ use crate::{
     directory_listing,
     directory_listing::{DirListFmt, DirListOpts},
 };
+
+struct ChannelBuffer {
+    s: Sender,
+}
+
+impl tokio::io::AsyncWrite for ChannelBuffer {
+    fn poll_write(
+        self: std::pin::Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+        buf: &[u8],
+    ) -> std::task::Poll<std::result::Result<usize, std::io::Error>> {
+        // TODO: what kind of error may be encountered?
+        let this = self.get_mut();
+        let b = BytesMut::from(buf);
+        match this.s.poll_ready(cx) {
+            std::task::Poll::Ready(r) => match r {
+                Ok(()) => match this.s.try_send_data(b.freeze()) {
+                    Ok(_) => std::task::Poll::Ready(Ok(buf.len())),
+                    Err(_) => std::task::Poll::Pending,
+                },
+                Err(e) => std::task::Poll::Ready(Err(io::Error::new(io::ErrorKind::BrokenPipe, e))),
+            },
+            std::task::Poll::Pending => std::task::Poll::Pending,
+        }
+    }
+
+    fn poll_flush(
+        self: std::pin::Pin<&mut Self>,
+        _cx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<std::result::Result<(), std::io::Error>> {
+        std::task::Poll::Ready(Ok(()))
+    }
+
+    fn poll_shutdown(
+        self: std::pin::Pin<&mut Self>,
+        _cx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<std::result::Result<(), std::io::Error>> {
+        std::task::Poll::Ready(Ok(()))
+    }
+}
 
 const DEFAULT_INDEX_FILES: &[&str; 1] = &["index.html"];
 
@@ -121,6 +171,8 @@ pub async fn handle(opts: &HandleOpts<'_>) -> Result<StaticFileResponse, StatusC
         }
     }
 
+    let is_dir_archive = file_path.ends_with(".tar.gz");
+
     let FileMetadata {
         file_path,
         metadata,
@@ -184,6 +236,56 @@ pub async fn handle(opts: &HandleOpts<'_>) -> Result<StaticFileResponse, StatusC
     // if current path is a valid directory and
     // if it does not contain an `index.html` file (if a proper auto index is generated)
     #[cfg(feature = "directory-listing")]
+    if is_dir && opts.dir_listing && is_dir_archive {
+        if let Some(filename) = file_path.file_name() {
+            let ff = filename.to_owned();
+            let dirfp = std::path::Path::new(&ff);
+
+            let (tx, body) = Body::channel();
+
+            let cb = ChannelBuffer { s: tx };
+
+            let dfp = dirfp.as_os_str().to_owned();
+            let fp = file_path.as_os_str().to_owned();
+            tokio::task::spawn(async move {
+                let gz = GzipEncoder::with_quality(cb, async_compression::Level::Default);
+                let mut a = Builder::new(gz.compat_write());
+                a.append_dir_all(dfp, fp).await.unwrap();
+                a.finish().await.unwrap();
+                let mut inner = a.into_inner().await.unwrap().into_inner();
+                // this is required to emit gzip CRC trailer
+                inner.shutdown().await.unwrap();
+            });
+
+            let mut resp = Response::new(body);
+            let archive_name = dirfp.with_extension("tar.gz");
+
+            let hvals = format!(
+                "attachment; filename=\"{}\"",
+                archive_name.to_string_lossy()
+            );
+            resp.headers_mut().typed_insert(ContentType::from(
+                Mime::from_str("application/gzip").unwrap(),
+            ));
+            // TODO: investigate ContentDisposition from headers crate
+            // TODO: investigate HeaderValue from_maybe_shared
+            match HeaderValue::from_str(hvals.as_str()) {
+                Ok(hval) => {
+                    resp.headers_mut()
+                        .insert(hyper::header::CONTENT_DISPOSITION, hval);
+                }
+                Err(err) => {
+                    tracing::error!("cant make content disposition from {}: {:?}", hvals, err);
+                }
+            }
+            return Ok(StaticFileResponse {
+                resp,
+                file_path: resp_file_path,
+            });
+        } else {
+            panic!("unexpected error {}", file_path.to_string_lossy());
+        }
+    }
     if is_dir && opts.dir_listing && !file_path.exists() {
         let resp = directory_listing::auto_index(DirListOpts {
             method,
@@ -422,6 +524,24 @@ fn get_composed_file_metadata<'a>(
                     is_dir: false,
                     precompressed_variant: None,
                 });
+            }
+
+            // UPSTREAM NOTE
+            // RATIONALE: <dirname>.tar.gz is a common pattern and the content
+            // of the archive does not always matches the content of the
+            // directory. Overriding the meaning of such filename might be
+            // confusing, while <dirname>/.tar.gz is less common.
+            if file_path.ends_with(".tar.gz") {
+                let new_meta2: Option<Metadata>;
+                (file_path, new_meta2) = try_metadata_without_dir_archive_suffix(file_path);
+                if let Some(new_meta2) = new_meta2 {
+                    return Ok(FileMetadata {
+                        file_path,
+                        metadata: new_meta2,
+                        is_dir: true,
+                        precompressed_variant: None,
+                    });
+                }
             }
 
             Err(err)
