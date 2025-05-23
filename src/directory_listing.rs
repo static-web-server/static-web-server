@@ -294,16 +294,6 @@ fn read_dir_entries(mut opt: DirEntryOpts<'_>) -> Result<Response<Body>> {
         file_entries.push(entry);
     }
 
-    // TODO: check enable dir-archive feature
-    // TODO: make this post process
-    file_entries.push(FileEntry {
-        name: "(download as .tar.gz)".into(),
-        mtime: None,
-        size: None,
-        r#type: FileType::File, // TODO: do we need special handling?
-        uri: "?download-archive=1".into(),
-    });
-
     // Check the query request uri for a sorting type. E.g https://blah/?sort=5
     if let Some(q) = opt.uri_query {
         let mut parts = form_urlencoded::parse(q.as_bytes());
@@ -424,6 +414,10 @@ fn html_auto_index<'a>(
                 p {
                     small {
                         "directories: " (dirs_count) ", files: " (files_count)
+                        // TODO: check enable dir-archive feature/opt
+                        "  " a href="?download-archive=1" {
+                            "(download all as .tar.gz)"
+                        }
                     }
                 }
                 hr;
