@@ -414,6 +414,10 @@ fn html_auto_index<'a>(
                 p {
                     small {
                         "directories: " (dirs_count) ", files: " (files_count)
+                        // TODO: check enable dir-archive feature/opt
+                        "  " a href="?download-archive=1" {
+                            "(download all as .tar.gz)"
+                        }
                     }
                 }
                 hr;
