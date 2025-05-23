@@ -23,10 +23,7 @@ use tokio::io::{self, AsyncWriteExt};
 use tokio_util::compat::TokioAsyncWriteCompatExt;
 
 use crate::conditional_headers::ConditionalHeaders;
-use crate::fs::meta::{
-    try_metadata, try_metadata_with_html_suffix, try_metadata_without_dir_archive_suffix,
-    FileMetadata,
-};
+use crate::fs::meta::{try_metadata, try_metadata_with_html_suffix, FileMetadata};
 use crate::fs::path::{sanitize_path, PathExt};
 use crate::http_ext::{MethodExt, HTTP_SUPPORTED_METHODS};
 use crate::response::response_body;
@@ -171,8 +168,6 @@ pub async fn handle(opts: &HandleOpts<'_>) -> Result<StaticFileResponse, StatusC
         }
     }
 
-    let is_dir_archive = file_path.ends_with(".tar.gz");
-
     let FileMetadata {
         file_path,
         metadata,
@@ -236,54 +231,64 @@ pub async fn handle(opts: &HandleOpts<'_>) -> Result<StaticFileResponse, StatusC
     // if current path is a valid directory and
     // if it does not contain an `index.html` file (if a proper auto index is generated)
     #[cfg(feature = "directory-listing")]
-    if is_dir && opts.dir_listing && is_dir_archive {
-        if let Some(filename) = file_path.file_name() {
-            let ff = filename.to_owned();
-            let dirfp = std::path::Path::new(&ff);
+    if is_dir && opts.dir_listing {
+        if let Some((_k, _dl_archive_opt)) =
+            form_urlencoded::parse(opts.uri_query.unwrap_or(&String::from("")).as_bytes())
+                .filter(|(k, _v)| k == "download-archive")
+                .next()
+        {
+            // file path is index.html, need pop
+            let mut fff = file_path.to_owned();
+            fff.pop();
+            if let Some(filename) = fff.file_name() {
+                let ff = filename.to_owned();
+                let dirfp = std::path::Path::new(&ff);
 
-            let (tx, body) = Body::channel();
+                let (tx, body) = Body::channel();
 
-            let cb = ChannelBuffer { s: tx };
+                let cb = ChannelBuffer { s: tx };
 
-            let dfp = dirfp.as_os_str().to_owned();
-            let fp = file_path.as_os_str().to_owned();
-            tokio::task::spawn(async move {
-                let gz = GzipEncoder::with_quality(cb, async_compression::Level::Default);
-                let mut a = Builder::new(gz.compat_write());
-                a.append_dir_all(dfp, fp).await.unwrap();
-                a.finish().await.unwrap();
-                let mut inner = a.into_inner().await.unwrap().into_inner();
-                // this is required to emit gzip CRC trailer
-                inner.shutdown().await.unwrap();
-            });
+                let dfp = dirfp.as_os_str().to_owned();
+                let fp = fff.as_os_str().to_owned();
+                tokio::task::spawn(async move {
+                    let gz = GzipEncoder::with_quality(cb, async_compression::Level::Default);
+                    let mut a = Builder::new(gz.compat_write());
+                    // will panic when broken pipe
+                    a.append_dir_all(dfp, fp).await.unwrap();
+                    a.finish().await.unwrap();
+                    let mut inner = a.into_inner().await.unwrap().into_inner();
+                    // this is required to emit gzip CRC trailer
+                    inner.shutdown().await.unwrap();
+                });
 
-            let mut resp = Response::new(body);
-            let archive_name = dirfp.with_extension("tar.gz");
+                let mut resp = Response::new(body);
+                let archive_name = dirfp.with_extension("tar.gz");
 
-            let hvals = format!(
-                "attachment; filename=\"{}\"",
-                archive_name.to_string_lossy()
-            );
-            resp.headers_mut().typed_insert(ContentType::from(
-                Mime::from_str("application/gzip").unwrap(),
-            ));
-            // TODO: investigate ContentDisposition from headers crate
-            // TODO: investigate HeaderValue from_maybe_shared
-            match HeaderValue::from_str(hvals.as_str()) {
-                Ok(hval) => {
-                    resp.headers_mut()
-                        .insert(hyper::header::CONTENT_DISPOSITION, hval);
+                let hvals = format!(
+                    "attachment; filename=\"{}\"",
+                    archive_name.to_string_lossy()
+                );
+                resp.headers_mut().typed_insert(ContentType::from(
+                    Mime::from_str("application/gzip").unwrap(),
+                ));
+                // TODO: investigate ContentDisposition from headers crate
+                // TODO: investigate HeaderValue from_maybe_shared
+                match HeaderValue::from_str(hvals.as_str()) {
+                    Ok(hval) => {
+                        resp.headers_mut()
+                            .insert(hyper::header::CONTENT_DISPOSITION, hval);
+                    }
+                    Err(err) => {
+                        tracing::error!("cant make content disposition from {}: {:?}", hvals, err);
+                    }
                 }
-                Err(err) => {
-                    tracing::error!("cant make content disposition from {}: {:?}", hvals, err);
-                }
+                return Ok(StaticFileResponse {
+                    resp,
+                    file_path: resp_file_path,
+                });
+            } else {
+                panic!("unexpected error {}", file_path.to_string_lossy());
             }
-            return Ok(StaticFileResponse {
-                resp,
-                file_path: resp_file_path,
-            });
-        } else {
-            panic!("unexpected error {}", file_path.to_string_lossy());
         }
     }
     if is_dir && opts.dir_listing && !file_path.exists() {
@@ -524,24 +529,6 @@ fn get_composed_file_metadata<'a>(
                     is_dir: false,
                     precompressed_variant: None,
                 });
-            }
-
-            // UPSTREAM NOTE
-            // RATIONALE: <dirname>.tar.gz is a common pattern and the content
-            // of the archive does not always matches the content of the
-            // directory. Overriding the meaning of such filename might be
-            // confusing, while <dirname>/.tar.gz is less common.
-            if file_path.ends_with(".tar.gz") {
-                let new_meta2: Option<Metadata>;
-                (file_path, new_meta2) = try_metadata_without_dir_archive_suffix(file_path);
-                if let Some(new_meta2) = new_meta2 {
-                    return Ok(FileMetadata {
-                        file_path,
-                        metadata: new_meta2,
-                        is_dir: true,
-                        precompressed_variant: None,
-                    });
-                }
             }
 
             Err(err)

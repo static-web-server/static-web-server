@@ -295,12 +295,13 @@ fn read_dir_entries(mut opt: DirEntryOpts<'_>) -> Result<Response<Body>> {
     }
 
     // TODO: check enable dir-archive feature
+    // TODO: make this post process
     file_entries.push(FileEntry {
         name: "(download as .tar.gz)".into(),
         mtime: None,
         size: None,
         r#type: FileType::File, // TODO: do we need special handling?
-        uri: ".tar.gz".into(),
+        uri: "?download-archive=1".into(),
     });
 
     // Check the query request uri for a sorting type. E.g https://blah/?sort=5

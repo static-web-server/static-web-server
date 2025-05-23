@@ -73,26 +73,3 @@ pub(crate) fn try_metadata_with_html_suffix(
     (file_path, None)
 }
 
-pub(crate) fn try_metadata_without_dir_archive_suffix(
-    file_path: &mut PathBuf,
-) -> (&mut PathBuf, Option<Metadata>) {
-    tracing::debug!("file: removing .tar.gz part from path");
-
-    let cfp = file_path.to_owned();
-    if let Some(filename) = cfp.file_name() {
-        file_path.pop();
-
-        if let Ok(meta_res) = try_metadata(file_path) {
-            let (meta, _) = meta_res;
-            if meta.is_dir() {
-                return (file_path, Some(meta));
-            }
-        }
-
-        tracing::debug!("file: the dir of the .tar.gz suffixed path doesn't exist, falling back to the original");
-
-        file_path.push(filename);
-    }
-
-    (file_path, None)
-}
