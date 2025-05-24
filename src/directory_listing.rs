@@ -17,6 +17,9 @@ use std::ffi::{OsStr, OsString};
 use std::io;
 use std::path::Path;
 
+#[cfg(feature = "directory-listing-download")]
+use crate::directory_listing_download::DOWNLOAD_PARAM_KEY;
+
 use crate::{handler::RequestHandlerOpts, http_ext::MethodExt, Context, Result};
 
 /// Non-alphanumeric characters to be percent-encoded
@@ -394,6 +397,15 @@ fn html_auto_index<'a>(
     let sort_attrs = sort_file_entries(entries, order_code);
     let current_path = percent_decode_str(base_path).decode_utf8_lossy();
 
+    #[cfg(feature = "directory-listing-download")]
+    let download_directory_elem = html! {
+        ",  " a href={ "?" (DOWNLOAD_PARAM_KEY) } {
+            "download .tar.gz"
+        }
+    };
+    #[cfg(not(feature = "directory-listing-download"))]
+    let download_directory_elem = html! {};
+
     html! {
         (DOCTYPE)
         html {
@@ -413,11 +425,7 @@ fn html_auto_index<'a>(
                 }
                 p {
                     small {
-                        "directories: " (dirs_count) ", files: " (files_count)
-                        // TODO: check enable dir-archive feature/opt
-                        "  " a href="?download-archive=1" {
-                            "(download all as .tar.gz)"
-                        }
+                        "directories: " (dirs_count) ", files: " (files_count) (download_directory_elem)
                     }
                 }
                 hr;

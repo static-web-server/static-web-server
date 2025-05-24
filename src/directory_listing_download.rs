@@ -1,0 +1,125 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
+// This file is part of Static Web Server.
+// See https://static-web-server.net/ for more information
+// Copyright (C) 2019-present Jose Quintana <joseluisq.net>
+
+//! Compress content of a directory into a tarball
+//!
+
+use async_compression::tokio::write::GzipEncoder;
+use async_tar::Builder;
+use bytes::BytesMut;
+use headers::{ContentType, HeaderMapExt};
+use http::{HeaderValue, Response};
+use hyper::{body::Sender, Body};
+use mime_guess::Mime;
+use std::str::FromStr;
+use std::{ffi::OsString, path::Path};
+use tokio::io::{self, AsyncWriteExt};
+use tokio_util::compat::TokioAsyncWriteCompatExt;
+
+/// query parameter key to download directory as tar.gz
+pub const DOWNLOAD_PARAM_KEY: &str = "download";
+
+/// impl AsyncWrite for hyper::Body::Sender
+pub struct ChannelBuffer {
+    s: Sender,
+}
+
+impl tokio::io::AsyncWrite for ChannelBuffer {
+    fn poll_write(
+        self: std::pin::Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+        buf: &[u8],
+    ) -> std::task::Poll<std::result::Result<usize, std::io::Error>> {
+        // TODO: what kind of error may be encountered?
+        let this = self.get_mut();
+        let b = BytesMut::from(buf);
+        match this.s.poll_ready(cx) {
+            std::task::Poll::Ready(r) => match r {
+                Ok(()) => match this.s.try_send_data(b.freeze()) {
+                    Ok(_) => std::task::Poll::Ready(Ok(buf.len())),
+                    Err(_) => std::task::Poll::Pending,
+                },
+                Err(e) => std::task::Poll::Ready(Err(io::Error::new(io::ErrorKind::BrokenPipe, e))),
+            },
+            std::task::Poll::Pending => std::task::Poll::Pending,
+        }
+    }
+
+    fn poll_flush(
+        self: std::pin::Pin<&mut Self>,
+        _cx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<std::result::Result<(), std::io::Error>> {
+        std::task::Poll::Ready(Ok(()))
+    }
+
+    fn poll_shutdown(
+        self: std::pin::Pin<&mut Self>,
+        _cx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<std::result::Result<(), std::io::Error>> {
+        std::task::Poll::Ready(Ok(()))
+    }
+}
+
+/// archive reply
+pub fn archive_dir<P, Q>(path: P, src_path: Q) -> Body
+where
+    P: AsRef<Path>,
+    Q: AsRef<Path>,
+{
+    let (tx, body) = Body::channel();
+    let cb = ChannelBuffer { s: tx };
+
+    let p: OsString = path.as_ref().into();
+    let sp: OsString = src_path.as_ref().into();
+    tokio::task::spawn(async move {
+        let gz = GzipEncoder::with_quality(cb, async_compression::Level::Default);
+        let mut a = Builder::new(gz.compat_write());
+        let mut res = a.append_dir_all(p, sp).await;
+        if res.is_ok() {
+            res = a.finish().await;
+        }
+        let mut gz_inner = a.into_inner().await.unwrap().into_inner();
+        if res.is_ok() {
+            // this is required to emit gzip CRC trailer
+            res = gz_inner.shutdown().await;
+        }
+        if res.is_err() {
+            let cb_inner = gz_inner.into_inner();
+            cb_inner.s.abort();
+        }
+    });
+
+    body
+}
+
+/// archive reply
+pub fn archive_reply<P, Q>(path: P, src_path: Q) -> Response<Body>
+where
+    P: AsRef<Path>,
+    Q: AsRef<Path>,
+{
+    let archive_name = path.as_ref().with_extension("tar.gz");
+    let mut resp = Response::new(archive_dir(path, src_path));
+    let hvals = format!(
+        "attachment; filename=\"{}\"",
+        archive_name.to_string_lossy()
+    );
+    resp.headers_mut().typed_insert(ContentType::from(
+        Mime::from_str("application/gzip").unwrap(),
+    ));
+    // TODO: investigate ContentDisposition from headers crate
+    // TODO: investigate HeaderValue from_maybe_shared
+    match HeaderValue::from_str(hvals.as_str()) {
+        Ok(hval) => {
+            resp.headers_mut()
+                .insert(hyper::header::CONTENT_DISPOSITION, hval);
+        }
+        Err(err) => {
+            tracing::error!("cant make content disposition from {}: {:?}", hvals, err);
+        }
+    }
+
+    resp
+}

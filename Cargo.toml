@@ -38,7 +38,7 @@ doc = false
 
 [features]
 # All features enabled by default
-default = ["compression", "http2", "directory-listing", "basic-auth", "fallback-page"]
+default = ["compression", "http2", "directory-listing", "directory-listing-download", "basic-auth", "fallback-page"]
 # Include all features (used when building SWS binaries)
 all = ["default", "experimental"]
 # HTTP2
@@ -51,6 +51,8 @@ compression-gzip = ["async-compression/deflate"]
 compression-zstd = ["async-compression/zstd"]
 # Directory listing
 directory-listing = ["chrono", "maud"]
+# Directory listing download
+directory-listing-download = ["async-tar",  "compression-gzip", "directory-listing"]
 # Basic HTTP Authorization
 basic-auth = ["bcrypt"]
 # Fallback Page
@@ -63,7 +65,7 @@ experimental = ["tokio-metrics-collector", "prometheus", "compact_str", "mini-mo
 aho-corasick = "1.1"
 anyhow = "1.0"
 async-compression = { version = "0.4", default-features = false, optional = true, features = ["brotli", "deflate", "gzip", "zstd", "tokio"] }
-async-tar = "0.5"
+async-tar = { version = "0.5", optional = true }
 bcrypt = { version = "0.17", optional = true }
 bytes = "1.10"
 chrono = { version = "0.4", default-features = false, features = ["std", "clock"], optional = true }

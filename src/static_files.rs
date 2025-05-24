@@ -9,18 +9,11 @@
 // Part of the file is borrowed and adapted at a convenience from
 // https://github.com/seanmonstar/warp/blob/master/src/filters/fs.rs
 
-use async_compression::tokio::write::GzipEncoder;
-use async_tar::Builder;
-use bytes::BytesMut;
-use headers::{AcceptRanges, ContentType, HeaderMap, HeaderMapExt, HeaderValue};
-use hyper::body::Sender;
+use headers::{AcceptRanges, HeaderMap, HeaderMapExt, HeaderValue};
 use hyper::{header::CONTENT_ENCODING, header::CONTENT_LENGTH, Body, Method, Response, StatusCode};
-use mime_guess::Mime;
 use std::fs::{File, Metadata};
+use std::io;
 use std::path::PathBuf;
-use std::str::FromStr;
-use tokio::io::{self, AsyncWriteExt};
-use tokio_util::compat::TokioAsyncWriteCompatExt;
 
 use crate::conditional_headers::ConditionalHeaders;
 use crate::fs::meta::{try_metadata, try_metadata_with_html_suffix, FileMetadata};
@@ -47,45 +40,8 @@ use crate::{
     directory_listing::{DirListFmt, DirListOpts},
 };
 
-struct ChannelBuffer {
-    s: Sender,
-}
-
-impl tokio::io::AsyncWrite for ChannelBuffer {
-    fn poll_write(
-        self: std::pin::Pin<&mut Self>,
-        cx: &mut std::task::Context<'_>,
-        buf: &[u8],
-    ) -> std::task::Poll<std::result::Result<usize, std::io::Error>> {
-        // TODO: what kind of error may be encountered?
-        let this = self.get_mut();
-        let b = BytesMut::from(buf);
-        match this.s.poll_ready(cx) {
-            std::task::Poll::Ready(r) => match r {
-                Ok(()) => match this.s.try_send_data(b.freeze()) {
-                    Ok(_) => std::task::Poll::Ready(Ok(buf.len())),
-                    Err(_) => std::task::Poll::Pending,
-                },
-                Err(e) => std::task::Poll::Ready(Err(io::Error::new(io::ErrorKind::BrokenPipe, e))),
-            },
-            std::task::Poll::Pending => std::task::Poll::Pending,
-        }
-    }
-
-    fn poll_flush(
-        self: std::pin::Pin<&mut Self>,
-        _cx: &mut std::task::Context<'_>,
-    ) -> std::task::Poll<std::result::Result<(), std::io::Error>> {
-        std::task::Poll::Ready(Ok(()))
-    }
-
-    fn poll_shutdown(
-        self: std::pin::Pin<&mut Self>,
-        _cx: &mut std::task::Context<'_>,
-    ) -> std::task::Poll<std::result::Result<(), std::io::Error>> {
-        std::task::Poll::Ready(Ok(()))
-    }
-}
+#[cfg(feature = "directory-listing-download")]
+use crate::directory_listing_download::{archive_reply, DOWNLOAD_PARAM_KEY};
 
 const DEFAULT_INDEX_FILES: &[&str; 1] = &["index.html"];
 
@@ -226,62 +182,21 @@ pub async fn handle(opts: &HandleOpts<'_>) -> Result<StaticFileResponse, StatusC
         });
     }
 
-    // Directory listing
-    // Check if "directory listing" feature is enabled,
+    // Directory listing download
+    // Check if "directory listing download" feature is enabled,
     // if current path is a valid directory and
-    // if it does not contain an `index.html` file (if a proper auto index is generated)
-    #[cfg(feature = "directory-listing")]
+    // if query string has parameter "download" set
+    #[cfg(feature = "directory-listing-download")]
     if is_dir && opts.dir_listing {
         if let Some((_k, _dl_archive_opt)) =
-            form_urlencoded::parse(opts.uri_query.unwrap_or(&String::from("")).as_bytes())
-                .filter(|(k, _v)| k == "download-archive")
-                .next()
+            form_urlencoded::parse(opts.uri_query.unwrap_or("").as_bytes())
+                .find(|(k, _v)| k == DOWNLOAD_PARAM_KEY)
         {
             // file path is index.html, need pop
-            let mut fff = file_path.to_owned();
-            fff.pop();
-            if let Some(filename) = fff.file_name() {
-                let ff = filename.to_owned();
-                let dirfp = std::path::Path::new(&ff);
-
-                let (tx, body) = Body::channel();
-
-                let cb = ChannelBuffer { s: tx };
-
-                let dfp = dirfp.as_os_str().to_owned();
-                let fp = fff.as_os_str().to_owned();
-                tokio::task::spawn(async move {
-                    let gz = GzipEncoder::with_quality(cb, async_compression::Level::Default);
-                    let mut a = Builder::new(gz.compat_write());
-                    // will panic when broken pipe
-                    a.append_dir_all(dfp, fp).await.unwrap();
-                    a.finish().await.unwrap();
-                    let mut inner = a.into_inner().await.unwrap().into_inner();
-                    // this is required to emit gzip CRC trailer
-                    inner.shutdown().await.unwrap();
-                });
-
-                let mut resp = Response::new(body);
-                let archive_name = dirfp.with_extension("tar.gz");
-
-                let hvals = format!(
-                    "attachment; filename=\"{}\"",
-                    archive_name.to_string_lossy()
-                );
-                resp.headers_mut().typed_insert(ContentType::from(
-                    Mime::from_str("application/gzip").unwrap(),
-                ));
-                // TODO: investigate ContentDisposition from headers crate
-                // TODO: investigate HeaderValue from_maybe_shared
-                match HeaderValue::from_str(hvals.as_str()) {
-                    Ok(hval) => {
-                        resp.headers_mut()
-                            .insert(hyper::header::CONTENT_DISPOSITION, hval);
-                    }
-                    Err(err) => {
-                        tracing::error!("cant make content disposition from {}: {:?}", hvals, err);
-                    }
-                }
+            let mut fp = file_path.clone();
+            fp.pop();
+            if let Some(filename) = fp.file_name() {
+                let resp = archive_reply(filename, &fp);
                 return Ok(StaticFileResponse {
                     resp,
                     file_path: resp_file_path,
@@ -291,6 +206,12 @@ pub async fn handle(opts: &HandleOpts<'_>) -> Result<StaticFileResponse, StatusC
             }
         }
     }
+
+    // Directory listing
+    // Check if "directory listing" feature is enabled,
+    // if current path is a valid directory and
+    // if it does not contain an `index.html` file (if a proper auto index is generated)
+    #[cfg(feature = "directory-listing")]
     if is_dir && opts.dir_listing && !file_path.exists() {
         let resp = directory_listing::auto_index(DirListOpts {
             method,

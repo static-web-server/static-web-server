@@ -72,4 +72,3 @@ pub(crate) fn try_metadata_with_html_suffix(
 
     (file_path, None)
 }
-
