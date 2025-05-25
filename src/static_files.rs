@@ -16,6 +16,7 @@ use std::io;
 use std::path::PathBuf;
 
 use crate::conditional_headers::ConditionalHeaders;
+use crate::directory_listing_download::DirDownloadOpts;
 use crate::fs::meta::{try_metadata, try_metadata_with_html_suffix, FileMetadata};
 use crate::fs::path::{sanitize_path, PathExt};
 use crate::http_ext::{MethodExt, HTTP_SUPPORTED_METHODS};
@@ -200,7 +201,13 @@ pub async fn handle(opts: &HandleOpts<'_>) -> Result<StaticFileResponse, StatusC
             let mut fp = file_path.clone();
             fp.pop();
             if let Some(filename) = fp.file_name() {
-                let resp = archive_reply(filename, &fp);
+                let resp = archive_reply(
+                    filename,
+                    &fp,
+                    DirDownloadOpts {
+                        disable_symlinks: opts.disable_symlinks,
+                    },
+                );
                 return Ok(StaticFileResponse {
                     resp,
                     file_path: resp_file_path,

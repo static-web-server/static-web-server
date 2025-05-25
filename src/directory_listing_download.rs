@@ -34,6 +34,12 @@ pub enum DirDownloadFmt {
     Targz,
 }
 
+/// Directory download options.
+pub struct DirDownloadOpts {
+    /// Prevent following symlinks for files and directories.
+    pub disable_symlinks: bool,
+}
+
 /// Initializes directory listing download
 pub fn init(formats: &Vec<DirDownloadFmt>, handler_opts: &mut RequestHandlerOpts) {
     let mut is_none = false;
@@ -93,7 +99,7 @@ impl tokio::io::AsyncWrite for ChannelBuffer {
     }
 }
 
-fn archive_dir<P, Q>(path: P, src_path: Q) -> Body
+fn archive_dir<P, Q>(path: P, src_path: Q, follow_symlinks: bool) -> Body
 where
     P: AsRef<Path>,
     Q: AsRef<Path>,
@@ -106,6 +112,7 @@ where
     tokio::task::spawn(async move {
         let gz = GzipEncoder::with_quality(cb, async_compression::Level::Default);
         let mut a = Builder::new(gz.compat_write());
+        a.follow_symlinks(follow_symlinks);
         let mut res = a.append_dir_all(p, sp).await;
         if res.is_ok() {
             res = a.finish().await;
@@ -129,13 +136,13 @@ where
 /// within the tarball.
 /// An async task will be spawned to asynchronously write compressed data to the
 /// response body.
-pub fn archive_reply<P, Q>(path: P, src_path: Q) -> Response<Body>
+pub fn archive_reply<P, Q>(path: P, src_path: Q, opts: DirDownloadOpts) -> Response<Body>
 where
     P: AsRef<Path>,
     Q: AsRef<Path>,
 {
     let archive_name = path.as_ref().with_extension("tar.gz");
-    let mut resp = Response::new(archive_dir(path, src_path));
+    let mut resp = Response::new(archive_dir(path, src_path, !opts.disable_symlinks));
     let hvals = format!(
         "attachment; filename=\"{}\"",
         archive_name.to_string_lossy()
