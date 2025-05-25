@@ -11,7 +11,7 @@ use async_tar::Builder;
 use bytes::BytesMut;
 use clap::ValueEnum;
 use headers::{ContentType, HeaderMapExt};
-use http::{HeaderValue, Response};
+use http::{HeaderValue, Method, Response};
 use hyper::{body::Sender, Body};
 use mime_guess::Mime;
 use std::str::FromStr;
@@ -20,6 +20,7 @@ use tokio::io::{self, AsyncWriteExt};
 use tokio_util::compat::TokioAsyncWriteCompatExt;
 
 use crate::handler::RequestHandlerOpts;
+use crate::http_ext::MethodExt;
 
 /// query parameter key to download directory as tar.gz
 pub const DOWNLOAD_PARAM_KEY: &str = "download";
@@ -35,7 +36,9 @@ pub enum DirDownloadFmt {
 }
 
 /// Directory download options.
-pub struct DirDownloadOpts {
+pub struct DirDownloadOpts<'a> {
+    /// Request method.
+    pub method: &'a Method,
     /// Prevent following symlinks for files and directories.
     pub disable_symlinks: bool,
 }
@@ -136,13 +139,13 @@ where
 /// within the tarball.
 /// An async task will be spawned to asynchronously write compressed data to the
 /// response body.
-pub fn archive_reply<P, Q>(path: P, src_path: Q, opts: DirDownloadOpts) -> Response<Body>
+pub fn archive_reply<P, Q>(path: P, src_path: Q, opts: DirDownloadOpts<'_>) -> Response<Body>
 where
     P: AsRef<Path>,
     Q: AsRef<Path>,
 {
     let archive_name = path.as_ref().with_extension("tar.gz");
-    let mut resp = Response::new(archive_dir(path, src_path, !opts.disable_symlinks));
+    let mut resp = Response::new(Body::empty());
     let hvals = format!(
         "attachment; filename=\"{}\"",
         archive_name.to_string_lossy()
@@ -159,6 +162,13 @@ where
             tracing::error!("cant make content disposition from {}: {:?}", hvals, err);
         }
     }
+
+    // We skip the body for HEAD requests
+    if opts.method.is_head() {
+        return resp;
+    }
+
+    *resp.body_mut() = archive_dir(path, src_path, !opts.disable_symlinks);
 
     resp
 }

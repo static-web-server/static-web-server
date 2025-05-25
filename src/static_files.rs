@@ -205,6 +205,7 @@ pub async fn handle(opts: &HandleOpts<'_>) -> Result<StaticFileResponse, StatusC
                     filename,
                     &fp,
                     DirDownloadOpts {
+                        method,
                         disable_symlinks: opts.disable_symlinks,
                     },
                 );
