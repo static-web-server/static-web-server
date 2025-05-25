@@ -116,18 +116,21 @@ where
         let gz = GzipEncoder::with_quality(cb, async_compression::Level::Default);
         let mut a = Builder::new(gz.compat_write());
         a.follow_symlinks(follow_symlinks);
+
+        // NOTE: Since it is not possible to handle error gracefully, we will
+        // just stop writing when error occurs. It is also not possible to call
+        // sender.abort() as it is protected behind the Builder to ensure
+        // finish() is successfully called.
         let mut res = a.append_dir_all(p, sp).await;
         if res.is_ok() {
             res = a.finish().await;
         }
-        let mut gz_inner = a.into_inner().await.unwrap().into_inner();
         if res.is_ok() {
-            // this is required to emit gzip CRC trailer
-            res = gz_inner.shutdown().await;
-        }
-        if res.is_err() {
-            let cb_inner = gz_inner.into_inner();
-            cb_inner.s.abort();
+            let gz_inner = a.into_inner().await;
+            if let Ok(inner) = gz_inner {
+                // this is required to emit gzip CRC trailer
+                _ = inner.into_inner().shutdown().await;
+            }
         }
     });
 
