@@ -373,7 +373,9 @@ pub struct General {
         value_enum,
         default_value = "none",
         default_missing_value("none"),
-        requires_if("true", "directory_listing"),
+        requires_ifs([
+            ("targz", "directory_listing"),
+        ]),
         require_equals(true),
         action = clap::ArgAction::Set,
         env = "SERVER_DIRECTORY_LISTING_DOWNLOAD",
