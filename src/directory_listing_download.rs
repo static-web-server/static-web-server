@@ -148,19 +148,23 @@ where
 {
     let archive_name = path.as_ref().with_extension("tar.gz");
     let mut resp = Response::new(Body::empty());
+
+    resp.headers_mut().typed_insert(ContentType::from(
+        // since this satisfies the required format: `*/*`, it should not fail
+        Mime::from_str("application/gzip").unwrap(),
+    ));
     let hvals = format!(
         "attachment; filename=\"{}\"",
         archive_name.to_string_lossy()
     );
-    resp.headers_mut().typed_insert(ContentType::from(
-        Mime::from_str("application/gzip").unwrap(),
-    ));
     match HeaderValue::from_str(hvals.as_str()) {
         Ok(hval) => {
             resp.headers_mut()
                 .insert(hyper::header::CONTENT_DISPOSITION, hval);
         }
         Err(err) => {
+            // not fatal, most browser is able to handle the download since
+            // content-type is set
             tracing::error!("cant make content disposition from {}: {:?}", hvals, err);
         }
     }

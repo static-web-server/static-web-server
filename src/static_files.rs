@@ -41,7 +41,9 @@ use crate::{
 };
 
 #[cfg(feature = "directory-listing-download")]
-use crate::directory_listing_download::{archive_reply, DirDownloadFmt, DirDownloadOpts, DOWNLOAD_PARAM_KEY};
+use crate::directory_listing_download::{
+    archive_reply, DirDownloadFmt, DirDownloadOpts, DOWNLOAD_PARAM_KEY,
+};
 
 const DEFAULT_INDEX_FILES: &[&str; 1] = &["index.html"];
 
@@ -213,7 +215,8 @@ pub async fn handle(opts: &HandleOpts<'_>) -> Result<StaticFileResponse, StatusC
                     file_path: resp_file_path,
                 });
             } else {
-                panic!("unexpected error {}", file_path.to_string_lossy());
+                tracing::error!("Unable to get filename from {}", fp.to_string_lossy());
+                return Err(StatusCode::INTERNAL_SERVER_ERROR);
             }
         }
     }
