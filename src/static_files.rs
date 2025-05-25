@@ -16,7 +16,6 @@ use std::io;
 use std::path::PathBuf;
 
 use crate::conditional_headers::ConditionalHeaders;
-use crate::directory_listing_download::DirDownloadOpts;
 use crate::fs::meta::{try_metadata, try_metadata_with_html_suffix, FileMetadata};
 use crate::fs::path::{sanitize_path, PathExt};
 use crate::http_ext::{MethodExt, HTTP_SUPPORTED_METHODS};
@@ -42,7 +41,7 @@ use crate::{
 };
 
 #[cfg(feature = "directory-listing-download")]
-use crate::directory_listing_download::{archive_reply, DirDownloadFmt, DOWNLOAD_PARAM_KEY};
+use crate::directory_listing_download::{archive_reply, DirDownloadFmt, DirDownloadOpts, DOWNLOAD_PARAM_KEY};
 
 const DEFAULT_INDEX_FILES: &[&str; 1] = &["index.html"];
 

@@ -29,6 +29,10 @@ use {
 
 #[cfg(feature = "directory-listing")]
 use crate::directory_listing;
+
+#[cfg(feature = "directory-listing-download")]
+use crate::directory_listing_download;
+
 #[cfg(feature = "fallback-page")]
 use crate::fallback_page;
 
@@ -48,7 +52,7 @@ use crate::basic_auth;
 use crate::mem_cache;
 
 use crate::{
-    control_headers, cors, directory_listing_download, health, helpers, log_addr, maintenance_mode,
+    control_headers, cors, health, helpers, log_addr, maintenance_mode,
     security_headers, Settings,
 };
 use crate::{service::RouterService, Context, Result};

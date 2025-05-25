@@ -157,6 +157,7 @@ impl Default for RequestHandlerOpts {
             dir_listing_order: 6, // unordered
             #[cfg(feature = "directory-listing")]
             dir_listing_format: DirListFmt::Html,
+            #[cfg(feature = "directory-listing-download")]
             dir_listing_download: Vec::new(),
             cors: None,
             #[cfg(feature = "experimental")]

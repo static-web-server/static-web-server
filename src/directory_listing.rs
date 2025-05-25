@@ -17,9 +17,8 @@ use std::ffi::{OsStr, OsString};
 use std::io;
 use std::path::Path;
 
-use crate::directory_listing_download::DirDownloadFmt;
 #[cfg(feature = "directory-listing-download")]
-use crate::directory_listing_download::DOWNLOAD_PARAM_KEY;
+use crate::directory_listing_download::{DirDownloadFmt, DOWNLOAD_PARAM_KEY};
 
 use crate::{handler::RequestHandlerOpts, http_ext::MethodExt, Context, Result};
 
@@ -348,6 +347,7 @@ fn read_dir_entries(mut opt: DirEntryOpts<'_>) -> Result<Response<Body>> {
                 files_count,
                 &mut file_entries,
                 opt.order_code,
+                #[cfg(feature = "directory-listing-download")]
                 opt.download,
             )
         }
