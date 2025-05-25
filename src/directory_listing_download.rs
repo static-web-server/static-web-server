@@ -62,8 +62,7 @@ impl tokio::io::AsyncWrite for ChannelBuffer {
     }
 }
 
-/// archive reply
-pub fn archive_dir<P, Q>(path: P, src_path: Q) -> Body
+fn archive_dir<P, Q>(path: P, src_path: Q) -> Body
 where
     P: AsRef<Path>,
     Q: AsRef<Path>,
@@ -94,7 +93,11 @@ where
     body
 }
 
-/// archive reply
+/// Reply with archived directory content in compressed tarball format.
+/// The content from `src_path` on server filesystem will be stored to `path`
+/// within the tarball.
+/// An async task will be spawned to asynchronously write compressed data to the
+/// response body.
 pub fn archive_reply<P, Q>(path: P, src_path: Q) -> Response<Body>
 where
     P: AsRef<Path>,
@@ -109,8 +112,6 @@ where
     resp.headers_mut().typed_insert(ContentType::from(
         Mime::from_str("application/gzip").unwrap(),
     ));
-    // TODO: investigate ContentDisposition from headers crate
-    // TODO: investigate HeaderValue from_maybe_shared
     match HeaderValue::from_str(hvals.as_str()) {
         Ok(hval) => {
             resp.headers_mut()
