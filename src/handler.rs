@@ -47,6 +47,9 @@ use crate::{
 #[cfg(feature = "directory-listing")]
 use crate::directory_listing::DirListFmt;
 
+#[cfg(feature = "directory-listing-download")]
+use crate::directory_listing_download::DirDownloadFmt;
+
 /// It defines options for a request handler.
 pub struct RequestHandlerOpts {
     // General options
@@ -80,6 +83,10 @@ pub struct RequestHandlerOpts {
     #[cfg_attr(docsrs, doc(cfg(feature = "directory-listing")))]
     /// Directory listing format feature.
     pub dir_listing_format: DirListFmt,
+    /// Directory listing download feature.
+    #[cfg(feature = "directory-listing-download")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "directory-listing-download")))]
+    pub dir_listing_download: Vec<DirDownloadFmt>,
     /// CORS feature.
     pub cors: Option<cors::Configured>,
     /// Security headers feature.
@@ -150,6 +157,7 @@ impl Default for RequestHandlerOpts {
             dir_listing_order: 6, // unordered
             #[cfg(feature = "directory-listing")]
             dir_listing_format: DirListFmt::Html,
+            dir_listing_download: Vec::new(),
             cors: None,
             #[cfg(feature = "experimental")]
             memory_cache: None,
@@ -200,6 +208,8 @@ impl RequestHandler {
         let dir_listing_order = self.opts.dir_listing_order;
         #[cfg(feature = "directory-listing")]
         let dir_listing_format = &self.opts.dir_listing_format;
+        #[cfg(feature = "directory-listing-download")]
+        let dir_listing_download = &self.opts.dir_listing_download;
         let redirect_trailing_slash = self.opts.redirect_trailing_slash;
         let compression_static = self.opts.compression_static;
         let ignore_hidden_files = self.opts.ignore_hidden_files;
@@ -286,6 +296,8 @@ impl RequestHandler {
                 dir_listing_order,
                 #[cfg(feature = "directory-listing")]
                 dir_listing_format,
+                #[cfg(feature = "directory-listing-download")]
+                dir_listing_download,
                 redirect_trailing_slash,
                 compression_static,
                 ignore_hidden_files,

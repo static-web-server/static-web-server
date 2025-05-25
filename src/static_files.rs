@@ -41,7 +41,7 @@ use crate::{
 };
 
 #[cfg(feature = "directory-listing-download")]
-use crate::directory_listing_download::{archive_reply, DOWNLOAD_PARAM_KEY};
+use crate::directory_listing_download::{archive_reply, DirDownloadFmt, DOWNLOAD_PARAM_KEY};
 
 const DEFAULT_INDEX_FILES: &[&str; 1] = &["index.html"];
 
@@ -74,6 +74,10 @@ pub struct HandleOpts<'a> {
     #[cfg(feature = "directory-listing")]
     #[cfg_attr(docsrs, doc(cfg(feature = "directory-listing")))]
     pub dir_listing_format: &'a DirListFmt,
+    /// Directory listing download feature.
+    #[cfg(feature = "directory-listing-download")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "directory-listing-download")))]
+    pub dir_listing_download: &'a Vec<DirDownloadFmt>,
     /// Redirect trailing slash feature.
     pub redirect_trailing_slash: bool,
     /// Compression static feature.
@@ -187,7 +191,7 @@ pub async fn handle(opts: &HandleOpts<'_>) -> Result<StaticFileResponse, StatusC
     // if current path is a valid directory and
     // if query string has parameter "download" set
     #[cfg(feature = "directory-listing-download")]
-    if is_dir && opts.dir_listing {
+    if is_dir && !opts.dir_listing_download.is_empty() {
         if let Some((_k, _dl_archive_opt)) =
             form_urlencoded::parse(opts.uri_query.unwrap_or("").as_bytes())
                 .find(|(k, _v)| k == DOWNLOAD_PARAM_KEY)
@@ -222,6 +226,8 @@ pub async fn handle(opts: &HandleOpts<'_>) -> Result<StaticFileResponse, StatusC
             dir_listing_format: opts.dir_listing_format,
             ignore_hidden_files: opts.ignore_hidden_files,
             disable_symlinks: opts.disable_symlinks,
+            #[cfg(feature = "directory-listing-download")]
+            dir_listing_download: opts.dir_listing_download,
         })?;
 
         return Ok(StaticFileResponse {

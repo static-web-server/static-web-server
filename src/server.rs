@@ -48,7 +48,8 @@ use crate::basic_auth;
 use crate::mem_cache;
 
 use crate::{
-    control_headers, cors, health, helpers, log_addr, maintenance_mode, security_headers, Settings,
+    control_headers, cors, directory_listing_download, health, helpers, log_addr, maintenance_mode,
+    security_headers, Settings,
 };
 use crate::{service::RouterService, Context, Result};
 
@@ -289,6 +290,10 @@ impl Server {
             general.directory_listing_format,
             &mut handler_opts,
         );
+
+        // Directory listing download options
+        #[cfg(feature = "directory-listing-download")]
+        directory_listing_download::init(&general.directory_listing_download, &mut handler_opts);
 
         // Fallback page option
         #[cfg(feature = "fallback-page")]

@@ -53,6 +53,8 @@ mod tests {
                 ignore_hidden_files: false,
                 disable_symlinks: false,
                 index_files: &[],
+                #[cfg(feature = "directory-listing-download")]
+                dir_listing_download: &vec![],
             })
             .await
             {
@@ -88,6 +90,8 @@ mod tests {
                 ignore_hidden_files: false,
                 disable_symlinks: false,
                 index_files: &[],
+                #[cfg(feature = "directory-listing-download")]
+                dir_listing_download: &vec![],
             })
             .await
             {
@@ -133,6 +137,8 @@ mod tests {
                 ignore_hidden_files: false,
                 disable_symlinks: false,
                 index_files: &[],
+                #[cfg(feature = "directory-listing-download")]
+                dir_listing_download: &vec![],
             })
             .await
             {
@@ -178,6 +184,8 @@ mod tests {
                 ignore_hidden_files: false,
                 disable_symlinks: false,
                 index_files: &[],
+                #[cfg(feature = "directory-listing-download")]
+                dir_listing_download: &vec![],
             })
             .await
             {
@@ -213,6 +221,8 @@ mod tests {
                 ignore_hidden_files: false,
                 disable_symlinks: false,
                 index_files: &[],
+                #[cfg(feature = "directory-listing-download")]
+                dir_listing_download: &vec![],
             })
             .await
             {
@@ -269,6 +279,8 @@ mod tests {
                 ignore_hidden_files: true,
                 disable_symlinks: false,
                 index_files: &[],
+                #[cfg(feature = "directory-listing-download")]
+                dir_listing_download: &vec![],
             })
             .await
             {
@@ -343,6 +355,8 @@ mod tests {
                 ignore_hidden_files: false,
                 disable_symlinks: false,
                 index_files: &[],
+                #[cfg(feature = "directory-listing-download")]
+                dir_listing_download: &vec![],
             })
             .await
             {
@@ -390,6 +404,8 @@ mod tests {
                 ignore_hidden_files: true,
                 disable_symlinks: false,
                 index_files: &[],
+                #[cfg(feature = "directory-listing-download")]
+                dir_listing_download: &vec![],
             })
             .await
             {

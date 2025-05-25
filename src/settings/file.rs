@@ -15,6 +15,9 @@ use std::{collections::BTreeSet, path::PathBuf};
 #[cfg(feature = "directory-listing")]
 use crate::directory_listing::DirListFmt;
 
+#[cfg(feature = "directory-listing-download")]
+use crate::directory_listing_download::DirDownloadFmt;
+
 use crate::{helpers, Context, Result};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -333,6 +336,11 @@ pub struct General {
     #[cfg(feature = "directory-listing")]
     #[cfg_attr(docsrs, doc(cfg(feature = "directory-listing")))]
     pub directory_listing_format: Option<DirListFmt>,
+
+    /// Directory listing download feature.
+    #[cfg(feature = "directory-listing-download")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "directory-listing-download")))]
+    pub directory_listing_download: Option<Vec<DirDownloadFmt>>,
 
     /// Basic Authentication feature.
     #[cfg(feature = "basic-auth")]
