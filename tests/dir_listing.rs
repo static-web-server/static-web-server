@@ -57,7 +57,7 @@ mod tests {
                 disable_symlinks: false,
                 index_files: &[],
                 #[cfg(feature = "directory-listing-download")]
-                dir_listing_download: &vec![],
+                dir_listing_download: &[],
             })
             .await
             {
@@ -94,7 +94,7 @@ mod tests {
                 disable_symlinks: false,
                 index_files: &[],
                 #[cfg(feature = "directory-listing-download")]
-                dir_listing_download: &vec![],
+                dir_listing_download: &[],
             })
             .await
             {
@@ -141,7 +141,7 @@ mod tests {
                 disable_symlinks: false,
                 index_files: &[],
                 #[cfg(feature = "directory-listing-download")]
-                dir_listing_download: &vec![],
+                dir_listing_download: &[],
             })
             .await
             {
@@ -188,7 +188,7 @@ mod tests {
                 disable_symlinks: false,
                 index_files: &[],
                 #[cfg(feature = "directory-listing-download")]
-                dir_listing_download: &vec![],
+                dir_listing_download: &[],
             })
             .await
             {
@@ -225,7 +225,7 @@ mod tests {
                 disable_symlinks: false,
                 index_files: &[],
                 #[cfg(feature = "directory-listing-download")]
-                dir_listing_download: &vec![],
+                dir_listing_download: &[],
             })
             .await
             {
@@ -283,7 +283,7 @@ mod tests {
                 disable_symlinks: false,
                 index_files: &[],
                 #[cfg(feature = "directory-listing-download")]
-                dir_listing_download: &vec![],
+                dir_listing_download: &[],
             })
             .await
             {
@@ -359,7 +359,7 @@ mod tests {
                 disable_symlinks: false,
                 index_files: &[],
                 #[cfg(feature = "directory-listing-download")]
-                dir_listing_download: &vec![],
+                dir_listing_download: &[],
             })
             .await
             {
@@ -408,7 +408,7 @@ mod tests {
                 disable_symlinks: false,
                 index_files: &[],
                 #[cfg(feature = "directory-listing-download")]
-                dir_listing_download: &vec![],
+                dir_listing_download: &[],
             })
             .await
             {
@@ -456,7 +456,7 @@ mod tests {
                 ignore_hidden_files: true,
                 disable_symlinks: false,
                 index_files: &[],
-                dir_listing_download: &vec![DirDownloadFmt::Targz],
+                dir_listing_download: &[DirDownloadFmt::Targz],
             })
             .await
             {
@@ -504,7 +504,7 @@ mod tests {
                 ignore_hidden_files: true,
                 disable_symlinks: false,
                 index_files: &[],
-                dir_listing_download: &vec![],
+                dir_listing_download: &[],
             })
             .await
             {

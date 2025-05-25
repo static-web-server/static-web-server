@@ -78,7 +78,7 @@ pub struct HandleOpts<'a> {
     /// Directory listing download feature.
     #[cfg(feature = "directory-listing-download")]
     #[cfg_attr(docsrs, doc(cfg(feature = "directory-listing-download")))]
-    pub dir_listing_download: &'a Vec<DirDownloadFmt>,
+    pub dir_listing_download: &'a [DirDownloadFmt],
     /// Redirect trailing slash feature.
     pub redirect_trailing_slash: bool,
     /// Compression static feature.

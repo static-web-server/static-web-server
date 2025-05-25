@@ -58,7 +58,7 @@ pub struct DirListOpts<'a> {
     pub dir_listing_format: &'a DirListFmt,
     #[cfg(feature = "directory-listing-download")]
     /// Directory listing download.
-    pub dir_listing_download: &'a Vec<DirDownloadFmt>,
+    pub dir_listing_download: &'a [DirDownloadFmt],
     /// Ignore hidden files (dotfiles).
     pub ignore_hidden_files: bool,
     /// Prevent following symlinks for files and directories.
@@ -194,7 +194,7 @@ struct DirEntryOpts<'a> {
     ignore_hidden_files: bool,
     disable_symlinks: bool,
     #[cfg(feature = "directory-listing-download")]
-    download: &'a Vec<DirDownloadFmt>,
+    download: &'a [DirDownloadFmt],
 }
 
 /// It reads a list of directory entries and create an index page content.
