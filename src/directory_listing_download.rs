@@ -72,7 +72,6 @@ impl tokio::io::AsyncWrite for ChannelBuffer {
         cx: &mut std::task::Context<'_>,
         buf: &[u8],
     ) -> std::task::Poll<std::result::Result<usize, std::io::Error>> {
-        // TODO: what kind of error may be encountered?
         let this = self.get_mut();
         let b = BytesMut::from(buf);
         match this.s.poll_ready(cx) {
