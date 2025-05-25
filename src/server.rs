@@ -52,8 +52,7 @@ use crate::basic_auth;
 use crate::mem_cache;
 
 use crate::{
-    control_headers, cors, health, helpers, log_addr, maintenance_mode,
-    security_headers, Settings,
+    control_headers, cors, health, helpers, log_addr, maintenance_mode, security_headers, Settings,
 };
 use crate::{service::RouterService, Context, Result};
 
