@@ -412,7 +412,7 @@ fn html_auto_index<'a>(
         true => html! {},
         false => html! {
             ",  " a href={ "?" (DOWNLOAD_PARAM_KEY) } {
-                "download .tar.gz"
+                "download tar.gz"
             }
         },
     };
