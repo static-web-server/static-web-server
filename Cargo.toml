@@ -2,7 +2,7 @@
 name = "static-web-server"
 version = "2.36.1"
 edition = "2021"
-rust-version = "1.76.0"
+rust-version = "1.81.0"
 authors = ["Jose Quintana <https://joseluisq.net>"]
 license = "MIT OR Apache-2.0"
 description = "A cross-platform, high-performance and asynchronous web server for static files-serving."
@@ -40,7 +40,7 @@ doc = false
 # All features enabled by default
 default = ["compression", "http2", "directory-listing", "basic-auth", "fallback-page"]
 # Include all features (used when building SWS binaries)
-all = ["default"]
+all = ["default", "experimental"]
 # HTTP2
 http2 = ["tokio-rustls", "rustls-pemfile"]
 # Compression
@@ -89,7 +89,7 @@ serde = { version = "1.0", default-features = false, features = ["derive"] }
 serde_ignored = "0.1"
 serde_json = "1.0"
 serde_repr = "0.1"
-shadow-rs = "0.36"
+shadow-rs = "1.1.1"
 tokio = { version = "1", default-features = false, features = ["rt-multi-thread", "macros", "fs", "io-util", "signal"] }
 tokio-rustls = { version = "0.26", optional = true, default-features = false, features = ["logging", "tls12", "ring"] }
 tokio-util = { version = "0.7", default-features = false, features = ["io"] }
@@ -97,19 +97,14 @@ toml = "0.8"
 tracing = { version = "0.1", default-features = false, features = ["std"] }
 tracing-subscriber = { version = "0.3", default-features = false, features = ["smallvec", "registry", "parking_lot", "fmt", "ansi", "tracing-log"] }
 
-# NOTE: pinning dependencies temporarily (MSRV 1.76.0) because 0.1.6+ requires rustc 1.81 or newer
-zerofrom = "=0.1.5"
-zerofrom-derive = "=0.1.5"
-litemap = "=0.7.4"
-
 [target.'cfg(all(target_env = "musl", target_pointer_width = "64"))'.dependencies.tikv-jemallocator]
 version = "0.6"
 
 [target.'cfg(unix)'.dependencies]
 signal-hook = { version = "0.3", features = ["extended-siginfo"] }
 signal-hook-tokio = { version = "0.3", features = ["futures-v0_3"], default-features = false }
-tokio-metrics-collector = { version = "0.3", optional = true }
-prometheus = { version = "0.13.4", default-features = false, optional = true }
+tokio-metrics-collector = { version = "0.3.1", optional = true }
+prometheus = { version = "0.14.0", default-features = false, optional = true }
 
 [target.'cfg(windows)'.dependencies]
 windows-service = "0.7"
@@ -119,7 +114,7 @@ bytes = "1.10"
 serde_json = "1.0"
 
 [build-dependencies]
-shadow-rs = "0.36"
+shadow-rs = "1.1.1"
 
 [profile.release]
 codegen-units = 1

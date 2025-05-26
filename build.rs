@@ -1,3 +1,6 @@
-fn main() -> shadow_rs::SdResult<()> {
-    shadow_rs::new()
+use shadow_rs::{SdResult, ShadowBuilder};
+
+fn main() -> SdResult<()> {
+    ShadowBuilder::builder().build()?;
+    Ok(())
 }
