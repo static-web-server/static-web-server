@@ -16,7 +16,8 @@ mod tests {
         path::{Path, PathBuf},
         pin::Pin,
     };
-    use tokio_util::compat::TokioAsyncReadCompatExt;
+    use tokio::io::AsyncReadExt;
+    use tokio_util::compat::{FuturesAsyncReadCompatExt, TokioAsyncReadCompatExt};
 
     use static_web_server::{
         directory_listing::DirListFmt,
@@ -44,8 +45,8 @@ mod tests {
         PathBuf::from(dir)
     }
 
-    async fn get_tarball_content(body: hyper::body::Bytes) -> HashSet<PathBuf> {
-        let reader = Archive::new(GzipDecoder::new(&body as &[u8]).compat());
+    async fn get_and_validate_tarball_content(prefix: PathBuf, body: &[u8]) -> HashSet<PathBuf> {
+        let reader = Archive::new(GzipDecoder::new(body).compat());
 
         let mut content = HashSet::new();
         // adapted from async_tar::Archive::unpack
@@ -53,7 +54,25 @@ mod tests {
         let mut pinned = Pin::new(&mut entries);
         while let Some(entry) = pinned.next().await {
             let file = entry.unwrap();
-            content.insert(file.header().path().unwrap().to_path_buf().into());
+            let path: PathBuf = file.header().path().unwrap().to_path_buf().into();
+
+            // validate content
+            if file.header().entry_type() == async_tar::EntryType::Link
+                || file.header().entry_type() == async_tar::EntryType::Regular
+                || file.header().entry_type() == async_tar::EntryType::Symlink
+            {
+                let on_disk_path = prefix.join(&path);
+                // in case of symlink, skip dir
+                let meta = std::fs::metadata(&on_disk_path).unwrap();
+                if !meta.is_dir() {
+                    let on_disk = std::fs::read(&on_disk_path).unwrap();
+                    let mut compressed = Vec::new();
+                    file.compat().read_to_end(&mut compressed).await.unwrap();
+                    assert_eq!(on_disk, compressed);
+                }
+            }
+
+            content.insert(path);
         }
         content
     }
@@ -168,7 +187,9 @@ mod tests {
                         .expect("unexpected bytes error during `body` conversion");
 
                     if method == Method::GET {
-                        let left = get_tarball_content(body).await;
+                        let mut prefix = base_path.clone();
+                        prefix.pop();
+                        let left = get_and_validate_tarball_content(prefix, &body).await;
                         let right = get_dir_content(
                             &base_path,
                             DirDownloadOpts {
@@ -234,7 +255,9 @@ mod tests {
                         .expect("unexpected bytes error during `body` conversion");
 
                     if method == Method::GET {
-                        let left = get_tarball_content(body).await;
+                        let mut prefix = base_path.clone();
+                        prefix.pop();
+                        let left = get_and_validate_tarball_content(prefix, &body).await;
                         let right = get_dir_content(
                             &base_path,
                             DirDownloadOpts {
