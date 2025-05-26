@@ -1,9 +1,1 @@
 [advisories]
-ignore = [
-    # NOTE:
-    # Ignored and disabled from the `static-web-server` final binary (experimental feature) temporarily.
-    # See
-    # - https://github.com/tikv/rust-prometheus/issues/538
-    # - https://github.com/Hanaasagi/tokio-metrics-collector/issues/26
-    "RUSTSEC-2024-0437"
-]
