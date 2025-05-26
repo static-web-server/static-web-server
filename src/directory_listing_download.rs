@@ -14,13 +14,17 @@ use headers::{ContentType, HeaderMapExt};
 use http::{HeaderValue, Method, Response};
 use hyper::{body::Sender, Body};
 use mime_guess::Mime;
+use std::path::Path;
+use std::path::PathBuf;
 use std::str::FromStr;
-use std::{ffi::OsString, path::Path};
-use tokio::io::{self, AsyncWriteExt};
+use tokio::fs;
+use tokio::io;
+use tokio::io::AsyncWriteExt;
 use tokio_util::compat::TokioAsyncWriteCompatExt;
 
 use crate::handler::RequestHandlerOpts;
 use crate::http_ext::MethodExt;
+use crate::Result;
 
 /// query parameter key to download directory as tar.gz
 pub const DOWNLOAD_PARAM_KEY: &str = "download";
@@ -101,39 +105,47 @@ impl tokio::io::AsyncWrite for ChannelBuffer {
     }
 }
 
-fn archive_dir<P, Q>(path: P, src_path: Q, follow_symlinks: bool) -> Body
-where
-    P: AsRef<Path>,
-    Q: AsRef<Path>,
-{
-    let (tx, body) = Body::channel();
-    let cb = ChannelBuffer { s: tx };
+async fn archive(
+    path: PathBuf,
+    src_path: PathBuf,
+    cb: ChannelBuffer,
+    follow_symlinks: bool,
+) -> Result {
+    let gz = GzipEncoder::with_quality(cb, async_compression::Level::Default);
+    let mut a = Builder::new(gz.compat_write());
+    a.follow_symlinks(follow_symlinks);
 
-    let p: OsString = path.as_ref().into();
-    let sp: OsString = src_path.as_ref().into();
-    tokio::task::spawn(async move {
-        let gz = GzipEncoder::with_quality(cb, async_compression::Level::Default);
-        let mut a = Builder::new(gz.compat_write());
-        a.follow_symlinks(follow_symlinks);
+    // NOTE: Since it is not possible to handle error gracefully, we will
+    // just stop writing when error occurs. It is also not possible to call
+    // sender.abort() as it is protected behind the Builder to ensure
+    // finish() is successfully called.
 
-        // NOTE: Since it is not possible to handle error gracefully, we will
-        // just stop writing when error occurs. It is also not possible to call
-        // sender.abort() as it is protected behind the Builder to ensure
-        // finish() is successfully called.
-        let mut res = a.append_dir_all(p, sp).await;
-        if res.is_ok() {
-            res = a.finish().await;
-        }
-        if res.is_ok() {
-            let gz_inner = a.into_inner().await;
-            if let Ok(inner) = gz_inner {
-                // this is required to emit gzip CRC trailer
-                _ = inner.into_inner().shutdown().await;
+    // adapted from async_tar::Builder::append_dir_all
+    let mut stack = vec![(src_path.to_path_buf(), true, false)];
+    while let Some((src, is_dir, is_symlink)) = stack.pop() {
+        let dest = path.join(src.strip_prefix(&src_path).unwrap());
+
+        // In case of a symlink pointing to a directory, is_dir is false, but src.is_dir() will return true
+        if is_dir || (is_symlink && follow_symlinks && src.is_dir()) {
+            let mut entries = fs::read_dir(&src).await?;
+            while let Some(entry) = entries.next_entry().await? {
+                let file_type = entry.file_type().await?;
+                stack.push((entry.path(), file_type.is_dir(), file_type.is_symlink()));
             }
+            if dest != Path::new("") {
+                a.append_dir(&dest, &src).await?;
+            }
+        } else {
+            // use append_path_with_name to handle symlink
+            a.append_path_with_name(src, &dest).await?;
         }
-    });
+    }
 
-    body
+    a.finish().await?;
+    // this is required to emit gzip CRC trailer
+    a.into_inner().await?.into_inner().shutdown().await?;
+
+    Ok(())
 }
 
 /// Reply with archived directory content in compressed tarball format.
@@ -174,7 +186,14 @@ where
         return resp;
     }
 
-    *resp.body_mut() = archive_dir(path, src_path, !opts.disable_symlinks);
+    let (tx, body) = Body::channel();
+    tokio::task::spawn(archive(
+        path.as_ref().into(),
+        src_path.as_ref().into(),
+        ChannelBuffer { s: tx },
+        !opts.disable_symlinks,
+    ));
+    *resp.body_mut() = body;
 
     resp
 }
