@@ -16,7 +16,7 @@ mod tests {
         path::{Path, PathBuf},
         pin::Pin,
     };
-    use tokio::io::AsyncReadExt;
+    use tokio::{fs, io::AsyncReadExt};
     use tokio_util::compat::{FuturesAsyncReadCompatExt, TokioAsyncReadCompatExt};
 
     use static_web_server::{
@@ -77,74 +77,40 @@ mod tests {
         content
     }
 
-    // Remove rprefix from path (used when converting from fs-space path to
-    // tar-space path), and optionally add aprefix to path (used when converting
-    // symlinked path to tar-space path).
-    fn adjust_path<P, Q, R>(path: P, rprefix: Q, aprefix: Option<R>) -> PathBuf
-    where
-        P: AsRef<Path>,
-        Q: AsRef<Path>,
-        R: AsRef<Path>,
-    {
-        if let Some(add_prefix) = aprefix {
-            add_prefix
-                .as_ref()
-                .to_path_buf()
-                .join(path.as_ref().strip_prefix(&rprefix).unwrap())
-        } else {
-            path.as_ref().strip_prefix(&rprefix).unwrap().to_path_buf()
-        }
-    }
-
-    fn _add_dir_content(
-        content: &mut HashSet<PathBuf>,
+    async fn get_dir_content(
         path: PathBuf,
-        rprefix: PathBuf,
-        aprefix: Option<PathBuf>,
-        opts: &DirDownloadOpts<'_>,
-    ) {
-        // add self
-        content.insert(adjust_path(&path, &rprefix, aprefix.as_ref()));
+        src_path: PathBuf,
+        opts: DirDownloadOpts<'_>,
+    ) -> HashSet<PathBuf> {
+        let mut content = HashSet::new();
+        let mut stack = vec![(src_path.to_path_buf(), true, false)];
 
-        for entry in std::fs::read_dir(&path).unwrap() {
-            let file = entry.unwrap();
-            let fp = file.path();
-            content.insert(adjust_path(&fp, &rprefix, aprefix.as_ref()));
-            let meta = file.metadata().unwrap();
-            if meta.is_dir() {
-                _add_dir_content(content, fp.clone(), rprefix.clone(), aprefix.clone(), &opts);
-            }
-            if meta.is_symlink() {
-                let link = std::fs::canonicalize(&fp).unwrap();
-                let meta = std::fs::metadata(&link).unwrap();
-                if meta.is_dir() && !opts.disable_symlinks {
-                    _add_dir_content(
-                        content,
-                        link.clone(),
-                        link,
-                        Some(adjust_path(&fp, &rprefix, aprefix.as_ref())),
-                        opts,
-                    );
+        while let Some((src, is_dir, is_symlink)) = stack.pop() {
+            let dest = path.join(src.strip_prefix(&src_path).unwrap());
+
+            // In case of a symlink pointing to a directory, is_dir is false, but src.is_dir() will return true
+            if is_dir || (is_symlink && !opts.disable_symlinks && src.is_dir()) {
+                let mut entries = fs::read_dir(&src).await.unwrap();
+                while let Some(entry) = entries.next_entry().await.unwrap() {
+                    // Check and ignore the current hidden file/directory (dotfile) if feature enabled
+                    let name = entry.file_name();
+                    if opts.ignore_hidden_files
+                        && name.as_encoded_bytes().first().is_some_and(|c| *c == b'.')
+                    {
+                        continue;
+                    }
+
+                    let file_type = entry.file_type().await.unwrap();
+                    stack.push((entry.path(), file_type.is_dir(), file_type.is_symlink()));
                 }
+                if dest != Path::new("") {
+                    content.insert(dest);
+                }
+            } else {
+                content.insert(dest);
             }
         }
-    }
 
-    fn get_dir_content<P>(src_path: P, opts: DirDownloadOpts<'_>) -> HashSet<PathBuf>
-    where
-        P: AsRef<Path>,
-    {
-        let mut content = HashSet::new();
-        let mut prefix = PathBuf::from(src_path.as_ref());
-        prefix.pop();
-
-        _add_dir_content(
-            &mut content,
-            src_path.as_ref().to_path_buf().to_owned(),
-            prefix,
-            None,
-            &opts,
-        );
         content
     }
 
@@ -191,13 +157,14 @@ mod tests {
                         prefix.pop();
                         let left = get_and_validate_tarball_content(prefix, &body).await;
                         let right = get_dir_content(
-                            &base_path,
+                            PathBuf::from(base_path.file_name().unwrap()),
+                            base_path.clone(),
                             DirDownloadOpts {
                                 method: &method,
                                 disable_symlinks,
                                 ignore_hidden_files: false,
                             },
-                        );
+                        ).await;
 
                         if left != right {
                             eprintln!("left - right {:?}", (left.difference(&right)));
@@ -317,13 +284,14 @@ mod tests {
                         prefix.pop();
                         let left = get_and_validate_tarball_content(prefix, &body).await;
                         let right = get_dir_content(
-                            &base_path,
+                            PathBuf::from(base_path.file_name().unwrap()),
+                            base_path.clone(),
                             DirDownloadOpts {
                                 method: &method,
                                 disable_symlinks,
                                 ignore_hidden_files: false,
                             },
-                        );
+                        ).await;
 
                         if left != right {
                             eprintln!("left - right {:?}", (left.difference(&right)));
