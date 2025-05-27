@@ -45,7 +45,11 @@ mod tests {
         PathBuf::from(dir)
     }
 
-    async fn get_and_validate_tarball_content(prefix: PathBuf, body: &[u8]) -> HashSet<PathBuf> {
+    async fn inspect_tarball_content(
+        prefix: PathBuf,
+        body: &[u8],
+        validate: bool,
+    ) -> HashSet<PathBuf> {
         let reader = Archive::new(GzipDecoder::new(body).compat());
 
         let mut content = HashSet::new();
@@ -57,9 +61,10 @@ mod tests {
             let path: PathBuf = file.header().path().unwrap().to_path_buf().into();
 
             // validate content
-            if file.header().entry_type() == async_tar::EntryType::Link
-                || file.header().entry_type() == async_tar::EntryType::Regular
-                || file.header().entry_type() == async_tar::EntryType::Symlink
+            if validate
+                && (file.header().entry_type() == async_tar::EntryType::Link
+                    || file.header().entry_type() == async_tar::EntryType::Regular
+                    || file.header().entry_type() == async_tar::EntryType::Symlink)
             {
                 let on_disk_path = prefix.join(&path);
                 // in case of symlink, skip dir
@@ -155,7 +160,7 @@ mod tests {
                     if method == Method::GET {
                         let mut prefix = base_path.clone();
                         prefix.pop();
-                        let left = get_and_validate_tarball_content(prefix, &body).await;
+                        let left = inspect_tarball_content(prefix, &body, true).await;
                         let right = get_dir_content(
                             PathBuf::from(base_path.file_name().unwrap()),
                             base_path.clone(),
@@ -164,7 +169,8 @@ mod tests {
                                 disable_symlinks,
                                 ignore_hidden_files: false,
                             },
-                        ).await;
+                        )
+                        .await;
 
                         if left != right {
                             eprintln!("left - right {:?}", (left.difference(&right)));
@@ -224,7 +230,7 @@ mod tests {
                     if method == Method::GET {
                         let mut prefix = base_path.clone();
                         prefix.pop();
-                        assert!(get_and_validate_tarball_content(prefix, &body)
+                        assert!(inspect_tarball_content(prefix, &body, false)
                             .await
                             .iter()
                             .find(|path| path.file_name().unwrap() == ".dotfile")
@@ -282,7 +288,7 @@ mod tests {
                     if method == Method::GET {
                         let mut prefix = base_path.clone();
                         prefix.pop();
-                        let left = get_and_validate_tarball_content(prefix, &body).await;
+                        let left = inspect_tarball_content(prefix, &body, false).await;
                         let right = get_dir_content(
                             PathBuf::from(base_path.file_name().unwrap()),
                             base_path.clone(),
@@ -291,7 +297,8 @@ mod tests {
                                 disable_symlinks,
                                 ignore_hidden_files: false,
                             },
-                        ).await;
+                        )
+                        .await;
 
                         if left != right {
                             eprintln!("left - right {:?}", (left.difference(&right)));
