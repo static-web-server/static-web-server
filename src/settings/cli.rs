@@ -371,8 +371,6 @@ pub struct General {
         long,
         value_delimiter(','),
         value_enum,
-        default_value = "none",
-        default_missing_value("none"),
         requires_ifs([
             ("targz", "directory_listing"),
         ]),

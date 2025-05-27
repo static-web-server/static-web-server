@@ -33,8 +33,6 @@ pub const DOWNLOAD_PARAM_KEY: &str = "download";
 #[derive(Debug, Serialize, Deserialize, Clone, ValueEnum, Eq, Hash, PartialEq)]
 #[serde(rename_all = "lowercase")]
 pub enum DirDownloadFmt {
-    /// Disable directory download
-    None,
     /// Gunzip-compressed tarball (.tar.gz)
     Targz,
 }
@@ -51,15 +49,7 @@ pub struct DirDownloadOpts<'a> {
 
 /// Initializes directory listing download
 pub fn init(formats: &Vec<DirDownloadFmt>, handler_opts: &mut RequestHandlerOpts) {
-    let mut is_none = false;
     for fmt in formats {
-        if *fmt == DirDownloadFmt::None {
-            is_none = true;
-            continue;
-        }
-        if is_none {
-            panic!("Setting directory-listing-download to {:?} when None is also specified is not allowed", *fmt);
-        }
         // Use naive implementation since the list is not expected to be long
         if !handler_opts.dir_listing_download.contains(fmt) {
             handler_opts.dir_listing_download.push(fmt.to_owned());
