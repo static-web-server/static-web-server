@@ -166,7 +166,7 @@ mod tests {
                 dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: true,
                 compression_static: false,
-                ignore_hidden_files: true,
+                ignore_hidden_files: false,
                 disable_symlinks,
                 index_files: &[],
                 dir_listing_download: &vec![DirDownloadFmt::Targz],
@@ -195,6 +195,7 @@ mod tests {
                             DirDownloadOpts {
                                 method: &method,
                                 disable_symlinks,
+                                ignore_hidden_files: false,
                             },
                         );
 
@@ -204,6 +205,63 @@ mod tests {
                         }
 
                         assert_eq!(left, right);
+                    } else {
+                        assert!(body.len() == 0);
+                    }
+                }
+                Err(status) => {
+                    assert!(method != Method::GET && method != Method::HEAD);
+                    assert_eq!(status, StatusCode::METHOD_NOT_ALLOWED);
+                }
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn dir_listing_download_targz_no_hidden() {
+        let base_path = root_dir("tests/fixtures/public");
+        for method in METHODS {
+            match static_files::handle(&HandleOpts {
+                method: &method,
+                headers: &HeaderMap::new(),
+                base_path: &base_path,
+                uri_path: "/",
+                uri_query: Some(DOWNLOAD_PARAM_KEY),
+                #[cfg(feature = "experimental")]
+                memory_cache: None,
+                dir_listing: true,
+                dir_listing_order: 1,
+                dir_listing_format: &DirListFmt::Html,
+                redirect_trailing_slash: true,
+                compression_static: false,
+                ignore_hidden_files: true,
+                disable_symlinks: false,
+                index_files: &[],
+                dir_listing_download: &vec![DirDownloadFmt::Targz],
+            })
+            .await
+            {
+                Ok(result) => {
+                    let mut res = result.resp;
+                    assert_eq!(res.status(), 200);
+                    assert_eq!(res.headers()["content-type"], "application/gzip");
+                    assert!(res.headers()["content-disposition"]
+                        .to_str()
+                        .unwrap()
+                        .starts_with("attachment"));
+
+                    let body = hyper::body::to_bytes(res.body_mut())
+                        .await
+                        .expect("unexpected bytes error during `body` conversion");
+
+                    if method == Method::GET {
+                        let mut prefix = base_path.clone();
+                        prefix.pop();
+                        assert!(get_and_validate_tarball_content(prefix, &body)
+                            .await
+                            .iter()
+                            .find(|path| path.file_name().unwrap() == ".dotfile")
+                            .is_none());
                     } else {
                         assert!(body.len() == 0);
                     }
@@ -234,7 +292,7 @@ mod tests {
                 dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: true,
                 compression_static: false,
-                ignore_hidden_files: true,
+                ignore_hidden_files: false,
                 disable_symlinks,
                 index_files: &[],
                 dir_listing_download: &vec![DirDownloadFmt::Targz],
@@ -263,6 +321,7 @@ mod tests {
                             DirDownloadOpts {
                                 method: &method,
                                 disable_symlinks,
+                                ignore_hidden_files: false,
                             },
                         );
 
@@ -300,7 +359,7 @@ mod tests {
                 dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: true,
                 compression_static: false,
-                ignore_hidden_files: true,
+                ignore_hidden_files: false,
                 disable_symlinks: false,
                 index_files: &[],
                 dir_listing_download: &vec![],

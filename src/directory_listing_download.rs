@@ -45,6 +45,8 @@ pub struct DirDownloadOpts<'a> {
     pub method: &'a Method,
     /// Prevent following symlinks for files and directories.
     pub disable_symlinks: bool,
+    /// Ignore hidden files (dotfiles).
+    pub ignore_hidden_files: bool,
 }
 
 /// Initializes directory listing download
@@ -110,6 +112,7 @@ async fn archive(
     src_path: PathBuf,
     cb: ChannelBuffer,
     follow_symlinks: bool,
+    ignore_hidden: bool,
 ) -> Result {
     let gz = GzipEncoder::with_quality(cb, async_compression::Level::Default);
     let mut a = Builder::new(gz.compat_write());
@@ -129,6 +132,12 @@ async fn archive(
         if is_dir || (is_symlink && follow_symlinks && src.is_dir()) {
             let mut entries = fs::read_dir(&src).await?;
             while let Some(entry) = entries.next_entry().await? {
+                // Check and ignore the current hidden file/directory (dotfile) if feature enabled
+                let name = entry.file_name();
+                if ignore_hidden && name.as_encoded_bytes().first().is_some_and(|c| *c == b'.') {
+                    continue;
+                }
+
                 let file_type = entry.file_type().await?;
                 stack.push((entry.path(), file_type.is_dir(), file_type.is_symlink()));
             }
@@ -192,6 +201,7 @@ where
         src_path.as_ref().into(),
         ChannelBuffer { s: tx },
         !opts.disable_symlinks,
+        opts.ignore_hidden_files,
     ));
     *resp.body_mut() = body;
 
