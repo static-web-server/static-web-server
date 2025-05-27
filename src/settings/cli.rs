@@ -382,7 +382,6 @@ pub struct General {
     /// Specify list of directory download format to be enabled, empty list disables the feature. Formats supported: "none" or "targz". Default "none".
     pub directory_listing_download: Vec<DirDownloadFmt>,
 
-
     #[arg(
         long,
         default_value = "false",
