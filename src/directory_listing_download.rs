@@ -68,7 +68,7 @@ impl tokio::io::AsyncWrite for ChannelBuffer {
         self: std::pin::Pin<&mut Self>,
         cx: &mut std::task::Context<'_>,
         buf: &[u8],
-    ) -> std::task::Poll<std::result::Result<usize, std::io::Error>> {
+    ) -> std::task::Poll<Result<usize, std::io::Error>> {
         let this = self.get_mut();
         let b = BytesMut::from(buf);
         match this.s.poll_ready(cx) {
@@ -86,14 +86,14 @@ impl tokio::io::AsyncWrite for ChannelBuffer {
     fn poll_flush(
         self: std::pin::Pin<&mut Self>,
         _cx: &mut std::task::Context<'_>,
-    ) -> std::task::Poll<std::result::Result<(), std::io::Error>> {
+    ) -> std::task::Poll<Result<(), std::io::Error>> {
         std::task::Poll::Ready(Ok(()))
     }
 
     fn poll_shutdown(
         self: std::pin::Pin<&mut Self>,
         _cx: &mut std::task::Context<'_>,
-    ) -> std::task::Poll<std::result::Result<(), std::io::Error>> {
+    ) -> std::task::Poll<Result<(), std::io::Error>> {
         std::task::Poll::Ready(Ok(()))
     }
 }
@@ -117,7 +117,7 @@ async fn archive(
     // adapted from async_tar::Builder::append_dir_all
     let mut stack = vec![(src_path.to_path_buf(), true, false)];
     while let Some((src, is_dir, is_symlink)) = stack.pop() {
-        let dest = path.join(src.strip_prefix(&src_path).unwrap());
+        let dest = path.join(src.strip_prefix(&src_path)?);
 
         // In case of a symlink pointing to a directory, is_dir is false, but src.is_dir() will return true
         if is_dir || (is_symlink && follow_symlinks && src.is_dir()) {
@@ -177,7 +177,7 @@ where
         Err(err) => {
             // not fatal, most browser is able to handle the download since
             // content-type is set
-            tracing::error!("cant make content disposition from {}: {:?}", hvals, err);
+            tracing::error!("can't make content disposition from {}: {:?}", hvals, err);
         }
     }
 

@@ -411,7 +411,7 @@ fn html_auto_index<'a>(
     let download_directory_elem = match download.is_empty() {
         true => html! {},
         false => html! {
-            ",  " a href={ "?" (DOWNLOAD_PARAM_KEY) } {
+            ", " a href={ "?" (DOWNLOAD_PARAM_KEY) } {
                 "download tar.gz"
             }
         },
