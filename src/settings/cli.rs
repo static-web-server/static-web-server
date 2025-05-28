@@ -379,7 +379,7 @@ pub struct General {
         env = "SERVER_DIRECTORY_LISTING_DOWNLOAD",
         ignore_case(true)
     )]
-    /// Specify list of directory download format to be enabled, empty list disables the feature. Formats supported: "none" or "targz". Default "none".
+    /// Specify list of enabled format(s) for directory download. Format supported: `targz`. Default to empty list (disabled).
     pub directory_listing_download: Vec<DirDownloadFmt>,
 
     #[arg(

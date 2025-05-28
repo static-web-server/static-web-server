@@ -57,6 +57,9 @@ directory-listing-order = 1
 #### Directory listing content format
 directory-listing-format = "html"
 
+#### Directory listing download format
+directory-listing-download = []
+
 #### Basic Authentication
 # basic-auth = ""
 
