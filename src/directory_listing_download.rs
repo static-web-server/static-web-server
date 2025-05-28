@@ -17,6 +17,7 @@ use mime_guess::Mime;
 use std::path::Path;
 use std::path::PathBuf;
 use std::str::FromStr;
+use std::task::Poll::{Pending, Ready};
 use tokio::fs;
 use tokio::io;
 use tokio::io::AsyncWriteExt;
@@ -71,14 +72,14 @@ impl tokio::io::AsyncWrite for ChannelBuffer {
         let this = self.get_mut();
         let b = BytesMut::from(buf);
         match this.s.poll_ready(cx) {
-            std::task::Poll::Ready(r) => match r {
+            Ready(r) => match r {
                 Ok(()) => match this.s.try_send_data(b.freeze()) {
-                    Ok(_) => std::task::Poll::Ready(Ok(buf.len())),
-                    Err(_) => std::task::Poll::Pending,
+                    Ok(_) => Ready(Ok(buf.len())),
+                    Err(_) => Pending,
                 },
-                Err(e) => std::task::Poll::Ready(Err(io::Error::new(io::ErrorKind::BrokenPipe, e))),
+                Err(e) => Ready(Err(io::Error::new(io::ErrorKind::BrokenPipe, e))),
             },
-            std::task::Poll::Pending => std::task::Poll::Pending,
+            Pending => Pending,
         }
     }
 
