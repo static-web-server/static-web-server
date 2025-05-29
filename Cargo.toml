@@ -2,7 +2,7 @@
 name = "static-web-server"
 version = "2.36.1"
 edition = "2021"
-rust-version = "1.81.0"
+rust-version = "1.82.0"
 authors = ["Jose Quintana <https://joseluisq.net>"]
 license = "MIT OR Apache-2.0"
 description = "A cross-platform, high-performance and asynchronous web server for static files-serving."
@@ -107,7 +107,7 @@ tokio-metrics-collector = { version = "0.3.1", optional = true }
 prometheus = { version = "0.14.0", default-features = false, optional = true }
 
 [target.'cfg(windows)'.dependencies]
-windows-service = "0.7"
+windows-service = "0.8"
 
 [dev-dependencies]
 bytes = "1.10"
