@@ -64,6 +64,10 @@ pub fn init(formats: &Vec<DirDownloadFmt>, handler_opts: &mut RequestHandlerOpts
             handler_opts.dir_listing_download.push(fmt.to_owned());
         }
     }
+    tracing::info!(
+        "directory listing download: enabled={}",
+        !handler_opts.dir_listing_download.is_empty()
+    );
 }
 
 /// impl AsyncWrite for hyper::Body::Sender
