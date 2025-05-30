@@ -14,6 +14,7 @@ use headers::{ContentType, HeaderMapExt};
 use http::{HeaderValue, Method, Response};
 use hyper::{body::Sender, Body};
 use mime_guess::Mime;
+use std::fmt::Display;
 use std::path::Path;
 use std::path::PathBuf;
 use std::str::FromStr;
@@ -38,6 +39,12 @@ pub enum DirDownloadFmt {
     Targz,
 }
 
+impl Display for DirDownloadFmt {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Debug::fmt(self, f)
+    }
+}
+
 /// Directory download options.
 pub struct DirDownloadOpts<'a> {
     /// Request method.
@@ -53,6 +60,7 @@ pub fn init(formats: &Vec<DirDownloadFmt>, handler_opts: &mut RequestHandlerOpts
     for fmt in formats {
         // Use naive implementation since the list is not expected to be long
         if !handler_opts.dir_listing_download.contains(fmt) {
+            tracing::info!("directory listing download: enabled format {}", &fmt);
             handler_opts.dir_listing_download.push(fmt.to_owned());
         }
     }
