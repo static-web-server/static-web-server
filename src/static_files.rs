@@ -194,7 +194,6 @@ pub async fn handle(opts: &HandleOpts<'_>) -> Result<StaticFileResponse, StatusC
     // if it does not contain an `index.html` file (if a proper auto index is generated)
     #[cfg(feature = "directory-listing")]
     if is_dir && opts.dir_listing && !file_path.exists() {
-
         // Directory listing download
         // Check if "directory listing download" feature is enabled,
         // if current path is a valid directory and
