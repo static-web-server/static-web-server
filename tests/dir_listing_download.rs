@@ -140,7 +140,7 @@ mod tests {
                 ignore_hidden_files: false,
                 disable_symlinks,
                 index_files: &[],
-                dir_listing_download: &vec![DirDownloadFmt::Targz],
+                dir_listing_download: &[DirDownloadFmt::Targz],
             })
             .await
             {
@@ -179,7 +179,7 @@ mod tests {
 
                         assert_eq!(left, right);
                     } else {
-                        assert!(body.len() == 0);
+                        assert!(body.is_empty());
                     }
                 }
                 Err(status) => {
@@ -210,7 +210,7 @@ mod tests {
                 ignore_hidden_files: true,
                 disable_symlinks: false,
                 index_files: &[],
-                dir_listing_download: &vec![DirDownloadFmt::Targz],
+                dir_listing_download: &[DirDownloadFmt::Targz],
             })
             .await
             {
@@ -230,13 +230,12 @@ mod tests {
                     if method == Method::GET {
                         let mut prefix = base_path.clone();
                         prefix.pop();
-                        assert!(inspect_tarball_content(prefix, &body, false)
+                        assert!(!inspect_tarball_content(prefix, &body, false)
                             .await
                             .iter()
-                            .find(|path| path.file_name().unwrap() == ".dotfile")
-                            .is_none());
+                            .any(|path| path.file_name().unwrap() == ".dotfile"));
                     } else {
-                        assert!(body.len() == 0);
+                        assert!(body.is_empty());
                     }
                 }
                 Err(status) => {
@@ -268,7 +267,7 @@ mod tests {
                 ignore_hidden_files: false,
                 disable_symlinks,
                 index_files: &[],
-                dir_listing_download: &vec![DirDownloadFmt::Targz],
+                dir_listing_download: &[DirDownloadFmt::Targz],
             })
             .await
             {
@@ -307,7 +306,7 @@ mod tests {
 
                         assert_eq!(left, right);
                     } else {
-                        assert!(body.len() == 0);
+                        assert!(body.is_empty());
                     }
                 }
                 Err(status) => {
@@ -337,7 +336,7 @@ mod tests {
                 ignore_hidden_files: false,
                 disable_symlinks: false,
                 index_files: &[],
-                dir_listing_download: &vec![],
+                dir_listing_download: &[],
             })
             .await
             {
@@ -345,11 +344,10 @@ mod tests {
                     let res = result.resp;
                     assert_eq!(res.status(), 200);
                     assert_eq!(res.headers()["content-type"], "text/html; charset=utf-8");
-                    assert!(res
+                    assert!(!res
                         .headers()
                         .iter()
-                        .find(|(k, _v)| *k == "content-disposition")
-                        .is_none());
+                        .any(|(k, _v)| *k == "content-disposition"));
                 }
                 Err(status) => {
                     assert!(method != Method::GET && method != Method::HEAD);
