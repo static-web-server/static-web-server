@@ -85,6 +85,8 @@ pub mod fixtures {
             dir_listing_order: general.directory_listing_order,
             #[cfg(feature = "directory-listing")]
             dir_listing_format: general.directory_listing_format,
+            #[cfg(feature = "directory-listing-download")]
+            dir_listing_download: general.directory_listing_download,
             // TODO: add support or `cors` when required
             cors: None,
             security_headers: general.security_headers,

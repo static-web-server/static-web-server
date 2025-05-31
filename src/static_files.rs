@@ -40,6 +40,11 @@ use crate::{
     directory_listing::{DirListFmt, DirListOpts},
 };
 
+#[cfg(feature = "directory-listing-download")]
+use crate::directory_listing_download::{
+    archive_reply, DirDownloadFmt, DirDownloadOpts, DOWNLOAD_PARAM_KEY,
+};
+
 const DEFAULT_INDEX_FILES: &[&str; 1] = &["index.html"];
 
 /// Defines all options needed by the static-files handler.
@@ -71,6 +76,10 @@ pub struct HandleOpts<'a> {
     #[cfg(feature = "directory-listing")]
     #[cfg_attr(docsrs, doc(cfg(feature = "directory-listing")))]
     pub dir_listing_format: &'a DirListFmt,
+    /// Directory listing download feature.
+    #[cfg(feature = "directory-listing-download")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "directory-listing-download")))]
+    pub dir_listing_download: &'a [DirDownloadFmt],
     /// Redirect trailing slash feature.
     pub redirect_trailing_slash: bool,
     /// Compression static feature.
@@ -185,6 +194,40 @@ pub async fn handle(opts: &HandleOpts<'_>) -> Result<StaticFileResponse, StatusC
     // if it does not contain an `index.html` file (if a proper auto index is generated)
     #[cfg(feature = "directory-listing")]
     if is_dir && opts.dir_listing && !file_path.exists() {
+        // Directory listing download
+        // Check if "directory listing download" feature is enabled,
+        // if current path is a valid directory and
+        // if query string has parameter "download" set
+        #[cfg(feature = "directory-listing-download")]
+        if !opts.dir_listing_download.is_empty() {
+            if let Some((_k, _dl_archive_opt)) =
+                form_urlencoded::parse(opts.uri_query.unwrap_or("").as_bytes())
+                    .find(|(k, _v)| k == DOWNLOAD_PARAM_KEY)
+            {
+                // file path is index.html, need pop
+                let mut fp = file_path.clone();
+                fp.pop();
+                if let Some(filename) = fp.file_name() {
+                    let resp = archive_reply(
+                        filename,
+                        &fp,
+                        DirDownloadOpts {
+                            method,
+                            disable_symlinks: opts.disable_symlinks,
+                            ignore_hidden_files: opts.ignore_hidden_files,
+                        },
+                    );
+                    return Ok(StaticFileResponse {
+                        resp,
+                        file_path: resp_file_path,
+                    });
+                } else {
+                    tracing::error!("Unable to get filename from {}", fp.to_string_lossy());
+                    return Err(StatusCode::INTERNAL_SERVER_ERROR);
+                }
+            }
+        }
+
         let resp = directory_listing::auto_index(DirListOpts {
             method,
             current_path: uri_path,
@@ -194,6 +237,8 @@ pub async fn handle(opts: &HandleOpts<'_>) -> Result<StaticFileResponse, StatusC
             dir_listing_format: opts.dir_listing_format,
             ignore_hidden_files: opts.ignore_hidden_files,
             disable_symlinks: opts.disable_symlinks,
+            #[cfg(feature = "directory-listing-download")]
+            dir_listing_download: opts.dir_listing_download,
         })?;
 
         return Ok(StaticFileResponse {

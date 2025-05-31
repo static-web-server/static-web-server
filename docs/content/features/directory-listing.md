@@ -126,3 +126,15 @@ curl -iH "content-type: application/json" http://localhost:8787
 
 # [{"name":"spécial directöry","type":"directory","mtime":"2022-10-07T00:53:50Z"},{"name":"index.html.gz","type":"file","mtime":"2022-09-27T22:44:34Z","size":332}]⏎
 ```
+
+## Directory Download
+**`SWS`** supports downloading the content of a directory as a single file when **Directory Listing** feature is enabled. To activate, specify the list of download format to enable using the `--directory-listing-download` flag or the equivalent [SERVER_DIRECTORY_LISTING_DOWNLOAD](./../configuration/environment-variables.md#server_directory_listing_download) env. Currently, `targz` format is supported.
+
+```sh
+static-web-server \
+    --directory-listing=true \
+    --directory-listing-download=targz
+```
+
+When **Directory Download** is enabled, append `?download` to a directory URL to download it. A link will also be added to the top part of **HTML** output format.
+

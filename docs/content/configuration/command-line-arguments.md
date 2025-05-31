@@ -72,6 +72,8 @@ Options:
           Specify a default code number to order directory listing entries per `Name`, `Last modified` or `Size` attributes (columns). Code numbers supported: 0 (Name asc), 1 (Name desc), 2 (Last modified asc), 3 (Last modified desc), 4 (Size asc), 5 (Size desc). Default 6 (unordered) [env: SERVER_DIRECTORY_LISTING_ORDER=] [default: 6]
       --directory-listing-format <DIRECTORY_LISTING_FORMAT>
           Specify a content format for directory listing entries. Formats supported: "html" or "json". Default "html" [env: SERVER_DIRECTORY_LISTING_FORMAT=] [default: html] [possible values: html, json]
+      --directory-listing-download=<DIRECTORY_LISTING_DOWNLOAD>
+          Specify list of enabled format(s) for directory download. Format supported: `targz`. Default to empty list (disabled) [env: SERVER_DIRECTORY_LISTING_DOWNLOAD=] [possible values: targz]
       --security-headers [<SECURITY_HEADERS>]
           Enable security headers by default when HTTP/2 feature is activated. Headers included: "Strict-Transport-Security: max-age=63072000; includeSubDomains; preload" (2 years max-age), "X-Frame-Options: DENY" and "Content-Security-Policy: frame-ancestors 'self'" [env: SERVER_SECURITY_HEADERS=] [default: false] [possible values: true, false]
   -e, --cache-control-headers [<CACHE_CONTROL_HEADERS>]

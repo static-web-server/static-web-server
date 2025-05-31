@@ -38,7 +38,7 @@ doc = false
 
 [features]
 # All features enabled by default
-default = ["compression", "http2", "directory-listing", "basic-auth", "fallback-page"]
+default = ["compression", "http2", "directory-listing", "directory-listing-download", "basic-auth", "fallback-page"]
 # Include all features (used when building SWS binaries)
 all = ["default", "experimental"]
 # HTTP2
@@ -51,6 +51,8 @@ compression-gzip = ["async-compression/deflate"]
 compression-zstd = ["async-compression/zstd"]
 # Directory listing
 directory-listing = ["chrono", "maud"]
+# Directory listing download
+directory-listing-download = ["async-tar",  "compression-gzip", "directory-listing"]
 # Basic HTTP Authorization
 basic-auth = ["bcrypt"]
 # Fallback Page
@@ -63,6 +65,7 @@ experimental = ["tokio-metrics-collector", "prometheus", "compact_str", "mini-mo
 aho-corasick = "1.1"
 anyhow = "1.0"
 async-compression = { version = "0.4", default-features = false, optional = true, features = ["brotli", "deflate", "gzip", "zstd", "tokio"] }
+async-tar = { version = "0.5", optional = true }
 bcrypt = { version = "0.17", optional = true }
 bytes = "1.10"
 chrono = { version = "0.4", default-features = false, features = ["std", "clock"], optional = true }
@@ -92,7 +95,7 @@ serde_repr = "0.1"
 shadow-rs = "1.1.1"
 tokio = { version = "1", default-features = false, features = ["rt-multi-thread", "macros", "fs", "io-util", "signal"] }
 tokio-rustls = { version = "0.26", optional = true, default-features = false, features = ["logging", "tls12", "ring"] }
-tokio-util = { version = "0.7", default-features = false, features = ["io"] }
+tokio-util = { version = "0.7", default-features = false, features = ["compat", "io"] }
 toml = "0.8"
 tracing = { version = "0.1", default-features = false, features = ["std"] }
 tracing-subscriber = { version = "0.3", default-features = false, features = ["smallvec", "registry", "parking_lot", "fmt", "ansi", "tracing-log"] }

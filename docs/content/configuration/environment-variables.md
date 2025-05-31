@@ -107,6 +107,9 @@ Specify a default code number to order directory listing entries per `Name`, `La
 ### SERVER_DIRECTORY_LISTING_FORMAT
 Specify a content format for the directory listing entries. Formats supported: `html` or `json`. Default `html`.
 
+### SERVER_DIRECTORY_LISTING_DOWNLOAD
+Specify list of enabled format(s) for directory download. Format supported: `targz`. Default to empty list (disabled).
+
 ### SERVER_SECURITY_HEADERS
 Enable security headers by default when the HTTP/2 feature is activated. Headers included: `Strict-Transport-Security: max-age=63072000; includeSubDomains; preload` (2 years max-age), `X-Frame-Options: DENY` and `Content-Security-Policy: frame-ancestors 'self'`. Default `false` (disabled).
 
