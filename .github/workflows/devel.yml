@@ -319,11 +319,12 @@ jobs:
 
     - name: Check formatting
       run: |
-        cargo fmt --all -- --check
+        cargo fmt --all -- --check tests/*.rs
 
     - name: Check via Clippy
       run: |
         cargo clippy --all-features -- -D warnings
+        cargo clippy --all-features --tests -- -D warnings
 
     - name: Check crate docs
       run: |
