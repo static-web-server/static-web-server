@@ -186,6 +186,9 @@ impl Settings {
         #[cfg(feature = "directory-listing")]
         let mut directory_listing_format = opts.directory_listing_format;
 
+        #[cfg(feature = "directory-listing-download")]
+        let mut directory_listing_download = opts.directory_listing_download;
+
         #[cfg(feature = "basic-auth")]
         let mut basic_auth = opts.basic_auth;
 
@@ -346,6 +349,10 @@ impl Settings {
                 #[cfg(feature = "directory-listing")]
                 if let Some(v) = general.directory_listing_format {
                     directory_listing_format = v
+                }
+                #[cfg(feature = "directory-listing-download")]
+                if let Some(v) = general.directory_listing_download {
+                    directory_listing_download = v
                 }
                 #[cfg(feature = "basic-auth")]
                 if let Some(ref v) = general.basic_auth {
@@ -663,6 +670,8 @@ impl Settings {
                 directory_listing_order,
                 #[cfg(feature = "directory-listing")]
                 directory_listing_format,
+                #[cfg(feature = "directory-listing-download")]
+                directory_listing_download,
                 #[cfg(feature = "basic-auth")]
                 basic_auth,
                 fd,

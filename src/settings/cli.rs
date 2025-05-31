@@ -11,6 +11,10 @@ use std::{net::IpAddr, path::PathBuf};
 
 #[cfg(feature = "directory-listing")]
 use crate::directory_listing::DirListFmt;
+
+#[cfg(feature = "directory-listing-download")]
+use crate::directory_listing_download::DirDownloadFmt;
+
 use crate::Result;
 
 /// General server configuration available in CLI and config file options.
@@ -360,6 +364,23 @@ pub struct General {
     )]
     /// Specify a content format for directory listing entries. Formats supported: "html" or "json". Default "html".
     pub directory_listing_format: DirListFmt,
+
+    #[cfg(feature = "directory-listing-download")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "directory-listing-download")))]
+    #[arg(
+        long,
+        value_delimiter(','),
+        value_enum,
+        requires_ifs([
+            ("targz", "directory_listing"),
+        ]),
+        require_equals(true),
+        action = clap::ArgAction::Set,
+        env = "SERVER_DIRECTORY_LISTING_DOWNLOAD",
+        ignore_case(true)
+    )]
+    /// Specify list of enabled format(s) for directory download. Format supported: `targz`. Default to empty list (disabled).
+    pub directory_listing_download: Vec<DirDownloadFmt>,
 
     #[arg(
         long,

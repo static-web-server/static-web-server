@@ -16,6 +16,9 @@ mod tests {
         static_files::{self, HandleOpts},
     };
 
+    #[cfg(feature = "directory-listing-download")]
+    use static_web_server::directory_listing_download::DirDownloadFmt;
+
     const METHODS: [Method; 8] = [
         Method::CONNECT,
         Method::DELETE,
@@ -53,6 +56,8 @@ mod tests {
                 ignore_hidden_files: false,
                 disable_symlinks: false,
                 index_files: &[],
+                #[cfg(feature = "directory-listing-download")]
+                dir_listing_download: &[],
             })
             .await
             {
@@ -88,6 +93,8 @@ mod tests {
                 ignore_hidden_files: false,
                 disable_symlinks: false,
                 index_files: &[],
+                #[cfg(feature = "directory-listing-download")]
+                dir_listing_download: &[],
             })
             .await
             {
@@ -133,6 +140,8 @@ mod tests {
                 ignore_hidden_files: false,
                 disable_symlinks: false,
                 index_files: &[],
+                #[cfg(feature = "directory-listing-download")]
+                dir_listing_download: &[],
             })
             .await
             {
@@ -178,6 +187,8 @@ mod tests {
                 ignore_hidden_files: false,
                 disable_symlinks: false,
                 index_files: &[],
+                #[cfg(feature = "directory-listing-download")]
+                dir_listing_download: &[],
             })
             .await
             {
@@ -213,6 +224,8 @@ mod tests {
                 ignore_hidden_files: false,
                 disable_symlinks: false,
                 index_files: &[],
+                #[cfg(feature = "directory-listing-download")]
+                dir_listing_download: &[],
             })
             .await
             {
@@ -269,6 +282,8 @@ mod tests {
                 ignore_hidden_files: true,
                 disable_symlinks: false,
                 index_files: &[],
+                #[cfg(feature = "directory-listing-download")]
+                dir_listing_download: &[],
             })
             .await
             {
@@ -343,6 +358,8 @@ mod tests {
                 ignore_hidden_files: false,
                 disable_symlinks: false,
                 index_files: &[],
+                #[cfg(feature = "directory-listing-download")]
+                dir_listing_download: &[],
             })
             .await
             {
@@ -390,6 +407,8 @@ mod tests {
                 ignore_hidden_files: true,
                 disable_symlinks: false,
                 index_files: &[],
+                #[cfg(feature = "directory-listing-download")]
+                dir_listing_download: &[],
             })
             .await
             {
@@ -405,6 +424,102 @@ mod tests {
 
                     if method == Method::GET {
                         assert!(!body_str.contains(".dotfile"))
+                    } else {
+                        assert!(body_str.is_empty());
+                    }
+                }
+                Err(status) => {
+                    assert!(method != Method::GET && method != Method::HEAD);
+                    assert_eq!(status, StatusCode::METHOD_NOT_ALLOWED);
+                }
+            }
+        }
+    }
+
+    #[cfg(feature = "directory-listing-download")]
+    #[tokio::test]
+    async fn dir_listing_has_download_link_when_enabled() {
+        for method in METHODS {
+            match static_files::handle(&HandleOpts {
+                method: &method,
+                headers: &HeaderMap::new(),
+                base_path: &root_dir("tests/fixtures/public"),
+                uri_path: "/",
+                uri_query: None,
+                #[cfg(feature = "experimental")]
+                memory_cache: None,
+                dir_listing: true,
+                dir_listing_order: 1,
+                dir_listing_format: &DirListFmt::Html,
+                redirect_trailing_slash: true,
+                compression_static: false,
+                ignore_hidden_files: true,
+                disable_symlinks: false,
+                index_files: &[],
+                dir_listing_download: &[DirDownloadFmt::Targz],
+            })
+            .await
+            {
+                Ok(result) => {
+                    let mut res = result.resp;
+                    assert_eq!(res.status(), 200);
+                    assert_eq!(res.headers()["content-type"], "text/html; charset=utf-8");
+
+                    let body = hyper::body::to_bytes(res.body_mut())
+                        .await
+                        .expect("unexpected bytes error during `body` conversion");
+                    let body_str = std::str::from_utf8(&body).unwrap();
+
+                    if method == Method::GET {
+                        assert!(body_str.contains("download tar.gz"))
+                    } else {
+                        assert!(body_str.is_empty());
+                    }
+                }
+                Err(status) => {
+                    assert!(method != Method::GET && method != Method::HEAD);
+                    assert_eq!(status, StatusCode::METHOD_NOT_ALLOWED);
+                }
+            }
+        }
+    }
+
+    #[cfg(feature = "directory-listing-download")]
+    #[tokio::test]
+    async fn dir_listing_has_no_download_link_when_disabled() {
+        for method in METHODS {
+            match static_files::handle(&HandleOpts {
+                method: &method,
+                headers: &HeaderMap::new(),
+                base_path: &root_dir("tests/fixtures/public"),
+                uri_path: "/",
+                uri_query: None,
+                #[cfg(feature = "experimental")]
+                memory_cache: None,
+                dir_listing: true,
+                dir_listing_order: 1,
+                dir_listing_format: &DirListFmt::Html,
+                redirect_trailing_slash: true,
+                compression_static: false,
+                ignore_hidden_files: true,
+                disable_symlinks: false,
+                index_files: &[],
+                dir_listing_download: &[],
+            })
+            .await
+            {
+                Ok(result) => {
+                    let mut res = result.resp;
+                    assert_eq!(res.status(), 200);
+                    assert_eq!(res.headers()["content-type"], "text/html; charset=utf-8");
+
+                    let body = hyper::body::to_bytes(res.body_mut())
+                        .await
+                        .expect("unexpected bytes error during `body` conversion");
+                    let body_str = std::str::from_utf8(&body).unwrap();
+
+                    if method == Method::GET {
+                        assert!(!body_str.contains("download tar.gz"))
                     } else {
                         assert!(body_str.is_empty());
                     }

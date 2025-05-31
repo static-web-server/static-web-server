@@ -29,6 +29,10 @@ use {
 
 #[cfg(feature = "directory-listing")]
 use crate::directory_listing;
+
+#[cfg(feature = "directory-listing-download")]
+use crate::directory_listing_download;
+
 #[cfg(feature = "fallback-page")]
 use crate::fallback_page;
 
@@ -289,6 +293,10 @@ impl Server {
             general.directory_listing_format,
             &mut handler_opts,
         );
+
+        // Directory listing download options
+        #[cfg(feature = "directory-listing-download")]
+        directory_listing_download::init(&general.directory_listing_download, &mut handler_opts);
 
         // Fallback page option
         #[cfg(feature = "fallback-page")]

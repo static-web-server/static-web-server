@@ -17,6 +17,9 @@ use std::ffi::{OsStr, OsString};
 use std::io;
 use std::path::Path;
 
+#[cfg(feature = "directory-listing-download")]
+use crate::directory_listing_download::{DirDownloadFmt, DOWNLOAD_PARAM_KEY};
+
 use crate::{handler::RequestHandlerOpts, http_ext::MethodExt, Context, Result};
 
 /// Non-alphanumeric characters to be percent-encoded
@@ -52,6 +55,9 @@ pub struct DirListOpts<'a> {
     pub dir_listing_order: u8,
     /// Directory listing format.
     pub dir_listing_format: &'a DirListFmt,
+    #[cfg(feature = "directory-listing-download")]
+    /// Directory listing download.
+    pub dir_listing_download: &'a [DirDownloadFmt],
     /// Ignore hidden files (dotfiles).
     pub ignore_hidden_files: bool,
     /// Prevent following symlinks for files and directories.
@@ -96,6 +102,8 @@ pub fn auto_index(opts: DirListOpts<'_>) -> Result<Response<Body>, StatusCode> {
                 content_format: opts.dir_listing_format,
                 ignore_hidden_files: opts.ignore_hidden_files,
                 disable_symlinks: opts.disable_symlinks,
+                #[cfg(feature = "directory-listing-download")]
+                download: opts.dir_listing_download,
             };
             match read_dir_entries(dir_opts) {
                 Ok(resp) => Ok(resp),
@@ -184,6 +192,8 @@ struct DirEntryOpts<'a> {
     content_format: &'a DirListFmt,
     ignore_hidden_files: bool,
     disable_symlinks: bool,
+    #[cfg(feature = "directory-listing-download")]
+    download: &'a [DirDownloadFmt],
 }
 
 /// It reads a list of directory entries and create an index page content.
@@ -337,6 +347,8 @@ fn read_dir_entries(mut opt: DirEntryOpts<'_>) -> Result<Response<Body>> {
                 files_count,
                 &mut file_entries,
                 opt.order_code,
+                #[cfg(feature = "directory-listing-download")]
+                opt.download,
             )
         }
     };
@@ -388,11 +400,24 @@ fn html_auto_index<'a>(
     files_count: usize,
     entries: &'a mut [FileEntry],
     order_code: u8,
+    #[cfg(feature = "directory-listing-download")] download: &'a [DirDownloadFmt],
 ) -> String {
     use maud::{html, DOCTYPE};
 
     let sort_attrs = sort_file_entries(entries, order_code);
     let current_path = percent_decode_str(base_path).decode_utf8_lossy();
+
+    #[cfg(feature = "directory-listing-download")]
+    let download_directory_elem = match download.is_empty() {
+        true => html! {},
+        false => html! {
+            ", " a href={ "?" (DOWNLOAD_PARAM_KEY) } {
+                "download tar.gz"
+            }
+        },
+    };
+    #[cfg(not(feature = "directory-listing-download"))]
+    let download_directory_elem = html! {};
 
     html! {
         (DOCTYPE)
@@ -413,7 +438,7 @@ fn html_auto_index<'a>(
                 }
                 p {
                     small {
-                        "directories: " (dirs_count) ", files: " (files_count)
+                        "directories: " (dirs_count) ", files: " (files_count) (download_directory_elem)
                     }
                 }
                 hr;
