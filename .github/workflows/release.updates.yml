@@ -21,9 +21,9 @@ jobs:
       - name: Prepare
         shell: bash
         run: |
-          echo "RELEASE_VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
-          echo "version is: ${{ env.RELEASE_VERSION }}"
-          echo "PR_BRANCH_NAME=release-docs-${{ env.RELEASE_VERSION }}-$(date -u '+%d-%m-%Y')" >> $GITHUB_ENV
+          echo "SERVER_VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
+          echo "version is: ${{ env.SERVER_VERSION }}"
+          echo "PR_BRANCH_NAME=release-docs-${{ env.SERVER_VERSION }}-$(date -u '+%d-%m-%Y')" >> $GITHUB_ENV
 
       - name: Post release updates
         shell: bash
@@ -45,7 +45,7 @@ jobs:
           git add docs/content/download-and-install.md
           git add docs/content/download-and-install.template.md
 
-          git commit --verbose -m "docs: ${{ env.RELEASE_VERSION }} [skip ci]"
+          git commit --verbose -m "docs: ${{ env.SERVER_VERSION }} [skip ci]"
           git checkout -b ${{ env.PR_BRANCH_NAME }}
           git push --set-upstream origin --verbose ${{ env.PR_BRANCH_NAME }}
 
@@ -54,8 +54,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh pr create \
-            --title "Post release ${{ env.RELEASE_VERSION }} updates" \
-            --body "An automated PR containing documentation and script installer updates corresponding to the current release \`${{ env.RELEASE_VERSION }}\`.\n\nSee https://static-web-server.net/download-and-install/ for more details." \
+            --title "Post release ${{ env.SERVER_VERSION }} updates" \
+            --body "An automated PR containing documentation and script installer updates corresponding to the current release \`${{ env.SERVER_VERSION }}\`.\n\nSee https://static-web-server.net/download-and-install/ for more details." \
             --base "master" \
             --head "${{ env.PR_BRANCH_NAME }}" \
             --label "v2" --label "enhancement" --label "documentation" --label "automated" \

@@ -76,7 +76,14 @@ nix-env -iA nixpkgs.static-web-server
 
 ### MacOS
 
-Via [Homebrew](https://brew.sh/) (also Linux)
+Using [Homebrew Formulae](https://formulae.brew.sh/formula/static-web-server) (also Linux)
+
+```sh
+# Build from source
+brew install static-web-server
+```
+
+Or using the [SWS Homebrew Tap](https://github.com/static-web-server/homebrew-tap) (also Linux)
 
 ```sh
 brew tap static-web-server/static-web-server
