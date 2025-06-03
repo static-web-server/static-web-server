@@ -38,6 +38,8 @@ Options:
           A HTML file path (not relative to the root) used for GET requests when the requested path doesn't exist. The fallback page is served with a 200 status code, useful when using client routers. If the path doesn't exist then the feature is not activated [env: SERVER_FALLBACK_PAGE=] [default: ]
   -g, --log-level <LOG_LEVEL>
           Specify a logging level in lower case. Values: error, warn, info, debug or trace [env: SERVER_LOG_LEVEL=] [default: error]
+      --log-with-ansi [<LOG_WITH_ANSI>]
+          Enable or disable ANSI escape codes for colors and other text formatting of the log output [env: SERVER_LOG_WITH_ANSI=] [default: false] [possible values: true, false]
   -c, --cors-allow-origins <CORS_ALLOW_ORIGINS>
           Specify an optional CORS list of allowed origin hosts separated by commas. Host ports or protocols aren't being checked. Use an asterisk (*) to allow any host [env: SERVER_CORS_ALLOW_ORIGINS=] [default: ]
   -j, --cors-allow-headers <CORS_ALLOW_HEADERS>

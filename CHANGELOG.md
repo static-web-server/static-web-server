@@ -2,10 +2,72 @@
 
 All notable changes to this project will be documented in this file.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-_**Note:** See changelog for v1 under the [1.x](https://github.com/static-web-server/static-web-server/blob/1.x/CHANGELOG.md) branch._
+## v2.37.0 - 2025-06-03
+
+This new `v2.37.0` release brings several security and bug fixes. New features like the possibility to download directories as tarballs, control for server log ANSI output, end of support for a few unmaintained Windows platforms and other improvements.
+
+**End of support for unmaintained Windows 7, 8, 8.1 platforms**
+
+As anticipated in [v2.36.1][v2361], SWS no longer supports Windows 7, 8, and 8.1 platforms.
+SWS now requires Rust `1.82.0` or later to build and the minimum Windows supported platform is *Windows 10*.
+
+**Fixes**
+
+- [b56e3c4][b56e3c4] Bugfix/security dependency updates including tokio, rustls, chrono, flate2, windows-service, serde and other crates. SWS now requires Rust `1.82.0` or later to build. PR [#546][546], [#545][545] by [@joseluisq][joseluisq]
+- [a384d92][a384d92] Update Alpine `3.20.6` and Debian `12.10` Docker images. PR [#539][539] by [@joseluisq][joseluisq]
+- [cb19995][cb19995] Generic server log info output even on higher log levels. PR [#542][542] fixes [#541][541] reported by [@Tasssadar][Tasssadar].
+
+[cb19995]: https://github.com/static-web-server/static-web-server/commit/cb19995
+
+[541]: https://github.com/static-web-server/static-web-server/issues/541
+[542]: https://github.com/static-web-server/static-web-server/pull/542
+
+**Features**
+
+- [89f5846][89f5846] Support for downloading a directory as a compressed tarball (`tar.gz`) via new `--directory-listing-download=targz` option. PR [#544][544] by [@ekangmonyet][ekangmonyet] resolves [#67][67] suggested by [@shirshak55][shirshak55]. See [docs][directory-download].
+- [0236980][0236980] Control log ANSI output via boolean new `--log-with-ansi=true` option (SWS is now no-ANSI by default). PR [#543][543] resolves [#540][540] suggested by [@Tasssadar][Tasssadar]. See [docs][log-output-with-ansi].
+
+[89f5846]: https://github.com/static-web-server/static-web-server/commit/89f5846
+[0236980]: https://github.com/static-web-server/static-web-server/commit/0236980
+
+[67]: https://github.com/static-web-server/static-web-server/issues/67
+[540]: https://github.com/static-web-server/static-web-server/issues/540
+[544]: https://github.com/static-web-server/static-web-server/pull/544
+[543]: https://github.com/static-web-server/static-web-server/pull/543
+[log-output-with-ansi]: https://static-web-server.net/features/logging#log-output-with-ansi
+[directory-download]: https://static-web-server.net/features/directory-listing#directory-download
+
+**Refactorings**
+
+- Misc: [5d1eaac][5d1eaac] Automate post-release updates using CI. PR [#538][538] by [@joseluisq][joseluisq]
+
+[b56e3c4]: https://github.com/static-web-server/static-web-server/commit/b56e3c4
+[7ca2785]: https://github.com/static-web-server/static-web-server/commit/7ca2785
+[a384d92]: https://github.com/static-web-server/static-web-server/commit/a384d92
+[5d1eaac]: https://github.com/static-web-server/static-web-server/commit/5d1eaac
+
+[546]: https://github.com/static-web-server/static-web-server/pull/546
+[545]: https://github.com/static-web-server/static-web-server/pull/545
+[539]: https://github.com/static-web-server/static-web-server/pull/539
+[538]: https://github.com/static-web-server/static-web-server/pull/538
+
+[joseluisq]: https://github.com/joseluisq
+[ekangmonyet]: https://github.com/ekangmonyet
+[Tasssadar]: https://github.com/Tasssadar
+[shirshak55]: https://github.com/shirshak55
+[v2361]: https://github.com/static-web-server/static-web-server/releases/tag/v2.36.1
+
+For more details see the [v2.37.0 milestone][v2370-milestone] and the full changelog [v2.36.1...v2.37.0][v2370-diff].
+
+[v2370-diff]: https://github.com/static-web-server/static-web-server/compare/v2.36.1...v2.37.0
+[v2370-milestone]: https://github.com/static-web-server/static-web-server/milestone/29?closed=1
+
+__Acknowledgments__
+
+Thanks to our new donor [@mrkesu](https://github.com/mrkesu) for supporting the project.
 
 ## v2.36.1 - 2025-03-02
 
