@@ -10,7 +10,7 @@ mod tests {
 
     #[test]
     fn toml_file_parsing() {
-        let config_path = Path::new("tests/toml/config.toml");
+        let config_path = Path::new("tests/toml/sws.toml");
         let settings = Settings::read(config_path).unwrap();
         let root = settings.general.unwrap().root.unwrap();
         assert_eq!(root, PathBuf::from("docker/public"));

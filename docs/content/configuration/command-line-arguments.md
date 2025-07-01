@@ -85,7 +85,7 @@ Options:
   -q, --grace-period <GRACE_PERIOD>
           Defines a grace period in seconds after a `SIGTERM` signal is caught which will delay the server before to shut it down gracefully. The maximum value is 255 seconds [env: SERVER_GRACE_PERIOD=] [default: 0]
   -w, --config-file <CONFIG_FILE>
-          Server TOML configuration file path [env: SERVER_CONFIG_FILE=] [default: ./config.toml]
+          Server TOML configuration file path [env: SERVER_CONFIG_FILE=] [default: ./sws.toml]
       --log-remote-address [<LOG_REMOTE_ADDRESS>]
           Log incoming requests information along with its remote address if available using the `info` log level [env: SERVER_LOG_REMOTE_ADDRESS=] [default: false] [possible values: true, false]
       --log-x-real-ip [<LOG_X_REAL_IP>]

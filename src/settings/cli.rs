@@ -428,7 +428,7 @@ pub struct General {
     #[arg(
         long,
         short = 'w',
-        default_value = "./config.toml",
+        default_value = "./sws.toml",
         value_parser = value_parser_pathbuf,
         env = "SERVER_CONFIG_FILE"
     )]
