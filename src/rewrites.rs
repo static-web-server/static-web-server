@@ -66,7 +66,7 @@ pub(crate) fn pre_process<T>(
         if let Some(host) = req.uri().host() {
             let mut host = host.to_owned();
             if let Some(port) = req.uri().port_u16() {
-                host.push_str(&format!(":{}", port));
+                host.push_str(&format!(":{port}"));
             }
             if let Ok(host) = host.parse() {
                 req.headers_mut().insert(HOST, host);
