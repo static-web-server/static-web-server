@@ -43,10 +43,10 @@ If not then the service might not start.
 The following command will create the SWS service called `static-web-server` with a "`Static Web Server`" display name.
 
 ```powershell
-static-web-server.exe -w C:\Users\MyUser\config.toml install
+static-web-server.exe -w C:\Users\MyUser\sws.toml install
 # Windows Service (static-web-server) is installed successfully!
 # Start the service typing: sc.exe start "static-web-server" (it requires administrator privileges) or using the 'services.msc' application.
-``` 
+```
 
 ## Interact with the service
 
@@ -64,9 +64,9 @@ sc.exe qc "static-web-server"
 #         TYPE               : 10  WIN32_OWN_PROCESS
 #         START_TYPE         : 3   DEMAND_START
 #         ERROR_CONTROL      : 1   NORMAL
-#         BINARY_PATH_NAME   : C:\Users\MyUser\static-web-server.exe 
-#                                   --windows-service=true 
-#                                   --config-file=C:\Users\MyUser\config.toml
+#         BINARY_PATH_NAME   : C:\Users\MyUser\static-web-server.exe
+#                                   --windows-service=true
+#                                   --config-file=C:\Users\MyUser\sws.toml
 #         LOAD_ORDER_GROUP   :
 #         TAG                : 0
 #         DISPLAY_NAME       : Static Web Server

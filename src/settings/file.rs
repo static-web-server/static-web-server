@@ -426,7 +426,7 @@ impl Settings {
         // Validate TOML file extension
         let ext = config_file.extension();
         if ext.is_none() || ext.unwrap().is_empty() || ext.unwrap().ne("toml") {
-            bail!("configuration file should be in toml format. E.g `config.toml`");
+            bail!("configuration file should be in toml format. E.g `sws.toml`");
         }
 
         // TODO: validate minimal TOML file structure needed

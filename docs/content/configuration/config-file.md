@@ -5,7 +5,7 @@
 It's disabled by default and can be enabled by passing a _string file path_ via the `-w, --config-file` option or its equivalent [SERVER_CONFIG_FILE](./../configuration/environment-variables.md#server_config_file) env.
 
 !!! info "The default config file path is checked at startup time"
-    If using the default config file path (`./config.toml`), SWS will attempt to load it at startup time.
+    If using the default config file path (`./sws.toml`), SWS will attempt to load it at startup time.
     If it is not found or can not be loaded then SWS will continue using the server defaults.
 
 ## TOML File (Manifest)
@@ -188,8 +188,8 @@ Whatever config file-based feature option will take precedence over its CLI or E
 
 ## Usage
 
-The following command runs the server using a specific `config.toml` file.
+The following command runs the server using a specific `sws.toml` file.
 
 ```sh
-static-web-server -w config.toml
+static-web-server -w sws.toml
 ```

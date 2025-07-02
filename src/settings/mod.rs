@@ -224,9 +224,15 @@ impl Settings {
         // Define the advanced file options
         let mut settings_advanced: Option<Advanced> = None;
 
-        // Handle "config file options" and set them when available
-        // NOTE: All config file based options shouldn't be mandatory, therefore `Some()` wrapped
-        if let Some((settings, config_file_resolved)) = read_file_settings(&opts.config_file)? {
+        let to_use_config_file = match Path::new("./config.toml").is_file() {
+            true => {
+                eprintln!("Deprecated: 'config.toml' found, rename it to 'sws.toml' to prepare for future releases");
+                PathBuf::from("./config.toml")
+            }
+            false => opts.config_file.clone(),
+        };
+
+        if let Some((settings, config_file_resolved)) = read_file_settings(&to_use_config_file)? {
             config_file = config_file_resolved;
 
             // File-based "general" options

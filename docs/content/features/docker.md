@@ -114,10 +114,10 @@ services:
     environment:
       # Note: those envs are customizable but also optional
       - SERVER_ROOT=/var/public
-      - SERVER_CONFIG_FILE=/etc/config.toml
+      - SERVER_CONFIG_FILE=/etc/sws.toml
     volumes:
       - ./public:/var/public
-      - ./config.toml:/etc/config.toml
+      - ./sws.toml:/etc/sws.toml
 ```
 
 ## Traefik Proxy
