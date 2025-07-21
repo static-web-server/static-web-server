@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v2.38.0 - 2025-07-21
+
+This new `v2.38.0` release brings several security and bug fixes and support for a less-generic `sws.toml` default config file as well as other improvements.
+
+__Fixes__
+
+- [8c435ad][8c435ad] Bugfix/security dependency updates including tokio, rustls, serde, toml, async-compression, clap and other crates. PR [#552][552] by [@joseluisq][joseluisq]
+- [47ce050][47ce050] Update Alpine (`3.20.7`) & Debian (`12.11`) Docker images. PR [#553][553] by [@joseluisq][joseluisq]
+
+[47ce050]: https://github.com/static-web-server/static-web-server/commit/47ce050
+[8c435ad]: https://github.com/static-web-server/static-web-server/commit/8c435ad
+
+[553]: https://github.com/static-web-server/static-web-server/pull/553
+[552]: https://github.com/static-web-server/static-web-server/pull/552
+
+__Features__
+
+- [acd8388][acd8388] Add a less-generic config file `sws.toml` support as default. PR [#551][551] by [@davlgd][davlgd].
+  - **Migration:** The previous default `config.toml` file name will be supported for a while, but it's recommended to use `sws.toml` instead.
+
+[acd8388]: https://github.com/static-web-server/static-web-server/commit/acd8388
+[551]: https://github.com/static-web-server/static-web-server/pull/551
+
+[joseluisq]: https://github.com/joseluisq
+[davlgd]: https://github.com/davlgd
+
 ## v2.37.0 - 2025-06-03
 
 This new `v2.37.0` release brings several security and bug fixes. New features like the possibility to download directories as tarballs, control for server log ANSI output, end of support for a few unmaintained Windows platforms and other improvements.
