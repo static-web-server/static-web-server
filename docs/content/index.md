@@ -25,10 +25,6 @@
   </div>
 </div>
 
-!!! warning "v1.x End of Life (2023-01-06)"
-    The [`v1.19.4`](https://github.com/static-web-server/static-web-server/releases/tag/v1.19.4) was the last version of the 1.x series and will be no longer supported.<br>
-    So we encourage users to migrate to v2 which has similar and additional features as well as significant performance and security improvements. Follow [the v2 migration steps](./migration.md).
-
 ## Overview
 
 **Static Web Server** (or **`SWS`** abbreviated) is a tiny and fast production-ready web server suitable to serve static web files or assets.
