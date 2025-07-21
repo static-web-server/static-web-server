@@ -28,7 +28,7 @@ pub(crate) fn pre_process<T>(
         .unwrap_or("");
     let mut uri_host = uri.host().unwrap_or(host).to_owned();
     if let Some(uri_port) = uri.port_u16() {
-        uri_host.push_str(&format!(":{}", uri_port));
+        uri_host.push_str(&format!(":{uri_port}"));
     }
     let matched = get_redirection(&uri_host, uri_path, Some(redirects))?;
     let dest = match replace_placeholders(uri_path, &matched.source, &matched.destination) {
@@ -73,9 +73,7 @@ pub(crate) fn replace_placeholders(
         .map(|i| regex_caps.get(i).map(|s| s.as_str()).unwrap_or(""))
         .collect::<Vec<&str>>();
 
-    let patterns = caps_range
-        .map(|i| format!("${}", i))
-        .collect::<Vec<String>>();
+    let patterns = caps_range.map(|i| format!("${i}")).collect::<Vec<String>>();
 
     tracing::debug!("url redirects/rewrites glob pattern: {patterns:?}");
     tracing::debug!("url redirects/rewrites regex equivalent: {regex}");

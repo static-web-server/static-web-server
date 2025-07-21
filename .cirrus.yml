@@ -1,14 +1,14 @@
 freebsd_instance:
-  image: freebsd-13-1-release-amd64
+  image: freebsd-13-4-release-amd64
 
 # Test FreeBSD in a full VM on cirrus-ci.com
 # The binary will be also built in 32-bit mode, but will execute on a
 # 64-bit kernel and in a 64-bit environment. Our tests don't execute
 # any of the system's binaries, so the environment shouldn't matter.
 task:
-  only_if: $CIRRUS_TAG == '' && changesIncludeOnly('.cirrus.yml', 'src/**', 'tests/**', 'Cargo.toml', 'Cargo.lock', '.cargo/config.toml')
+  only_if: $CIRRUS_TAG == '' && changesInclude('.cirrus.yml', 'src/**', 'tests/**', 'Cargo.toml', 'Cargo.lock', '.cargo/config.toml')
   env:
-    TOOLCHAIN: "1.82.0"
+    TOOLCHAIN: "1.88.0"
     RUSTFLAGS: -Dwarnings --cfg tokio_unstable
     CARGO_FEATURES: "--features=all"
     RUST_BACKTRACE: "1"
@@ -25,7 +25,7 @@ task:
     - sh rustup.sh -y --profile minimal --default-toolchain=$TOOLCHAIN
     - . $HOME/.cargo/env
     - cp -r .cargo/config.toml $HOME/.cargo/
-    - rustc --version
+    - rustc -vV
   toolchain_script:
     - . $HOME/.cargo/env
     - rustup target add $BINARY_ARCH-unknown-freebsd
@@ -45,7 +45,7 @@ task:
 task:
   only_if: $CIRRUS_TAG != ''
   env:
-    TOOLCHAIN: "1.82.0"
+    TOOLCHAIN: "1.88.0"
     RUSTFLAGS: -Dwarnings --cfg tokio_unstable
     CARGO_FEATURES: "--features=all"
     GITHUB_TOKEN: ENCRYPTED[d1766ef328d83729917d2ffb875d64c35d1c0177edf8f32e66ec464daf5c1b7b145d65fc6c044a73fffe2235d3b38349]
@@ -62,7 +62,7 @@ task:
     - sh rustup.sh -y --profile minimal --default-toolchain=$TOOLCHAIN
     - . $HOME/.cargo/env
     - cp -r .cargo/config.toml $HOME/.cargo/
-    - rustc --version
+    - rustc -vV
   toolchain_script:
     - . $HOME/.cargo/env
     - rustup target add $BINARY_ARCH-unknown-freebsd

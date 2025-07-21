@@ -1642,7 +1642,7 @@ mod tests {
                     match method {
                         // The handle only accepts HEAD or GET request methods
                         Method::GET | Method::HEAD => {
-                            panic!("unexpected an error response {}", err)
+                            panic!("unexpected an error response {err}")
                         }
                         _ => assert_eq!(err, StatusCode::METHOD_NOT_ALLOWED),
                     }
