@@ -92,11 +92,11 @@ serde = { version = "1.0", default-features = false, features = ["derive"] }
 serde_ignored = "0.1"
 serde_json = "1.0"
 serde_repr = "0.1"
-shadow-rs = "1.1.1"
+shadow-rs = "1.2.1"
 tokio = { version = "1", default-features = false, features = ["rt-multi-thread", "macros", "fs", "io-util", "signal"] }
 tokio-rustls = { version = "0.26", optional = true, default-features = false, features = ["logging", "tls12", "ring"] }
 tokio-util = { version = "0.7", default-features = false, features = ["compat", "io"] }
-toml = "0.8"
+toml = "0.9"
 tracing = { version = "0.1", default-features = false, features = ["std"] }
 tracing-subscriber = { version = "0.3", default-features = false, features = ["smallvec", "registry", "parking_lot", "fmt", "ansi", "tracing-log"] }
 
@@ -117,7 +117,7 @@ bytes = "1.10"
 serde_json = "1.0"
 
 [build-dependencies]
-shadow-rs = "1.1.1"
+shadow-rs = "1.2.1"
 
 [profile.release]
 codegen-units = 1

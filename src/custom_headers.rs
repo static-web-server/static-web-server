@@ -37,16 +37,14 @@ pub fn append_headers(
     file_path: Option<&PathBuf>,
 ) {
     if let Some(headers_vec) = headers_opts {
-        let mut uri_path_auto_index = None;
-        if file_path.is_some() && uri_path.ends_with('/') {
-            if let Some(name) = file_path.unwrap().file_name().and_then(OsStr::to_str) {
-                if uri_path == "/" {
-                    uri_path_auto_index = Some([uri_path, name].concat())
-                } else {
-                    uri_path_auto_index = Some([uri_path, "/", name].concat())
-                }
-            }
-        }
+        let uri_path_auto_index = file_path
+            .filter(|_| uri_path.ends_with('/'))
+            .and_then(|p| p.file_name())
+            .and_then(OsStr::to_str)
+            .map(|name| match uri_path {
+                "/" => ["/", name].concat(),
+                _ => [uri_path, "/", name].concat(),
+            });
 
         let uri_path = match uri_path_auto_index {
             Some(ref s) => s.as_str(),

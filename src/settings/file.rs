@@ -456,7 +456,7 @@ fn read_toml_file(path: &Path) -> Result<toml::Value> {
             path.display()
         )
     })?;
-    toml_str
-        .parse()
+
+    toml::from_str(&toml_str)
         .map_err(|e| anyhow::Error::from(e).context("could not parse input as TOML"))
 }
