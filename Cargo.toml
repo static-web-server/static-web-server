@@ -92,7 +92,7 @@ serde = { version = "1.0", default-features = false, features = ["derive"] }
 serde_ignored = "0.1"
 serde_json = "1.0"
 serde_repr = "0.1"
-shadow-rs = "1.2.1"
+shadow-rs = "1.3.0"
 tokio = { version = "1", default-features = false, features = ["rt-multi-thread", "macros", "fs", "io-util", "signal"] }
 tokio-rustls = { version = "0.26", optional = true, default-features = false, features = ["logging", "tls12", "ring"] }
 tokio-util = { version = "0.7", default-features = false, features = ["compat", "io"] }
@@ -117,7 +117,7 @@ bytes = "1.10"
 serde_json = "1.0"
 
 [build-dependencies]
-shadow-rs = "1.2.1"
+shadow-rs = "1.3.0"
 
 [profile.release]
 codegen-units = 1
