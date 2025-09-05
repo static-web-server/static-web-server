@@ -121,7 +121,7 @@ curl -iH "content-type: application/json" http://localhost:8787
 # HTTP/1.1 200 OK
 # content-type: application/json
 # content-length: 163
-# cache-control: public, max-age=86400
+# cache-control: max-age=86400
 # date: Tue, 11 Oct 2022 23:24:55 GMT
 
 # [{"name":"spécial directöry","type":"directory","mtime":"2022-10-07T00:53:50Z"},{"name":"index.html.gz","type":"file","mtime":"2022-09-27T22:44:34Z","size":332}]⏎

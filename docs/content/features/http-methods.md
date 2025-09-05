@@ -15,7 +15,7 @@ curl -I -X OPTIONS http://localhost:8787/assets/main.js
 # HTTP/1.1 204 No Content
 # allow: OPTIONS, HEAD, GET
 # accept-ranges: bytes
-# cache-control: public, max-age=31536000
+# cache-control: max-age=31536000
 # date: Thu, 10 Mar 2022 21:26:01 GMT
 ```
 
@@ -39,6 +39,6 @@ curl http://localhost:8787/assets/main.js \
 # accept-ranges: bytes
 # access-control-allow-headers: content-type, origin
 # access-control-allow-methods: GET, OPTIONS, HEAD
-# cache-control: public, max-age=31536000
+# cache-control: max-age=31536000
 # date: Thu, 10 Mar 2022 21:45:55 GMT
 ```

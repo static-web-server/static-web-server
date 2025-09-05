@@ -47,7 +47,7 @@ pub fn append_headers(uri: &str, resp: &mut Response<Body>) {
     resp.headers_mut().insert(
         "cache-control",
         format!(
-            "public, max-age={}",
+            "max-age={}",
             // It caps value in seconds at ~136 years
             std::cmp::min(max_age, u32::MAX as u64)
         )
@@ -100,7 +100,7 @@ mod tests {
             assert_eq!(resp.status(), StatusCode::OK);
             assert_eq!(
                 cache_control.to_str().unwrap(),
-                format!("public, max-age={MAX_AGE_ONE_HOUR}")
+                format!("max-age={MAX_AGE_ONE_HOUR}")
             );
         }
     }
@@ -116,7 +116,7 @@ mod tests {
         assert_eq!(resp.status(), StatusCode::OK);
         assert_eq!(
             cache_control.to_str().unwrap(),
-            format!("public, max-age={MAX_AGE_ONE_DAY}")
+            format!("max-age={MAX_AGE_ONE_DAY}")
         );
     }
 
@@ -132,7 +132,7 @@ mod tests {
             assert_eq!(resp.status(), StatusCode::OK);
             assert_eq!(
                 cache_control.to_str().unwrap(),
-                format!("public, max-age={MAX_AGE_ONE_YEAR}")
+                format!("max-age={MAX_AGE_ONE_YEAR}")
             );
         }
     }
