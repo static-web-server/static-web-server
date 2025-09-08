@@ -5,6 +5,37 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v2.38.1 - 2025-09-09
+
+This new `v2.38.1` release brings several security and bug fixes and improvements for the Cache Control feature.
+
+__Fixes__
+
+- [c5477fe][c5477fe] Bugfix/security dependency updates including tokio, rustls, serde, toml, percent-encoding, tracing, regex and other crates. PR [#556][556], [#561][561] by [@joseluisq][joseluisq]
+- [2a09238][2a09238] Update Alpine Docker images to `3.21.4`. [#563][563] by [@joseluisq][joseluisq]
+
+__Refactorings__
+
+- [0b55770][0b55770] Remove `public` from `Cache-Control` header value when feature enabled. Which can prevent CDN and Basic Authentication cache issues. PR [#562][562] by [@joseluisq][joseluisq]
+
+[2a09238]: https://github.com/static-web-server/static-web-server/commit/2a09238
+[0b55770]: https://github.com/static-web-server/static-web-server/commit/0b55770
+[c5477fe]: https://github.com/static-web-server/static-web-server/commit/c5477fe
+
+[563]: https://github.com/static-web-server/static-web-server/pull/563
+[562]: https://github.com/static-web-server/static-web-server/pull/562
+[561]: https://github.com/static-web-server/static-web-server/pull/561
+[556]: https://github.com/static-web-server/static-web-server/pull/556
+
+[joseluisq]: https://github.com/joseluisq
+
+[v2380]: https://github.com/static-web-server/static-web-server/releases/tag/v2.38.0
+
+For more details see the [v2.38.1 milestone][v2381-milestone] and the full changelog [v2.38.0...v2.38.1][v2381-diff].
+
+[v2381-diff]: https://github.com/static-web-server/static-web-server/compare/v2.38.0...v2.38.1
+[v2381-milestone]: https://github.com/static-web-server/static-web-server/milestone/32?closed=1
+
 ## v2.38.0 - 2025-07-21
 
 This new `v2.38.0` release brings several security and bug fixes and support for a less-generic `sws.toml` default config file as well as other improvements.
@@ -30,6 +61,13 @@ __Features__
 
 [joseluisq]: https://github.com/joseluisq
 [davlgd]: https://github.com/davlgd
+
+[v2370]: https://github.com/static-web-server/static-web-server/releases/tag/v2.37.0
+
+For more details see the [v2.38.0 milestone][v2381-milestone] and the full changelog [v2.37.0...v2.38.0][v2381-diff].
+
+[v2381-diff]: https://github.com/static-web-server/static-web-server/compare/v2.37.0...v2.38.0
+[v2381-milestone]: https://github.com/static-web-server/static-web-server/milestone/30?closed=1
 
 ## v2.37.0 - 2025-06-03
 
