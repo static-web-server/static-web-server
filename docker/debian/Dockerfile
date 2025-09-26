@@ -1,4 +1,4 @@
-FROM --platform=$BUILDPLATFORM debian:12.11-slim AS build
+FROM --platform=$BUILDPLATFORM debian:13.1-slim AS build
 
 ARG TARGETPLATFORM
 ARG SERVER_VERSION=0.0.0
@@ -7,10 +7,10 @@ ENV SERVER_VERSION=${SERVER_VERSION}
 RUN set -eux \
     && DEBIAN_FRONTEND=noninteractive apt-get update -qq \
     && DEBIAN_FRONTEND=noninteractive apt-get install -qq -y --no-install-recommends --no-install-suggests \
-         ca-certificates \
-         curl \
-         file \
-         tzdata \
+        ca-certificates \
+        curl \
+        file \
+        tzdata \
     && true
 
 RUN set -ex \
@@ -48,34 +48,54 @@ RUN set -ex \
     && file /usr/local/bin/static-web-server \
     && true
 
-FROM debian:12.11-slim
+FROM debian:13.1-slim
 
 ARG SERVER_VERSION=0.0.0
+ARG SERVER_USER_NAME=sws
+ARG SERVER_USER_ID=999
+ARG SERVER_GROUP_NAME=sws
+ARG SERVER_GROUP_ID=999
+
 ENV SERVER_VERSION=${SERVER_VERSION}
+ENV SERVER_USER_ID=${SERVER_USER_ID}
+ENV SERVER_USER_NAME=${SERVER_USER_NAME}
+ENV SERVER_GROUP_ID=${SERVER_GROUP_ID}
+ENV SERVER_GROUP_NAME=${SERVER_GROUP_NAME}
 
 LABEL version="${SERVER_VERSION}" \
     description="A cross-platform, high-performance and asynchronous web server for static files-serving." \
     maintainer="Jose Quintana <joseluisq.net>"
 
 RUN set -eux \
+    && groupadd -r ${SERVER_GROUP_NAME} && useradd -r -g ${SERVER_GROUP_NAME} ${SERVER_USER_NAME} \
+    && true
+
+RUN set -eux \
     && DEBIAN_FRONTEND=noninteractive apt-get update -qq \
     && DEBIAN_FRONTEND=noninteractive apt-get install -qq -y --no-install-recommends --no-install-suggests \
-         ca-certificates \
-         tzdata \
+        ca-certificates \
+        tzdata \
     # Clean up local repository of retrieved packages and remove the package lists
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* \
     && true
 
-COPY --from=build /usr/local/bin/static-web-server /usr/local/bin/
-COPY ./docker/debian/entrypoint.sh /
-COPY ./docker/public /public
+USER ${SERVER_USER_NAME}:${SERVER_GROUP_NAME}
+
+COPY --from=build --chown=${SERVER_USER_NAME}:${SERVER_GROUP_NAME} \
+    /usr/local/bin/static-web-server /usr/local/bin/static-web-server
+COPY --chown=${SERVER_USER_NAME}:${SERVER_GROUP_NAME} \
+    ./docker/debian/entrypoint.sh /usr/local/bin/entrypoint.sh
+COPY --chown=${SERVER_USER_NAME}:${SERVER_GROUP_NAME} \
+    ./docker/public /home/${SERVER_USER_NAME}/public
+
+WORKDIR /home/${SERVER_USER_NAME}
 
 EXPOSE 80
 
 STOPSIGNAL SIGQUIT
 
-ENTRYPOINT ["/entrypoint.sh"]
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 
 CMD ["static-web-server"]
 
