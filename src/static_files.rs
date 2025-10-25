@@ -10,17 +10,17 @@
 // https://github.com/seanmonstar/warp/blob/master/src/filters/fs.rs
 
 use headers::{AcceptRanges, HeaderMap, HeaderMapExt, HeaderValue};
-use hyper::{header::CONTENT_ENCODING, header::CONTENT_LENGTH, Body, Method, Response, StatusCode};
+use hyper::{Body, Method, Response, StatusCode, header::CONTENT_ENCODING, header::CONTENT_LENGTH};
 use std::fs::{File, Metadata};
 use std::io;
 use std::path::PathBuf;
 
-use crate::conditional_headers::ConditionalHeaders;
-use crate::fs::meta::{try_metadata, try_metadata_with_html_suffix, FileMetadata};
-use crate::fs::path::{sanitize_path, PathExt};
-use crate::http_ext::{MethodExt, HTTP_SUPPORTED_METHODS};
-use crate::response::response_body;
 use crate::Result;
+use crate::conditional_headers::ConditionalHeaders;
+use crate::fs::meta::{FileMetadata, try_metadata, try_metadata_with_html_suffix};
+use crate::fs::path::{PathExt, sanitize_path};
+use crate::http_ext::{HTTP_SUPPORTED_METHODS, MethodExt};
+use crate::response::response_body;
 
 #[cfg(feature = "experimental")]
 use crate::mem_cache::{cache, cache::MemCacheOpts};
@@ -42,7 +42,7 @@ use crate::{
 
 #[cfg(feature = "directory-listing-download")]
 use crate::directory_listing_download::{
-    archive_reply, DirDownloadFmt, DirDownloadOpts, DOWNLOAD_PARAM_KEY,
+    DOWNLOAD_PARAM_KEY, DirDownloadFmt, DirDownloadOpts, archive_reply,
 };
 
 const DEFAULT_INDEX_FILES: &[&str; 1] = &["index.html"];
@@ -441,7 +441,7 @@ fn get_composed_file_metadata<'a>(
                         metadata: new_meta,
                         is_dir: false,
                         precompressed_variant: None,
-                    })
+                    });
                 }
                 _ => {
                     // Last pre-compressed variant check or the suffixed file not found

@@ -9,7 +9,7 @@
 
 use hyper::{Body, Request, Response};
 
-use crate::{handler::RequestHandlerOpts, Error};
+use crate::{Error, handler::RequestHandlerOpts};
 
 // Cache-Control `max-age` variants
 const MAX_AGE_ONE_HOUR: u64 = 60 * 60;
@@ -84,8 +84,8 @@ mod tests {
     use hyper::{Body, Response, StatusCode};
 
     use super::{
-        append_headers, get_file_extension, CACHE_EXT_ONE_HOUR, CACHE_EXT_ONE_YEAR,
-        MAX_AGE_ONE_DAY, MAX_AGE_ONE_HOUR, MAX_AGE_ONE_YEAR,
+        CACHE_EXT_ONE_HOUR, CACHE_EXT_ONE_YEAR, MAX_AGE_ONE_DAY, MAX_AGE_ONE_HOUR,
+        MAX_AGE_ONE_YEAR, append_headers, get_file_extension,
     };
 
     #[test]

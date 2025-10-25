@@ -7,10 +7,10 @@
 //!
 
 use bcrypt::verify as bcrypt_verify;
-use headers::{authorization::Basic, Authorization, HeaderMap, HeaderMapExt};
-use hyper::{header::WWW_AUTHENTICATE, Body, Request, Response, StatusCode};
+use headers::{Authorization, HeaderMap, HeaderMapExt, authorization::Basic};
+use hyper::{Body, Request, Response, StatusCode, header::WWW_AUTHENTICATE};
 
-use crate::{error_page, handler::RequestHandlerOpts, http_ext::MethodExt, Error};
+use crate::{Error, error_page, handler::RequestHandlerOpts, http_ext::MethodExt};
 
 /// Initializes `Basic` HTTP Authorization handling
 pub(crate) fn init(credentials: &str, handler_opts: &mut RequestHandlerOpts) {
@@ -91,9 +91,9 @@ pub fn check_request(headers: &HeaderMap, userid: &str, password: &str) -> Resul
 #[cfg(test)]
 mod tests {
     use super::{check_request, pre_process};
-    use crate::{handler::RequestHandlerOpts, Error};
+    use crate::{Error, handler::RequestHandlerOpts};
     use headers::HeaderMap;
-    use hyper::{header::WWW_AUTHENTICATE, Body, Request, Response, StatusCode};
+    use hyper::{Body, Request, Response, StatusCode, header::WWW_AUTHENTICATE};
 
     fn make_request(method: &str, auth_header: &str) -> Request<Body> {
         let mut builder = Request::builder();
@@ -122,14 +122,16 @@ mod tests {
 
     #[test]
     fn test_auth_disabled() {
-        assert!(pre_process(
-            &RequestHandlerOpts {
-                basic_auth: "".into(),
-                ..Default::default()
-            },
-            &make_request("GET", "Basic anE6anE=")
-        )
-        .is_none());
+        assert!(
+            pre_process(
+                &RequestHandlerOpts {
+                    basic_auth: "".into(),
+                    ..Default::default()
+                },
+                &make_request("GET", "Basic anE6anE=")
+            )
+            .is_none()
+        );
     }
 
     #[test]
@@ -145,37 +147,43 @@ mod tests {
 
     #[test]
     fn test_options_request() {
-        assert!(pre_process(
-            &RequestHandlerOpts {
-                basic_auth: "jq:$2y$05$32zazJ1yzhlDHnt26L3MFOgY0HVqPmDUvG0KUx6cjf9RDiUGp/M9q"
-                    .into(),
-                ..Default::default()
-            },
-            &make_request("OPTIONS", "")
-        )
-        .is_none());
+        assert!(
+            pre_process(
+                &RequestHandlerOpts {
+                    basic_auth: "jq:$2y$05$32zazJ1yzhlDHnt26L3MFOgY0HVqPmDUvG0KUx6cjf9RDiUGp/M9q"
+                        .into(),
+                    ..Default::default()
+                },
+                &make_request("OPTIONS", "")
+            )
+            .is_none()
+        );
     }
 
     #[test]
     fn test_valid_auth() {
         let mut headers = HeaderMap::new();
         headers.insert("Authorization", "Basic anE6anE=".parse().unwrap());
-        assert!(check_request(
-            &headers,
-            "jq",
-            "$2y$05$32zazJ1yzhlDHnt26L3MFOgY0HVqPmDUvG0KUx6cjf9RDiUGp/M9q"
-        )
-        .is_ok());
+        assert!(
+            check_request(
+                &headers,
+                "jq",
+                "$2y$05$32zazJ1yzhlDHnt26L3MFOgY0HVqPmDUvG0KUx6cjf9RDiUGp/M9q"
+            )
+            .is_ok()
+        );
 
-        assert!(pre_process(
-            &RequestHandlerOpts {
-                basic_auth: "jq:$2y$05$32zazJ1yzhlDHnt26L3MFOgY0HVqPmDUvG0KUx6cjf9RDiUGp/M9q"
-                    .into(),
-                ..Default::default()
-            },
-            &make_request("GET", "Basic anE6anE=")
-        )
-        .is_none());
+        assert!(
+            pre_process(
+                &RequestHandlerOpts {
+                    basic_auth: "jq:$2y$05$32zazJ1yzhlDHnt26L3MFOgY0HVqPmDUvG0KUx6cjf9RDiUGp/M9q"
+                        .into(),
+                    ..Default::default()
+                },
+                &make_request("GET", "Basic anE6anE=")
+            )
+            .is_none()
+        );
     }
 
     #[test]
@@ -211,12 +219,14 @@ mod tests {
     fn test_invalid_auth() {
         let mut headers = HeaderMap::new();
         headers.insert("Authorization", "Basic anE6anE=".parse().unwrap());
-        assert!(check_request(
-            &headers,
-            "abc",
-            "$2y$05$32zazJ1yzhlDHnt26L3MFOgY0HVqPmDUvG0KUx6cjf9RDiUGp/M9q"
-        )
-        .is_err());
+        assert!(
+            check_request(
+                &headers,
+                "abc",
+                "$2y$05$32zazJ1yzhlDHnt26L3MFOgY0HVqPmDUvG0KUx6cjf9RDiUGp/M9q"
+            )
+            .is_err()
+        );
         assert!(check_request(&headers, "jq", "password").is_err());
         assert!(check_request(&headers, "", "password").is_err());
         assert!(check_request(&headers, "jq", "").is_err());
@@ -256,12 +266,14 @@ mod tests {
     fn test_invalid_auth_encoding() {
         let mut headers = HeaderMap::new();
         headers.insert("Authorization", "Basic xyz".parse().unwrap());
-        assert!(check_request(
-            &headers,
-            "jq",
-            "$2y$05$32zazJ1yzhlDHnt26L3MFOgY0HVqPmDUvG0KUx6cjf9RDiUGp/M9q"
-        )
-        .is_err());
+        assert!(
+            check_request(
+                &headers,
+                "jq",
+                "$2y$05$32zazJ1yzhlDHnt26L3MFOgY0HVqPmDUvG0KUx6cjf9RDiUGp/M9q"
+            )
+            .is_err()
+        );
 
         assert!(is_401(pre_process(
             &RequestHandlerOpts {
@@ -277,12 +289,14 @@ mod tests {
     fn test_invalid_auth_encoding2() {
         let mut headers = HeaderMap::new();
         headers.insert("Authorization", "abcd".parse().unwrap());
-        assert!(check_request(
-            &headers,
-            "jq",
-            "$2y$05$32zazJ1yzhlDHnt26L3MFOgY0HVqPmDUvG0KUx6cjf9RDiUGp/M9q"
-        )
-        .is_err());
+        assert!(
+            check_request(
+                &headers,
+                "jq",
+                "$2y$05$32zazJ1yzhlDHnt26L3MFOgY0HVqPmDUvG0KUx6cjf9RDiUGp/M9q"
+            )
+            .is_err()
+        );
 
         assert!(is_401(pre_process(
             &RequestHandlerOpts {

@@ -10,7 +10,7 @@ use headers::HeaderValue;
 use hyper::{Body, Request, Response, StatusCode};
 use regex::Regex;
 
-use crate::{error_page, handler::RequestHandlerOpts, settings::Redirects, Error};
+use crate::{Error, error_page, handler::RequestHandlerOpts, settings::Redirects};
 
 /// Applies redirect rules to a request if necessary.
 pub(crate) fn pre_process<T>(
@@ -142,9 +142,9 @@ pub fn get_redirection<'a>(
 mod tests {
     use super::pre_process;
     use crate::{
+        Error,
         handler::RequestHandlerOpts,
         settings::{Advanced, Redirects},
-        Error,
     };
     use hyper::{Body, Request, Response, StatusCode};
     use regex::Regex;
@@ -191,53 +191,61 @@ mod tests {
 
     #[test]
     fn test_no_redirects() {
-        assert!(pre_process(
-            &RequestHandlerOpts {
-                advanced_opts: None,
-                ..Default::default()
-            },
-            &make_request("", "/")
-        )
-        .is_none());
-
-        assert!(pre_process(
-            &RequestHandlerOpts {
-                advanced_opts: Some(Advanced {
-                    redirects: None,
+        assert!(
+            pre_process(
+                &RequestHandlerOpts {
+                    advanced_opts: None,
                     ..Default::default()
-                }),
-                ..Default::default()
-            },
-            &make_request("", "/")
-        )
-        .is_none());
+                },
+                &make_request("", "/")
+            )
+            .is_none()
+        );
+
+        assert!(
+            pre_process(
+                &RequestHandlerOpts {
+                    advanced_opts: Some(Advanced {
+                        redirects: None,
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                },
+                &make_request("", "/")
+            )
+            .is_none()
+        );
     }
 
     #[test]
     fn test_no_match() {
-        assert!(pre_process(
-            &RequestHandlerOpts {
-                advanced_opts: Some(Advanced {
-                    redirects: Some(get_redirects()),
+        assert!(
+            pre_process(
+                &RequestHandlerOpts {
+                    advanced_opts: Some(Advanced {
+                        redirects: Some(get_redirects()),
+                        ..Default::default()
+                    }),
                     ..Default::default()
-                }),
-                ..Default::default()
-            },
-            &make_request("example.com", "/source2/whatever")
-        )
-        .is_none());
+                },
+                &make_request("example.com", "/source2/whatever")
+            )
+            .is_none()
+        );
 
-        assert!(pre_process(
-            &RequestHandlerOpts {
-                advanced_opts: Some(Advanced {
-                    redirects: Some(get_redirects()),
+        assert!(
+            pre_process(
+                &RequestHandlerOpts {
+                    advanced_opts: Some(Advanced {
+                        redirects: Some(get_redirects()),
+                        ..Default::default()
+                    }),
                     ..Default::default()
-                }),
-                ..Default::default()
-            },
-            &make_request("", "/source2")
-        )
-        .is_none());
+                },
+                &make_request("", "/source2")
+            )
+            .is_none()
+        );
     }
 
     #[test]

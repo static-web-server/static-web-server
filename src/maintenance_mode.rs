@@ -11,7 +11,7 @@ use hyper::{Body, Method, Request, Response, StatusCode};
 use mime_guess::mime;
 use std::path::{Path, PathBuf};
 
-use crate::{handler::RequestHandlerOpts, helpers, http_ext::MethodExt, Error, Result};
+use crate::{Error, Result, handler::RequestHandlerOpts, helpers, http_ext::MethodExt};
 
 const DEFAULT_BODY_CONTENT: &str = "The server is in maintenance mode.";
 
@@ -72,7 +72,9 @@ pub fn get_response(
         tracing::debug!(
             "maintenance mode file path not found or not a regular file, using a default message"
         );
-        format!("<html><head><title>{status_code}</title></head><body><center><h1>{DEFAULT_BODY_CONTENT}</h1></center></body></html>")
+        format!(
+            "<html><head><title>{status_code}</title></head><body><center><h1>{DEFAULT_BODY_CONTENT}</h1></center></body></html>"
+        )
     };
 
     let mut body = Body::empty();
@@ -95,7 +97,7 @@ pub fn get_response(
 #[cfg(test)]
 mod tests {
     use super::pre_process;
-    use crate::{handler::RequestHandlerOpts, Error};
+    use crate::{Error, handler::RequestHandlerOpts};
     use hyper::{Body, Request, Response, StatusCode};
 
     fn make_request() -> Request<Body> {
@@ -116,14 +118,16 @@ mod tests {
 
     #[test]
     fn test_maintenance_disabled() {
-        assert!(pre_process(
-            &RequestHandlerOpts {
-                maintenance_mode: false,
-                ..Default::default()
-            },
-            &make_request()
-        )
-        .is_none());
+        assert!(
+            pre_process(
+                &RequestHandlerOpts {
+                    maintenance_mode: false,
+                    ..Default::default()
+                },
+                &make_request()
+            )
+            .is_none()
+        );
     }
 
     #[test]

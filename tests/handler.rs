@@ -11,7 +11,7 @@ pub mod tests {
 
     use static_web_server::http_ext::MethodExt;
     use static_web_server::testing::fixtures::{
-        fixture_req_handler, fixture_req_handler_opts, fixture_settings, REMOTE_ADDR,
+        REMOTE_ADDR, fixture_req_handler, fixture_req_handler_opts, fixture_settings,
     };
 
     #[tokio::test]

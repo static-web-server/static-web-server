@@ -5,8 +5,8 @@ use std::pin::Pin;
 use std::sync::Arc;
 use std::task::{Context, Poll};
 
-use crate::mem_cache::cache::{MemFile, MemFileTempOpts, CACHE_STORE};
 use crate::Result;
+use crate::mem_cache::cache::{CACHE_STORE, MemFile, MemFileTempOpts};
 
 #[derive(Debug)]
 pub(crate) struct MemCacheFileStream<T> {

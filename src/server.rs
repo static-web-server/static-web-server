@@ -10,7 +10,7 @@ use hyper::server::Server as HyperServer;
 use listenfd::ListenFd;
 use std::net::{IpAddr, SocketAddr, TcpListener};
 use std::sync::Arc;
-use tokio::sync::{watch::Receiver, Mutex};
+use tokio::sync::{Mutex, watch::Receiver};
 
 use crate::handler::{RequestHandler, RequestHandlerOpts};
 
@@ -51,10 +51,10 @@ use crate::basic_auth;
 #[cfg(feature = "experimental")]
 use crate::mem_cache;
 
+use crate::{Context, Result, service::RouterService};
 use crate::{
-    control_headers, cors, health, helpers, log_addr, maintenance_mode, security_headers, Settings,
+    Settings, control_headers, cors, health, helpers, log_addr, maintenance_mode, security_headers,
 };
-use crate::{service::RouterService, Context, Result};
 
 /// Define a multi-threaded HTTP or HTTP/2 web server.
 pub struct Server {
@@ -412,9 +412,9 @@ impl Server {
                 .with_context(|| "failed to set TCP non-blocking mode")?;
             let listener = tokio::net::TcpListener::from_std(tcp_listener)
                 .with_context(|| "failed to create tokio::net::TcpListener")?;
-            let mut incoming = AddrIncoming::from_listener(listener).with_context(|| {
-                "failed to create an AddrIncoming from the current tokio::net::TcpListener"
-            })?;
+            let mut incoming = AddrIncoming::from_listener(listener).with_context(
+                || "failed to create an AddrIncoming from the current tokio::net::TcpListener",
+            )?;
             incoming.set_nodelay(true);
 
             let http2_tls_cert = match general.http2_tls_cert {
@@ -430,9 +430,9 @@ impl Server {
                 .cert_path(&http2_tls_cert)
                 .key_path(&http2_tls_key)
                 .build()
-                .with_context(|| {
-                    "failed to initialize TLS probably because invalid cert or key file"
-                })?;
+                .with_context(
+                    || "failed to initialize TLS probably because invalid cert or key file",
+                )?;
 
             #[cfg(unix)]
             let signals = signals::create_signals()

@@ -11,16 +11,16 @@ use clap::ValueEnum;
 use headers::{ContentLength, ContentType, HeaderMapExt};
 use hyper::{Body, Method, Response, StatusCode};
 use mime_guess::mime;
-use percent_encoding::{percent_decode_str, percent_encode, AsciiSet, NON_ALPHANUMERIC};
+use percent_encoding::{AsciiSet, NON_ALPHANUMERIC, percent_decode_str, percent_encode};
 use serde::{Serialize, Serializer};
 use std::ffi::{OsStr, OsString};
 use std::io;
 use std::path::Path;
 
 #[cfg(feature = "directory-listing-download")]
-use crate::directory_listing_download::{DirDownloadFmt, DOWNLOAD_PARAM_KEY};
+use crate::directory_listing_download::{DOWNLOAD_PARAM_KEY, DirDownloadFmt};
 
-use crate::{handler::RequestHandlerOpts, http_ext::MethodExt, Context, Result};
+use crate::{Context, Result, handler::RequestHandlerOpts, http_ext::MethodExt};
 
 /// Non-alphanumeric characters to be percent-encoded
 /// excluding the "unreserved characters" because allowed in a URI.
@@ -402,7 +402,7 @@ fn html_auto_index<'a>(
     order_code: u8,
     #[cfg(feature = "directory-listing-download")] download: &'a [DirDownloadFmt],
 ) -> String {
-    use maud::{html, DOCTYPE};
+    use maud::{DOCTYPE, html};
 
     let sort_attrs = sort_file_entries(entries, order_code);
     let current_path = percent_decode_str(base_path).decode_utf8_lossy();
