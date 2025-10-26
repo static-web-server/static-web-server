@@ -12,7 +12,7 @@ use bytes::BytesMut;
 use clap::ValueEnum;
 use headers::{ContentType, HeaderMapExt};
 use http::{HeaderValue, Method, Response};
-use hyper::{body::Sender, Body};
+use hyper::{Body, body::Sender};
 use mime_guess::Mime;
 use std::fmt::Display;
 use std::path::Path;
@@ -24,9 +24,9 @@ use tokio::io;
 use tokio::io::AsyncWriteExt;
 use tokio_util::compat::TokioAsyncWriteCompatExt;
 
+use crate::Result;
 use crate::handler::RequestHandlerOpts;
 use crate::http_ext::MethodExt;
-use crate::Result;
 
 /// query parameter key to download directory as tar.gz
 pub const DOWNLOAD_PARAM_KEY: &str = "download";

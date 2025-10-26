@@ -13,7 +13,7 @@ use hyper::StatusCode;
 use regex::Regex;
 use std::path::{Path, PathBuf};
 
-use crate::{helpers, logger, Context, Result};
+use crate::{Context, Result, helpers, logger};
 
 pub mod cli;
 #[doc(hidden)]
@@ -105,20 +105,19 @@ impl Settings {
     /// It also takes care to initialize the logging system with its level
     /// once the `general` settings are determined.
     pub fn get(log_init: bool) -> Result<Settings> {
-        Self::read(log_init, true)
+        Self::parse_from(log_init, None)
     }
 
     /// Reads CLI/Env and config file options returning the server settings
     /// without parsing arguments useful for testing.
-    pub fn get_unparsed(log_init: bool) -> Result<Settings> {
-        Self::read(log_init, false)
+    pub fn get_unparsed(log_init: bool, args: &[&str]) -> Result<Settings> {
+        Self::parse_from(log_init, Some(args))
     }
 
-    fn read(log_init: bool, parse_args: bool) -> Result<Settings> {
-        let opts = if parse_args {
-            General::parse()
-        } else {
-            General::parse_from([""])
+    fn parse_from(log_init: bool, args: Option<&[&str]>) -> Result<Settings> {
+        let opts = match args {
+            Some(v) => General::parse_from(v),
+            None => General::parse(),
         };
 
         // Define the general CLI/file options
@@ -226,7 +225,9 @@ impl Settings {
 
         let to_use_config_file = match Path::new("./config.toml").is_file() {
             true => {
-                eprintln!("Deprecated: 'config.toml' found, rename it to 'sws.toml' to prepare for future releases");
+                eprintln!(
+                    "Deprecated: 'config.toml' found, rename it to 'sws.toml' to prepare for future releases"
+                );
                 PathBuf::from("./config.toml")
             }
             false => opts.config_file.clone(),
@@ -717,9 +718,9 @@ fn read_file_settings(config_file: &Path) -> Result<Option<(FileSettings, PathBu
             .canonicalize()
             .with_context(|| "unable to resolve toml config file path")?;
 
-        let settings = FileSettings::read(&file_path_resolved).with_context(|| {
-            "unable to read toml config file because has invalid format or unsupported options"
-        })?;
+        let settings = FileSettings::read(&file_path_resolved).with_context(
+            || "unable to read toml config file because has invalid format or unsupported options",
+        )?;
 
         return Ok(Some((settings, file_path_resolved)));
     }

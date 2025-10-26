@@ -7,13 +7,13 @@
 //!
 
 use headers::HeaderValue;
-use hyper::{header::HOST, Body, Request, Response, StatusCode, Uri};
+use hyper::{Body, Request, Response, StatusCode, Uri, header::HOST};
 
 use crate::{
+    Error,
     handler::RequestHandlerOpts,
     redirects::{handle_error, replace_placeholders},
-    settings::{file::RedirectsKind, Rewrites},
-    Error,
+    settings::{Rewrites, file::RedirectsKind},
 };
 
 /// Applies rewrite rules to a request if necessary.
@@ -39,7 +39,7 @@ pub(crate) fn pre_process<T>(
                     Error::new(err).context("invalid header value from current uri"),
                     opts,
                     req,
-                )
+                );
             }
         };
         let mut resp = Response::new(Body::empty());
@@ -58,7 +58,7 @@ pub(crate) fn pre_process<T>(
                     err.context("invalid rewrite target from current uri"),
                     opts,
                     req,
-                )
+                );
             }
         };
 
@@ -121,11 +121,11 @@ pub fn rewrite_uri_path<'a>(
 mod tests {
     use super::pre_process;
     use crate::{
-        handler::RequestHandlerOpts,
-        settings::{file::RedirectsKind, Advanced, Rewrites},
         Error,
+        handler::RequestHandlerOpts,
+        settings::{Advanced, Rewrites, file::RedirectsKind},
     };
-    use hyper::{header::HOST, Body, Request, Response, StatusCode};
+    use hyper::{Body, Request, Response, StatusCode, header::HOST};
     use regex::Regex;
 
     fn make_request(host: &str, uri: &str) -> Request<Body> {
@@ -173,62 +173,70 @@ mod tests {
     #[test]
     fn test_no_rewrites() {
         let mut req = make_request("", "/");
-        assert!(pre_process(
-            &RequestHandlerOpts {
-                advanced_opts: None,
-                ..Default::default()
-            },
-            &mut req
-        )
-        .is_none());
+        assert!(
+            pre_process(
+                &RequestHandlerOpts {
+                    advanced_opts: None,
+                    ..Default::default()
+                },
+                &mut req
+            )
+            .is_none()
+        );
         assert_eq!(req.uri(), "/");
 
         let mut req = make_request("", "/");
-        assert!(pre_process(
-            &RequestHandlerOpts {
-                advanced_opts: Some(Advanced {
-                    rewrites: None,
+        assert!(
+            pre_process(
+                &RequestHandlerOpts {
+                    advanced_opts: Some(Advanced {
+                        rewrites: None,
+                        ..Default::default()
+                    }),
                     ..Default::default()
-                }),
-                ..Default::default()
-            },
-            &mut req
-        )
-        .is_none());
+                },
+                &mut req
+            )
+            .is_none()
+        );
         assert_eq!(req.uri(), "/");
     }
 
     #[test]
     fn test_no_match() {
         let mut req = make_request("example.com", "/source2/whatever");
-        assert!(pre_process(
-            &RequestHandlerOpts {
-                advanced_opts: Some(Advanced {
-                    rewrites: Some(get_rewrites()),
+        assert!(
+            pre_process(
+                &RequestHandlerOpts {
+                    advanced_opts: Some(Advanced {
+                        rewrites: Some(get_rewrites()),
+                        ..Default::default()
+                    }),
                     ..Default::default()
-                }),
-                ..Default::default()
-            },
-            &mut req
-        )
-        .is_none());
+                },
+                &mut req
+            )
+            .is_none()
+        );
         assert_eq!(req.uri(), "/source2/whatever");
     }
 
     #[test]
     fn test_match() {
         let mut req = make_request("", "/source1?query");
-        assert!(pre_process(
-            &RequestHandlerOpts {
-                advanced_opts: Some(Advanced {
-                    rewrites: Some(get_rewrites()),
+        assert!(
+            pre_process(
+                &RequestHandlerOpts {
+                    advanced_opts: Some(Advanced {
+                        rewrites: Some(get_rewrites()),
+                        ..Default::default()
+                    }),
                     ..Default::default()
-                }),
-                ..Default::default()
-            },
-            &mut req
-        )
-        .is_none());
+                },
+                &mut req
+            )
+            .is_none()
+        );
         assert_eq!(req.uri(), "/destination1?query");
 
         let mut req = make_request("", "/source2");
@@ -265,17 +273,19 @@ mod tests {
         );
 
         let mut req = make_request("example.com", "/source4/whatever?query");
-        assert!(pre_process(
-            &RequestHandlerOpts {
-                advanced_opts: Some(Advanced {
-                    rewrites: Some(get_rewrites()),
+        assert!(
+            pre_process(
+                &RequestHandlerOpts {
+                    advanced_opts: Some(Advanced {
+                        rewrites: Some(get_rewrites()),
+                        ..Default::default()
+                    }),
                     ..Default::default()
-                }),
-                ..Default::default()
-            },
-            &mut req
-        )
-        .is_none());
+                },
+                &mut req
+            )
+            .is_none()
+        );
         assert_eq!(
             req.uri(),
             "http://example.net:1234/destination4/source4?whatever"

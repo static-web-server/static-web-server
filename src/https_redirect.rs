@@ -7,7 +7,7 @@
 //!
 
 use headers::{HeaderMapExt, Host};
-use hyper::{header::LOCATION, Body, Request, Response, StatusCode};
+use hyper::{Body, Request, Response, StatusCode, header::LOCATION};
 use std::sync::Arc;
 
 use crate::Result;

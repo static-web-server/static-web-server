@@ -9,7 +9,7 @@
 use hyper::{Body, Request, Response};
 use std::{ffi::OsStr, path::PathBuf};
 
-use crate::{handler::RequestHandlerOpts, settings::Headers, Error};
+use crate::{Error, handler::RequestHandlerOpts, settings::Headers};
 
 /// Appends custom HTTP headers to a response if necessary
 pub(crate) fn post_process<T>(

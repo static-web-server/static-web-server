@@ -7,8 +7,8 @@
 //!
 
 use std::sync::Arc;
-use tokio::sync::{watch::Receiver, Mutex};
-use tokio::time::{sleep, Duration};
+use tokio::sync::{Mutex, watch::Receiver};
+use tokio::time::{Duration, sleep};
 
 #[cfg(unix)]
 use {

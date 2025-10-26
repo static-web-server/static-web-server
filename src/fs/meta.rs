@@ -10,8 +10,8 @@ use http::StatusCode;
 use std::fs::Metadata;
 use std::path::{Path, PathBuf};
 
-use crate::headers_ext::ContentCoding;
 use crate::Result;
+use crate::headers_ext::ContentCoding;
 
 /// It defines a composed file metadata structure containing the current file
 /// and its optional pre-compressed variant.

@@ -6,8 +6,8 @@
 //! Module that allows to determine a virtual hostname.
 //!
 
-use hyper::header::HOST;
 use hyper::Request;
+use hyper::header::HOST;
 use std::path::PathBuf;
 
 use crate::settings::VirtualHosts;

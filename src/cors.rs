@@ -16,7 +16,7 @@ use http::header;
 use hyper::{Body, Request, Response, StatusCode};
 use std::collections::HashSet;
 
-use crate::{error_page, handler::RequestHandlerOpts, Error};
+use crate::{Error, error_page, handler::RequestHandlerOpts};
 
 /// It defines CORS instance.
 #[derive(Clone, Debug)]
@@ -72,11 +72,11 @@ pub fn new(
 
         if cors_res.is_some() {
             tracing::info!(
-                    "cors enabled=true, allow_methods=[GET,HEAD,OPTIONS], allow_origins={}, allow_headers=[{}], expose_headers=[{}]",
-                    origins_str,
-                    allow_headers_str,
-                    expose_headers_str,
-                );
+                "cors enabled=true, allow_methods=[GET,HEAD,OPTIONS], allow_origins={}, allow_headers=[{}], expose_headers=[{}]",
+                origins_str,
+                allow_headers_str,
+                expose_headers_str,
+            );
         }
         cors_res
     };
@@ -292,7 +292,8 @@ impl Configured {
                         let h = header.trim();
                         if !self.is_header_allowed(h) {
                             tracing::error!(
-                                "cors: header `{}` is not allowed because is missing in `cors_allow_headers` server option", h
+                                "cors: header `{}` is not allowed because is missing in `cors_allow_headers` server option",
+                                h
                             );
                             return Err(Forbidden::Header);
                         }
@@ -442,8 +443,8 @@ pub(crate) fn post_process<T>(
 
 #[cfg(test)]
 mod tests {
-    use super::{post_process, pre_process, Configured, Cors};
-    use crate::{handler::RequestHandlerOpts, Error};
+    use super::{Configured, Cors, post_process, pre_process};
+    use crate::{Error, handler::RequestHandlerOpts};
     use hyper::{Body, Request, Response, StatusCode};
 
     fn make_request(method: &str, origin: &str) -> Request<Body> {

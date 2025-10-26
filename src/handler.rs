@@ -36,12 +36,12 @@ use crate::metrics;
 use crate::mem_cache::cache::MemCacheOpts;
 
 use crate::{
-    control_headers, cors, custom_headers, error_page, health,
+    Error, Result, control_headers, cors, custom_headers, error_page, health,
     http_ext::MethodExt,
     log_addr, maintenance_mode, redirects, rewrites, security_headers,
     settings::Advanced,
     static_files::{self, HandleOpts},
-    virtual_hosts, Error, Result,
+    virtual_hosts,
 };
 
 #[cfg(feature = "directory-listing")]

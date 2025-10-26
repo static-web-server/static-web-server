@@ -25,7 +25,7 @@ mod tests {
         static_files::{self, HandleOpts},
     };
 
-    use static_web_server::directory_listing_download::{DirDownloadFmt, DOWNLOAD_PARAM_KEY};
+    use static_web_server::directory_listing_download::{DOWNLOAD_PARAM_KEY, DirDownloadFmt};
 
     const METHODS: [Method; 8] = [
         Method::CONNECT,
@@ -148,10 +148,12 @@ mod tests {
                     let mut res = result.resp;
                     assert_eq!(res.status(), 200);
                     assert_eq!(res.headers()["content-type"], "application/gzip");
-                    assert!(res.headers()["content-disposition"]
-                        .to_str()
-                        .unwrap()
-                        .starts_with("attachment"));
+                    assert!(
+                        res.headers()["content-disposition"]
+                            .to_str()
+                            .unwrap()
+                            .starts_with("attachment")
+                    );
 
                     let body = hyper::body::to_bytes(res.body_mut())
                         .await
@@ -218,10 +220,12 @@ mod tests {
                     let mut res = result.resp;
                     assert_eq!(res.status(), 200);
                     assert_eq!(res.headers()["content-type"], "application/gzip");
-                    assert!(res.headers()["content-disposition"]
-                        .to_str()
-                        .unwrap()
-                        .starts_with("attachment"));
+                    assert!(
+                        res.headers()["content-disposition"]
+                            .to_str()
+                            .unwrap()
+                            .starts_with("attachment")
+                    );
 
                     let body = hyper::body::to_bytes(res.body_mut())
                         .await
@@ -230,10 +234,12 @@ mod tests {
                     if method == Method::GET {
                         let mut prefix = base_path.clone();
                         prefix.pop();
-                        assert!(!inspect_tarball_content(prefix, &body, false)
-                            .await
-                            .iter()
-                            .any(|path| path.file_name().unwrap() == ".dotfile"));
+                        assert!(
+                            !inspect_tarball_content(prefix, &body, false)
+                                .await
+                                .iter()
+                                .any(|path| path.file_name().unwrap() == ".dotfile")
+                        );
                     } else {
                         assert!(body.is_empty());
                     }
@@ -275,10 +281,12 @@ mod tests {
                     let mut res = result.resp;
                     assert_eq!(res.status(), 200);
                     assert_eq!(res.headers()["content-type"], "application/gzip");
-                    assert!(res.headers()["content-disposition"]
-                        .to_str()
-                        .unwrap()
-                        .starts_with("attachment"));
+                    assert!(
+                        res.headers()["content-disposition"]
+                            .to_str()
+                            .unwrap()
+                            .starts_with("attachment")
+                    );
 
                     let body = hyper::body::to_bytes(res.body_mut())
                         .await
@@ -344,10 +352,11 @@ mod tests {
                     let res = result.resp;
                     assert_eq!(res.status(), 200);
                     assert_eq!(res.headers()["content-type"], "text/html; charset=utf-8");
-                    assert!(!res
-                        .headers()
-                        .iter()
-                        .any(|(k, _v)| *k == "content-disposition"));
+                    assert!(
+                        !res.headers()
+                            .iter()
+                            .any(|(k, _v)| *k == "content-disposition")
+                    );
                 }
                 Err(status) => {
                     assert!(method != Method::GET && method != Method::HEAD);

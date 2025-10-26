@@ -11,7 +11,7 @@ use http::header::{
 };
 use hyper::{Body, Request, Response};
 
-use crate::{handler::RequestHandlerOpts, Error};
+use crate::{Error, handler::RequestHandlerOpts};
 
 pub(crate) fn init(enabled: bool, handler_opts: &mut RequestHandlerOpts) {
     handler_opts.security_headers = enabled;

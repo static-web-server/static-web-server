@@ -11,7 +11,7 @@ use hyper::{Body, Request, Response, StatusCode};
 use mime_guess::mime;
 use std::path::Path;
 
-use crate::{handler::RequestHandlerOpts, helpers, http_ext::MethodExt, Error};
+use crate::{Error, handler::RequestHandlerOpts, helpers, http_ext::MethodExt};
 
 /// Initializes fallback page processing
 pub(crate) fn init(file_path: &Path, handler_opts: &mut RequestHandlerOpts) {
@@ -72,7 +72,7 @@ pub fn fallback_response(page_fallback: &[u8]) -> Response<Body> {
 #[cfg(test)]
 mod tests {
     use super::post_process;
-    use crate::{error_page, handler::RequestHandlerOpts, Error};
+    use crate::{Error, error_page, handler::RequestHandlerOpts};
     use hyper::{Body, Method, Request, Response, StatusCode, Uri};
     use std::path::PathBuf;
 

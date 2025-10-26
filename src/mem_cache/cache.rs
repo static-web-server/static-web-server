@@ -23,11 +23,11 @@ use std::sync::{Arc, OnceLock};
 use std::time::Duration;
 use tokio::sync::Semaphore;
 
+use crate::Result;
 use crate::conditional_headers::{ConditionalBody, ConditionalHeaders};
 use crate::fs::stream::FileStream;
 use crate::handler::RequestHandlerOpts;
-use crate::response::{bytes_range, BadRangeError};
-use crate::Result;
+use crate::response::{BadRangeError, bytes_range};
 
 /// Global cache that stores all files in memory.
 /// It provides expiration policies like Time to live (TTL) and Time to idle (TTI) support.
