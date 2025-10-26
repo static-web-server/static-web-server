@@ -23,7 +23,7 @@ fi
 set -u
 
 # SWS latest version
-version=${SWS_INSTALL_VERSION:-"2.38.1"}
+version=${SWS_INSTALL_VERSION:-"2.39.0"}
 
 # Default directory where SWS will be installed
 local_bin=${SWS_INSTALL_DIR:-"/usr/local/bin"}
