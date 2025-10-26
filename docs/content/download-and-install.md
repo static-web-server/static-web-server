@@ -125,7 +125,7 @@ Pre-compiled binaries grouped by CPU architectures.
 - [static-web-server-v2.39.0-x86_64-pc-windows-msvc.zip](https://github.com/static-web-server/static-web-server/releases/download/v2.39.0/static-web-server-v2.39.0-x86_64-pc-windows-msvc.zip)<br>
 <small>**SHA256SUM:** `a47ed9d1f315bfd9fb3839ecfe8329487d1aee4c08e6ea5a57d236984973d518`</small>
 - [static-web-server-v2.39.0-x86_64-unknown-freebsd.tar.gz](https://github.com/static-web-server/static-web-server/releases/download/v2.39.0/static-web-server-v2.39.0-x86_64-unknown-freebsd.tar.gz)<br>
-<small>**SHA256SUM:** `{{x86_64-unknown-freebsd.tar.gz}}`</small>
+<small>**SHA256SUM:** `8ed7e75844f952ad9f20f303187084af4c433ecac4558b2c3268af7f36d0983c`</small>
 - [static-web-server-v2.39.0-x86_64-unknown-linux-gnu.tar.gz](https://github.com/static-web-server/static-web-server/releases/download/v2.39.0/static-web-server-v2.39.0-x86_64-unknown-linux-gnu.tar.gz)<br>
 <small>**SHA256SUM:** `1112412c1b8374792cfaaae18cf9812ab1ed49e6bf835a75c7f57ab2f34f1b12`</small>
 - [static-web-server-v2.39.0-x86_64-unknown-linux-musl.tar.gz](https://github.com/static-web-server/static-web-server/releases/download/v2.39.0/static-web-server-v2.39.0-x86_64-unknown-linux-musl.tar.gz)<br>
