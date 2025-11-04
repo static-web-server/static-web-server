@@ -172,6 +172,7 @@ pub(crate) mod health;
 pub mod https_redirect;
 pub(crate) mod log_addr;
 pub mod maintenance_mode;
+pub(crate) mod markdown;
 #[cfg(feature = "experimental")]
 pub(crate) mod mem_cache;
 #[cfg(all(unix, feature = "experimental"))]

@@ -206,6 +206,7 @@ impl Settings {
         let mut redirect_trailing_slash = opts.redirect_trailing_slash;
         let mut ignore_hidden_files = opts.ignore_hidden_files;
         let mut disable_symlinks = opts.disable_symlinks;
+        let mut accept_markdown = opts.accept_markdown;
         let mut index_files = opts.index_files;
         let mut health = opts.health;
 
@@ -404,6 +405,9 @@ impl Settings {
                 }
                 if let Some(v) = general.health {
                     health = v
+                }
+                if let Some(v) = general.accept_markdown {
+                    accept_markdown = v
                 }
                 #[cfg(all(unix, feature = "experimental"))]
                 if let Some(v) = general.experimental_metrics {
@@ -694,6 +698,7 @@ impl Settings {
                 redirect_trailing_slash,
                 ignore_hidden_files,
                 disable_symlinks,
+                accept_markdown,
                 index_files,
                 health,
                 #[cfg(all(unix, feature = "experimental"))]

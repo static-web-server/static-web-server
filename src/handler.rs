@@ -121,6 +121,8 @@ pub struct RequestHandlerOpts {
     pub ignore_hidden_files: bool,
     /// Prevent following symlinks for files and directories.
     pub disable_symlinks: bool,
+    /// Accept markdown content negotiation feature.
+    pub accept_markdown: bool,
     /// Health endpoint feature.
     pub health: bool,
     /// Metrics endpoint feature (experimental).
@@ -178,6 +180,7 @@ impl Default for RequestHandlerOpts {
             redirect_trailing_slash: true,
             ignore_hidden_files: false,
             disable_symlinks: false,
+            accept_markdown: false,
             health: false,
             #[cfg(all(unix, feature = "experimental"))]
             experimental_metrics: false,
@@ -281,6 +284,18 @@ impl RequestHandler {
             }
 
             let index_files = index_files.as_ref();
+
+            // Check for markdown content negotiation (only if enabled)
+            if self.opts.accept_markdown {
+                if let Some(result) =
+                    crate::markdown::pre_process(&self.opts, req, base_path, req.uri().path())
+                {
+                    let resp = result?;
+                    // Post-process the markdown response (apply CORS, etc.)
+                    let resp = cors::post_process(&self.opts, req, resp)?;
+                    return Ok(resp);
+                }
+            }
 
             // Static files
             let (resp, file_path) = match static_files::handle(&HandleOpts {

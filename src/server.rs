@@ -280,6 +280,7 @@ impl Server {
             redirect_trailing_slash,
             ignore_hidden_files,
             disable_symlinks,
+            accept_markdown: general.accept_markdown,
             index_files,
             advanced_opts,
             ..Default::default()

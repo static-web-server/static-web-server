@@ -388,6 +388,9 @@ pub struct General {
     /// Health endpoint feature.
     pub health: Option<bool>,
 
+    /// Accept markdown content negotiation feature.
+    pub accept_markdown: Option<bool>,
+
     #[cfg(all(unix, feature = "experimental"))]
     /// Metrics endpoint feature (experimental).
     pub experimental_metrics: Option<bool>,
