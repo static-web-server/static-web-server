@@ -102,6 +102,8 @@ Options:
           Prevent following files or directories if any path name component is a symbolic link [env: SERVER_DISABLE_SYMLINKS=] [default: false] [possible values: true, false]
       --health [<HEALTH>]
           Add a /health endpoint that doesn't generate any log entry and returns a 200 status code. This is especially useful with Kubernetes liveness and readiness probes [env: SERVER_HEALTH=] [default: false] [possible values: true, false]
+      --accept-markdown [<ACCEPT_MARKDOWN>]
+          Enable markdown content negotiation. When a client sends Accept: text/markdown header, the server will serve markdown files (.md or .html.md) if available [env: SERVER_ACCEPT_MARKDOWN=] [default: false] [possible values: true, false]
       --maintenance-mode [<MAINTENANCE_MODE>]
           Enable the server's maintenance mode functionality [env: SERVER_MAINTENANCE_MODE=] [default: false] [possible values: true, false]
       --maintenance-mode-status <MAINTENANCE_MODE_STATUS>
