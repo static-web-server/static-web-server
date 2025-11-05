@@ -5,31 +5,25 @@
 
 //! Markdown content negotiation module.
 //!
-//! This module handles serving markdown files when the client sends an Accept header
-//! that includes text/markdown.
+//! This module handles content negotiation for markdown files when the client sends
+//! an Accept header that includes text/markdown.
 
-use headers::{AcceptRanges, ContentLength, HeaderMapExt};
-use hyper::{Body, Request, Response, StatusCode};
+use headers::HeaderMapExt;
+use hyper::{Body, Request, Response};
 use std::path::Path;
 
 use crate::{
-    Error, error::anyhow, fs::meta::try_markdown_variant, handler::RequestHandlerOpts,
-    headers_ext::Accept, http_ext::MethodExt,
+    Error, fs::meta::try_markdown_variant, handler::RequestHandlerOpts, headers_ext::Accept,
 };
 
-/// Pre-process a request to check if a markdown variant should be served instead.
-/// This intercepts the request before the normal static file handler.
+/// Pre-process a request to check if a markdown variant URI should be used.
+/// Returns the modified URI path if a markdown variant exists, None otherwise.
 pub(crate) fn pre_process<T>(
     _opts: &RequestHandlerOpts,
     req: &Request<T>,
     base_path: &Path,
     uri_path: &str,
-) -> Option<Result<Response<Body>, Error>> {
-    // Only handle GET and HEAD requests
-    if !req.method().is_get() && !req.method().is_head() {
-        return None;
-    }
-
+) -> Option<String> {
     // Check if the client accepts markdown
     let accepts_markdown = req
         .headers()
@@ -51,44 +45,46 @@ pub(crate) fn pre_process<T>(
     // Try to find a markdown variant
     let md_path = try_markdown_variant(&file_path)?;
 
-    tracing::info!("markdown: serving {:?}", md_path);
+    tracing::info!("markdown: found variant {:?}", md_path);
 
-    // Read file based on request method
-    let is_head = req.method().is_head();
-    let file_result = if is_head {
-        std::fs::metadata(&md_path).map(|meta| (Vec::new(), meta.len()))
-    } else {
-        std::fs::read(&md_path).map(|content| {
-            let len = content.len() as u64;
-            (content, len)
-        })
-    };
+    // Convert the markdown file path back to a URI path
+    // Strip the base_path and prepend '/'
+    md_path
+        .strip_prefix(base_path)
+        .ok()
+        .and_then(|p| p.to_str())
+        .map(|s| format!("/{}", s))
+}
 
-    match file_result {
-        Ok((content, len)) => {
-            let body = if is_head {
-                Body::empty()
-            } else {
-                Body::from(content)
-            };
-
-            let mut resp = Response::new(body);
-            *resp.status_mut() = StatusCode::OK;
-            resp.headers_mut().typed_insert(ContentLength(len));
-            resp.headers_mut().typed_insert(AcceptRanges::bytes());
-
-            if let Ok(content_type) = "text/markdown; charset=utf-8".parse() {
-                resp.headers_mut()
-                    .insert(hyper::header::CONTENT_TYPE, content_type);
-            }
-
-            Some(Ok(resp))
-        }
-        Err(err) => {
-            tracing::error!("markdown: failed to read {:?}: {}", md_path, err);
-            Some(Err(anyhow!("Failed to read markdown file: {}", err)))
-        }
+/// Post-process the response to set the correct Content-Type for markdown files.
+pub(crate) fn post_process<T>(
+    opts: &RequestHandlerOpts,
+    req: &Request<T>,
+    mut resp: Response<Body>,
+) -> Result<Response<Body>, Error> {
+    // Only process if markdown negotiation is enabled
+    if !opts.accept_markdown {
+        return Ok(resp);
     }
+
+    // Check if the client accepts markdown
+    let accepts_markdown = req
+        .headers()
+        .typed_get::<Accept>()
+        .map(|accept| accept.accepts_markdown())
+        .unwrap_or(false);
+
+    if !accepts_markdown {
+        return Ok(resp);
+    }
+
+    // Set the Content-Type to text/markdown; charset=utf-8
+    if let Ok(content_type) = "text/markdown; charset=utf-8".parse() {
+        resp.headers_mut()
+            .insert(hyper::header::CONTENT_TYPE, content_type);
+    }
+
+    Ok(resp)
 }
 
 #[cfg(test)]
@@ -105,7 +101,7 @@ mod tests {
             .body(Body::empty())
             .unwrap();
 
-        // Without Accept header, should return None (no markdown handling)
+        // Without Accept header, should return None (no markdown variant)
         let base_path = std::path::Path::new("/tmp");
         let result = pre_process(&opts, &req, base_path, "/test");
 
@@ -122,7 +118,7 @@ mod tests {
             .body(Body::empty())
             .unwrap();
 
-        // With Accept: text/html, should return None (no markdown handling)
+        // With Accept: text/html, should return None (no markdown variant)
         let base_path = std::path::Path::new("/tmp");
         let result = pre_process(&opts, &req, base_path, "/test");
 
@@ -130,16 +126,16 @@ mod tests {
     }
 
     #[test]
-    fn test_post_method_ignored() {
+    fn test_accepts_markdown_no_file() {
         let opts = RequestHandlerOpts::default();
         let req = Request::builder()
-            .method("POST")
+            .method("GET")
             .uri("/test")
             .header("Accept", "text/markdown")
             .body(Body::empty())
             .unwrap();
 
-        // POST method should be ignored
+        // With Accept: text/markdown but no file, should return None
         let base_path = std::path::Path::new("/tmp");
         let result = pre_process(&opts, &req, base_path, "/test");
 

@@ -286,16 +286,12 @@ impl RequestHandler {
             let index_files = index_files.as_ref();
 
             // Check for markdown content negotiation (only if enabled)
-            if self.opts.accept_markdown {
-                if let Some(result) =
-                    crate::markdown::pre_process(&self.opts, req, base_path, req.uri().path())
-                {
-                    let resp = result?;
-                    // Post-process the markdown response (apply CORS, etc.)
-                    let resp = cors::post_process(&self.opts, req, resp)?;
-                    return Ok(resp);
-                }
-            }
+            let uri_path_md = if self.opts.accept_markdown {
+                crate::markdown::pre_process(&self.opts, req, base_path, req.uri().path())
+            } else {
+                None
+            };
+            let uri_path = uri_path_md.as_deref().unwrap_or(req.uri().path());
 
             // Static files
             let (resp, file_path) = match static_files::handle(&HandleOpts {
@@ -304,7 +300,7 @@ impl RequestHandler {
                 #[cfg(feature = "experimental")]
                 memory_cache,
                 base_path,
-                uri_path: req.uri().path(),
+                uri_path,
                 uri_query: req.uri().query(),
                 #[cfg(feature = "directory-listing")]
                 dir_listing,
@@ -341,6 +337,9 @@ impl RequestHandler {
 
             // Append CORS headers if they are present
             let resp = cors::post_process(&self.opts, req, resp)?;
+
+            // Set Content-Type for markdown files
+            let resp = crate::markdown::post_process(&self.opts, req, resp)?;
 
             // Add a `Vary` header if static compression is used
             #[cfg(any(
