@@ -1,0 +1,3 @@
+[general]
+root = "docker/public"
+accept-markdown = true
