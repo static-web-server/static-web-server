@@ -287,7 +287,7 @@ impl RequestHandler {
 
             // Check for markdown content negotiation (only if enabled)
             let uri_path_md = if self.opts.accept_markdown {
-                crate::markdown::pre_process(&self.opts, req, base_path, req.uri().path())
+                crate::markdown::pre_process(req, base_path, req.uri().path())
             } else {
                 None
             };
@@ -339,7 +339,7 @@ impl RequestHandler {
             let resp = cors::post_process(&self.opts, req, resp)?;
 
             // Set Content-Type for markdown files
-            let resp = crate::markdown::post_process(&self.opts, req, resp)?;
+            let resp = crate::markdown::post_process(uri_path_md.is_some(), &self.opts, resp)?;
 
             // Add a `Vary` header if static compression is used
             #[cfg(any(

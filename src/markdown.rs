@@ -18,12 +18,7 @@ use crate::{
 
 /// Pre-process a request to check if a markdown variant URI should be used.
 /// Returns the modified URI path if a markdown variant exists, None otherwise.
-pub(crate) fn pre_process<T>(
-    _opts: &RequestHandlerOpts,
-    req: &Request<T>,
-    base_path: &Path,
-    uri_path: &str,
-) -> Option<String> {
+pub(crate) fn pre_process<T>(req: &Request<T>, base_path: &Path, uri_path: &str) -> Option<String> {
     // Check if the client accepts markdown
     let accepts_markdown = req
         .headers()
@@ -57,24 +52,12 @@ pub(crate) fn pre_process<T>(
 }
 
 /// Post-process the response to set the correct Content-Type for markdown files.
-pub(crate) fn post_process<T>(
+pub(crate) fn post_process(
+    is_markdown_variant: bool,
     opts: &RequestHandlerOpts,
-    req: &Request<T>,
     mut resp: Response<Body>,
 ) -> Result<Response<Body>, Error> {
-    // Only process if markdown negotiation is enabled
-    if !opts.accept_markdown {
-        return Ok(resp);
-    }
-
-    // Check if the client accepts markdown
-    let accepts_markdown = req
-        .headers()
-        .typed_get::<Accept>()
-        .map(|accept| accept.accepts_markdown())
-        .unwrap_or(false);
-
-    if !accepts_markdown {
+    if !is_markdown_variant || !opts.accept_markdown {
         return Ok(resp);
     }
 
@@ -94,7 +77,6 @@ mod tests {
 
     #[test]
     fn test_no_accept_header() {
-        let opts = RequestHandlerOpts::default();
         let req = Request::builder()
             .method("GET")
             .uri("/test")
@@ -103,14 +85,13 @@ mod tests {
 
         // Without Accept header, should return None (no markdown variant)
         let base_path = std::path::Path::new("/tmp");
-        let result = pre_process(&opts, &req, base_path, "/test");
+        let result = pre_process(&req, base_path, "/test");
 
         assert!(result.is_none());
     }
 
     #[test]
     fn test_accepts_html_only() {
-        let opts = RequestHandlerOpts::default();
         let req = Request::builder()
             .method("GET")
             .uri("/test")
@@ -120,14 +101,13 @@ mod tests {
 
         // With Accept: text/html, should return None (no markdown variant)
         let base_path = std::path::Path::new("/tmp");
-        let result = pre_process(&opts, &req, base_path, "/test");
+        let result = pre_process(&req, base_path, "/test");
 
         assert!(result.is_none());
     }
 
     #[test]
     fn test_accepts_markdown_no_file() {
-        let opts = RequestHandlerOpts::default();
         let req = Request::builder()
             .method("GET")
             .uri("/test")
@@ -137,7 +117,7 @@ mod tests {
 
         // With Accept: text/markdown but no file, should return None
         let base_path = std::path::Path::new("/tmp");
-        let result = pre_process(&opts, &req, base_path, "/test");
+        let result = pre_process(&req, base_path, "/test");
 
         assert!(result.is_none());
     }
