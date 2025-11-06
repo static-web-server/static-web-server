@@ -121,6 +121,8 @@ pub struct RequestHandlerOpts {
     pub ignore_hidden_files: bool,
     /// Prevent following symlinks for files and directories.
     pub disable_symlinks: bool,
+    /// Accept markdown content negotiation feature.
+    pub accept_markdown: bool,
     /// Health endpoint feature.
     pub health: bool,
     /// Metrics endpoint feature (experimental).
@@ -178,6 +180,7 @@ impl Default for RequestHandlerOpts {
             redirect_trailing_slash: true,
             ignore_hidden_files: false,
             disable_symlinks: false,
+            accept_markdown: false,
             health: false,
             #[cfg(all(unix, feature = "experimental"))]
             experimental_metrics: false,
@@ -282,6 +285,14 @@ impl RequestHandler {
 
             let index_files = index_files.as_ref();
 
+            // Check for markdown content negotiation (only if enabled)
+            let uri_path_md = if self.opts.accept_markdown {
+                crate::markdown::pre_process(req, base_path, req.uri().path())
+            } else {
+                None
+            };
+            let uri_path = uri_path_md.as_deref().unwrap_or(req.uri().path());
+
             // Static files
             let (resp, file_path) = match static_files::handle(&HandleOpts {
                 method: req.method(),
@@ -289,7 +300,7 @@ impl RequestHandler {
                 #[cfg(feature = "experimental")]
                 memory_cache,
                 base_path,
-                uri_path: req.uri().path(),
+                uri_path,
                 uri_query: req.uri().query(),
                 #[cfg(feature = "directory-listing")]
                 dir_listing,
@@ -326,6 +337,9 @@ impl RequestHandler {
 
             // Append CORS headers if they are present
             let resp = cors::post_process(&self.opts, req, resp)?;
+
+            // Set Content-Type for markdown files
+            let resp = crate::markdown::post_process(uri_path_md.is_some(), &self.opts, resp)?;
 
             // Add a `Vary` header if static compression is used
             #[cfg(any(

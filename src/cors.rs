@@ -233,21 +233,16 @@ pub enum Validated {
     NotCors,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 /// Forbidden errors.
 pub enum Forbidden {
     /// Forbidden error origin.
+    #[default]
     Origin,
     /// Forbidden error method.
     Method,
     /// Forbidden error header.
     Header,
-}
-
-impl Default for Forbidden {
-    fn default() -> Self {
-        Self::Origin
-    }
 }
 
 impl Configured {

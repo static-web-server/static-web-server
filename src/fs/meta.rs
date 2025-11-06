@@ -72,3 +72,37 @@ pub(crate) fn try_metadata_with_html_suffix(
 
     (file_path, None)
 }
+
+/// Try to find a markdown variant for a given file path.
+/// * First tries to append a `.md` suffix to the path (e.g., `/article` → `/article.md`)
+/// * Then tries to append `.html.md`
+/// * If that fails, tries to find `index.html.md` in the path (e.g., `/article` → `/article/index.html.md`)
+/// * Returns `Some(PathBuf)` if a markdown file is found, `None` otherwise
+pub(crate) fn try_markdown_variant(file_path: &Path) -> Option<PathBuf> {
+    // Helper to check if a path exists and is a file
+    let try_path = |path: PathBuf| -> Option<PathBuf> {
+        match try_metadata(&path) {
+            Ok((_, false)) => Some(path),
+            _ => None,
+        }
+    };
+
+    // Try suffixes first if the path has a filename
+    if let Some(filename) = file_path.file_name() {
+        for suffix in [".md", ".html.md"] {
+            let mut path = file_path.to_path_buf();
+            let mut owned_filename = filename.to_os_string();
+            owned_filename.push(suffix);
+            path.set_file_name(owned_filename);
+
+            if let Some(found) = try_path(path) {
+                return Some(found);
+            }
+        }
+    }
+
+    // Try index.html.md
+    let mut path = file_path.to_path_buf();
+    path.push("index.html.md");
+    try_path(path)
+}

@@ -108,6 +108,7 @@ pub mod fixtures {
             redirect_trailing_slash: general.redirect_trailing_slash,
             ignore_hidden_files: general.ignore_hidden_files,
             disable_symlinks: general.disable_symlinks,
+            accept_markdown: general.accept_markdown,
             index_files: vec![general.index_files],
             health: general.health,
             #[cfg(all(unix, feature = "experimental"))]
