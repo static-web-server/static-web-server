@@ -115,7 +115,7 @@ impl Server {
     /// Build and run the multi-threaded `Server` on the Tokio runtime.
     ///
     /// Setting `exit_on_error` to `true` will exit the entire process if
-    /// the server fails to start.
+    /// the server fails to start (previous behaviour).
     pub fn run_server_on_rt<F>(self, cancel_recv: Option<Receiver<()>>, cancel_fn: F, exit_on_error: bool) -> Result
     where
         F: FnOnce(),
