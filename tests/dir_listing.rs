@@ -43,8 +43,8 @@ mod tests {
             match static_files::handle(&HandleOpts {
                 method: &method,
                 headers: &HeaderMap::new(),
-                base_path: &root_dir("docker/public/"),
-                uri_path: "/assets",
+                base_path: &root_dir("tests/fixtures/public"),
+                uri_path: "/symlink",
                 uri_query: None,
                 #[cfg(feature = "experimental")]
                 memory_cache: None,
@@ -64,7 +64,7 @@ mod tests {
                 Ok(result) => {
                     let res = result.resp;
                     assert_eq!(res.status(), 308);
-                    assert_eq!(res.headers()["location"], "/assets/");
+                    assert_eq!(res.headers()["location"], "/symlink/");
                 }
                 Err(status) => {
                     assert!(method != Method::GET && method != Method::HEAD);
@@ -299,7 +299,7 @@ mod tests {
 
                     if method == Method::GET {
                         let entries: Vec<FileEntry> = serde_json::from_str(body_str).unwrap();
-                        assert_eq!(entries.len(), 6);
+                        assert_eq!(entries.len(), 9);
 
                         let first_entry = entries.first().unwrap();
                         assert_eq!(first_entry.name, "symlink");
@@ -308,7 +308,7 @@ mod tests {
                         assert!(first_entry.size.is_none());
 
                         let last_entry = entries.last().unwrap();
-                        assert_eq!(last_entry.name, "404.html.br");
+                        assert_eq!(last_entry.name, "404.html");
                         assert_eq!(last_entry.typed, "file");
                         assert!(!last_entry.mtime.is_empty());
                         assert!(last_entry.size.unwrap() > 60);

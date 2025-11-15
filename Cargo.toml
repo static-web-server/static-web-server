@@ -50,7 +50,7 @@ compression-deflate = ["async-compression/deflate"]
 compression-gzip = ["async-compression/deflate"]
 compression-zstd = ["async-compression/zstd"]
 # Directory listing
-directory-listing = ["chrono", "maud"]
+directory-listing = ["chrono"]
 # Directory listing download
 directory-listing-download = ["async-tar",  "compression-gzip", "directory-listing"]
 # Basic HTTP Authorization
@@ -81,7 +81,7 @@ http-serde = "1.1"
 hyper = { version = "0.14", features = ["stream", "http1", "http2", "tcp", "server"] }
 lazy_static = "1.5"
 listenfd = "1.0"
-maud = { version = "0.27", optional = true }
+maud = { version = "0.27" }
 mime_guess = "2.0"
 mini-moka = { version = "0.10.3", optional = true }
 percent-encoding = "2.3"

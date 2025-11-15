@@ -1,6 +1,6 @@
 [general]
 
-root = "docker/public"
+root = "tests/fixtures/public"
 
 [advanced]
 
