@@ -21,11 +21,11 @@ use bytes::Bytes;
 use futures_util::Stream;
 use headers::{ContentType, HeaderMap, HeaderMapExt, HeaderValue};
 use hyper::{
-    header::{CONTENT_ENCODING, CONTENT_LENGTH},
     Body, Method, Request, Response, StatusCode,
+    header::{CONTENT_ENCODING, CONTENT_LENGTH},
 };
 use lazy_static::lazy_static;
-use mime_guess::{mime, Mime};
+use mime_guess::{Mime, mime};
 use pin_project::pin_project;
 use std::collections::HashSet;
 use std::pin::Pin;
@@ -33,12 +33,11 @@ use std::task::{Context, Poll};
 use tokio_util::io::{ReaderStream, StreamReader};
 
 use crate::{
-    error_page,
+    Error, Result, error_page,
     handler::RequestHandlerOpts,
     headers_ext::{AcceptEncoding, ContentCoding},
     http_ext::MethodExt,
     settings::CompressionLevel,
-    Error, Result,
 };
 
 lazy_static! {
@@ -184,7 +183,9 @@ pub fn auto(
             return Ok(zstd(head, body.into(), level));
         }
 
-        tracing::trace!("no compression feature matched the preferred encoding, probably not enabled or unsupported");
+        tracing::trace!(
+            "no compression feature matched the preferred encoding, probably not enabled or unsupported"
+        );
     }
 
     Ok(resp)

@@ -1,0 +1,3 @@
+[general]
+root = "tests/fixtures/markdown"
+accept-markdown = true

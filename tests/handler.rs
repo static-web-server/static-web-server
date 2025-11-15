@@ -11,7 +11,7 @@ pub mod tests {
 
     use static_web_server::http_ext::MethodExt;
     use static_web_server::testing::fixtures::{
-        fixture_req_handler, fixture_req_handler_opts, fixture_settings, REMOTE_ADDR,
+        REMOTE_ADDR, fixture_req_handler, fixture_req_handler_opts, fixture_settings,
     };
 
     #[tokio::test]
@@ -65,7 +65,7 @@ pub mod tests {
 
         let mut req = Request::default();
         *req.method_mut() = hyper::Method::GET;
-        *req.uri_mut() = "http://localhost/assets/index.html".parse().unwrap();
+        *req.uri_mut() = "http://localhost/index.html".parse().unwrap();
 
         match req_handler.handle(&mut req, remote_addr).await {
             Ok(res) => {
@@ -122,7 +122,7 @@ pub mod tests {
         for method in methods {
             let mut req = Request::default();
             *req.method_mut() = method.clone();
-            *req.uri_mut() = "http://localhost/assets/index.html".parse().unwrap();
+            *req.uri_mut() = "http://localhost/index.html".parse().unwrap();
 
             match req_handler.handle(&mut req, remote_addr).await {
                 Ok(res) => {

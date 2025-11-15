@@ -10,7 +10,7 @@ use hyper::server::Server as HyperServer;
 use listenfd::ListenFd;
 use std::net::{IpAddr, SocketAddr, TcpListener};
 use std::sync::Arc;
-use tokio::sync::{watch::Receiver, Mutex};
+use tokio::sync::{Mutex, watch::Receiver};
 
 use crate::handler::{RequestHandler, RequestHandlerOpts};
 
@@ -51,10 +51,10 @@ use crate::basic_auth;
 #[cfg(feature = "experimental")]
 use crate::mem_cache;
 
+use crate::{Context, Result, service::RouterService};
 use crate::{
-    control_headers, cors, health, helpers, log_addr, maintenance_mode, security_headers, Settings,
+    Settings, control_headers, cors, health, helpers, log_addr, maintenance_mode, security_headers,
 };
-use crate::{service::RouterService, Context, Result};
 
 /// Define a multi-threaded HTTP or HTTP/2 web server.
 pub struct Server {
@@ -93,7 +93,7 @@ impl Server {
     ///
     /// [`cancel`]: <https://docs.rs/tokio/latest/tokio/sync/watch/struct.Receiver.html>
     pub fn run_standalone(self, cancel: Option<Receiver<()>>) -> Result {
-        self.run_server_on_rt(cancel, || {})
+        self.run_server_on_rt(cancel, || {}, true)
     }
 
     /// Run the multi-threaded `Server` which will be used by a Windows service.
@@ -109,31 +109,43 @@ impl Server {
     where
         F: FnOnce(),
     {
-        self.run_server_on_rt(cancel, cancel_fn)
+        self.run_server_on_rt(cancel, cancel_fn, true)
     }
 
     /// Build and run the multi-threaded `Server` on the Tokio runtime.
-    pub fn run_server_on_rt<F>(self, cancel_recv: Option<Receiver<()>>, cancel_fn: F) -> Result
+    ///
+    /// Setting `exit_on_error` to `true` will exit the entire process if
+    /// the server fails to start (previous behaviour).
+    pub fn run_server_on_rt<F>(
+        self,
+        cancel_recv: Option<Receiver<()>>,
+        cancel_fn: F,
+        exit_on_error: bool,
+    ) -> Result
     where
         F: FnOnce(),
     {
         tracing::debug!(%self.worker_threads, "initializing tokio runtime with multi-threaded scheduler");
 
-        tokio::runtime::Builder::new_multi_thread()
+        let rt = tokio::runtime::Builder::new_multi_thread()
             .worker_threads(self.worker_threads)
             .max_blocking_threads(self.max_blocking_threads)
             .thread_name("static-web-server")
             .enable_all()
-            .build()?
-            .block_on(async {
-                tracing::trace!("tokio runtime initialized");
-                if let Err(err) = self.start_server(cancel_recv, cancel_fn).await {
-                    tracing::error!("server failed to start up: {:?}", err);
-                    std::process::exit(1)
-                }
-            });
+            .build()?;
 
-        Ok(())
+        let res = rt.block_on(async {
+            tracing::trace!("tokio runtime initialized");
+            self.start_server(cancel_recv, cancel_fn).await
+        });
+
+        if let Err(err) = &res {
+            tracing::error!("server failed to start up: {:?}", err);
+            if exit_on_error {
+                std::process::exit(1)
+            }
+        }
+        res
     }
 
     /// Run the inner Hyper `HyperServer` (HTTP1/HTTP2) forever on the current thread
@@ -280,6 +292,7 @@ impl Server {
             redirect_trailing_slash,
             ignore_hidden_files,
             disable_symlinks,
+            accept_markdown: general.accept_markdown,
             index_files,
             advanced_opts,
             ..Default::default()
@@ -412,9 +425,9 @@ impl Server {
                 .with_context(|| "failed to set TCP non-blocking mode")?;
             let listener = tokio::net::TcpListener::from_std(tcp_listener)
                 .with_context(|| "failed to create tokio::net::TcpListener")?;
-            let mut incoming = AddrIncoming::from_listener(listener).with_context(|| {
-                "failed to create an AddrIncoming from the current tokio::net::TcpListener"
-            })?;
+            let mut incoming = AddrIncoming::from_listener(listener).with_context(
+                || "failed to create an AddrIncoming from the current tokio::net::TcpListener",
+            )?;
             incoming.set_nodelay(true);
 
             let http2_tls_cert = match general.http2_tls_cert {
@@ -430,9 +443,9 @@ impl Server {
                 .cert_path(&http2_tls_cert)
                 .key_path(&http2_tls_key)
                 .build()
-                .with_context(|| {
-                    "failed to initialize TLS probably because invalid cert or key file"
-                })?;
+                .with_context(
+                    || "failed to initialize TLS probably because invalid cert or key file",
+                )?;
 
             #[cfg(unix)]
             let signals = signals::create_signals()

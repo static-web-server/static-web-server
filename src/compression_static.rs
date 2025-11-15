@@ -12,11 +12,11 @@ use std::ffi::OsStr;
 use std::fs::Metadata;
 use std::path::{Path, PathBuf};
 
+use crate::Error;
 use crate::compression;
 use crate::fs::meta::try_metadata;
 use crate::handler::RequestHandlerOpts;
 use crate::headers_ext::ContentCoding;
-use crate::Error;
 
 /// It defines the pre-compressed file variant metadata of a particular file path.
 pub struct CompressedFileVariant {

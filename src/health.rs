@@ -9,7 +9,7 @@
 use headers::{ContentType, HeaderMapExt};
 use hyper::{Body, Method, Request, Response};
 
-use crate::{handler::RequestHandlerOpts, Error};
+use crate::{Error, handler::RequestHandlerOpts};
 
 /// Initializes the health endpoint.
 pub fn init(enabled: bool, handler_opts: &mut RequestHandlerOpts) {
@@ -61,49 +61,57 @@ mod tests {
 
     #[test]
     fn test_health_disabled() {
-        assert!(pre_process(
-            &RequestHandlerOpts {
-                health: false,
-                ..Default::default()
-            },
-            &make_request("GET", "/health"),
-        )
-        .is_none());
+        assert!(
+            pre_process(
+                &RequestHandlerOpts {
+                    health: false,
+                    ..Default::default()
+                },
+                &make_request("GET", "/health"),
+            )
+            .is_none()
+        );
     }
 
     #[test]
     fn test_wrong_uri() {
-        assert!(pre_process(
-            &RequestHandlerOpts {
-                health: true,
-                ..Default::default()
-            },
-            &make_request("GET", "/health2"),
-        )
-        .is_none());
+        assert!(
+            pre_process(
+                &RequestHandlerOpts {
+                    health: true,
+                    ..Default::default()
+                },
+                &make_request("GET", "/health2"),
+            )
+            .is_none()
+        );
     }
 
     #[test]
     fn test_wrong_method() {
-        assert!(pre_process(
-            &RequestHandlerOpts {
-                health: true,
-                ..Default::default()
-            },
-            &make_request("POST", "/health"),
-        )
-        .is_none());
+        assert!(
+            pre_process(
+                &RequestHandlerOpts {
+                    health: true,
+                    ..Default::default()
+                },
+                &make_request("POST", "/health"),
+            )
+            .is_none()
+        );
     }
 
     #[test]
     fn test_correct_request() {
-        assert!(pre_process(
-            &RequestHandlerOpts {
-                health: true,
-                ..Default::default()
-            },
-            &make_request("GET", "/health"),
-        )
-        .is_some());
+        assert!(
+            pre_process(
+                &RequestHandlerOpts {
+                    health: true,
+                    ..Default::default()
+                },
+                &make_request("GET", "/health"),
+            )
+            .is_some()
+        );
     }
 }

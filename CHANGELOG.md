@@ -5,6 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v2.39.0 - 2025-10-26
+
+This new `v2.39.0` release brings important security bug fixes and updates to project dependencies and Docker images as well as other improvements.
+
+This releases fixes [CVE-2025-62518](https://github.com/advisories/GHSA-j5gw-2vrg-8fgx) (a.k.a [TARmageddon](https://edera.dev/stories/tarmageddon)).
+
+Additionally, the project _Minimum Supported Rust Version_ (MSRV) has been bumped to Rust `1.85.0` (2024 Edition).
+
+__Fixes__
+
+- [57025e3][57025e3] Update dependencies and MSRV to [Rust 1.85.0](https://blog.rust-lang.org/2025/02/20/Rust-1.85.0/) (2024 Edition). PR [#572][572] by [@joseluisq][joseluisq]
+- [a7e8fa3][a7e8fa3] Update Alpine (`3.21.5`) & Debian (`12.12`) Docker images. PR [#573][573] by [@joseluisq][joseluisq]
+- [2549119][2549119] Virtual hosts feature doesn't work with HTTP/2. PR [#571][571] by [@CrazyCraftix][CrazyCraftix]
+
+[2549119]: https://github.com/static-web-server/static-web-server/commit/2549119
+[57025e3]: https://github.com/static-web-server/static-web-server/commit/57025e3
+[a7e8fa3]: https://github.com/static-web-server/static-web-server/commit/a7e8fa3
+[571]: https://github.com/static-web-server/static-web-server/pull/571
+[572]: https://github.com/static-web-server/static-web-server/pull/572
+[573]: https://github.com/static-web-server/static-web-server/pull/573
+[joseluisq]: https://github.com/joseluisq
+[CrazyCraftix]: https://github.com/CrazyCraftix
+
+For more details see the [v2.39.0 milestone][v2390-milestone] and the full changelog [v2.38.1...v2.39.0][v2390-diff].
+
+[v2390-diff]: https://github.com/static-web-server/static-web-server/compare/v2.38.1...v2.39.0
+[v2390-milestone]: https://github.com/static-web-server/static-web-server/milestone/31?closed=1
+
 ## v2.38.1 - 2025-09-09
 
 This new `v2.38.1` release brings several security and bug fixes and improvements for the Cache Control feature.

@@ -8,10 +8,11 @@
 
 use headers::{AcceptRanges, ContentLength, ContentType, HeaderMapExt};
 use hyper::{Body, Method, Response, StatusCode, Uri};
+use maud::{DOCTYPE, html};
 use mime_guess::mime;
 use std::path::Path;
 
-use crate::{helpers, http_ext::MethodExt, Result};
+use crate::{Result, helpers, http_ext::MethodExt};
 
 /// It returns a HTTP error response which also handles available `404` or `50x` HTML content.
 pub fn error_response(
@@ -91,18 +92,29 @@ pub fn error_response(
     };
 
     if page_content.is_empty() {
-        page_content = [
-            "<html><head><title>",
-            status_code.as_str(),
-            " ",
-            status_code.canonical_reason().unwrap_or_default(),
-            "</title></head><body><center><h1>",
-            status_code.as_str(),
-            " ",
-            status_code.canonical_reason().unwrap_or_default(),
-            "</h1></center></body></html>",
-        ]
-        .concat();
+        let reason = status_code.canonical_reason().unwrap_or_default();
+        let title = [status_code.as_str(), " ", reason].concat();
+
+        page_content = html! {
+            (DOCTYPE)
+            html {
+                head {
+                    meta charset="utf-8";
+                    meta name="viewport" content="width=device-width,minimum-scale=1,initial-scale=1";
+                    title {
+                        (title)
+                    }
+                    style {
+                        "html { color-scheme: light dark; } body { font-family: sans-serif; text-align: center; }"
+                    }
+                }
+                body {
+                    h1 {
+                        (title)
+                    }
+                }
+            }
+        }.into();
     }
 
     let mut body = Body::empty();

@@ -12,10 +12,10 @@ pub mod fixtures {
     use std::{path::PathBuf, sync::Arc};
 
     use crate::{
-        handler::{RequestHandler, RequestHandlerOpts},
-        settings::cli::General,
-        settings::Advanced,
         Settings,
+        handler::{RequestHandler, RequestHandlerOpts},
+        settings::Advanced,
+        settings::cli::General,
     };
 
     /// Testing Remote address
@@ -25,8 +25,11 @@ pub mod fixtures {
     pub fn fixture_settings(fixture_toml: &str) -> Settings {
         // Replace default config file and load the fixture TOML settings
         let f = PathBuf::from("tests/fixtures").join(fixture_toml);
-        std::env::set_var("SERVER_CONFIG_FILE", f);
-        Settings::get_unparsed(false).unwrap()
+        Settings::get_unparsed(
+            false,
+            &["static-web-server", "--config-file", f.to_str().unwrap()],
+        )
+        .unwrap()
     }
 
     /// Create a `RequestHandlerOpts` from the given options (fixture).
@@ -105,6 +108,7 @@ pub mod fixtures {
             redirect_trailing_slash: general.redirect_trailing_slash,
             ignore_hidden_files: general.ignore_hidden_files,
             disable_symlinks: general.disable_symlinks,
+            accept_markdown: general.accept_markdown,
             index_files: vec![general.index_files],
             health: general.health,
             #[cfg(all(unix, feature = "experimental"))]

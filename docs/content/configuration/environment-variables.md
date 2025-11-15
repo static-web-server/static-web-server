@@ -131,6 +131,9 @@ Prevent following files or directories if any path name component is a symbolic 
 ### SERVER_HEALTH
 Activate the health endpoint.
 
+### SERVER_ACCEPT_MARKDOWN
+Enable markdown content negotiation. When a client sends `Accept: text/markdown` header, the server will serve markdown files (`.md` or `.html.md`) if available. See [Markdown Content Negotiation](../features/markdown-content-negotiation.md) for details. Default `false`.
+
 ### SERVER_INDEX_FILES
 List of files that will be used as an index for requests ending with the slash character (‘/’). Files are checked in the specified order. Default `index.html`.
 

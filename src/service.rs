@@ -6,15 +6,15 @@
 //! The module provides a custom [Hyper service](hyper::service::Service).
 //!
 
-use hyper::{service::Service, Body, Request, Response};
+use hyper::{Body, Request, Response, service::Service};
 use std::convert::Infallible;
-use std::future::{ready, Future, Ready};
+use std::future::{Future, Ready, ready};
 use std::net::SocketAddr;
 use std::pin::Pin;
 use std::sync::Arc;
 use std::task::{Context, Poll};
 
-use crate::{handler::RequestHandler, transport::Transport, Error};
+use crate::{Error, handler::RequestHandler, transport::Transport};
 
 /// It defines the router service which is the main entry point for Hyper Server.
 pub struct RouterService {

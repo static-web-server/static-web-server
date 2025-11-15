@@ -93,6 +93,9 @@ compression-static = true
 #### Health-check endpoint (GET or HEAD `/health`)
 health = false
 
+#### Markdown content negotiation
+accept-markdown = false
+
 #### List of index files
 # index-files = "index.html, index.htm"
 #### Maintenance Mode

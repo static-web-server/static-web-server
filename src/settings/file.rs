@@ -18,7 +18,7 @@ use crate::directory_listing::DirListFmt;
 #[cfg(feature = "directory-listing-download")]
 use crate::directory_listing_download::DirDownloadFmt;
 
-use crate::{helpers, Context, Result};
+use crate::{Context, Result, helpers};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "kebab-case")]
@@ -387,6 +387,9 @@ pub struct General {
 
     /// Health endpoint feature.
     pub health: Option<bool>,
+
+    /// Accept markdown content negotiation feature.
+    pub accept_markdown: Option<bool>,
 
     #[cfg(all(unix, feature = "experimental"))]
     /// Metrics endpoint feature (experimental).

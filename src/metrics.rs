@@ -8,9 +8,9 @@
 
 use headers::{ContentType, HeaderMapExt};
 use hyper::{Body, Request, Response};
-use prometheus::{default_registry, Encoder, TextEncoder};
+use prometheus::{Encoder, TextEncoder, default_registry};
 
-use crate::{handler::RequestHandlerOpts, http_ext::MethodExt, Error};
+use crate::{Error, handler::RequestHandlerOpts, http_ext::MethodExt};
 
 /// Initializes the metrics endpoint.
 pub fn init(enabled: bool, handler_opts: &mut RequestHandlerOpts) {
@@ -78,49 +78,57 @@ mod tests {
 
     #[test]
     fn test_metrics_disabled() {
-        assert!(pre_process(
-            &RequestHandlerOpts {
-                experimental_metrics: false,
-                ..Default::default()
-            },
-            &make_request("GET", "/metrics")
-        )
-        .is_none());
+        assert!(
+            pre_process(
+                &RequestHandlerOpts {
+                    experimental_metrics: false,
+                    ..Default::default()
+                },
+                &make_request("GET", "/metrics")
+            )
+            .is_none()
+        );
     }
 
     #[test]
     fn test_wrong_uri() {
-        assert!(pre_process(
-            &RequestHandlerOpts {
-                experimental_metrics: true,
-                ..Default::default()
-            },
-            &make_request("GET", "/metrics2")
-        )
-        .is_none());
+        assert!(
+            pre_process(
+                &RequestHandlerOpts {
+                    experimental_metrics: true,
+                    ..Default::default()
+                },
+                &make_request("GET", "/metrics2")
+            )
+            .is_none()
+        );
     }
 
     #[test]
     fn test_wrong_method() {
-        assert!(pre_process(
-            &RequestHandlerOpts {
-                experimental_metrics: true,
-                ..Default::default()
-            },
-            &make_request("POST", "/metrics")
-        )
-        .is_none());
+        assert!(
+            pre_process(
+                &RequestHandlerOpts {
+                    experimental_metrics: true,
+                    ..Default::default()
+                },
+                &make_request("POST", "/metrics")
+            )
+            .is_none()
+        );
     }
 
     #[test]
     fn test_correct_request() {
-        assert!(pre_process(
-            &RequestHandlerOpts {
-                experimental_metrics: true,
-                ..Default::default()
-            },
-            &make_request("GET", "/metrics")
-        )
-        .is_some());
+        assert!(
+            pre_process(
+                &RequestHandlerOpts {
+                    experimental_metrics: true,
+                    ..Default::default()
+                },
+                &make_request("GET", "/metrics")
+            )
+            .is_some()
+        );
     }
 }

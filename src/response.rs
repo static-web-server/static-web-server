@@ -16,7 +16,7 @@ use std::ops::Bound;
 use std::path::PathBuf;
 
 use crate::conditional_headers::{ConditionalBody, ConditionalHeaders};
-use crate::fs::stream::{optimal_buf_size, FileStream};
+use crate::fs::stream::{FileStream, optimal_buf_size};
 
 #[cfg(feature = "experimental")]
 use {
@@ -160,7 +160,7 @@ pub(crate) fn bytes_range(range: Option<Range>, max_len: u64) -> Result<(u64, u6
         return Ok((0, max_len));
     };
 
-    let resp = range
+    range
         .iter()
         .map(|(start, end)| {
             tracing::trace!("range request received, {:?}-{:?}-{}", start, end, max_len);
@@ -211,7 +211,5 @@ pub(crate) fn bytes_range(range: Option<Range>, max_len: u64) -> Result<(u64, u6
         })
         .next()
         // NOTE: default to `BadRangeError` in case of wrong `Range` bytes format
-        .unwrap_or(Err(BadRangeError));
-
-    resp
+        .unwrap_or(Err(BadRangeError))
 }

@@ -13,8 +13,8 @@
 static GLOBAL: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
 
 use static_web_server::{
-    settings::{cli::General, Commands},
     Result, Settings,
+    settings::{Commands, cli::General},
 };
 
 fn main() -> Result {

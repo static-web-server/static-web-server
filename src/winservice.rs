@@ -22,7 +22,7 @@ use windows_service::{
     service_manager::{ServiceManager, ServiceManagerAccess},
 };
 
-use crate::{helpers, Context, Result, Server, Settings};
+use crate::{Context, Result, Server, Settings, helpers};
 
 const SERVICE_NAME: &str = "static-web-server";
 const SERVICE_TYPE: ServiceType = ServiceType::OWN_PROCESS;

@@ -524,6 +524,18 @@ pub struct General {
         num_args(0..=1),
         require_equals(false),
         action = clap::ArgAction::Set,
+        env = "SERVER_ACCEPT_MARKDOWN",
+    )]
+    /// Enable markdown content negotiation. When a client sends Accept: text/markdown, serve .md or .html.md files if available.
+    pub accept_markdown: bool,
+
+    #[arg(
+        long,
+        default_value = "false",
+        default_missing_value("true"),
+        num_args(0..=1),
+        require_equals(false),
+        action = clap::ArgAction::Set,
         env = "SERVER_HEALTH",
     )]
     /// Add a /health endpoint that doesn't generate any log entry and returns a 200 status code.

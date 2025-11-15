@@ -12,7 +12,7 @@ mod tests {
     use static_web_server::cors;
     use static_web_server::http_ext::MethodExt;
     use static_web_server::testing::fixtures::{
-        fixture_req_handler, fixture_req_handler_opts, fixture_settings, REMOTE_ADDR,
+        REMOTE_ADDR, fixture_req_handler, fixture_req_handler_opts, fixture_settings,
     };
 
     #[test]
@@ -217,7 +217,7 @@ mod tests {
             );
             *req.method_mut() = method.clone();
             *req.headers_mut() = headers;
-            *req.uri_mut() = "http://localhost/assets/index.html".parse().unwrap();
+            *req.uri_mut() = "http://localhost/index.html".parse().unwrap();
 
             match req_handler.handle(&mut req, remote_addr).await {
                 Ok(resp) => {
