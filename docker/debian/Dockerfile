@@ -80,6 +80,13 @@ RUN set -eux \
     && rm -rf /var/lib/apt/lists/* \
     && true
 
+RUN set -eux \
+    && mkdir -p /home/${SERVER_USER_NAME}/public \
+    && chown -R ${SERVER_USER_NAME}:${SERVER_GROUP_NAME} /home/${SERVER_USER_NAME} \
+    && ln -s /home/${SERVER_USER_NAME}/public /var/public \
+    && chown -R ${SERVER_USER_NAME}:${SERVER_GROUP_NAME} /var/public \
+    && true
+
 USER ${SERVER_USER_NAME}:${SERVER_GROUP_NAME}
 
 COPY --from=build --chown=${SERVER_USER_NAME}:${SERVER_GROUP_NAME} \
