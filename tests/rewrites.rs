@@ -14,7 +14,8 @@ pub mod tests {
 
     #[tokio::test]
     async fn rewrites_skipped() {
-        let opts = fixture_settings("toml/rewrites.toml");
+        let mut opts = fixture_settings("toml/rewrites.toml");
+        opts.general.index_files = "index.htm".to_owned();
         let req_handler_opts = fixture_req_handler_opts(opts.general, opts.advanced);
         let req_handler = fixture_req_handler(req_handler_opts);
         let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());

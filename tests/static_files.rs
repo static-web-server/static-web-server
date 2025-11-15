@@ -25,7 +25,7 @@ mod tests {
     use static_web_server::static_files::{self, HandleOpts};
 
     fn root_dir() -> PathBuf {
-        PathBuf::from("docker/public/")
+        PathBuf::from("tests/fixtures/public/")
     }
 
     const METHODS: [Method; 8] = [
@@ -45,7 +45,7 @@ mod tests {
             method: &Method::GET,
             headers: &HeaderMap::new(),
             base_path: &root_dir(),
-            uri_path: "index.html",
+            uri_path: "index.htm",
             uri_query: None,
             #[cfg(feature = "experimental")]
             memory_cache: None,
@@ -61,13 +61,13 @@ mod tests {
             compression_static: false,
             ignore_hidden_files: false,
             disable_symlinks: false,
-            index_files: &[],
+            index_files: &["index.htm"],
         })
         .await
         .expect("unexpected error response on `handle` function");
         let mut res = result.resp;
 
-        let buf = fs::read(root_dir().join("index.html"))
+        let buf = fs::read(root_dir().join("index.htm"))
             .expect("unexpected error during index.html reading");
         let buf = Bytes::from(buf);
 
@@ -93,7 +93,7 @@ mod tests {
             method: &Method::HEAD,
             headers: &HeaderMap::new(),
             base_path: &root_dir(),
-            uri_path: "index.html",
+            uri_path: "index.htm",
             uri_query: None,
             #[cfg(feature = "experimental")]
             memory_cache: None,
@@ -109,13 +109,13 @@ mod tests {
             compression_static: false,
             ignore_hidden_files: false,
             disable_symlinks: false,
-            index_files: &[],
+            index_files: &["index.htm"],
         })
         .await
         .expect("unexpected error response on `handle` function");
         let mut res = result.resp;
 
-        let buf = fs::read(root_dir().join("index.html"))
+        let buf = fs::read(root_dir().join("index.htm"))
             .expect("unexpected error during index.html reading");
         let buf = Bytes::from(buf);
 
@@ -158,7 +158,7 @@ mod tests {
                 compression_static: false,
                 ignore_hidden_files: false,
                 disable_symlinks: false,
-                index_files: &[],
+                index_files: &["index.htm"],
             })
             .await
             {
@@ -194,7 +194,7 @@ mod tests {
             compression_static: false,
             ignore_hidden_files: false,
             disable_symlinks: false,
-            index_files: &[],
+            index_files: &["index.htm"],
         })
         .await
         .expect("unexpected error response on `handle` function");
@@ -232,7 +232,7 @@ mod tests {
             compression_static: false,
             ignore_hidden_files: false,
             disable_symlinks: false,
-            index_files: &[],
+            index_files: &["index.htm"],
         })
         .await
         {
@@ -283,14 +283,15 @@ mod tests {
         }
     }
 
+    // FIX
     #[tokio::test]
     async fn handle_append_index_on_dir() {
-        let buf = fs::read(root_dir().join("index.html"))
+        let buf = fs::read(root_dir().join("assets/index.html"))
             .expect("unexpected error during index.html reading");
         let buf = Bytes::from(buf);
 
         for method in [Method::HEAD, Method::GET] {
-            for uri in ["", "/"] {
+            for uri in ["/assets", "/assets/"] {
                 match static_files::handle(&HandleOpts {
                     method: &method,
                     headers: &HeaderMap::new(),
@@ -317,10 +318,10 @@ mod tests {
                 {
                     Ok(result) => {
                         let mut res = result.resp;
-                        if uri.is_empty() {
+                        if uri == "/assets" {
                             // it should redirect permanently
                             assert_eq!(res.status(), 308);
-                            assert_eq!(res.headers()["location"], "/");
+                            assert_eq!(res.headers()["location"], "/assets/");
 
                             let body = hyper::body::to_bytes(res.body_mut())
                                 .await
@@ -343,7 +344,7 @@ mod tests {
 
     #[tokio::test]
     async fn handle_file_encoded() {
-        let buf = fs::read(root_dir().join("index.html"))
+        let buf = fs::read(root_dir().join("assets/index.html"))
             .expect("unexpected error during index.html reading");
         let buf = Bytes::from(buf);
 
@@ -352,7 +353,7 @@ mod tests {
                 method: &method,
                 headers: &HeaderMap::new(),
                 base_path: &root_dir(),
-                uri_path: "/index%2ehtml",
+                uri_path: "/assets/index%2ehtml",
                 uri_query: None,
                 #[cfg(feature = "experimental")]
                 memory_cache: None,
@@ -407,7 +408,7 @@ mod tests {
                 compression_static: false,
                 ignore_hidden_files: false,
                 disable_symlinks: false,
-                index_files: &[],
+                index_files: &["index.htm"],
             })
             .await
             {
@@ -423,7 +424,7 @@ mod tests {
 
     #[tokio::test]
     async fn handle_not_modified() {
-        let buf = fs::read(root_dir().join("index.html"))
+        let buf = fs::read(root_dir().join("index.htm"))
             .expect("unexpected error during index.html reading");
         let buf = Bytes::from(buf);
 
@@ -432,7 +433,7 @@ mod tests {
                 method: &method,
                 headers: &HeaderMap::new(),
                 base_path: &root_dir(),
-                uri_path: "index.html",
+                uri_path: "index.htm",
                 uri_query: None,
                 #[cfg(feature = "experimental")]
                 memory_cache: None,
@@ -448,7 +449,7 @@ mod tests {
                 compression_static: false,
                 ignore_hidden_files: false,
                 disable_symlinks: false,
-                index_files: &[],
+                index_files: &["index.htm"],
             })
             .await
             {
@@ -474,7 +475,7 @@ mod tests {
                 method: &method,
                 headers: &headers,
                 base_path: &root_dir(),
-                uri_path: "index.html",
+                uri_path: "index.htm",
                 uri_query: None,
                 #[cfg(feature = "experimental")]
                 memory_cache: None,
@@ -490,7 +491,7 @@ mod tests {
                 compression_static: false,
                 ignore_hidden_files: false,
                 disable_symlinks: false,
-                index_files: &[],
+                index_files: &["index.htm"],
             })
             .await
             {
@@ -519,7 +520,7 @@ mod tests {
                 method: &method,
                 headers: &headers,
                 base_path: &root_dir(),
-                uri_path: "index.html",
+                uri_path: "index.htm",
                 uri_query: None,
                 #[cfg(feature = "experimental")]
                 memory_cache: None,
@@ -535,7 +536,7 @@ mod tests {
                 compression_static: false,
                 ignore_hidden_files: false,
                 disable_symlinks: false,
-                index_files: &[],
+                index_files: &["index.htm"],
             })
             .await
             {
@@ -562,7 +563,7 @@ mod tests {
                 method: &method,
                 headers: &HeaderMap::new(),
                 base_path: &root_dir(),
-                uri_path: "index.html",
+                uri_path: "index.htm",
                 uri_query: None,
                 #[cfg(feature = "experimental")]
                 memory_cache: None,
@@ -578,7 +579,7 @@ mod tests {
                 compression_static: false,
                 ignore_hidden_files: false,
                 disable_symlinks: false,
-                index_files: &[],
+                index_files: &["index.htm"],
             })
             .await
             {
@@ -603,7 +604,7 @@ mod tests {
                 method: &method,
                 headers: &headers,
                 base_path: &root_dir(),
-                uri_path: "index.html",
+                uri_path: "index.htm",
                 uri_query: None,
                 #[cfg(feature = "experimental")]
                 memory_cache: None,
@@ -619,7 +620,7 @@ mod tests {
                 compression_static: false,
                 ignore_hidden_files: false,
                 disable_symlinks: false,
-                index_files: &[],
+                index_files: &["index.htm"],
             })
             .await
             {
@@ -643,7 +644,7 @@ mod tests {
                 method: &method,
                 headers: &headers,
                 base_path: &root_dir(),
-                uri_path: "index.html",
+                uri_path: "index.htm",
                 uri_query: None,
                 #[cfg(feature = "experimental")]
                 memory_cache: None,
@@ -659,7 +660,7 @@ mod tests {
                 compression_static: false,
                 ignore_hidden_files: false,
                 disable_symlinks: false,
-                index_files: &[],
+                index_files: &["index.htm"],
             })
             .await
             {
@@ -687,7 +688,7 @@ mod tests {
                 method: &method,
                 headers: &HeaderMap::new(),
                 base_path: &root_dir(),
-                uri_path: "index.html",
+                uri_path: "index.htm",
                 uri_query: None,
                 #[cfg(feature = "experimental")]
                 memory_cache: None,
@@ -703,7 +704,7 @@ mod tests {
                 compression_static: false,
                 ignore_hidden_files: false,
                 disable_symlinks: false,
-                index_files: &[],
+                index_files: &["index.htm"],
             })
             .await
             {
@@ -711,7 +712,7 @@ mod tests {
                     // The handle only accepts HEAD or GET request methods
                     Method::GET | Method::HEAD => {
                         let mut res = result.resp;
-                        let buf = fs::read(root_dir().join("index.html"))
+                        let buf = fs::read(root_dir().join("index.htm"))
                             .expect("unexpected error during index.html reading");
                         let buf = Bytes::from(buf);
 
@@ -774,7 +775,7 @@ mod tests {
                 method,
                 headers: &headers,
                 base_path: &root_dir(),
-                uri_path: "index.html",
+                uri_path: "index.htm",
                 uri_query: None,
                 #[cfg(feature = "experimental")]
                 memory_cache: None,
@@ -790,7 +791,7 @@ mod tests {
                 compression_static: false,
                 ignore_hidden_files: false,
                 disable_symlinks: false,
-                index_files: &[],
+                index_files: &["index.htm"],
             })
             .await
             {
@@ -804,7 +805,7 @@ mod tests {
                     )
                     .expect("unexpected bytes error during body compression");
 
-                    let buf = fs::read(root_dir().join("index.html"))
+                    let buf = fs::read(root_dir().join("index.htm"))
                         .expect("unexpected error during index.html reading");
 
                     assert_eq!(res.status(), 200);
@@ -840,7 +841,7 @@ mod tests {
         let mut headers = HeaderMap::new();
         headers.insert("range", "bytes=0-0".parse().unwrap());
 
-        let buf = fs::read(root_dir().join("index.html"))
+        let buf = fs::read(root_dir().join("index.htm"))
             .expect("unexpected error during index.html reading");
         let buf = Bytes::from(buf);
 
@@ -849,7 +850,7 @@ mod tests {
                 method: &method,
                 headers: &headers,
                 base_path: &root_dir(),
-                uri_path: "index.html",
+                uri_path: "index.htm",
                 uri_query: None,
                 #[cfg(feature = "experimental")]
                 memory_cache: None,
@@ -865,7 +866,7 @@ mod tests {
                 compression_static: false,
                 ignore_hidden_files: false,
                 disable_symlinks: false,
-                index_files: &[],
+                index_files: &["index.htm"],
             })
             .await
             {
@@ -894,7 +895,7 @@ mod tests {
         let mut headers = HeaderMap::new();
         headers.insert("range", "bytes=100-200".parse().unwrap());
 
-        let buf = fs::read(root_dir().join("index.html"))
+        let buf = fs::read(root_dir().join("assets/index.html"))
             .expect("unexpected error during index.html reading");
         let buf = Bytes::from(buf);
 
@@ -903,7 +904,7 @@ mod tests {
                 method: &method,
                 headers: &headers,
                 base_path: &root_dir(),
-                uri_path: "index.html",
+                uri_path: "assets/index.html",
                 uri_query: None,
                 #[cfg(feature = "experimental")]
                 memory_cache: None,
@@ -948,7 +949,7 @@ mod tests {
         let mut headers = HeaderMap::new();
         headers.insert("range", "bytes=100-100000".parse().unwrap());
 
-        let buf = fs::read(root_dir().join("index.html"))
+        let buf = fs::read(root_dir().join("assets/index.html"))
             .expect("unexpected error during index.html reading");
         let buf = Bytes::from(buf);
 
@@ -957,7 +958,7 @@ mod tests {
                 method: &method,
                 headers: &headers,
                 base_path: &root_dir(),
-                uri_path: "index.html",
+                uri_path: "assets/index.html",
                 uri_query: None,
                 #[cfg(feature = "experimental")]
                 memory_cache: None,
@@ -1003,7 +1004,7 @@ mod tests {
         headers.insert("range", "bytes=100-200".parse().unwrap());
         headers.insert("if-range", "Mon, 18 Nov 1974 00:00:00 GMT".parse().unwrap());
 
-        let buf = fs::read(root_dir().join("index.html"))
+        let buf = fs::read(root_dir().join("index.htm"))
             .expect("unexpected error during index.html reading");
         let buf = Bytes::from(buf);
 
@@ -1012,7 +1013,7 @@ mod tests {
                 method: &method,
                 headers: &headers,
                 base_path: &root_dir(),
-                uri_path: "index.html",
+                uri_path: "index.htm",
                 uri_query: None,
                 #[cfg(feature = "experimental")]
                 memory_cache: None,
@@ -1028,7 +1029,7 @@ mod tests {
                 compression_static: false,
                 ignore_hidden_files: false,
                 disable_symlinks: false,
-                index_files: &[],
+                index_files: &["index.htm"],
             })
             .await
             {
@@ -1050,7 +1051,7 @@ mod tests {
         let mut headers = HeaderMap::new();
         headers.insert("range", "bytes=100-".parse().unwrap());
 
-        let buf = fs::read(root_dir().join("index.html"))
+        let buf = fs::read(root_dir().join("assets/index.html"))
             .expect("unexpected error during index.html reading");
         let buf = Bytes::from(buf);
 
@@ -1059,7 +1060,7 @@ mod tests {
                 method: &method,
                 headers: &headers,
                 base_path: &root_dir(),
-                uri_path: "index.html",
+                uri_path: "assets/index.html",
                 uri_query: None,
                 #[cfg(feature = "experimental")]
                 memory_cache: None,
@@ -1107,7 +1108,7 @@ mod tests {
         let mut headers = HeaderMap::new();
         headers.insert("range", "bytes=-100".parse().unwrap());
 
-        let buf = fs::read(root_dir().join("index.html"))
+        let buf = fs::read(root_dir().join("assets/index.html"))
             .expect("unexpected error during index.html reading");
         let buf = Bytes::from(buf);
 
@@ -1116,7 +1117,7 @@ mod tests {
                 method: &method,
                 headers: &headers,
                 base_path: &root_dir(),
-                uri_path: "index.html",
+                uri_path: "assets/index.html",
                 uri_query: None,
                 #[cfg(feature = "experimental")]
                 memory_cache: None,
@@ -1161,7 +1162,7 @@ mod tests {
         let mut headers = HeaderMap::new();
         headers.insert("range", "bytes=100-10".parse().unwrap());
 
-        let buf = fs::read(root_dir().join("index.html"))
+        let buf = fs::read(root_dir().join("index.htm"))
             .expect("unexpected error during index.html reading");
         let buf = Bytes::from(buf);
 
@@ -1170,7 +1171,7 @@ mod tests {
                 method: &method,
                 headers: &headers,
                 base_path: &root_dir(),
-                uri_path: "index.html",
+                uri_path: "index.htm",
                 uri_query: None,
                 #[cfg(feature = "experimental")]
                 memory_cache: None,
@@ -1186,7 +1187,7 @@ mod tests {
                 compression_static: false,
                 ignore_hidden_files: false,
                 disable_symlinks: false,
-                index_files: &[],
+                index_files: &["index.htm"],
             })
             .await
             {
@@ -1215,7 +1216,7 @@ mod tests {
         let mut headers = HeaderMap::new();
         headers.insert("range", "bytes=xyx-abc".parse().unwrap());
 
-        let buf = fs::read(root_dir().join("index.html"))
+        let buf = fs::read(root_dir().join("index.htm"))
             .expect("unexpected error during index.html reading");
         let buf = Bytes::from(buf);
 
@@ -1224,7 +1225,7 @@ mod tests {
                 method: &method,
                 headers: &headers,
                 base_path: &root_dir(),
-                uri_path: "index.html",
+                uri_path: "index.htm",
                 uri_query: None,
                 #[cfg(feature = "experimental")]
                 memory_cache: None,
@@ -1240,7 +1241,7 @@ mod tests {
                 compression_static: false,
                 ignore_hidden_files: false,
                 disable_symlinks: false,
-                index_files: &[],
+                index_files: &["index.htm"],
             })
             .await
             {
@@ -1266,7 +1267,7 @@ mod tests {
 
     #[tokio::test]
     async fn handle_byte_ranges_bad_2() {
-        let buf = fs::read(root_dir().join("index.html"))
+        let buf = fs::read(root_dir().join("assets/index.html"))
             .expect("unexpected error during index.html reading");
         let buf = Bytes::from(buf);
 
@@ -1281,7 +1282,7 @@ mod tests {
                 method: &method,
                 headers: &headers,
                 base_path: &root_dir(),
-                uri_path: "index.html",
+                uri_path: "assets/index.html",
                 uri_query: None,
                 #[cfg(feature = "experimental")]
                 memory_cache: None,
@@ -1297,7 +1298,7 @@ mod tests {
                 compression_static: false,
                 ignore_hidden_files: false,
                 disable_symlinks: false,
-                index_files: &[],
+                index_files: &["index.htm"],
             })
             .await
             {
@@ -1328,7 +1329,7 @@ mod tests {
                 method: &method,
                 headers: &headers,
                 base_path: &root_dir(),
-                uri_path: "index.html",
+                uri_path: "index.htm",
                 uri_query: None,
                 #[cfg(feature = "experimental")]
                 memory_cache: None,
@@ -1344,7 +1345,7 @@ mod tests {
                 compression_static: false,
                 ignore_hidden_files: false,
                 disable_symlinks: false,
-                index_files: &[],
+                index_files: &["index.htm"],
             })
             .await
             {
@@ -1361,7 +1362,7 @@ mod tests {
 
     #[tokio::test]
     async fn handle_byte_ranges_exclude_file_size() {
-        let buf = fs::read(root_dir().join("index.html"))
+        let buf = fs::read(root_dir().join("assets/index.html"))
             .expect("unexpected error during index.html reading");
         let buf = Bytes::from(buf);
 
@@ -1374,7 +1375,7 @@ mod tests {
                 method: &method,
                 headers: &headers,
                 base_path: &root_dir(),
-                uri_path: "index.html",
+                uri_path: "assets/index.html",
                 uri_query: None,
                 #[cfg(feature = "experimental")]
                 memory_cache: None,
@@ -1419,7 +1420,7 @@ mod tests {
 
     #[tokio::test]
     async fn handle_byte_ranges_exclude_file_size_2() {
-        let buf = fs::read(root_dir().join("index.html"))
+        let buf = fs::read(root_dir().join("assets/index.html"))
             .expect("unexpected error during index.html reading");
         let buf = Bytes::from(buf);
 
@@ -1435,7 +1436,7 @@ mod tests {
                 method: &method,
                 headers: &headers,
                 base_path: &root_dir(),
-                uri_path: "index.html",
+                uri_path: "assets/index.html",
                 uri_query: None,
                 #[cfg(feature = "experimental")]
                 memory_cache: None,
@@ -1504,7 +1505,7 @@ mod tests {
                 compression_static: true,
                 ignore_hidden_files: true,
                 disable_symlinks: false,
-                index_files: &[],
+                index_files: &["index.htm"],
             })
             .await
             {
@@ -1548,7 +1549,7 @@ mod tests {
                 compression_static: true,
                 ignore_hidden_files: true,
                 disable_symlinks: false,
-                index_files: &["index.html", "index.htm"],
+                index_files: &["index.htm", "index.htm"],
             })
             .await
             {
@@ -1594,7 +1595,7 @@ mod tests {
                 compression_static: true,
                 ignore_hidden_files: true,
                 disable_symlinks: true,
-                index_files: &["index.html", "index.htm"],
+                index_files: &["index.htm", "index.htm"],
             })
             .await
             {
@@ -1630,7 +1631,7 @@ mod tests {
                 compression_static: true,
                 ignore_hidden_files: true,
                 disable_symlinks: false,
-                index_files: &["index.html", "index.htm"],
+                index_files: &["index.htm", "index.htm"],
             })
             .await
             {
