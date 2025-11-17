@@ -21,5 +21,5 @@ LABEL org.opencontainers.image.vendor="Jose Quintana" \
     org.opencontainers.image.url="https://github.com/static-web-server/static-web-server" \
     org.opencontainers.image.title="Static Web Server" \
     org.opencontainers.image.description="A cross-platform, high-performance and asynchronous web server for static files-serving." \
-    org.opencontainers.image.version="${SERVER_VERSION}" \
-    org.opencontainers.image.documentation="https://github.com/static-web-server/static-web-server"
+    org.opencontainers.image.version="$SERVER_VERSION" \
+    org.opencontainers.image.documentation="https://static-web-server.net"
