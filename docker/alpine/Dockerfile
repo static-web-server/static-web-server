@@ -4,7 +4,12 @@ ARG TARGETPLATFORM
 ARG SERVER_VERSION=0.0.0
 ENV SERVER_VERSION=${SERVER_VERSION}
 
-RUN apk --no-cache add ca-certificates tzdata file
+RUN set -eux \
+    && apk --no-cache add \
+        ca-certificates \
+        tzdata \
+        file \
+    && true
 
 RUN set -ex; \
     case "$TARGETPLATFORM" in \
@@ -33,23 +38,55 @@ RUN set -ex \
 FROM alpine:3.21.5
 
 ARG SERVER_VERSION=0.0.0
-ENV SERVER_VERSION=${SERVER_VERSION}
+ARG SERVER_USER_NAME=sws
+ARG SERVER_USER_ID=1000
+ARG SERVER_GROUP_NAME=sws
+ARG SERVER_GROUP_ID=1000
+
+ENV SERVER_VERSION=$SERVER_VERSION
+ENV SERVER_USER_ID=$SERVER_USER_ID
+ENV SERVER_USER_NAME=$SERVER_USER_NAME
+ENV SERVER_GROUP_ID=$SERVER_GROUP_ID
+ENV SERVER_GROUP_NAME=$SERVER_GROUP_NAME
 
 LABEL version="${SERVER_VERSION}" \
     description="A cross-platform, high-performance and asynchronous web server for static files-serving." \
     maintainer="Jose Quintana <joseluisq.net>"
 
-RUN apk --no-cache add ca-certificates tzdata
+RUN set -eux \
+    && addgroup -g $SERVER_GROUP_ID $SERVER_GROUP_NAME \
+    && adduser -D -u $SERVER_USER_ID -G $SERVER_GROUP_NAME $SERVER_USER_NAME \
+    && true
 
-COPY --from=build /usr/local/bin/static-web-server /usr/local/bin/
-COPY ./docker/alpine/entrypoint.sh /
-COPY ./docker/public /public
+RUN set -eux \
+    && apk --no-cache add \
+        ca-certificates \
+        tzdata \
+    && true
+
+RUN set -eux \
+    && mkdir -p /home/$SERVER_USER_NAME/public \
+    && chown -R $SERVER_USER_NAME:$SERVER_GROUP_NAME /home/$SERVER_USER_NAME \
+    && ln -s /home/$SERVER_USER_NAME/public /var/public \
+    && chown -R $SERVER_USER_NAME:$SERVER_GROUP_NAME /var/public \
+    && true
+
+USER $SERVER_USER_NAME:$SERVER_GROUP_NAME
+
+COPY --from=build --chown=$SERVER_USER_NAME:$SERVER_GROUP_NAME \
+    /usr/local/bin/static-web-server /usr/local/bin/static-web-server
+COPY --chown=$SERVER_USER_NAME:$SERVER_GROUP_NAME \
+    ./docker/alpine/entrypoint.sh /usr/local/bin/entrypoint.sh
+COPY --chown=$SERVER_USER_NAME:$SERVER_GROUP_NAME \
+    ./docker/public /home/$SERVER_USER_NAME/public
+
+WORKDIR /home/$SERVER_USER_NAME
 
 EXPOSE 80
 
 STOPSIGNAL SIGQUIT
 
-ENTRYPOINT ["/entrypoint.sh"]
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 
 CMD ["static-web-server"]
 
@@ -59,4 +96,4 @@ LABEL org.opencontainers.image.vendor="Jose Quintana" \
     org.opencontainers.image.title="Static Web Server" \
     org.opencontainers.image.description="A cross-platform, high-performance and asynchronous web server for static files-serving." \
     org.opencontainers.image.version="${SERVER_VERSION}" \
-    org.opencontainers.image.documentation="https://github.com/static-web-server/static-web-server"
+    org.opencontainers.image.documentation="https://static-web-server.net"

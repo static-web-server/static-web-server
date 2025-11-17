@@ -21,6 +21,23 @@ All Docker images are [Multi-Arch](https://www.docker.com/blog/how-to-rapidly-bu
 !!! tip "SWS statically-linked binary"
     All the Docker images use the SWS statically-linked binary, meaning that the binary is highly optimized, performant, and dependency-free thanks to [musl libc](https://www.musl-libc.org/).
 
+## Rootless
+
+The **Debian** and **Alpine** Docker images are rootless **by default** using a dedicated `sws` user and group. This reduces the attack surface and improves security.
+
+!!! info "Remember"
+    Users can still run the containers as root if they _explicitly_ set the user to _root_ when running the container, e.g., using the `--user root` flag with `docker run`.
+
+The `static-web-server` binary and all files under `/home/sws` (home directory) are owned by the non-root `sws` user and group.
+
+For convenience, those paths are also available:
+
+- **Home directory:** `/home/sws`
+- **Public directory:** `/home/sws/public`
+- **Public directory symlink:** `/var/public` -> `/home/sws/public`
+
+The current working directory is the _home directory_ by default.
+
 ## Run a container
 
 To give the server a quick try just run the following commands.
