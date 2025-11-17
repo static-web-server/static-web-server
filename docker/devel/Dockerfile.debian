@@ -1,23 +1,24 @@
 FROM debian:13.1-slim
 
-ARG SERVER_VERSION=0.0.0
+ARG SERVER_VERSION=devel
 ARG SERVER_USER_NAME=sws
-ARG SERVER_USER_ID=999
+ARG SERVER_USER_ID=1000
 ARG SERVER_GROUP_NAME=sws
-ARG SERVER_GROUP_ID=999
+ARG SERVER_GROUP_ID=1000
 
-ENV SERVER_VERSION=${SERVER_VERSION}
-ENV SERVER_USER_ID=${SERVER_USER_ID}
-ENV SERVER_USER_NAME=${SERVER_USER_NAME}
-ENV SERVER_GROUP_ID=${SERVER_GROUP_ID}
-ENV SERVER_GROUP_NAME=${SERVER_GROUP_NAME}
+ENV SERVER_VERSION=$SERVER_VERSION
+ENV SERVER_USER_ID=$SERVER_USER_ID
+ENV SERVER_USER_NAME=$SERVER_USER_NAME
+ENV SERVER_GROUP_ID=$SERVER_GROUP_ID
+ENV SERVER_GROUP_NAME=$SERVER_GROUP_NAME
 
 LABEL version="${SERVER_VERSION}" \
     description="A cross-platform, high-performance and asynchronous web server for static files-serving." \
     maintainer="Jose Quintana <joseluisq.net>"
 
 RUN set -eux \
-    && groupadd -r ${SERVER_GROUP_NAME} && useradd -r -g ${SERVER_GROUP_NAME} ${SERVER_USER_NAME} \
+    && groupadd -r -g $SERVER_GROUP_ID $SERVER_GROUP_NAME \
+    && useradd -r -g $SERVER_GROUP_ID -u $SERVER_USER_ID $SERVER_USER_NAME \
     && true
 
 RUN set -eux \
@@ -31,22 +32,22 @@ RUN set -eux \
     && true
 
 RUN set -eux \
-    && mkdir -p /home/${SERVER_USER_NAME}/public \
-    && chown -R ${SERVER_USER_NAME}:${SERVER_GROUP_NAME} /home/${SERVER_USER_NAME} \
-    && ln -s /home/${SERVER_USER_NAME}/public /var/public \
-    && chown -R ${SERVER_USER_NAME}:${SERVER_GROUP_NAME} /var/public \
+    && mkdir -p /home/$SERVER_USER_NAME/public \
+    && chown -R $SERVER_USER_NAME:$SERVER_GROUP_NAME /home/$SERVER_USER_NAME \
+    && ln -s /home/$SERVER_USER_NAME/public /var/public \
+    && chown -R $SERVER_USER_NAME:$SERVER_GROUP_NAME /var/public \
     && true
 
-USER ${SERVER_USER_NAME}:${SERVER_GROUP_NAME}
+USER $SERVER_USER_NAME:$SERVER_GROUP_NAME
 
-COPY --chown=${SERVER_USER_NAME}:${SERVER_GROUP_NAME} \
+COPY --chown=$SERVER_USER_NAME:$SERVER_GROUP_NAME \
     ./docker/devel/static-web-server /usr/local/bin/static-web-server
-COPY --chown=${SERVER_USER_NAME}:${SERVER_GROUP_NAME} \
+COPY --chown=$SERVER_USER_NAME:$SERVER_GROUP_NAME \
     ./docker/debian/entrypoint.sh /usr/local/bin/entrypoint.sh
-COPY --chown=${SERVER_USER_NAME}:${SERVER_GROUP_NAME} \
-    ./docker/public /home/${SERVER_USER_NAME}/public
+COPY --chown=$SERVER_USER_NAME:$SERVER_GROUP_NAME \
+    ./docker/public /home/$SERVER_USER_NAME/public
 
-WORKDIR /home/${SERVER_USER_NAME}
+WORKDIR /home/$SERVER_USER_NAME
 
 EXPOSE 80
 
@@ -61,5 +62,5 @@ LABEL org.opencontainers.image.vendor="Jose Quintana" \
     org.opencontainers.image.url="https://github.com/static-web-server/static-web-server" \
     org.opencontainers.image.title="Static Web Server" \
     org.opencontainers.image.description="A cross-platform, high-performance and asynchronous web server for static files-serving." \
-    org.opencontainers.image.version="${SERVER_VERSION}" \
+    org.opencontainers.image.version="$SERVER_VERSION" \
     org.opencontainers.image.documentation="https://static-web-server.net"
