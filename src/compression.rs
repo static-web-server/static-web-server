@@ -24,10 +24,8 @@ use hyper::{
     Body, Method, Request, Response, StatusCode,
     header::{CONTENT_ENCODING, CONTENT_LENGTH},
 };
-use lazy_static::lazy_static;
 use mime_guess::{Mime, mime};
 use pin_project::pin_project;
-use std::collections::HashSet;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 use tokio_util::io::{ReaderStream, StreamReader};
@@ -40,19 +38,17 @@ use crate::{
     settings::CompressionLevel,
 };
 
-lazy_static! {
-    /// Contains a fixed list of common text-based MIME types that aren't recognizable in a generic way.
-    static ref TEXT_MIME_TYPES: HashSet<&'static str> = [
-        "application/rtf",
-        "application/javascript",
-        "application/json",
-        "application/xml",
-        "font/ttf",
-        "application/font-sfnt",
-        "application/vnd.ms-fontobject",
-        "application/wasm",
-    ].into_iter().collect();
-}
+/// Contains a fixed list of common text-based MIME types that aren't recognizable in a generic way.
+const TEXT_MIME_TYPES: [&str; 8] = [
+    "application/rtf",
+    "application/javascript",
+    "application/json",
+    "application/xml",
+    "font/ttf",
+    "application/font-sfnt",
+    "application/vnd.ms-fontobject",
+    "application/wasm",
+];
 
 /// List of encodings that can be handled given enabled features.
 const AVAILABLE_ENCODINGS: &[ContentCoding] = &[
@@ -197,7 +193,7 @@ fn is_text(mime: Mime) -> bool {
         || mime
             .suffix()
             .is_some_and(|suffix| suffix == mime::XML || suffix == mime::JSON)
-        || TEXT_MIME_TYPES.contains(mime.essence_str())
+        || TEXT_MIME_TYPES.contains(&mime.essence_str())
 }
 
 /// Create a wrapping handler that compresses the Body of a [`Response`].

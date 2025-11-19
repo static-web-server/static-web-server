@@ -2147,7 +2147,6 @@ dependencies = [
  "http",
  "http-serde",
  "hyper",
- "lazy_static",
  "listenfd",
  "maud",
  "mime_guess",
