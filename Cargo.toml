@@ -79,7 +79,6 @@ headers = "0.3"
 http = "0.2"
 http-serde = "1.1"
 hyper = { version = "0.14", features = ["stream", "http1", "http2", "tcp", "server"] }
-lazy_static = "1.5"
 listenfd = "1.0"
 maud = { version = "0.27" }
 mime_guess = "2.0"
