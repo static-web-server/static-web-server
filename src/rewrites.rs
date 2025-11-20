@@ -126,7 +126,7 @@ mod tests {
         settings::{Advanced, Rewrites, file::RedirectsKind},
     };
     use hyper::{Body, Request, Response, StatusCode, header::HOST};
-    use regex::Regex;
+    use regex_lite::Regex;
 
     fn make_request(host: &str, uri: &str) -> Request<Body> {
         let mut builder = Request::builder();

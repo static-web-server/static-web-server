@@ -10,7 +10,7 @@ use clap::Parser;
 use globset::{Glob, GlobBuilder, GlobMatcher};
 use headers::HeaderMap;
 use hyper::StatusCode;
-use regex::Regex;
+use regex_lite::Regex;
 use std::path::{Path, PathBuf};
 
 use crate::{Context, Result, helpers, logger};

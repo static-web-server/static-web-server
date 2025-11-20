@@ -8,7 +8,7 @@
 
 use headers::HeaderValue;
 use hyper::{Body, Request, Response, StatusCode};
-use regex::Regex;
+use regex_lite::Regex;
 
 use crate::{Error, error_page, handler::RequestHandlerOpts, settings::Redirects};
 
@@ -147,7 +147,7 @@ mod tests {
         settings::{Advanced, Redirects},
     };
     use hyper::{Body, Request, Response, StatusCode};
-    use regex::Regex;
+    use regex_lite::Regex;
 
     fn make_request(host: &str, uri: &str) -> Request<Body> {
         let mut builder = Request::builder();
