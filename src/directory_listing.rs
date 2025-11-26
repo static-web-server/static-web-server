@@ -24,7 +24,7 @@ use crate::{Context, Result, handler::RequestHandlerOpts, http_ext::MethodExt};
 
 /// Non-alphanumeric characters to be percent-encoded
 /// excluding the "unreserved characters" because allowed in a URI.
-/// See 2.3.  Unreserved Characters - https://www.ietf.org/rfc/rfc3986.txt
+/// See 2.3.  Unreserved Characters - <https://www.ietf.org/rfc/rfc3986.txt>
 const PERCENT_ENCODE_SET: &AsciiSet = &NON_ALPHANUMERIC
     .remove(b'_')
     .remove(b'-')

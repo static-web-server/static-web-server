@@ -306,11 +306,6 @@ jobs:
       with:
         fetch-depth: 1
 
-    - name: Check typos
-      uses: crate-ci/typos@master
-      with:
-        config: ./.github/workflows/config/typos.toml
-
     - name: Install stable toolchain
       uses: dtolnay/rust-toolchain@stable
       with:
@@ -324,12 +319,41 @@ jobs:
     - name: Check via Clippy
       run: |
         cargo clippy --all-features -- -D warnings
+
+    - name: Check via Clippy (tests)
+      run: |
         cargo clippy --all-features --tests -- -D warnings
+
+  checks-docs:
+    name: check docs
+    runs-on: ubuntu-22.04
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 1
+
+    - name: Install nightly toolchain
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        toolchain: nightly
+        components: rustfmt, clippy
+
+    - name: Check typos
+      uses: crate-ci/typos@master
+      with:
+        config: ./.github/workflows/config/typos.toml
 
     - name: Check crate docs
       run: |
-        cargo doc --lib --no-deps
+        cargo +nightly rustdoc --lib -Zrustdoc-map --all-features \
+            --config "build.rustflags=[\"--cfg\", \"tokio_unstable\"]" \
+            -Zhost-config -Ztarget-applies-to-host \
+            --config "host.rustflags=[\"--cfg\", \"tokio_unstable\"]" \
+            --config "build.rustdocflags=[\"--cfg\", \"docsrs\", \"--cfg\", \"docsrs\", \"--cfg\", \"tokio_unstable\", \"-Z\", \"unstable-options\", \"--emit=invocation-specific\", \"--cap-lints\", \"warn\", \"--extern-html-root-takes-precedence\"]" \
+            -Zunstable-options -- --document-private-items
 
-    - name: Check mkdocs
+    - name: Check project docs build
       run: |
         docker compose -f docs/docker-compose.yml run --rm server mkdocs build
