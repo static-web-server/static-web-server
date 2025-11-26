@@ -1,19 +1,7 @@
 name: perfcheck
 on:
-  # merge_group:
-  #   branches:
-  #     - master
-  pull_request:
-    paths:
-      - .github/workflows/perfcheck.yml
-      - .cargo/config.toml
-      - scripts/ci/vegeta_report_to_csv.jq
-      - Cargo.lock
-      - Cargo.toml
-      - src/**
-  push:
-    branches:
-    - master
+  issue_comment:
+    types: [created, edited]
     paths:
       - .github/workflows/perfcheck.yml
       - .cargo/config.toml
@@ -24,8 +12,10 @@ on:
 
 jobs:
   benchmark:
+    if: github.event.issue.pull_request && contains(github.event.comment.body, '/try+ perfcheck')
     name: benchmark
     runs-on: ubuntu-22.04
+    continue-on-error: true
     env:
       # Cargo binary
       CARGO_BIN: cargo
@@ -45,6 +35,7 @@ jobs:
       CADDY_VERSION: "2.7.6"
 
     strategy:
+      fail-fast: false
       matrix:
         include:
         - title: "Small file (dynamic compression)"
@@ -219,9 +210,11 @@ jobs:
           overview.png
 
   merge-artifacts:
+    if: github.event.issue.pull_request && contains(github.event.comment.body, '/try+ perfcheck')
     name: merge-artifacts
     needs: benchmark
     runs-on: ubuntu-22.04
+    continue-on-error: true
 
     steps:
     - name: Merge benchmark plots
