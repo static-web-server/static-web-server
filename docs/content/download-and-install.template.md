@@ -166,6 +166,8 @@ Pre-compiled binaries grouped by CPU architectures.
 <small>**SHA256SUM:** `{{arm-unknown-linux-musleabihf.tar.gz}}`</small>
 - [static-web-server-{{RELEASE_VERSION}}-armv7-unknown-linux-musleabihf.tar.gz](https://github.com/static-web-server/static-web-server/releases/download/{{RELEASE_VERSION}}/static-web-server-{{RELEASE_VERSION}}-armv7-unknown-linux-musleabihf.tar.gz)<br>
 <small>**SHA256SUM:** `{{armv7-unknown-linux-musleabihf.tar.gz}}`</small>
+- [static-web-server-{{RELEASE_VERSION}}-armv7-unknown-linux-gnueabihf.tar.gz](https://github.com/static-web-server/static-web-server/releases/download/{{RELEASE_VERSION}}/static-web-server-{{RELEASE_VERSION}}-armv7-unknown-linux-gnueabihf.tar.gz)<br>
+<small>**SHA256SUM:** `{{armv7-unknown-linux-gnueabihf.tar.gz}}`</small>
 
 ### PowerPC
 
