@@ -99,8 +99,8 @@ toml = "0.9"
 tracing = { version = "0.1", default-features = false, features = ["std"] }
 tracing-subscriber = { version = "0.3", default-features = false, features = ["smallvec", "registry", "parking_lot", "fmt", "ansi", "tracing-log"] }
 
-[target.'cfg(all(target_env = "musl", target_pointer_width = "64"))'.dependencies.tikv-jemallocator]
-version = "0.6"
+[target.'cfg(all(target_env = "musl", target_pointer_width = "64"))'.dependencies.mimalloc]
+version = "0.1.48"
 
 [target.'cfg(unix)'.dependencies]
 signal-hook = { version = "0.3", features = ["extended-siginfo"] }
@@ -142,10 +142,3 @@ pre-build = [
     "cp /tmp/netbsd/usr/lib/libexecinfo.so /usr/local/x86_64-unknown-netbsd/lib",
     "rm -rf base.tar.xz /tmp/netbsd",
 ]
-
-# Cross: Linux ARM64 Musl only
-[package.metadata.cross.target.aarch64-unknown-linux-musl.env]
-# workaround for jemalloc on ARM64 (musl) by using 64KB pagesize by default (max value)
-# - https://github.com/static-web-server/static-web-server/issues/440
-# - https://github.com/jemalloc/jemalloc/issues/467
-passthrough = ["JEMALLOC_SYS_WITH_LG_PAGE=16"]
