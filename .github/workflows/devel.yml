@@ -56,6 +56,7 @@ jobs:
           - linux-arm-gnueabihf
           - linux-musl-armv6
           - linux-musl-armv7
+          - linux-gnu-armv7
           - linux-ppc64le
           - linux-s390x
           # NOTE: looks like not supported by `listenfd` crate
@@ -113,6 +114,10 @@ jobs:
             os: ubuntu-22.04
             rust: stable
             target: armv7-unknown-linux-musleabihf
+          - build: linux-gnu-armv7
+            os: ubuntu-22.04
+            rust: stable
+            target: armv7-unknown-linux-gnueabihf
           - build: linux-ppc64le
             os: ubuntu-22.04
             rust: stable
