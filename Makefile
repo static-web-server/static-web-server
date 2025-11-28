@@ -130,8 +130,8 @@ docker.image.alpine:
 .PHONY: docker.image.alpine
 
 docker.image.debian:
-	@echo "Creating development Docker Alpine image..."
-	@cp -frp ./target/x86_64-unknown-linux-musl/release/static-web-server ./docker/devel/
+	@echo "Creating development Docker Debian image..."
+	@cp -frp ./target/release/static-web-server ./docker/devel/
 	@docker build \
 		--platform="linux/x86_64" \
 		--network="host" \

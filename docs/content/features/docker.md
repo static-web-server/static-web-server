@@ -19,7 +19,10 @@ All Docker images are [Multi-Arch](https://www.docker.com/blog/how-to-rapidly-bu
 - `linux/s390x` (Debian only)
 
 !!! tip "SWS statically-linked binary"
-    All the Docker images use the SWS statically-linked binary, meaning that the binary is highly optimized, performant, and dependency-free thanks to [musl libc](https://www.musl-libc.org/).
+    All the Docker images (except __Debian-based__ ones) use the SWS statically-linked binary, meaning that the binary is portable, performant and dependency-free thanks to [musl libc](https://www.musl-libc.org/).
+
+!!! tip "Debian images use dynamically-linked binaries"
+    All the __Debian-based__ Docker images use the SWS dynamically-linked binary as it is highly optimized, performant and resource efficient thanks to [musl libc](https://www.musl-libc.org/).
 
 ## Rootless
 
