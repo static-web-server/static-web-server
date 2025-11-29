@@ -1,6 +1,15 @@
 name: release-docker-devel
 
 on:
+  pull_request:
+    branches:
+      - master
+    paths:
+      - .github/workflows/release.docker.devel.yml
+      - .cargo/config.toml
+      - Cargo.lock
+      - Cargo.toml
+      - src/**
   push:
     branches:
       - master
@@ -36,6 +45,10 @@ jobs:
           arch: linux/amd64
           rust: stable
           target: x86_64-unknown-linux-musl
+        - build: linux-gnu
+          arch: linux/amd64
+          rust: stable
+          target: x86_64-unknown-linux-gnu
 
     outputs:
       target: ${{ steps.target.outputs.target }}
@@ -90,7 +103,7 @@ jobs:
   docker-image:
     needs: ['build-release']
     runs-on: ubuntu-22.04
-    permissions: 
+    permissions:
       contents: read
       packages: write
     strategy:
@@ -118,7 +131,8 @@ jobs:
           path: ${{ env.TARGET_DIR }}/${{ matrix.target }}/release
           key: cache-${{ github.sha }}-${{ matrix.target }}
       - name: Copy binary
-        run: cp ${{ env.TARGET_DIR }}/${{ matrix.target }}/release/static-web-server ./docker/devel/
+        run: |
+            cp ${{ env.TARGET_DIR }}/${{ matrix.target }}/release/static-web-server ./docker/devel/
 
       - name: Login to ghcr.io
         uses: docker/login-action@v3

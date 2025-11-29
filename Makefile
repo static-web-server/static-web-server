@@ -130,14 +130,24 @@ docker.image.alpine:
 .PHONY: docker.image.alpine
 
 docker.image.debian:
-	@echo "Creating development Docker Alpine image..."
-	@cp -frp ./target/x86_64-unknown-linux-musl/release/static-web-server ./docker/devel/
+	@echo "Creating development Docker Debian image..."
+	@cp -frp ./target/release/static-web-server ./docker/devel/
 	@docker build \
 		--platform="linux/x86_64" \
 		--network="host" \
 		--rm=true -f ./docker/devel/Dockerfile.debian \
 		-t joseluisq/${PKG_NAME}:devel-debian . --pull=true
 .PHONY: docker.image.debian
+
+buildx.image.debian:
+	docker buildx build \
+	    --platform="linux/amd64,linux/arm64,linux/386,linux/arm/v7,linux/arm/v6,linux/ppc64le,linux/s390x" \
+		--network="host" \
+	    --build-arg SERVER_VERSION=2.39.0 \
+		--rm=true -f ./docker/debian/Dockerfile \
+		-t joseluisq/${PKG_NAME}:devel-debian . --pull=true
+		# --push \
+.PHONY: buildx.image.debian
 
 docker.image.all:
 	@make docker.image

@@ -18,8 +18,11 @@ All Docker images are [Multi-Arch](https://www.docker.com/blog/how-to-rapidly-bu
 - `linux/ppc64le` (Debian only)
 - `linux/s390x` (Debian only)
 
-!!! tip "SWS statically-linked binary"
-    All the Docker images use the SWS statically-linked binary, meaning that the binary is highly optimized, performant, and dependency-free thanks to [musl libc](https://www.musl-libc.org/).
+!!! tip "`Scratch` and `Alpine` images use statically-linked binaries"
+    `Scratch` and `Alpine` based Docker images use a statically-linked binary that is portable, performant and dependency-free thanks to [musl libc](https://www.musl-libc.org/), keeping containers as lean as possible.
+
+!!! tip "`Debian` images use dynamically-linked binaries"
+    `Debian` based Docker images use SWS dynamically-linked binaries, making containers highly optimized, performant and resource-efficient.
 
 ## Rootless
 
