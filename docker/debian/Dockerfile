@@ -18,7 +18,9 @@ RUN set -ex \
         "linux/amd64") target='x86_64-unknown-linux-gnu' ;; \
         "linux/arm64") target='aarch64-unknown-linux-gnu' ;; \
         "linux/386") target='i686-unknown-linux-gnu' ;; \
-        "linux/arm/v7") target='armv7-unknown-linux-gnueabihf' ;; \
+        # TODO: linux/arm/v7 will use 'gnueabihf' instead of 'musleabihf' binary once available \
+        # "linux/arm/v7") target='armv7-unknown-linux-gnueabihf' ;; \
+        "linux/arm/v7") target='armv7-unknown-linux-musleabihf' ;; \
         "linux/arm/v6") target='arm-unknown-linux-gnueabihf' ;; \
         "linux/ppc64le") target='powerpc64le-unknown-linux-gnu' ;; \
         "linux/s390x") target='s390x-unknown-linux-gnu' ;; \
@@ -37,14 +39,7 @@ RUN set -ex \
     && uname -a \
     && cat /etc/os-release \
     && echo VERSION_NUMBER=$(cat /etc/debian_version) \
-    && case "$TARGETPLATFORM" in \
-        **ppc64*|*s390x*) \
-            echo "warn: can not run sws binary on $TARGETPLATFORM architecture" ;; \
-        *) \
-            static-web-server --version; \
-            static-web-server --help; \
-        ;; \
-    esac \
+    && echo TARGET_PLATFORM=$TARGETPLATFORM \
     && file /usr/local/bin/static-web-server \
     && true
 
