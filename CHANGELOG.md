@@ -5,6 +5,72 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v2.40.0 - 2025-11-30
+
+This new `v2.40.0` release brings important security bug fixes, performance, resource and binary size optimizations, rootless Debian and Alpine Docker images, content negotiation for Markdown files support and other enhancements.
+
+For more details about the changes, take a look at the corresponding PR and documentation links.
+
+__Fixes__
+
+- [55562a1][55562a1] Update dependencies like rustls, tracing, async-compression, clap, bytes and others. [#582][582], [#589][589] by [@joseluisq][joseluisq]
+- [0fedeb3][0fedeb3] library: Crate documentation issues. [#583][583] by [@joseluisq][joseluisq]
+
+[55562a1]: https://github.com/static-web-server/static-web-server/commit/55562a1
+[0fedeb3]: https://github.com/static-web-server/static-web-server/commit/0fedeb3
+
+[582]: https://github.com/static-web-server/static-web-server/pull/582
+[583]: https://github.com/static-web-server/static-web-server/pull/583
+[589]: https://github.com/static-web-server/static-web-server/pull/589
+
+__Features__
+
+- [ee4b049][ee4b049] Add `armv7-unknown-linux-gnueabihf` target. [#586][586] by [@joseluisq][joseluisq]
+- [2c25d82][2c25d82] Content negotiation for Markdown files via `Accept` header. [#577][577] by [@davlgd][davlgd], see [docs](https://static-web-server.net/features/markdown-content-negotiation/)
+- [326abbe][326abbe] library: Add `exit_on_error` option to `Server::run_server_on_rt` function to control server termination. [#578][578] by [@frnsys][frnsys]
+
+[ee4b049]: https://github.com/static-web-server/static-web-server/commit/ee4b049
+[326abbe]: https://github.com/static-web-server/static-web-server/commit/326abbe
+[2c25d82]: https://github.com/static-web-server/static-web-server/commit/2c25d82
+
+[586]: https://github.com/static-web-server/static-web-server/pull/586
+[578]: https://github.com/static-web-server/static-web-server/pull/578
+[577]: https://github.com/static-web-server/static-web-server/pull/577
+
+__Refactorings__
+
+- [c66c791][c66c791] Docker: Prefer dynamically-linked binaries for Debian Docker images, which reduces container's memory usage significantly. [#588][588] by [@joseluisq][joseluisq]
+- [557363e][557363e] Replace `regex` crate with `regex-lite` to reduce binary size. [#581][581] by [@joseluisq][joseluisq]
+- [afddfd6][afddfd6] Drop `jemalloc` in favor of `mimalloc` for _MUSL_ targets, which reduces statically-linked binary's memory usage. [#587][587] by [@joseluisq][joseluisq]
+- [b234984][b234984] Docker: Rootless _Debian_ and _Alpine_ Docker images, which reduces the attack surface and improves security. [#567][567] by [@joseluisq][joseluisq], see [docs](https://static-web-server.net/features/docker/#rootless)
+- [d48da4c][d48da4c] Simplify public directory for Docker image and default error pages, which improves the default index and error pages' responsiveness in the browser. [#579][579] by [@joseluisq][joseluisq]
+- [ce5b4fab][ce5b4fab] Drop `lazy_static` and prefer fixed text mime types for dynamic compression. [#580][580] by [@joseluisq][joseluisq]
+- [ea9f43f][ea9f43f] CI: Move _perfcheck_ workflow behind a PR comment trigger. [#584][584] by [@joseluisq][joseluisq]
+
+[c66c791]: https://github.com/static-web-server/static-web-server/commit/c66c791
+[afddfd6]: https://github.com/static-web-server/static-web-server/commit/afddfd6
+[ea9f43f]: https://github.com/static-web-server/static-web-server/commit/ea9f43f
+[557363e]: https://github.com/static-web-server/static-web-server/commit/557363e
+[ce5b4fab]: https://github.com/static-web-server/static-web-server/commit/ce5b4fab
+[b234984]: https://github.com/static-web-server/static-web-server/commit/b234984
+[d48da4c]: https://github.com/static-web-server/static-web-server/commit/d48da4c
+
+[588]: https://github.com/static-web-server/static-web-server/pull/588
+[587]: https://github.com/static-web-server/static-web-server/pull/587
+[584]: https://github.com/static-web-server/static-web-server/pull/584
+[581]: https://github.com/static-web-server/static-web-server/pull/581
+[580]: https://github.com/static-web-server/static-web-server/pull/580
+[567]: https://github.com/static-web-server/static-web-server/pull/567
+[579]: https://github.com/static-web-server/static-web-server/pull/579
+
+[davlgd]: https://github.com/davlgd
+[frnsys]: https://github.com/frnsys
+
+For more details see the [v2.40.0 milestone][v2400-milestone] and the full changelog [v2.39.0...v2.40.0][v2400-diff].
+
+[v2400-diff]: https://github.com/static-web-server/static-web-server/compare/v2.39.0...v2.40.0
+[v2400-milestone]: https://github.com/static-web-server/static-web-server/milestone/34?closed=1
+
 ## v2.39.0 - 2025-10-26
 
 This new `v2.39.0` release brings important security bug fixes and updates to project dependencies and Docker images as well as other improvements.

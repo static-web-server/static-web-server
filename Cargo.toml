@@ -1,6 +1,6 @@
 [package]
 name = "static-web-server"
-version = "2.39.0"
+version = "2.40.0"
 edition = "2024"
 rust-version = "1.85.0"
 authors = ["Jose Quintana <https://joseluisq.net>"]
