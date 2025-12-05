@@ -36,7 +36,7 @@ Below is an example of how to CORS.
 static-web-server \
     --port 8787 \
     --root ./my-public-dir \
-    --cors-allow-origins "https://domain.com"
+    --cors-allow-origins "https://domain.com" \
     --cors-allow-headers "origin, content-type, x-requested-with"
 ```
 
@@ -57,6 +57,6 @@ Below is an example of how to CORS.
 static-web-server \
     --port 8787 \
     --root ./my-public-dir \
-    --cors-allow-origins "https://domain.com"
+    --cors-allow-origins "https://domain.com" \
     --cors-expose-headers "origin, content-type, x-requested-with"
 ```
