@@ -9,7 +9,6 @@ on:
       - .cargo/config.toml
       - Cargo.lock
       - Cargo.toml
-      - docs/**
       - src/**
       - tests/**
   push:
@@ -20,15 +19,42 @@ on:
       - .cargo/config.toml
       - Cargo.lock
       - Cargo.toml
-      - docs/**
       - src/**
       - tests/**
   schedule:
     - cron: '30 01 * * *' # Every day at 01:30 UTC
 
 jobs:
+  checks:
+    name: Code checks
+    runs-on: ubuntu-22.04
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 1
+
+    - name: Install stable toolchain
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        toolchain: stable
+        components: rustfmt, clippy
+
+    - name: Check formatting
+      run: |
+        cargo fmt --all -- --check tests/*.rs
+
+    - name: Check via Clippy
+      run: |
+        cargo clippy --all-features -- -D warnings
+
+    - name: Check via Clippy (tests)
+      run: |
+        cargo clippy --all-features --tests -- -D warnings
+
   test:
-    name: test
+    name: Test
     runs-on: ${{ matrix.os }}
     env:
       # Cargo binary
@@ -301,36 +327,8 @@ jobs:
           ;;
         esac
 
-  checks:
-    name: checks
-    runs-on: ubuntu-22.04
-
-    steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 1
-
-    - name: Install stable toolchain
-      uses: dtolnay/rust-toolchain@stable
-      with:
-        toolchain: stable
-        components: rustfmt, clippy
-
-    - name: Check formatting
-      run: |
-        cargo fmt --all -- --check tests/*.rs
-
-    - name: Check via Clippy
-      run: |
-        cargo clippy --all-features -- -D warnings
-
-    - name: Check via Clippy (tests)
-      run: |
-        cargo clippy --all-features --tests -- -D warnings
-
-  checks-docs:
-    name: check docs
+  docs-check:
+    name: Docs check
     runs-on: ubuntu-22.04
 
     steps:
@@ -345,12 +343,7 @@ jobs:
         toolchain: nightly
         components: rustfmt, clippy
 
-    - name: Check typos
-      uses: crate-ci/typos@master
-      with:
-        config: ./.github/workflows/config/typos.toml
-
-    - name: Check crate docs
+    - name: Rustdoc build
       run: |
         cargo +nightly rustdoc --lib -Zrustdoc-map --all-features \
             --config "build.rustflags=[\"--cfg\", \"tokio_unstable\"]" \
@@ -358,7 +351,3 @@ jobs:
             --config "host.rustflags=[\"--cfg\", \"tokio_unstable\"]" \
             --config "build.rustdocflags=[\"--cfg\", \"docsrs\", \"--cfg\", \"docsrs\", \"--cfg\", \"tokio_unstable\", \"-Z\", \"unstable-options\", \"--emit=invocation-specific\", \"--cap-lints\", \"warn\", \"--extern-html-root-takes-precedence\"]" \
             -Zunstable-options -- --document-private-items
-
-    - name: Check project docs build
-      run: |
-        docker compose -f docs/docker-compose.yml run --rm server mkdocs build

@@ -1,0 +1,29 @@
+name: devel-project-docs
+on:
+  pull_request:
+    paths:
+      - .github/workflows/devel.project.docs.yml
+      - docs/**
+      - src/**
+      - tests/**
+      - ./*.md
+
+jobs:
+  docs-check:
+    name: Project docs check
+    runs-on: ubuntu-22.04
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 1
+
+    - name: Check typos
+      uses: crate-ci/typos@master
+      with:
+        config: ./.github/workflows/config/typos.toml
+
+    - name: Build docs
+      run: |
+        docker compose -f docs/docker-compose.yml run --rm server mkdocs build
