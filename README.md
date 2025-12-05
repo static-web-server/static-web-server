@@ -90,11 +90,6 @@ Please refer to [The Documentation Website](https://static-web-server.net/) for 
 
 For more details see [benchmarks repository](https://github.com/static-web-server/benchmarks)
 
-## Notes
-
-- If you're looking for `v1` please go to [1.x](https://github.com/static-web-server/static-web-server/tree/1.x) branch.
-- If you want to migrate from `v1` to `v2` please view [Migrating from `v1` to `v2`](https://static-web-server.net/migration/) release.
-
 ## Contributions
 
 Unless you explicitly state otherwise, any contribution you intentionally submitted for inclusion in current work, as defined in the Apache-2.0 license, shall be dual licensed as described below, without any additional terms or conditions.
