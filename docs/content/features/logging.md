@@ -46,6 +46,7 @@ static-web-server -a "0.0.0.0" -p 8080 -d docker/public/ -g info --log-remote-ad
 ```
 
 The relevant log output:
+
 ```log
 INFO static_web_server::logger: logging level: info
 <...>
@@ -78,8 +79,7 @@ To restrict the logging to only requests that originate from trusted proxy IPs, 
 When used behind a reverse proxy the reported `remote_addr` indicates the proxies IP address and port, not the client's real IP.
 The Proxy server can be configured to provide the [X-Forwarded-For header](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Forwarded-For), containing a comma-separated list of IP addresses, starting with the *real remote client IP*, and all following intermediate proxies (if any).
 
-
-To enable logging of the real remote IP, enable the `--log-forwarded-for` option or the equivalent [SERVER_LOG_FORWARDED_FOR](../configuration/environment-variables.md#server_log_forwarded_for) env. By default this will log all requests which have a correctly formatted `X-Forwarded-For` header. 
+To enable logging of the real remote IP, enable the `--log-forwarded-for` option or the equivalent [SERVER_LOG_FORWARDED_FOR](../configuration/environment-variables.md#server_log_forwarded_for) env. By default this will log all requests which have a correctly formatted `X-Forwarded-For` header.
 
 Since the content of the `X-Forwarded-For` header can be changed by all proxies in the chain, the remote IP address reported may not be trusted.
 
@@ -92,6 +92,7 @@ static-web-server -a "::" --log-forwarded-for=true --trusted-proxies="::1" -p 80
 ```
 
 Look for these lines in the log output:
+
 ```log
 <...>
 INFO static_web_server::info: log level: info
@@ -113,22 +114,25 @@ Log entry for this request will look like:
 INFO static_web_server::handler: incoming request: method=GET uri=/ real_remote_ip=203.0.113.195
 ```
 
----
+______________________________________________________________________
 
 If we send the request from `127.0.0.1` instead:
+
 ```sh
 curl "http://127.0.0.1:8080" --header "X-Forwarded-For: 203.0.113.195, 2001:db8:85a3:8d3:1319:8a2e:370:7348"
 ```
 
 we get the following log output:
+
 ```log
 INFO static_web_server::handler: incoming request: method=GET uri=/
 ```
+
 `127.0.0.1` is not in the `trusted_proxies`, so we dont get a `real_remote_address` in the log.
 
 Note the absence of the proxies remote address in these examples. If you want to log the remote address and the real remote address, you need to specify both `--log-remote-address` and `--log-forwarded-for`.
 
----
+______________________________________________________________________
 
 **`SWS`** will parse the `X-Forwarded-For` header and if the provided client IP is invalid, it will be ignored to prevent log poisoning attacks. In such cases the `real_remote_ip` section will not be added.
 

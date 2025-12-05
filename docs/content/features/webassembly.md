@@ -3,6 +3,7 @@
 **SWS** can run in a [WebAssembly](https://webassembly.org/) context.
 
 !!! info "Wasm/Wasix targets are not officially supported by SWS yet"
+
     We do not officially support Wasm or Wasix targets yet. But SWS project will eventually support Wasix as a target in a not remote future.<br>
     In the meantime, [Wasmer](https://wasmer.io/) folks made it possible to [run SWS via Wasix today](https://wasmer.io/posts/announcing-wasix) via a series of patches.
 

@@ -1,6 +1,6 @@
 # Ignore files
 
-**`SWS`** provides some options to ignore files or directories from being served and displayed if the directory listing is enabled. 
+**`SWS`** provides some options to ignore files or directories from being served and displayed if the directory listing is enabled.
 
 ## Ignore hidden files (dotfiles)
 

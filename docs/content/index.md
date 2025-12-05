@@ -5,13 +5,13 @@
     </a>
   </div>
 
-  <h1 class="sws-title" align="center">Static Web Server</h1>
+<h1 class="sws-title" align="center">Static Web Server</h1>
 
-  <h4 align="center">
+<h4 align="center">
     A cross-platform, high-performance & asynchronous web server for static files serving
   </h4>
 
-  <div align="center">
+<div align="center">
     <a href="https://github.com/static-web-server/static-web-server/actions/workflows/devel.yml" title="devel ci"><img src="https://github.com/static-web-server/static-web-server/actions/workflows/devel.yml/badge.svg?branch=master"></a> 
     <a href="https://hub.docker.com/r/joseluisq/static-web-server/" title="Docker Image Version (tag latest semver)"><img src="https://img.shields.io/docker/v/joseluisq/static-web-server/2"></a> 
     <a href="https://hub.docker.com/r/joseluisq/static-web-server/tags" title="Docker Image Size (tag)"><img src="https://img.shields.io/docker/image-size/joseluisq/static-web-server/2"></a> 
@@ -59,7 +59,7 @@ Cross-platform and available for `Linux`, `macOS`, `Windows`, `FreeBSD`, `NetBSD
 - Basic HTTP Authentication.
 - Customizable HTTP response headers for specific file requests via glob patterns.
 - Fallback pages for 404 errors, useful for Single-page applications.
-- Run the server as a [Windows Service](https://docs.microsoft.com/en-us/previous-versions/windows/it-pro/windows-server-2003/cc783643(v=ws.10)).
+- Run the server as a [Windows Service](<https://docs.microsoft.com/en-us/previous-versions/windows/it-pro/windows-server-2003/cc783643(v=ws.10)>).
 - Configurable using CLI arguments, environment variables or a TOML file.
 - Default and custom error pages.
 - Built-in HTTP to HTTPS redirect.

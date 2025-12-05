@@ -19,6 +19,7 @@ cargo build --release
 Finally, the release binary should be available at `target/release/static-web-server` or under your toolchain directory chosen.
 
 !!! info "Don't use the project's `Makefile`"
+
     Please don't use the project's `Makefile` since it's only intended for development and some on-demand tasks.
 
 ## Cargo features
@@ -26,26 +27,26 @@ Finally, the release binary should be available at `target/release/static-web-se
 When building from the source, all features are enabled by default.
 However, you can disable just the ones you don't need from the lists below.
 
-Feature | Description
----------|------
-**Default** |
-`default` | Activates the default features by omission.
-`all` | Activates all available features including the `experimental` feature. This is the default feature used when building SWS binaries.
-`experimental` | Activates all SWS experimental features. Make sure to also provide the required `RUSTFLAGS` if the feature requires so.
-[**HTTP2/TLS**](./features/http2-tls.md) |
-`http2` | Activates the HTTP2 and TLS feature.
-[**Compression**](./features/compression.md) |
-`compression` | Activates auto-compression and compression static with all supported algorithms.
-`compression-brotli` | Activates auto-compression/compression static with only the `brotli` algorithm.
-`compression-deflate` | Activates auto-compression/compression static with only the `deflate` algorithm.
-`compression-gzip` | Activates auto-compression/compression static with only the `gzip` algorithm.
-`compression-zstd` | Activates auto-compression/compression static with only the `zstd` algorithm.
-[**Directory Listing**](./features/directory-listing.md) |
-`directory-listing` | Activates the directory listing feature.
-[**Basic Authorization**](./features/basic-authentication.md) |
-`basic-auth` | Activates the Basic HTTP Authorization Schema feature.
-[**Fallback Page**](./features/error-pages.md#fallback-page-for-use-with-client-routers) |
-`fallback-page` | Activates the Fallback Page feature.
+| Feature | Description |
+| -- | -- |
+| **Default** |  |
+| `default` | Activates the default features by omission. |
+| `all` | Activates all available features including the `experimental` feature. This is the default feature used when building SWS binaries. |
+| `experimental` | Activates all SWS experimental features. Make sure to also provide the required `RUSTFLAGS` if the feature requires so. |
+| [**HTTP2/TLS**](./features/http2-tls.md) |  |
+| `http2` | Activates the HTTP2 and TLS feature. |
+| [**Compression**](./features/compression.md) |  |
+| `compression` | Activates auto-compression and compression static with all supported algorithms. |
+| `compression-brotli` | Activates auto-compression/compression static with only the `brotli` algorithm. |
+| `compression-deflate` | Activates auto-compression/compression static with only the `deflate` algorithm. |
+| `compression-gzip` | Activates auto-compression/compression static with only the `gzip` algorithm. |
+| `compression-zstd` | Activates auto-compression/compression static with only the `zstd` algorithm. |
+| [**Directory Listing**](./features/directory-listing.md) |  |
+| `directory-listing` | Activates the directory listing feature. |
+| [**Basic Authorization**](./features/basic-authentication.md) |  |
+| `basic-auth` | Activates the Basic HTTP Authorization Schema feature. |
+| [**Fallback Page**](./features/error-pages.md#fallback-page-for-use-with-client-routers) |  |
+| `fallback-page` | Activates the Fallback Page feature. |
 
 ### Disable all default features
 
@@ -118,6 +119,7 @@ docker run -it --rm \
 ```
 
 !!! tip "Output the docs in a different directory"
+
     If you want to output the docs in a different directory then append the `--site-dir=/new/dir/path/` argument to the *"squidfunk/mkdocs-material"* `build` command and make sure to provide the new directory path.
 
 ### Development server
@@ -131,3 +133,14 @@ docker-compose -f docs/docker-compose.yml up
 ```
 
 Now the server will be available at `localhost:8000`
+
+## Formatting Markdown files
+
+This project makes use of [mdformat](https://mdformat.readthedocs.io/en/stable/) to format Markdown files.
+The CI job `devel-project-docs` checks that all Markdown files are formatted correctly.
+
+To format documentation changes, you can run `mdformat` manually using [uv](https://docs.astral.sh/uv/getting-started/installation/):
+
+```sh
+uvx --python ">=3.13" --with mdformat-mkdocs mdformat ./*.md docs/
+```

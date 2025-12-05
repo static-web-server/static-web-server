@@ -5,6 +5,7 @@
 This feature is enabled by default and can be controlled by the boolean `-e, --cache-control-headers` option or the equivalent [SERVER_CACHE_CONTROL_HEADERS](./../configuration/environment-variables.md#server_cache_control_headers) env.
 
 !!! tip "Customize HTTP headers"
+
     If you want to customize HTTP headers on demand then have a look at the [Custom HTTP Headers](custom-http-headers.md) section.
 
 ## Cache-Control Max-Age
@@ -16,6 +17,7 @@ Control headers are applied only to the following file types with the correspond
 A `max-age` of *one day* duration is used by default.
 
 !!! info "Note"
+
     One-day `max-age` for example includes `html` and other file types.
 
 ### One hour

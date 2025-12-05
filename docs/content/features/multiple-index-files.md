@@ -3,6 +3,7 @@
 **`SWS`** allows to provide a list of files that will be used as an index for requests ending with the slash character (‘/’).
 
 !!! info "Notes"
+
     - Files are checked in the specified order from left to right.
     - The option value can be a single index or comma-separated when multiple values.
     - The default value is `index.html`.

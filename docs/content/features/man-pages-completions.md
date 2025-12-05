@@ -17,7 +17,6 @@ You can generate completions for these shells and completion engines:
 
 By typing the following command, all completions will be exported to a specific directory path:
 
-
 ```sh
 static-web-server generate --completions /my-completions-dir
 ```

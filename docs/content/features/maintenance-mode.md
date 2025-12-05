@@ -18,14 +18,16 @@ When not specified, the server will reply with the `503 Service Unavailable` sta
 
 ## HTML Page
 
-The `--maintenance-mode-file`  or the equivalent [SERVER_MAINTENANCE_MODE_FILE](./../configuration/environment-variables.md#server_maintenance_mode_file) env variable can be also used to customize the response content.
+The `--maintenance-mode-file` or the equivalent [SERVER_MAINTENANCE_MODE_FILE](./../configuration/environment-variables.md#server_maintenance_mode_file) env variable can be also used to customize the response content.
 
 The value should be an existing local HTML file path. When not provided a generic message will be displayed.
 
 !!! tip "Optional"
+
     Remember that either `--maintenance-mode-status` and `--maintenance-mode-file` are optional and can be omitted as needed.
 
 !!! info "Independent path"
+
     The `--maintenance-mode-file` is an independent file path and not relative to the root.
 
 ## Example

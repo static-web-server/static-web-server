@@ -4,10 +4,10 @@
 
 The following Static Web Server versions are currently being supported with security updates.
 
-| Version | Supported          |
-| ------- | ------------------ |
-| 2.x.x   | :white_check_mark: (current stable) |
-| 1.x.x   | :x: (deprecated due to [End of Life](https://github.com/static-web-server/static-web-server/releases/tag/v1.19.4)) |
+| Version | Supported |
+| -- | -- |
+| 2.x.x | :white_check_mark: (current stable) |
+| 1.x.x | :x: (deprecated due to [End of Life](https://github.com/static-web-server/static-web-server/releases/tag/v1.19.4)) |
 
 ## Report a security issue
 

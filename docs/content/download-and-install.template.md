@@ -13,6 +13,7 @@ Latest **{{RELEASE_VERSION}}** release `{{RELEASE_DATE}}` ([changelog](https://g
 See also [the release history](https://github.com/static-web-server/static-web-server/releases) on GitHub.
 
 !!! info "Docker"
+
     If you are working with Docker containers then check out [the Docker feature page](https://static-web-server.net/features/docker/).
 
 ## Installation methods
@@ -55,7 +56,7 @@ yay -S static-web-server-bin
 
 Add the `rust` repository and install [the package](https://gitlab.exherbo.org/exherbo/rust/-/tree/master/packages/www-servers/static-web-server) through `cave`:
 
-```
+```sh
 cave sync
 cave resolve -x repository/rust
 cave resolve -x static-web-server

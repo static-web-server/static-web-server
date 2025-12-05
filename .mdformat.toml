@@ -1,0 +1,15 @@
+# see:  https://mdformat.readthedocs.io/en/stable/users/configuration_file.html
+
+number = true
+# requires Python 3.13+
+exclude = [
+    # avoid moving all link definitions to the bottom
+    "CHANGELOG.md",
+
+    # fails validation that rendered HTML is consistent
+    "docs/content/download-and-install*.md"
+]
+
+# https://github.com/hukkin/mdformat-gfm#configuration
+[plugin.tables]
+compact_tables = true
