@@ -133,3 +133,14 @@ docker-compose -f docs/docker-compose.yml up
 ```
 
 Now the server will be available at `localhost:8000`
+
+## Formatting Markdown files
+
+This project makes use of [mdformat](https://mdformat.readthedocs.io/en/stable/) to format Markdown files.
+The CI job `devel-project-docs` checks that all Markdown files are formatted correctly.
+
+To format documentation changes, you can run `mdformat` manually using [uv](https://docs.astral.sh/uv/getting-started/installation/):
+
+```sh
+uvx --python ">=3.13" --with mdformat-mkdocs mdformat ./*.md docs/
+```
