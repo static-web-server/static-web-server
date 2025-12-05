@@ -27,7 +27,7 @@ jobs:
     - name: Check Markdown formatting
       run: |
         pip install uv
-        uvx --with mdformat-mkdocs mdformat --number --compact-tables --exclude "docs/content/download-and-install*.md" --exclude "CHANGELOG" --check ./*.md docs/
+        uvx --python ">=3.13" --with mdformat-mkdocs mdformat --check ./*.md docs/
 
     - name: Build docs
       run: |
