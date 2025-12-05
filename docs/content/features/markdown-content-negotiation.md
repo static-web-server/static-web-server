@@ -71,6 +71,7 @@ curl -H "Accept: text/markdown" https://example.com/docs/
 ```
 
 This approach is superior to traditional `.md` URL suffixes because:
+
 - Uses standard HTTP content negotiation
 - Same URL serves both HTML (browsers) and Markdown (LLMs)
 - No need for separate URL structures or redirects

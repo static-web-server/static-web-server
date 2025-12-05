@@ -3,7 +3,7 @@
 **`SWS`** provides optional [Cross-Origin Resource Sharing (CORS)](https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS) support.
 
 A list of allowed origin hosts (URLs) should be specified and separated by commas.
-Or an asterisk (*) can be used to allow any host.
+Or an asterisk (\*) can be used to allow any host.
 
 This feature is disabled by default and can be controlled by the string `-c, --cors-allow-origins` option or the equivalent [SERVER_CORS_ALLOW_ORIGINS](../configuration/environment-variables.md#server_cors_allow_origins) env.
 
@@ -26,6 +26,7 @@ The server also supports a list of [CORS allowed headers](https://developer.mozi
 This feature depends on `--cors-allow-origins` to be used along with this feature. It can be controlled by the string `-j, --cors-allow-headers` option or the equivalent [SERVER_CORS_ALLOW_HEADERS](../configuration/environment-variables.md#server_cors_allow_headers) env.
 
 !!! info "Tips"
+
     - The default allowed headers value is `origin, content-type, authorization`.
     - The server also supports [preflight requests](https://developer.mozilla.org/en-US/docs/Glossary/Preflight_request) via the `OPTIONS` method. See [Preflighted requests in CORS](./http-methods.md#preflight-requests-in-cors).
 
@@ -46,6 +47,7 @@ The server also supports a list of [CORS-exposed headers to scripts](https://dev
 This feature depends on `--cors-allow-origins` to be used along with this feature. It can be controlled by the string `--cors-expose-headers` option or the equivalent [SERVER_CORS_EXPOSE_HEADERS](../configuration/environment-variables.md#server_cors_expose_headers) env.
 
 !!! info "Tips"
+
     - The default exposed header's is `origin, content-type`.
     - The server also supports [preflight requests](https://developer.mozilla.org/en-US/docs/Glossary/Preflight_request) via the `OPTIONS` method. See [Preflighted requests in CORS](./http-methods.md#preflight-requests-in-cors).
 

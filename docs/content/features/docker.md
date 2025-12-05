@@ -19,9 +19,11 @@ All Docker images are [Multi-Arch](https://www.docker.com/blog/how-to-rapidly-bu
 - `linux/s390x` (Debian only)
 
 !!! tip "`Scratch` and `Alpine` images use statically-linked binaries"
+
     `Scratch` and `Alpine` based Docker images use a statically-linked binary that is portable, performant and dependency-free thanks to [musl libc](https://www.musl-libc.org/), keeping containers as lean as possible.
 
 !!! tip "`Debian` images use dynamically-linked binaries"
+
     `Debian` based Docker images use SWS dynamically-linked binaries, making containers highly optimized, performant and resource-efficient.
 
 ## Rootless
@@ -29,6 +31,7 @@ All Docker images are [Multi-Arch](https://www.docker.com/blog/how-to-rapidly-bu
 The **Debian** and **Alpine** Docker images are rootless **by default** using a dedicated `sws` user and group. This reduces the attack surface and improves security.
 
 !!! info "Remember"
+
     Users can still run the containers as root if they _explicitly_ set the user to _root_ when running the container, e.g., using the `--user root` flag with `docker run`.
 
 The `static-web-server` binary and all files under `/home/sws` (home directory) are owned by the non-root `sws` user and group.
@@ -46,6 +49,7 @@ The current working directory is the _home directory_ by default.
 To give the server a quick try just run the following commands.
 
 !!! tip "Tips"
+
     - [The SWS CLI arguments](../configuration/command-line-arguments.md) can be provided directly to the container or omitted as shown below.
     - A Docker volume like `-v $HOME/my-public-dir:/public` can be specified to overwrite the default root directory.
 
@@ -221,4 +225,5 @@ spec:
 ```
 
 ### TrueCharts
+
 The [TrueCharts Community](https://truecharts.org) also provides a ready-to-use [Static Web Server Helm-Chart](https://truecharts.org/charts/stable/static-web-server/) that you can easily deploy in your Kubernetes.

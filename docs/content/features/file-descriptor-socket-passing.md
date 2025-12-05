@@ -3,6 +3,7 @@
 **SWS** provides the ability to accept a socket listener as a file descriptor for use in sandboxing and on-demand applications via `systemd` (Linux), `launchd` (Macos) or similar.
 
 !!! tip "Tip"
+
     The [Socket Activation](http://0pointer.de/blog/projects/socket-activation.html) model is an alternative to TCP port binding.
 
 Socket activation is supported by the `-f, --fd` option or the equivalent [SERVER_LISTEN_FD](./../configuration/environment-variables.md#server_listen_fd) env.

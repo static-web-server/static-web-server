@@ -24,6 +24,7 @@ curl -I -X OPTIONS http://localhost:8787/assets/main.js
 The HTTP [OPTIONS](https://developer.mozilla.org/en-US/docs/Web/HTTP/Methods/OPTIONS) method can also be used to send a request asking if it is acceptable to send requests to the server and if it is aware of using specific methods and headers.
 
 !!! info "Tip"
+
     If an `Access-Control-Request-Method` or `Access-Control-Request-Headers` value is not allowed then the server replies with a `403 Forbidden` HTTP error. See [CORS](./cors.md) feature for more details.
 
 Example using an HTTP client.

@@ -14,6 +14,7 @@ Each table entry should have two key/value pairs:
 A particular set of HTTP headers can only be applied when a `source` matches against the request URI.
 
 !!! info "Custom HTTP headers take precedence over existing ones"
+
     Whatever custom HTTP header could **replace** an existing one if it was previously defined (e.g. server default headers) and matches its `source`.
 
     The header's order is important because determines its precedence.
@@ -22,7 +23,7 @@ A particular set of HTTP headers can only be applied when a `source` matches aga
 
 ### Source
 
-The source is a [Glob pattern](https://en.wikipedia.org/wiki/Glob_(programming)) that should match against the URI that is requesting a resource file.
+The source is a [Glob pattern](<https://en.wikipedia.org/wiki/Glob_(programming)>) that should match against the URI that is requesting a resource file.
 
 ### Headers
 
