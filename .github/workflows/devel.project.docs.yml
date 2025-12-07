@@ -24,6 +24,11 @@ jobs:
       with:
         config: ./.github/workflows/config/typos.toml
 
+    - name: Check Markdown formatting
+      run: |
+        pip install uv
+        uvx --python ">=3.13" --with mdformat-mkdocs mdformat --check ./*.md docs/
+
     - name: Build docs
       run: |
         docker compose -f docs/docker-compose.yml run --rm server mkdocs build

@@ -59,6 +59,7 @@ Below are the possible number code values for sorting or ordering which are grou
 - `6`: Unordered
 
 !!! tip "Tips"
+
     - The `--directory-listing-order` option depends on `--directory-listing` to be enabled.
     - Use the query `?sort=NUMBER` to customize the sorting via the URI. E.g `https://localhost/?sort=5` (sort by size in descending order)
 
@@ -78,6 +79,7 @@ static-web-server \
 **`SWS`** provides support for specifying an output format either HTML (default) or JSON for the directory listing entries via the string `--directory-listing-format` option or the equivalent [SERVER_DIRECTORY_LISTING_FORMAT](./../configuration/environment-variables.md#server_directory_listing_format) env.
 
 !!! tip "Tips"
+
     - The `--directory-listing-format` option depends on `--directory-listing` to be enabled.
 
 ### HTML format
@@ -106,7 +108,6 @@ The JSON format used is shown below for directories and files. Note that the `si
 
 Here is an example of serving the directory listing in JSON format.
 
-
 ```sh
 static-web-server \
     -p=8787 -d=tests/fixtures/public -g=trace \
@@ -128,6 +129,7 @@ curl -iH "content-type: application/json" http://localhost:8787
 ```
 
 ## Directory Download
+
 **`SWS`** supports downloading the content of a directory as a single file when **Directory Listing** feature is enabled. To activate, specify the list of download format to enable using the `--directory-listing-download` flag or the equivalent [SERVER_DIRECTORY_LISTING_DOWNLOAD](./../configuration/environment-variables.md#server_directory_listing_download) env. Currently, `targz` format is supported.
 
 ```sh
@@ -137,4 +139,3 @@ static-web-server \
 ```
 
 When **Directory Download** is enabled, append `?download` to a directory URL to download it. A link will also be added to the top part of **HTML** output format.
-
