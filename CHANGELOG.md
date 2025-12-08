@@ -5,6 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v2.40.1 - 2025-12-08
+
+This new `v2.40.1` release brings important security bug fixes for users serving directories with symbilic links (_symlinks_) as well as other minor improvements.
+
+We encourage users to update as soon as possible.
+More details about the fixed security issue will be provided in the next hours.
+
+__Fixes__
+
+- [9b7297c][9b7297c] Update dependencies like async-compression, log, libc and others. [#599][599]  by [@joseluisq][joseluisq]
+- [308f0d2][308f0d2] Fix incorrect symbolic link handling by [@joseluisq][joseluisq]
+
+[9b7297c]: http-s://github.com/static-web-server/static-web-server/commit/9b7297c
+[308f0d2]: https://github.com/static-web-server/static-web-server/commit/308f0d2
+[599]: https://github.com/static-web-server/static-web-server/pull/599
+
+__Refactorings__
+
+- [ce3a51c][ce3a51c] CI: Dedicated workflow for project documentation checks. [#596][596] by [@mschoettle][mschoettle]
+- [dd43d06][dd43d06] Misc: Markdown format check support for project documentation. [#597][597] by [@mschoettle][mschoettle]
+
+[ce3a51c]: https://github.com/static-web-server/static-web-server/commit/ce3a51c
+[dd43d06]: https://github.com/static-web-server/static-web-server/commit/dd43d06
+[596]: https://github.com/static-web-server/static-web-server/pull/596
+[597]: https://github.com/static-web-server/static-web-server/pull/597
+[mschoettle]: https://github.com/mschoettle
+
+For more details see the [v2.40.1 milestone][v2401-milestone] and the full changelog [v2.40.0...v2.40.1][v2401-diff].
+
+[v2401-diff]: https://github.com/static-web-server/static-web-server/compare/v2.40.0...v2.40.1
+[v2401-milestone]: https://github.com/static-web-server/static-web-server/milestone/35?closed=1
+
 ## v2.40.0 - 2025-11-30
 
 This new `v2.40.0` release brings important security bug fixes, performance, resource and binary size optimizations, rootless Debian and Alpine Docker images, content negotiation for Markdown files support and other enhancements.
