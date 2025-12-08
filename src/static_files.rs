@@ -130,6 +130,43 @@ pub async fn handle(opts: &HandleOpts<'_>) -> Result<StaticFileResponse, StatusC
         }
     }
 
+    // Prevent symlinks access if option is enabled
+    if file_path.is_symlink() {
+        if opts.disable_symlinks {
+            tracing::warn!(
+                "file path {} is a symlink, access denied",
+                file_path.display()
+            );
+            return Err(StatusCode::FORBIDDEN);
+        }
+
+        let symlink_file_path = file_path.canonicalize().map_err(|err| {
+            tracing::error!(
+                "unable to resolve `{}` symlink path: {}",
+                file_path.display(),
+                err,
+            );
+            StatusCode::NOT_FOUND
+        })?;
+
+        let base_path = opts.base_path.canonicalize().map_err(|err| {
+            tracing::error!(
+                "unable to resolve `{}` symlink path: {}",
+                file_path.display(),
+                err,
+            );
+            StatusCode::NOT_FOUND
+        })?;
+
+        if !symlink_file_path.starts_with(base_path) {
+            tracing::error!(
+                "file path {} is a symlink, access denied",
+                symlink_file_path.display()
+            );
+            return Err(StatusCode::NOT_FOUND);
+        }
+    }
+
     let FileMetadata {
         file_path,
         metadata,
@@ -140,7 +177,6 @@ pub async fn handle(opts: &HandleOpts<'_>) -> Result<StaticFileResponse, StatusC
         headers_opt,
         opts.compression_static,
         opts.index_files,
-        opts.disable_symlinks,
     )?;
 
     // Check for a hidden file/directory (dotfile) and ignore it if feature enabled
@@ -229,6 +265,7 @@ pub async fn handle(opts: &HandleOpts<'_>) -> Result<StaticFileResponse, StatusC
         }
 
         let resp = directory_listing::auto_index(DirListOpts {
+            root_path: opts.base_path.as_path(),
             method,
             current_path: uri_path,
             uri_query: opts.uri_query,
@@ -299,18 +336,8 @@ fn get_composed_file_metadata<'a>(
     _headers: &'a HeaderMap<HeaderValue>,
     _compression_static: bool,
     mut index_files: &'a [&'a str],
-    disable_symlinks: bool,
 ) -> Result<FileMetadata<'a>, StatusCode> {
     tracing::trace!("getting metadata for file {}", file_path.display());
-
-    // Prevent symlinks access if option is enabled
-    if disable_symlinks && file_path.is_symlink() {
-        tracing::warn!(
-            "file path {} is a symlink, access denied",
-            file_path.display()
-        );
-        return Err(StatusCode::FORBIDDEN);
-    }
 
     // Try to find the file path on the file system
     match try_metadata(file_path) {

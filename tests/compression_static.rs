@@ -167,8 +167,8 @@ mod tests {
         }
     }
 
-    #[cfg(feature = "directory-listing")]
     #[tokio::test]
+    #[cfg(feature = "directory-listing")]
     async fn compression_static_index_file() {
         let opts = fixture_settings("toml/handler_fixtures.toml");
         let general = General {

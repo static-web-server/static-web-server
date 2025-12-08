@@ -8,6 +8,7 @@ mod tests {
     use bytes::Bytes;
     use headers::HeaderMap;
     use http::{Method, StatusCode};
+    use static_web_server::http_ext::MethodExt;
     use std::fs;
     use std::path::PathBuf;
 
@@ -283,7 +284,6 @@ mod tests {
         }
     }
 
-    // FIX
     #[tokio::test]
     async fn handle_append_index_on_dir() {
         let buf = fs::read(root_dir().join("assets/index.html"))
@@ -742,6 +742,7 @@ mod tests {
         }
     }
 
+    #[tokio::test]
     #[cfg(any(
         feature = "compression",
         feature = "compression-deflate",
@@ -749,7 +750,6 @@ mod tests {
         feature = "compression-brotli",
         feature = "compression-zstd"
     ))]
-    #[tokio::test]
     async fn handle_file_compressions() {
         let encodings = [
             #[cfg(any(feature = "compression", feature = "compression-gzip"))]
@@ -1639,13 +1639,104 @@ mod tests {
                     let res = result.resp;
                     assert_eq!(res.status(), 200);
                 }
-                Err(err) => {
-                    match method {
-                        // The handle only accepts HEAD or GET request methods
-                        Method::GET | Method::HEAD => {
-                            panic!("unexpected an error response {err}")
+                Err(status) => match method {
+                    Method::GET | Method::HEAD => {
+                        panic!("unexpected error response with status {status}")
+                    }
+                    _ => assert_eq!(status, StatusCode::METHOD_NOT_ALLOWED),
+                },
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn handle_symlinks_paths() {
+        let root_dir_rel = PathBuf::from("tests/fixtures/public/");
+        let root_dir_abs = root_dir_rel.canonicalize().unwrap();
+        let headers = HeaderMap::new();
+
+        for root_dir in [root_dir_rel, root_dir_abs] {
+            for method in METHODS {
+                match static_files::handle(&HandleOpts {
+                    method: &method,
+                    headers: &headers,
+                    base_path: &root_dir,
+                    uri_path: "/readme.md",
+                    uri_query: None,
+                    #[cfg(feature = "experimental")]
+                    memory_cache: None,
+                    #[cfg(feature = "directory-listing")]
+                    dir_listing: false,
+                    #[cfg(feature = "directory-listing")]
+                    dir_listing_order: 6,
+                    #[cfg(feature = "directory-listing")]
+                    dir_listing_format: &DirListFmt::Html,
+                    #[cfg(feature = "directory-listing-download")]
+                    dir_listing_download: &[],
+                    redirect_trailing_slash: true,
+                    compression_static: true,
+                    ignore_hidden_files: true,
+                    disable_symlinks: false,
+                    index_files: &["index.htm", "index.htm"],
+                })
+                .await
+                {
+                    Ok(_) => {
+                        panic!("unexpected successful response")
+                    }
+                    Err(status) => {
+                        if method.is_allowed() {
+                            assert_eq!(status, StatusCode::NOT_FOUND)
+                        } else {
+                            assert_eq!(status, StatusCode::METHOD_NOT_ALLOWED)
                         }
-                        _ => assert_eq!(err, StatusCode::METHOD_NOT_ALLOWED),
+                    }
+                }
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn handle_symlinks_skip_broken_path() {
+        let root_dir_rel = PathBuf::from("tests/fixtures/symlink/");
+        let root_dir_abs = root_dir_rel.canonicalize().unwrap();
+        let headers = HeaderMap::new();
+
+        for root_dir in [root_dir_rel, root_dir_abs] {
+            for method in METHODS {
+                match static_files::handle(&HandleOpts {
+                    method: &method,
+                    headers: &headers,
+                    base_path: &root_dir,
+                    uri_path: "/unknown.md",
+                    uri_query: None,
+                    #[cfg(feature = "experimental")]
+                    memory_cache: None,
+                    #[cfg(feature = "directory-listing")]
+                    dir_listing: false,
+                    #[cfg(feature = "directory-listing")]
+                    dir_listing_order: 6,
+                    #[cfg(feature = "directory-listing")]
+                    dir_listing_format: &DirListFmt::Html,
+                    #[cfg(feature = "directory-listing-download")]
+                    dir_listing_download: &[],
+                    redirect_trailing_slash: true,
+                    compression_static: true,
+                    ignore_hidden_files: true,
+                    disable_symlinks: false,
+                    index_files: &["index.htm", "index.htm"],
+                })
+                .await
+                {
+                    Ok(_) => {
+                        panic!("unexpected successful response")
+                    }
+                    Err(status) => {
+                        if method.is_allowed() {
+                            assert_eq!(status, StatusCode::NOT_FOUND)
+                        } else {
+                            assert_eq!(status, StatusCode::METHOD_NOT_ALLOWED)
+                        }
                     }
                 }
             }

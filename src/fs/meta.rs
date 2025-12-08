@@ -33,7 +33,7 @@ pub(crate) fn try_metadata(file_path: &Path) -> Result<(Metadata, bool), StatusC
     match std::fs::metadata(file_path) {
         Ok(meta) => {
             let is_dir = meta.is_dir();
-            tracing::trace!("file found: {:?}", file_path);
+            tracing::trace!("file found: {:?}; is_dir: {is_dir}", file_path);
             Ok((meta, is_dir))
         }
         Err(err) => {

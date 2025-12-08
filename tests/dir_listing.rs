@@ -436,8 +436,8 @@ mod tests {
         }
     }
 
-    #[cfg(feature = "directory-listing-download")]
     #[tokio::test]
+    #[cfg(feature = "directory-listing-download")]
     async fn dir_listing_has_download_link_when_enabled() {
         for method in METHODS {
             match static_files::handle(&HandleOpts {
@@ -484,8 +484,8 @@ mod tests {
         }
     }
 
-    #[cfg(feature = "directory-listing-download")]
     #[tokio::test]
+    #[cfg(feature = "directory-listing-download")]
     async fn dir_listing_has_no_download_link_when_disabled() {
         for method in METHODS {
             match static_files::handle(&HandleOpts {
