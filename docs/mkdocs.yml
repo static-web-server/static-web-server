@@ -175,6 +175,7 @@ nav:
   - 'Semantic Versioning': 'semantic-versioning.md'
   - 'Report Security Issues': 'report-security-issues.md'
   - 'Contributions': 'contributions.md'
+  - 'Showcases': 'showcases.md'
   - 'License': 'license.md'
 
 not_in_nav: |
