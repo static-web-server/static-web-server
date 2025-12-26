@@ -1,15 +1,6 @@
 name: release-docker-devel
 
 on:
-  pull_request:
-    branches:
-      - master
-    paths:
-      - .github/workflows/release.docker.devel.yml
-      - .cargo/config.toml
-      - Cargo.lock
-      - Cargo.toml
-      - src/**
   push:
     branches:
       - master
