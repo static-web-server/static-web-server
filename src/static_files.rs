@@ -180,7 +180,7 @@ pub async fn handle(opts: &HandleOpts<'_>) -> Result<StaticFileResponse, StatusC
     )?;
 
     // Check for a hidden file/directory (dotfile) and ignore it if feature enabled
-    if opts.ignore_hidden_files && file_path.is_hidden() {
+    if opts.ignore_hidden_files && file_path.strip_prefix(opts.base_path).unwrap().is_hidden() {
         return Err(StatusCode::NOT_FOUND);
     }
 
