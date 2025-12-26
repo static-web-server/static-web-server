@@ -18,9 +18,7 @@ RUN set -ex \
         "linux/amd64") target='x86_64-unknown-linux-gnu' ;; \
         "linux/arm64") target='aarch64-unknown-linux-gnu' ;; \
         "linux/386") target='i686-unknown-linux-gnu' ;; \
-        # TODO: linux/arm/v7 will use 'gnueabihf' instead of 'musleabihf' binary once available \
-        # "linux/arm/v7") target='armv7-unknown-linux-gnueabihf' ;; \
-        "linux/arm/v7") target='armv7-unknown-linux-musleabihf' ;; \
+        "linux/arm/v7") target='armv7-unknown-linux-gnueabihf' ;; \
         "linux/arm/v6") target='arm-unknown-linux-gnueabihf' ;; \
         "linux/ppc64le") target='powerpc64le-unknown-linux-gnu' ;; \
         "linux/s390x") target='s390x-unknown-linux-gnu' ;; \
