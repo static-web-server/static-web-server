@@ -1520,6 +1520,99 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn hidden_base_path_not_ignored() {
+        let root_dir = PathBuf::from("tests/fixtures/.hidden-root");
+        let headers = HeaderMap::new();
+
+        for method in [Method::HEAD, Method::GET] {
+            let result = static_files::handle(&HandleOpts {
+                method: &method,
+                headers: &headers,
+                base_path: &root_dir,
+                uri_path: "foo.html",
+                uri_query: None,
+                #[cfg(feature = "experimental")]
+                memory_cache: None,
+                #[cfg(feature = "directory-listing")]
+                dir_listing: false,
+                #[cfg(feature = "directory-listing")]
+                dir_listing_order: 6,
+                #[cfg(feature = "directory-listing")]
+                dir_listing_format: &DirListFmt::Html,
+                #[cfg(feature = "directory-listing-download")]
+                dir_listing_download: &[],
+                redirect_trailing_slash: true,
+                compression_static: true,
+                ignore_hidden_files: true,
+                disable_symlinks: false,
+                index_files: &[],
+            })
+            .await
+            .expect("unexpected error response on `handle` function");
+            let mut res = result.resp;
+
+            let buf = fs::read(root_dir.join("foo.html"))
+                .expect("unexpected error during index.html reading");
+            let buf = Bytes::from(buf);
+
+            assert_eq!(res.status(), 200);
+            assert_eq!(res.headers()["content-length"], buf.len().to_string());
+            assert_eq!(res.headers()["accept-ranges"], "bytes");
+            assert!(!res.headers()["last-modified"].is_empty());
+
+            let ctype = &res.headers()["content-type"];
+
+            assert!(ctype == "text/html", "content-type is not html: {ctype:?}",);
+
+            let body = hyper::body::to_bytes(res.body_mut())
+                .await
+                .expect("unexpected bytes error during `body` conversion");
+
+            assert_eq!(body, buf);
+        }
+    }
+
+    #[tokio::test]
+    async fn hidden_file_in_hidden_base_path_ignored() {
+        let root_dir = PathBuf::from("tests/fixtures/.hidden-root");
+        let headers = HeaderMap::new();
+
+        for method in [Method::HEAD, Method::GET] {
+            match static_files::handle(&HandleOpts {
+                method: &method,
+                headers: &headers,
+                base_path: &root_dir,
+                uri_path: ".hidden-file.txt",
+                uri_query: None,
+                #[cfg(feature = "experimental")]
+                memory_cache: None,
+                #[cfg(feature = "directory-listing")]
+                dir_listing: false,
+                #[cfg(feature = "directory-listing")]
+                dir_listing_order: 6,
+                #[cfg(feature = "directory-listing")]
+                dir_listing_format: &DirListFmt::Html,
+                #[cfg(feature = "directory-listing-download")]
+                dir_listing_download: &[],
+                redirect_trailing_slash: true,
+                compression_static: true,
+                ignore_hidden_files: true,
+                disable_symlinks: false,
+                index_files: &["index.htm"],
+            })
+            .await
+            {
+                Ok(_) => {
+                    panic!("expected a status error 404 but not status 200")
+                }
+                Err(status) => {
+                    assert_eq!(status, StatusCode::NOT_FOUND);
+                }
+            }
+        }
+    }
+
+    #[tokio::test]
     async fn handle_multiple_index_files() {
         let root_dir = PathBuf::from("tests/fixtures/public/");
         let headers = HeaderMap::new();
