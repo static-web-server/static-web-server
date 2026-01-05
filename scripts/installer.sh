@@ -75,7 +75,13 @@ main() {
     ensure chmod u+x "$_download_file/static-web-server"
 
     echo "Copying SWS pre-compiled binary to $local_bin..."
-    sudo cp -ax "$_download_file/static-web-server" $local_bin
+
+    # Alpine check for busybox 'cp' command
+    if grep -q 'Alpine' /etc/os-release 2>/dev/null; then
+        sudo cp -ap "$_download_file/static-web-server" $local_bin
+    else
+        sudo cp -ax "$_download_file/static-web-server" $local_bin
+    fi
 
     local _status=$?
 
