@@ -1,6 +1,8 @@
 [files]
 extend-exclude = [
     ".git/",
+    ".github/",
+    "scripts/",
 ]
 ignore-hidden = false
 
