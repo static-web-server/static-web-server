@@ -22,8 +22,16 @@ See also [the release history](https://github.com/static-web-server/static-web-s
 
 Use the binary installer if your package manager is not supported.
 
+With [curl](https://curl.se/).
+
 ```sh
 curl --proto '=https' --tlsv1.2 -sSfL https://get.static-web-server.net | sh
+```
+
+Or with [GNU wget](https://www.gnu.org/software/wget/) (Busybox `wget` is not supported).
+
+```sh
+wget --https-only --secure-protocol=TLSv1_2 -qO- https://get.static-web-server.net | sh
 ```
 
 `static-web-server` will be installed by default under the `/usr/local/bin` directory.

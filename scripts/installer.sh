@@ -57,20 +57,17 @@ main() {
 
     if $_ansi_escapes_are_valid; then
         printf "\33[1mStatic Web Server Installer\33[0m\n" 1>&2
-        printf "\33[1minfo:\33[0m platform '$_arch' supported\n" 1>&2
     else
-        printf '%s\n' 'info: platform '$_arch' supported' 1>&2
+        printf "Static Web Server Installer\n" 1>&2
     fi
+
+    info "platform '$_arch' supported"
 
     if [ ! -d "$install_dir" ]; then
         err "install directory '$install_dir' does not exist, is inaccessible or is not a directory"
     fi
 
-    if $_ansi_escapes_are_valid; then
-        printf "\33[1minfo:\33[0m downloading 'static-web-server' (v$version) pre-compiled binary...\n" 1>&2
-    else
-        printf '%s\n' 'info: downloading 'static-web-server' (v'$version') pre-compiled binary...' 1>&2
-    fi
+    info "downloading 'static-web-server' (v$version) pre-compiled binary..."
 
     local _filename="static-web-server-v$version-$_arch"
     local _tarball="$_filename.tar.gz"
@@ -90,31 +87,17 @@ main() {
         fi
     fi
 
-    if $_ansi_escapes_are_valid; then
-        printf "\33[1minfo:\33[0m installing SWS pre-compiled binary to '$install_dir'...\n" 1>&2
-    else
-        printf '%s\n' "info: installing SWS pre-compiled binary to '$install_dir'..." 1>&2
-    fi
+    info "installing SWS pre-compiled binary to '$install_dir'..."
 
     local _sudo=""
     if [ ! -w "$install_dir" ]; then
         _sudo=sudo
-
-        if $_ansi_escapes_are_valid; then
-            printf "\33[1mwarn:\33[0m Can not install to '$install_dir' due to insufficient permissions, trying with sudo...\n" 1>&2
-        else
-            printf '%s\n' "warn: Can not install to '$install_dir' due to insufficient permissions, trying with sudo..." 1>&2
-        fi
+        warn "Can not install to '$install_dir' due to insufficient permissions, trying with sudo..."
     fi
 
     local _sws_bin_path="$install_dir/static-web-server"
     ensure $_sudo install -D -m755 "$download_file/static-web-server" $install_dir
-
-    if $_ansi_escapes_are_valid; then
-        printf "\33[1minfo:\33[0m pre-compiled binary installed on '$_sws_bin_path'\n" 1>&2
-    else
-        printf '%s\n' "info: pre-compiled binary installed on '$_sws_bin_path'" 1>&2
-    fi
+    info "pre-compiled binary installed on '$_sws_bin_path'"
 
     local _sws_bin_symlink_path="$install_dir/sws"
 
@@ -122,21 +105,11 @@ main() {
         if [ "$(readlink -- "$_sws_bin_symlink_path")" = "$_sws_bin_path" ]; then
             ensure $_sudo unlink "$_sws_bin_symlink_path"
             ensure $_sudo ln -s $_sws_bin_path "$_sws_bin_symlink_path"
-
-            if $_ansi_escapes_are_valid; then
-                printf "\33[1minfo:\33[0m symlink binary created on '$_sws_bin_symlink_path'\n" 1>&2
-            else
-                printf '%s\n' "info: symlink binary created on '$_sws_bin_symlink_path'" 1>&2
-            fi
+            info "symlink binary created on '$_sws_bin_symlink_path'"
         fi
     else
         ensure $_sudo ln -s $_sws_bin_path "$_sws_bin_symlink_path"
-
-        if $_ansi_escapes_are_valid; then
-            printf "\33[1minfo:\33[0m symlink binary created on '$_sws_bin_symlink_path'\n" 1>&2
-        else
-            printf '%s\n' "info: symlink binary created on '$_sws_bin_symlink_path'" 1>&2
-        fi
+        info "symlink binary created on '$_sws_bin_symlink_path'"
     fi
 
     local _status=$?
@@ -146,27 +119,25 @@ main() {
     ensure $_sws_bin_path --version
     printf "\n" 1>&2
 
-    if $_ansi_escapes_are_valid; then
-        printf "\33[1minfo:\33[0m SWS was installed successfully!\n" 1>&2
-        printf "\33[1minfo:\33[0m To uninstall SWS, just remove it from its location.\n" 1>&2
-        printf "\33[1minfo:\33[0m Visit https://static-web-server.net/getting-started for more details.\n" 1>&2
-    else
-        printf '%s\n' "info: SWS was installed successfully!" 1>&2
-        printf '%s\n' "info: To uninstall SWS, just remove it from its location." 1>&2
-        printf '%s\n' "info: Visit https://static-web-server.net/getting-started for more details." 1>&2
-    fi
+    info "SWS was installed successfully!"
+    info "To uninstall SWS, just remove it from its location."
+    info "Visit https://static-web-server.net/getting-started for more details."
 
     return "$_status"
 }
 
 download() {
     if [ -x "$(command -v curl)" ]; then
-        curl --proto '=https' --tlsv1.2 -Sf --location $1 --output $2
+        curl --proto '=https' --tlsv1.2 -sSf --location $1 --output $2
     else
-        if [ -x "$(command -v wget)" ]; then
-            wget -O- $1 > $2
-        else
+        if [ ! -x "$(command -v wget)" ]; then
             err "SWS installer requires either 'curl' or 'wget' to be installed but neither was found. Please install one and try again."
+        fi
+
+        if [ "$(wget -V 2>&1|head -2|tail -1|cut -f1 -d" ")" = "BusyBox" ]; then
+            err "can not use BusyBox 'wget' to download as it can be potentially less secure, please install GNU 'wget' or 'curl' and try again."
+        else
+            wget --https-only --secure-protocol=TLSv1_2 -qO- $1 > $2
         fi
     fi
 }
@@ -406,14 +377,27 @@ get_architecture() {
     RETVAL="$_arch"
 }
 
-say() {
-    printf 'installer: %s\n' "$1"
+info() {
+    __print 'info' "$1" >&2
+}
+
+warn() {
+    __print 'warn' "$1" >&2
 }
 
 err() {
-    say "$1" >&2
+    __print 'error' "$1" >&2
     exit 1
 }
+
+__print() {
+    if $_ansi_escapes_are_valid; then
+        printf '\33[1m%s:\33[0m %s\n' "$1" "$2" >&2
+    else
+        printf '%s: %s\n' "$1" "$2" >&2
+    fi
+}
+
 
 need_cmd() {
     if ! check_cmd "$1"; then
