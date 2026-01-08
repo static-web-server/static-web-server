@@ -20,13 +20,13 @@ if [ "$KSH_VERSION" = 'Version JM 93t+ 2010-03-05' ]; then
     exit 1
 fi
 
-set -u
+set -ue
 
 # SWS latest version
 version=${SWS_INSTALL_VERSION:-"2.40.1"}
 
 # Default directory where SWS will be installed
-local_bin=${SWS_INSTALL_DIR:-"/usr/local/bin"}
+install_dir=${SWS_INSTALL_DIR:-"/usr/local/bin"}
 
 main() {
     need_cmd uname
@@ -34,10 +34,10 @@ main() {
     need_cmd rm
 
     get_architecture || return 1
+
     local _arch="$RETVAL"
     assert_nz "$_arch" "arch"
 
-    local _ext="tar.gz"
     case "$_arch" in
         *windows*)
             echo "For install SWS on Windows, please follow https://static-web-server.net/download-and-install/#windows" 1>&2
@@ -56,54 +56,119 @@ main() {
     fi
 
     if $_ansi_escapes_are_valid; then
+        printf "\33[1mStatic Web Server Installer\33[0m\n" 1>&2
         printf "\33[1minfo:\33[0m platform '$_arch' supported\n" 1>&2
-        printf "\33[1minfo:\33[0m downloading the 'static-web-server v$version' pre-compiled binary...\n" 1>&2
-        printf "\33[1minfo:\33[0m installing pre-compiled binary in $local_bin...\n" 1>&2
     else
         printf '%s\n' 'info: platform '$_arch' supported' 1>&2
-        printf '%s\n' 'info: downloading the 'static-web-server' pre-compiled binary...' 1>&2
-        printf '%s\n' 'info: installing pre-compiled binary in '$local_bin'...' 1>&2
+    fi
+
+    if [ ! -d "$install_dir" ]; then
+        err "install directory '$install_dir' does not exist, is inaccessible or is not a directory"
+    fi
+
+    if $_ansi_escapes_are_valid; then
+        printf "\33[1minfo:\33[0m downloading 'static-web-server' (v$version) pre-compiled binary...\n" 1>&2
+    else
+        printf '%s\n' 'info: downloading 'static-web-server' (v'$version') pre-compiled binary...' 1>&2
     fi
 
     local _filename="static-web-server-v$version-$_arch"
-    local _url="https://github.com/static-web-server/static-web-server/releases/download/v$version/$_filename.$_ext"
+    local _tarball="$_filename.tar.gz"
+    local _url="https://github.com/static-web-server/static-web-server/releases/download/v$version/$_tarball"
 
-    local _download_file=$(mktemp -d -t sws.XXXXXXXXXX)
+    download_file=$(mktemp -d -t sws.XXXXXXX) || err "unable to create sws temporary directory"
+    trap 'rm -rf -- "$download_file"' EXIT
 
-    _err=$(curl --proto '=https' --tlsv1.2 -sSf --location $_url \
-        | tar zxf - -C "$_download_file/" --strip-components 1 "$_filename/static-web-server" 2>&1)
-    ensure chmod u+x "$_download_file/static-web-server"
+    ensure download $_url $download_file/$_tarball
 
-    echo "Copying SWS pre-compiled binary to $local_bin..."
+    err=$(tar zxf $download_file/$_tarball -C "$download_file/" --strip-components 1 "$_filename/static-web-server" 2>&1)
 
-    # Alpine check for busybox 'cp' command
-    if grep -q 'Alpine' /etc/os-release 2>/dev/null; then
-        sudo cp -ap "$_download_file/static-web-server" $local_bin
-    else
-        sudo cp -ax "$_download_file/static-web-server" $local_bin
-    fi
-
-    local _status=$?
-
-    if [ -n "$_err" ]; then
-        echo "$_err" >&2
-        if echo "$_err" | grep -q 404$; then
+    if [ -n "$err" ]; then
+        echo "$err" >&2
+        if echo "$err" | grep -q 404$; then
             err "pre-compile binary for platform '$_arch' not found, this may be unsupported"
         fi
     fi
 
     if $_ansi_escapes_are_valid; then
-        printf "\33[1minfo:\33[0m pre-compiled binary installed on $local_bin/static-web-server\n" 1>&2
+        printf "\33[1minfo:\33[0m installing SWS pre-compiled binary to '$install_dir'...\n" 1>&2
     else
-        printf '%s\n' "info: pre-compiled binary installed on $local_bin/static-web-server" 1>&2
+        printf '%s\n' "info: installing SWS pre-compiled binary to '$install_dir'..." 1>&2
     fi
 
-    ensure $local_bin/static-web-server --version
+    local _sudo=""
+    if [ ! -w "$install_dir" ]; then
+        _sudo=sudo
 
-    echo "SWS was installed successfully!" 1>&2
-    echo "To uninstall SWS just remove it from its location." 1>&2
+        if $_ansi_escapes_are_valid; then
+            printf "\33[1mwarn:\33[0m Can not install to '$install_dir' due to insufficient permissions, trying with sudo...\n" 1>&2
+        else
+            printf '%s\n' "warn: Can not install to '$install_dir' due to insufficient permissions, trying with sudo..." 1>&2
+        fi
+    fi
+
+    local _sws_bin_path="$install_dir/static-web-server"
+    ensure $_sudo install -D -m755 "$download_file/static-web-server" $install_dir
+
+    if $_ansi_escapes_are_valid; then
+        printf "\33[1minfo:\33[0m pre-compiled binary installed on '$_sws_bin_path'\n" 1>&2
+    else
+        printf '%s\n' "info: pre-compiled binary installed on '$_sws_bin_path'" 1>&2
+    fi
+
+    local _sws_bin_symlink_path="$install_dir/sws"
+
+    if [ -L "$_sws_bin_symlink_path" ]; then
+        if [ "$(readlink -- "$_sws_bin_symlink_path")" = "$_sws_bin_path" ]; then
+            ensure $_sudo unlink "$_sws_bin_symlink_path"
+            ensure $_sudo ln -s $_sws_bin_path "$_sws_bin_symlink_path"
+
+            if $_ansi_escapes_are_valid; then
+                printf "\33[1minfo:\33[0m symlink binary created on '$_sws_bin_symlink_path'\n" 1>&2
+            else
+                printf '%s\n' "info: symlink binary created on '$_sws_bin_symlink_path'" 1>&2
+            fi
+        fi
+    else
+        ensure $_sudo ln -s $_sws_bin_path "$_sws_bin_symlink_path"
+
+        if $_ansi_escapes_are_valid; then
+            printf "\33[1minfo:\33[0m symlink binary created on '$_sws_bin_symlink_path'\n" 1>&2
+        else
+            printf '%s\n' "info: symlink binary created on '$_sws_bin_symlink_path'" 1>&2
+        fi
+    fi
+
+    local _status=$?
+
+    printf "\n" 1>&2
+    printf '%s\n' "$_sws_bin_path --version" 1>&2
+    ensure $_sws_bin_path --version
+    printf "\n" 1>&2
+
+    if $_ansi_escapes_are_valid; then
+        printf "\33[1minfo:\33[0m SWS was installed successfully!\n" 1>&2
+        printf "\33[1minfo:\33[0m To uninstall SWS, just remove it from its location.\n" 1>&2
+        printf "\33[1minfo:\33[0m Visit https://static-web-server.net/getting-started for more details.\n" 1>&2
+    else
+        printf '%s\n' "info: SWS was installed successfully!" 1>&2
+        printf '%s\n' "info: To uninstall SWS, just remove it from its location." 1>&2
+        printf '%s\n' "info: Visit https://static-web-server.net/getting-started for more details." 1>&2
+    fi
 
     return "$_status"
+}
+
+download() {
+    if [ -x "$(command -v curl)" ]; then
+        curl --proto '=https' --tlsv1.2 -Sf --location $1 --output $2
+    else
+        if [ -x "$(command -v wget)" ]; then
+            wget -O- $1 > $2
+        else
+            err "SWS installer requires either 'curl' or 'wget' to be installed but neither was found. Please install one and try again."
+        fi
+    fi
 }
 
 check_proc() {
