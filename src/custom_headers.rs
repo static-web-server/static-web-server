@@ -24,21 +24,23 @@ pub(crate) fn post_process<T>(
             advanced.headers.as_deref(),
             &mut resp,
             file_path,
+            opts.redirect_trailing_slash,
         )
     }
     Ok(resp)
 }
 
 /// Append custom HTTP headers to current response.
-pub fn append_headers(
+fn append_headers(
     uri_path: &str,
     headers_opts: Option<&[Headers]>,
     resp: &mut Response<Body>,
     file_path: Option<&PathBuf>,
+    redirect_trailing_slash: bool,
 ) {
     if let Some(headers_vec) = headers_opts {
         let uri_path_auto_index = file_path
-            .filter(|_| uri_path.ends_with('/'))
+            .filter(|_| uri_path.ends_with('/') || !redirect_trailing_slash)
             .and_then(|p| p.file_name())
             .and_then(OsStr::to_str)
             .map(|name| match uri_path {
