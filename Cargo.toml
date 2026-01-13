@@ -42,7 +42,7 @@ default = ["compression", "http2", "directory-listing", "directory-listing-downl
 # Include all features (used when building SWS binaries)
 all = ["default", "experimental"]
 # HTTP2
-http2 = ["tokio-rustls", "rustls-pemfile"]
+http2 = ["tokio-rustls", "rustls-pki-types"]
 # Compression
 compression = ["compression-brotli", "compression-deflate", "compression-gzip", "compression-zstd"]
 compression-brotli = ["async-compression/brotli"]
@@ -86,7 +86,7 @@ mini-moka = { version = "0.10.3", optional = true }
 percent-encoding = "2.3"
 pin-project = "1.1"
 regex-lite = "0.1.8"
-rustls-pemfile = { version = "2.2", optional = true }
+rustls-pki-types = { version = "1.13.2", optional = true }
 serde = { version = "1.0", default-features = false, features = ["derive"] }
 serde_ignored = "0.1"
 serde_json = "1.0"
