@@ -11,6 +11,8 @@
 use futures_util::ready;
 use hyper::server::accept::Accept;
 use hyper::server::conn::{AddrIncoming, AddrStream};
+use rustls_pki_types::pem::PemObject;
+use rustls_pki_types::{CertificateDer, PrivateKeyDer};
 use std::fs::File;
 use std::future::Future;
 use std::io::{self, BufReader, Cursor, Read};
@@ -20,7 +22,7 @@ use std::pin::Pin;
 use std::sync::Arc;
 use std::task::{Context, Poll};
 use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
-use tokio_rustls::rustls::{Error as TlsError, ServerConfig, pki_types::PrivateKeyDer};
+use tokio_rustls::rustls::{Error as TlsError, ServerConfig};
 
 use crate::transport::Transport;
 
@@ -39,17 +41,31 @@ pub enum TlsConfigError {
     UnknownPrivateKeyFormat,
     /// An error from an invalid key
     InvalidKey(TlsError),
+    /// Illegal section start in PEM
+    IllegalSectionStart(Vec<u8>),
+    /// Illegal section end in PEM
+    IllegalSectionEnd(Vec<u8>),
 }
 
 impl std::fmt::Display for TlsConfigError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             TlsConfigError::Io(err) => err.fmt(f),
-            TlsConfigError::CertParseError => write!(f, "certificate parse error"),
-            TlsConfigError::InvalidIdentityPem => write!(f, "identity PEM is invalid"),
-            TlsConfigError::UnknownPrivateKeyFormat => write!(f, "unknown private key format"),
-            TlsConfigError::EmptyKey => write!(f, "key contains no private key"),
-            TlsConfigError::InvalidKey(err) => write!(f, "key contains an invalid key, {err}"),
+            TlsConfigError::CertParseError => write!(f, "failed to parse certificate"),
+            TlsConfigError::InvalidIdentityPem => write!(f, "the identity PEM provided is invalid"),
+            TlsConfigError::UnknownPrivateKeyFormat => {
+                write!(f, "the private key format is unknown")
+            }
+            TlsConfigError::EmptyKey => write!(f, "the key provided is probably missing or empty"),
+            TlsConfigError::InvalidKey(err) => write!(f, "the key provided is invalid, {err}"),
+            TlsConfigError::IllegalSectionStart(line) => {
+                let line = String::from_utf8(line.clone()).unwrap_or_default();
+                write!(f, "illegal section start in PEM at '{line}'")
+            }
+            TlsConfigError::IllegalSectionEnd(end_marker) => {
+                let end_marker = String::from_utf8(end_marker.clone()).unwrap_or_default();
+                write!(f, "illegal section end in PEM at '{end_marker}'")
+            }
         }
     }
 }
@@ -110,7 +126,7 @@ impl TlsConfigBuilder {
     /// Builds TLS configuration.
     pub fn build(mut self) -> Result<ServerConfig, TlsConfigError> {
         let mut cert_rdr = BufReader::new(self.cert);
-        let cert = rustls_pemfile::certs(&mut cert_rdr)
+        let cert = CertificateDer::pem_reader_iter(&mut cert_rdr)
             .collect::<Result<Vec<_>, _>>()
             .map_err(|_e| TlsConfigError::CertParseError)?;
 
@@ -124,25 +140,21 @@ impl TlsConfigBuilder {
             return Err(TlsConfigError::EmptyKey);
         }
 
-        let mut key: Option<PrivateKeyDer<'_>> = None;
-        let mut reader = Cursor::new(key_buf);
-        for item in std::iter::from_fn(|| rustls_pemfile::read_one(&mut reader).transpose()) {
-            match item.map_err(|_e| TlsConfigError::InvalidIdentityPem)? {
-                // rsa pkcs1 key
-                rustls_pemfile::Item::Pkcs1Key(k) => key = Some(k.into()),
-                // pkcs8 key
-                rustls_pemfile::Item::Pkcs8Key(k) => key = Some(k.into()),
-                // sec1 ec key
-                rustls_pemfile::Item::Sec1Key(k) => key = Some(k.into()),
-                // unknown format
-                _ => return Err(TlsConfigError::UnknownPrivateKeyFormat),
+        let reader = Cursor::new(key_buf);
+        let key = PrivateKeyDer::from_pem_reader(reader).map_err(|err| match err {
+            rustls_pki_types::pem::Error::Base64Decode(_) => TlsConfigError::InvalidIdentityPem,
+            rustls_pki_types::pem::Error::NoItemsFound => TlsConfigError::EmptyKey,
+            rustls_pki_types::pem::Error::IllegalSectionStart { line } => {
+                TlsConfigError::IllegalSectionStart(line)
             }
-        }
-
-        let key = match key {
-            Some(k) => k,
-            _ => return Err(TlsConfigError::EmptyKey),
-        };
+            rustls_pki_types::pem::Error::MissingSectionEnd { end_marker } => {
+                TlsConfigError::IllegalSectionEnd(end_marker)
+            }
+            rustls_pki_types::pem::Error::Io(err) => {
+                TlsConfigError::Io(io::Error::new(io::ErrorKind::InvalidData, err))
+            }
+            _ => TlsConfigError::InvalidIdentityPem,
+        })?;
 
         let mut config = ServerConfig::builder()
             .with_no_client_auth()
