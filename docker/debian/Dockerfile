@@ -1,4 +1,4 @@
-FROM --platform=$BUILDPLATFORM debian:13.1-slim AS build
+FROM --platform=$BUILDPLATFORM debian:13.3-slim AS build
 
 ARG TARGETPLATFORM
 ARG SERVER_VERSION=0.0.0
@@ -41,7 +41,7 @@ RUN set -ex \
     && file /usr/local/bin/static-web-server \
     && true
 
-FROM debian:13.1-slim
+FROM debian:13.3-slim
 
 ARG SERVER_VERSION=0.0.0
 ARG SERVER_USER_NAME=sws
