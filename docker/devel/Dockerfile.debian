@@ -1,4 +1,4 @@
-FROM debian:13.1-slim
+FROM debian:13.3-slim
 
 ARG SERVER_VERSION=devel
 ARG SERVER_USER_NAME=sws
