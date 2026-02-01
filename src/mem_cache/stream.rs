@@ -33,23 +33,23 @@ impl<T: Read + Unpin> Stream for MemCacheFileStream<T> {
                     let buf = buf.freeze();
 
                     // Handle in-memory cache if enabled
-                    if pinned.mem_opts.is_some() && pinned.mem_buf.is_some() {
-                        let buf_data_mut = pinned.mem_buf.as_mut().unwrap();
+                    if let (Some(mem_opts), Some(buf_data_mut)) =
+                        (pinned.mem_opts.as_ref(), pinned.mem_buf.as_mut())
+                    {
                         buf_data_mut.put(buf.clone());
 
                         // If file size is reached then proceed cache it
                         if buf_data_mut.len() == buf_data_mut.capacity() {
                             let buf_data = pinned.mem_buf.take().unwrap().freeze();
-                            let mem_file_opts = pinned.mem_opts.as_ref().unwrap();
 
                             let mem_file = Arc::new(MemFile::new(
                                 buf_data,
                                 buf_size,
-                                mem_file_opts.content_type.to_owned(),
-                                mem_file_opts.last_modified,
+                                mem_opts.content_type.to_owned(),
+                                mem_opts.last_modified,
                             ));
 
-                            let file_path = mem_file_opts.file_path.as_str();
+                            let file_path = mem_opts.file_path.as_str();
                             tracing::debug!(
                                 "file `{}` is inserted to the in-memory cache store",
                                 file_path
