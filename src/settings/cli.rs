@@ -495,7 +495,7 @@ pub struct General {
 
     #[arg(
         long,
-        default_value = "false",
+        default_value = "true",
         default_missing_value("true"),
         num_args(0..=1),
         require_equals(false),
@@ -507,7 +507,7 @@ pub struct General {
 
     #[arg(
         long,
-        default_value = "false",
+        default_value = "true",
         default_missing_value("true"),
         num_args(0..=1),
         require_equals(false),
