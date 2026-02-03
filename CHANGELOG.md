@@ -1710,7 +1710,7 @@ __Codebase__
 
 - [7265f6b](https://github.com/static-web-server/static-web-server/commit/7265f6b) GitHub Actions as new CI.
 - [c63b549](https://github.com/static-web-server/static-web-server/commit/c63b549) Remove Travis CI.
-- [65250c0](https://github.com/static-web-server/static-web-server/commit/65250c0) Minor simplications on server module.
+- [65250c0](https://github.com/static-web-server/static-web-server/commit/65250c0) Minor simplifications on server module.
 - [b94fe72](https://github.com/static-web-server/static-web-server/commit/b94fe72) Update core modules structure.
 - [da5bdc3](https://github.com/static-web-server/static-web-server/commit/da5bdc3) Re-export few core lib modules.
 - [57c27f4](https://github.com/static-web-server/static-web-server/commit/57c27f4) Deny(warnings) on lib
