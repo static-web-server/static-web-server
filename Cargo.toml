@@ -66,8 +66,8 @@ aho-corasick = "1.1.4"
 anyhow = "1.0"
 async-compression = { version = "0.4", default-features = false, optional = true, features = ["brotli", "deflate", "gzip", "zstd", "tokio"] }
 async-tar = { version = "0.5.1", optional = true }
-bcrypt = { version = "0.17", optional = true }
-bytes = "1.11.0"
+bcrypt = { version = "0.18.0", optional = true }
+bytes = "1.11.1"
 chrono = { version = "0.4", default-features = false, features = ["std", "clock"], optional = true }
 clap = { version = "4.5", features = ["derive", "env"] }
 clap_allgen = "0.2.1"
@@ -103,8 +103,8 @@ tracing-subscriber = { version = "0.3", default-features = false, features = ["s
 version = "0.1.48"
 
 [target.'cfg(unix)'.dependencies]
-signal-hook = { version = "0.3", features = ["extended-siginfo"] }
-signal-hook-tokio = { version = "0.3", features = ["futures-v0_3"], default-features = false }
+signal-hook = { version = "0.4.1", features = ["extended-siginfo"] }
+signal-hook-tokio = { version = "0.4.0", features = ["futures-v0_3"], default-features = false }
 tokio-metrics-collector = { version = "0.3.1", optional = true }
 prometheus = { version = "0.14.0", default-features = false, optional = true }
 
@@ -112,7 +112,7 @@ prometheus = { version = "0.14.0", default-features = false, optional = true }
 windows-service = "0.8"
 
 [dev-dependencies]
-bytes = "1.11.0"
+bytes = "1.11.1"
 serde_json = "1.0"
 
 [build-dependencies]

@@ -16,6 +16,7 @@ extend-ignore-re = [
 
 [default.extend-words]
 compressable = "compressable"
+consts = "consts"
 
 [default.extend-identifiers]
 flate2 = "flate2"
