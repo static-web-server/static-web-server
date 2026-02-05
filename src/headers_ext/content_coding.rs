@@ -81,6 +81,20 @@ macro_rules! define_content_coding {
     }
 }
 
+impl ContentCoding {
+    pub fn priority(&self) -> u8 {
+        match self {
+            Self::IDENTITY => 1,
+            Self::COMPRESS => 2,
+            Self::DEFLATE => 3,
+            Self::GZIP => 4,
+            Self::BROTLI => 5,
+            Self::ZSTD => 6,
+            _ => 0,
+        }
+    }
+}
+
 define_content_coding! {
     BROTLI; "br",
     COMPRESS; "compress",
