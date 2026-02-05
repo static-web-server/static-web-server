@@ -64,8 +64,8 @@ mod tests {
         let accept_enc = AcceptEncoding(val.into());
 
         let mut encodings = accept_enc.sorted_encodings();
-        assert_eq!(encodings.next(), Some(ContentCoding::DEFLATE));
         assert_eq!(encodings.next(), Some(ContentCoding::GZIP));
+        assert_eq!(encodings.next(), Some(ContentCoding::DEFLATE));
         assert_eq!(encodings.next(), Some(ContentCoding::BROTLI));
         assert_eq!(encodings.next(), Some(ContentCoding::ZSTD));
         assert_eq!(encodings.next(), None);

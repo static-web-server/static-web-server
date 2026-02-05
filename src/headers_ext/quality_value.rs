@@ -7,6 +7,8 @@ use headers::Error;
 use hyper::header::HeaderValue;
 use std::cmp::Ordering;
 
+use crate::headers_ext::ContentCoding;
+
 /// A CSV list that respects the Quality Values syntax defined in
 /// [RFC7321](https://tools.ietf.org/html/rfc7231#section-5.3.1)
 ///
@@ -75,7 +77,17 @@ impl QualityValue {
             .flat_map(|value_str| value_str.split(','))
             .filter_map(|v| QualityMeta::try_from(v).ok())
             .collect();
-        items.sort();
+        items.sort_by(|a, b| {
+            let quality_cmp = b.quality.cmp(&a.quality);
+            if quality_cmp == std::cmp::Ordering::Equal {
+                // If the quality is the same, order by priority of encodings
+                let priority_a = ContentCoding::from(a.data).priority();
+                let priority_b = ContentCoding::from(b.data).priority();
+                priority_b.cmp(&priority_a)
+            } else {
+                quality_cmp
+            }
+        });
         items.into_iter().map(|pair| pair.data)
     }
 
@@ -147,6 +159,43 @@ impl From<QualityValue> for HeaderValue {
 mod tests {
     use super::*;
 
+    fn without_qualities() {
+        let val = HeaderValue::from_static("zstd, br, gzip, deflate");
+        let qual = QualityValue::from(val);
+
+        let mut values = qual.iter();
+        assert_eq!(values.next(), Some("zstd"));
+        assert_eq!(values.next(), Some("br"));
+        assert_eq!(values.next(), Some("gzip"));
+        assert_eq!(values.next(), Some("deflate"));
+        assert_eq!(values.next(), None);
+    }
+
+    #[test]
+    fn without_qualities_wrong_order() {
+        let val = HeaderValue::from_static("gzip, deflate, br, zstd");
+        let qual = QualityValue::from(val);
+
+        let mut values = qual.iter();
+        assert_eq!(values.next(), Some("zstd"));
+        assert_eq!(values.next(), Some("br"));
+        assert_eq!(values.next(), Some("gzip"));
+        assert_eq!(values.next(), Some("deflate"));
+        assert_eq!(values.next(), None);
+    }
+
+    #[test]
+    fn honor_client_preference_order() {
+        let val = HeaderValue::from_static("gzip, br;q=0.5, zstd;q=0");
+        let qual = QualityValue::from(val);
+
+        let mut values = qual.iter();
+        assert_eq!(values.next(), Some("gzip"));
+        assert_eq!(values.next(), Some("br"));
+        assert_eq!(values.next(), Some("zstd"));
+        assert_eq!(values.next(), None);
+    }
+
     #[test]
     fn multiple_qualities() {
         let val = HeaderValue::from_static("gzip;q=1, br;q=0.8");
@@ -175,8 +224,8 @@ mod tests {
         let qual = QualityValue::from(val);
 
         let mut values = qual.iter();
-        assert_eq!(values.next(), Some("deflate"));
         assert_eq!(values.next(), Some("gzip"));
+        assert_eq!(values.next(), Some("deflate"));
         assert_eq!(values.next(), Some("br"));
         assert_eq!(values.next(), None);
     }
@@ -199,8 +248,8 @@ mod tests {
         let qual = QualityValue::from(val);
 
         let mut values = qual.iter();
-        assert_eq!(values.next(), Some("deflate"));
         assert_eq!(values.next(), Some("gzip"));
+        assert_eq!(values.next(), Some("deflate"));
         assert_eq!(values.next(), Some("br"));
         assert_eq!(values.next(), Some("*"));
         assert_eq!(values.next(), None);
