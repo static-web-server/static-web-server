@@ -15,7 +15,8 @@ static-web-server \
 
 The compression algorithm is determined by the [`Accept-Encoding`](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Accept-Encoding) header and the compression support built into SWS. By default SWS builds with support for `Gzip`, `Deflate`, `Brotli` and `Zstandard` algorithms.
 
-SWS honors the qualities specified by the client to choose the algorithm. In case of equal quality for several algorithms (or no qualities at all), the internal priority will select according to this priority list:
+SWS honors the qualities specified by the client to choose the algorithm. In case of equal quality for several algorithms (or no qualities at all), the internal priority will be selected according to this list:
+
 1. `Zstandard`
 2. `Brotli`
 3. `Gzip`
