@@ -43,7 +43,9 @@ use crate::fallback_page;
     feature = "compression-brotli",
     feature = "compression-zstd",
 ))]
-use crate::{compression, compression_static};
+use crate::compression;
+
+use crate::compression_static;
 
 #[cfg(feature = "basic-auth")]
 use crate::basic_auth;
@@ -346,13 +348,6 @@ impl Server {
         );
 
         // Check pre-compressed files based on the `Accept-Encoding` header
-        #[cfg(any(
-            feature = "compression",
-            feature = "compression-deflate",
-            feature = "compression-gzip",
-            feature = "compression-brotli",
-            feature = "compression-zstd",
-        ))]
         compression_static::init(general.compression_static, &mut handler_opts);
 
         // Auto compression based on the `Accept-Encoding` header

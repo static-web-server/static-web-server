@@ -257,23 +257,6 @@ pub struct General {
     pub compression_level: Option<CompressionLevel>,
 
     /// Check for a pre-compressed file on disk.
-    #[cfg(any(
-        feature = "compression",
-        feature = "compression-gzip",
-        feature = "compression-brotli",
-        feature = "compression-zstd",
-        feature = "compression-deflate"
-    ))]
-    #[cfg_attr(
-        docsrs,
-        doc(cfg(any(
-            feature = "compression",
-            feature = "compression-gzip",
-            feature = "compression-brotli",
-            feature = "compression-zstd",
-            feature = "compression-deflate"
-        )))
-    )]
     pub compression_static: Option<bool>,
 
     /// Error 404 pages.

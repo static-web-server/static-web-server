@@ -131,23 +131,6 @@ pub mod basic_auth;
     )))
 )]
 pub mod compression;
-#[cfg(any(
-    feature = "compression",
-    feature = "compression-gzip",
-    feature = "compression-brotli",
-    feature = "compression-zstd",
-    feature = "compression-deflate"
-))]
-#[cfg_attr(
-    docsrs,
-    doc(cfg(any(
-        feature = "compression",
-        feature = "compression-gzip",
-        feature = "compression-brotli",
-        feature = "compression-zstd",
-        feature = "compression-deflate"
-    )))
-)]
 pub mod compression_static;
 pub(crate) mod conditional_headers;
 pub mod control_headers;
