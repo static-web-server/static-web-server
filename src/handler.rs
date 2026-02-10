@@ -21,7 +21,9 @@ use std::{
     feature = "compression-zstd",
     feature = "compression-deflate"
 ))]
-use crate::{compression, compression_static};
+use crate::compression;
+
+use crate::compression_static;
 
 #[cfg(feature = "basic-auth")]
 use crate::basic_auth;
@@ -342,13 +344,6 @@ impl RequestHandler {
             let resp = crate::markdown::post_process(uri_path_md.is_some(), &self.opts, resp)?;
 
             // Add a `Vary` header if static compression is used
-            #[cfg(any(
-                feature = "compression",
-                feature = "compression-gzip",
-                feature = "compression-brotli",
-                feature = "compression-zstd",
-                feature = "compression-deflate"
-            ))]
             let resp = compression_static::post_process(&self.opts, req, resp)?;
 
             // Auto compression based on the `Accept-Encoding` header

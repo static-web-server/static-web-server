@@ -296,23 +296,6 @@ pub struct General {
     /// Compression level to apply for Gzip, Deflate, Brotli or Zstd compression.
     pub compression_level: super::CompressionLevel,
 
-    #[cfg(any(
-        feature = "compression",
-        feature = "compression-gzip",
-        feature = "compression-brotli",
-        feature = "compression-zstd",
-        feature = "compression-deflate"
-    ))]
-    #[cfg_attr(
-        docsrs,
-        doc(cfg(any(
-            feature = "compression",
-            feature = "compression-gzip",
-            feature = "compression-brotli",
-            feature = "compression-zstd",
-            feature = "compression-deflate"
-        )))
-    )]
     #[arg(
         long,
         default_value = "false",
