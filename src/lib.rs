@@ -81,11 +81,11 @@
 //! [**HTTP2/TLS**](https://static-web-server.net/features/http2-tls/) |
 //! `http2` | Activates the HTTP2 and TLS feature.
 //! [**Compression**](https://static-web-server.net/features/compression/) |
-//! `compression` | Activates auto-compression and compression static with all supported algorithms.
-//! `compression-brotli` | Activates auto-compression/compression static with only the `brotli` algorithm.
-//! `compression-deflate` | Activates auto-compression/compression static with only the `deflate` algorithm.
-//! `compression-gzip` | Activates auto-compression/compression static with only the `gzip` algorithm.
-//! `compression-zstd` | Activates auto-compression/compression static with only the `zstd` algorithm.
+//! `compression` | Activates auto-compression with all supported algorithms.
+//! `compression-brotli` | Activates auto-compression with only the `brotli` algorithm.
+//! `compression-deflate` | Activates auto-compression with only the `deflate` algorithm.
+//! `compression-gzip` | Activates auto-compression with only the `gzip` algorithm.
+//! `compression-zstd` | Activates auto-compression with only the `zstd` algorithm.
 //! [**Directory Listing**](https://static-web-server.net/features/directory-listing/) |
 //! `directory-listing` | Activates the directory listing feature.
 //! [**Basic Authorization**](./features/basic-authentication.md) |
