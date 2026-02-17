@@ -36,11 +36,11 @@ However, you can disable just the ones you don't need from the lists below.
 | [**HTTP2/TLS**](./features/http2-tls.md) |  |
 | `http2` | Activates the HTTP2 and TLS feature. |
 | [**Compression**](./features/compression.md) |  |
-| `compression` | Activates auto-compression and compression static with all supported algorithms. |
-| `compression-brotli` | Activates auto-compression/compression static with only the `brotli` algorithm. |
-| `compression-deflate` | Activates auto-compression/compression static with only the `deflate` algorithm. |
-| `compression-gzip` | Activates auto-compression/compression static with only the `gzip` algorithm. |
-| `compression-zstd` | Activates auto-compression/compression static with only the `zstd` algorithm. |
+| `compression` | Activates auto-compression with all supported algorithms. |
+| `compression-brotli` | Activates auto-compression with only the `brotli` algorithm. |
+| `compression-deflate` | Activates auto-compression with only the `deflate` algorithm. |
+| `compression-gzip` | Activates auto-compression with only the `gzip` algorithm. |
+| `compression-zstd` | Activates auto-compression with only the `zstd` algorithm. |
 | [**Directory Listing**](./features/directory-listing.md) |  |
 | `directory-listing` | Activates the directory listing feature. |
 | [**Basic Authorization**](./features/basic-authentication.md) |  |

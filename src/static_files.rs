@@ -25,13 +25,6 @@ use crate::response::response_body;
 #[cfg(feature = "experimental")]
 use crate::mem_cache::{cache, cache::MemCacheOpts};
 
-#[cfg(any(
-    feature = "compression",
-    feature = "compression-deflate",
-    feature = "compression-gzip",
-    feature = "compression-brotli",
-    feature = "compression-zstd"
-))]
 use crate::compression_static;
 
 #[cfg(feature = "directory-listing")]
@@ -102,15 +95,15 @@ pub struct StaticFileResponse {
 /// on file system and return a file response.
 pub async fn handle(opts: &HandleOpts<'_>) -> Result<StaticFileResponse, StatusCode> {
     let method = opts.method;
-    let uri_path = opts.uri_path;
-
     // Check if current HTTP method for incoming request is supported
     if !method.is_allowed() {
         return Err(StatusCode::METHOD_NOT_ALLOWED);
     }
 
-    let headers_opt = opts.headers;
+    let uri_path = opts.uri_path;
     let mut file_path = sanitize_path(opts.base_path, uri_path)?;
+
+    let headers_opt = opts.headers;
 
     // In-memory file cache feature with eviction policy
     #[cfg(feature = "experimental")]
@@ -337,8 +330,8 @@ pub async fn handle(opts: &HandleOpts<'_>) -> Result<StaticFileResponse, StatusC
 /// as well as its optional pre-compressed variant.
 fn get_composed_file_metadata<'a>(
     mut file_path: &'a mut PathBuf,
-    _headers: &'a HeaderMap<HeaderValue>,
-    _compression_static: bool,
+    headers: &'a HeaderMap<HeaderValue>,
+    compression_static: bool,
     mut index_files: &'a [&'a str],
 ) -> Result<FileMetadata<'a>, StatusCode> {
     tracing::trace!("getting metadata for file {}", file_path.display());
@@ -357,17 +350,9 @@ fn get_composed_file_metadata<'a>(
                     tracing::debug!("dir: appending {} to the directory path", index);
                     file_path.push(index);
 
-                    // Pre-compressed variant check for the autoindex
-                    #[cfg(any(
-                        feature = "compression",
-                        feature = "compression-deflate",
-                        feature = "compression-gzip",
-                        feature = "compression-brotli",
-                        feature = "compression-zstd"
-                    ))]
-                    if _compression_static {
+                    if compression_static {
                         if let Some(p) =
-                            compression_static::precompressed_variant(file_path, _headers)
+                            compression_static::precompressed_variant(file_path, headers)
                         {
                             return Ok(FileMetadata {
                                 file_path,
@@ -403,46 +388,24 @@ fn get_composed_file_metadata<'a>(
                 if !index_found && !index_files.is_empty() {
                     file_path.push(index_files.last().unwrap());
                 }
-            } else {
-                // Fallback pre-compressed variant check for the specific file
-                #[cfg(any(
-                    feature = "compression",
-                    feature = "compression-deflate",
-                    feature = "compression-gzip",
-                    feature = "compression-brotli",
-                    feature = "compression-zstd"
-                ))]
-                if _compression_static {
-                    if let Some(p) = compression_static::precompressed_variant(file_path, _headers)
-                    {
-                        return Ok(FileMetadata {
-                            file_path,
-                            metadata: p.metadata,
-                            is_dir: false,
-                            precompressed_variant: Some((p.file_path, p.encoding)),
-                        });
-                    }
-                }
             }
+
+            let precompressed_variant = compression_static
+                .then(|| compression_static::precompressed_variant(file_path, headers))
+                .flatten()
+                .map(|p| (p.file_path, p.encoding));
 
             Ok(FileMetadata {
                 file_path,
                 metadata,
                 is_dir,
-                precompressed_variant: None,
+                precompressed_variant,
             })
         }
         Err(err) => {
             // Pre-compressed variant check for the file not found
-            #[cfg(any(
-                feature = "compression",
-                feature = "compression-deflate",
-                feature = "compression-gzip",
-                feature = "compression-brotli",
-                feature = "compression-zstd"
-            ))]
-            if _compression_static {
-                if let Some(p) = compression_static::precompressed_variant(file_path, _headers) {
+            if compression_static {
+                if let Some(p) = compression_static::precompressed_variant(file_path, headers) {
                     return Ok(FileMetadata {
                         file_path,
                         metadata: p.metadata,
@@ -476,9 +439,9 @@ fn get_composed_file_metadata<'a>(
                 }
                 _ => {
                     // Last pre-compressed variant check or the suffixed file not found
-                    if _compression_static {
+                    if compression_static {
                         if let Some(p) =
-                            compression_static::precompressed_variant(file_path, _headers)
+                            compression_static::precompressed_variant(file_path, headers)
                         {
                             return Ok(FileMetadata {
                                 file_path,
