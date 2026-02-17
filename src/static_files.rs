@@ -390,14 +390,10 @@ fn get_composed_file_metadata<'a>(
                 }
             }
 
-            let precompressed_variant = if compression_static {
-                match compression_static::precompressed_variant(file_path, headers) {
-                    Some(p) => Some((p.file_path, p.encoding)),
-                    None => None,
-                }
-            } else {
-                None
-            };
+            let precompressed_variant = compression_static
+                .then(|| compression_static::precompressed_variant(file_path, headers))
+                .flatten()
+                .map(|p| (p.file_path, p.encoding));
 
             Ok(FileMetadata {
                 file_path,
