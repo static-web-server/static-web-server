@@ -74,18 +74,12 @@ pub fn check_request(headers: &HeaderMap, userid: &str, password: &str) -> Resul
         .typed_get::<Authorization<Basic>>()
         .ok_or(StatusCode::UNAUTHORIZED)?;
 
-    if credentials.0.username() != userid {
-        return Err(StatusCode::UNAUTHORIZED);
-    }
-
-    match bcrypt_verify(credentials.0.password(), password) {
-        Ok(valid) if valid => Ok(()),
-        Ok(_) => Err(StatusCode::UNAUTHORIZED),
-        Err(err) => {
-            tracing::error!("bcrypt password verification error: {:?}", err);
-            Err(StatusCode::UNAUTHORIZED)
-        }
-    }
+    let user_match = credentials.0.username() == userid;
+    let password_match = bcrypt_verify(credentials.0.password(), password)
+        .inspect_err(|err| tracing::error!("bcrypt password verification error: {:?}", err))
+        .unwrap_or(false);
+    let valid = user_match && password_match;
+    valid.then_some(()).ok_or(StatusCode::UNAUTHORIZED)
 }
 
 #[cfg(test)]
