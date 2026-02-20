@@ -5,6 +5,95 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v2.41.0 - 2026-02-20
+
+This new `v2.41.0` release includes important bug fixes, new features, and improvements.
+The custom headers, installer scripts and hidden file handling are now more reliable. Dynamic compression encodings have been enhanced with internal priority support based on modern compression algorithms. Default options now help protect hidden files and prevent risky symlink usage. The installer and Docker images have been improved and dependencies are updated for better stability. Also, the documentation features a new `showcases` page to highlight how SWS is being used in the wild.
+
+**Security Patch**
+
+This particular release patches a security vulnerability targeting the Basic Authentication feature.
+More details about the fixed security issue will be provided in the next hours.
+
+We encourage users to update as soon as possible.
+
+**Fixes**
+
+- [88422ba][88422ba] Update project dependencies. ([#620][620]) by [@joseluisq][joseluisq]
+- [bc7b7cd][bc7b7cd] Docker: Update Alpine (3.22.3) & Debian (13.3) Docker images. ([#619][619],[#625][625]) by [@joseluisq][joseluisq]
+- [df5fb00][df5fb00] Custom headers are not applied when `--redirect-trailing-slash` is disabled. ([#613][613]) by [@joseluisq][joseluisq]
+- [1a31f00][1a31f00] Hidden root paths (e.g. `.public`) are ignored by `--ignore-hidden-files` feature. ([#606][606]) by [@mightyiam][mightyiam]
+- [9fbafcf][9fbafcf] Installer script fails when used in Alpine Linux. ([#610][610]) by [@joseluisq][joseluisq]
+- [c298a6d][c298a6d] CI: Remove `pull_request` trigger from `release-docker-devel` workflow. ([#608][608]) by [@joseluisq][joseluisq]
+- [7bf0fd4][7bf0fd4] Timing-based username enumeration issue in 'Basic Authentication' feature. By [@naoyashiga][naoyashiga]
+
+[88422ba]: https://github.com/static-web-server/static-web-server/commit/88422ba
+[bc7b7cd]: https://github.com/static-web-server/static-web-server/commit/bc7b7cd
+[c298a6d]: https://github.com/static-web-server/static-web-server/commit/c298a6d
+[9b7297c]: https://github.com/static-web-server/static-web-server/commit/9b7297c
+[7bf0fd4]: https://github.com/static-web-server/static-web-server/commit/7bf0fd4
+
+[620]: https://github.com/static-web-server/static-web-server/pull/620
+[619]: https://github.com/static-web-server/static-web-server/pull/619
+[608]: https://github.com/static-web-server/static-web-server/pull/608
+
+[df5fb00]: https://github.com/static-web-server/static-web-server/commit/df5fb00
+[9fbafcf]: https://github.com/static-web-server/static-web-server/commit/9fbafcf
+[1a31f00]: https://github.com/static-web-server/static-web-server/commit/1a31f00
+
+[613]: https://github.com/static-web-server/static-web-server/pull/613
+[610]: https://github.com/static-web-server/static-web-server/pull/610
+[606]: https://github.com/static-web-server/static-web-server/pull/606
+[625]: https://github.com/static-web-server/static-web-server/pull/625
+
+**Features**
+
+- [735cc79][735cc79] Add internal priority support for dynamic compression encodings based on modern compression algorithms. ([#622][622]) by [@msuarezd][msuarezd]. See [docs](https://static-web-server.net/features/compression/#choice-of-compression-algorithm).
+
+[735cc79]: https://github.com/static-web-server/static-web-server/commit/735cc79
+
+[622]: https://github.com/static-web-server/static-web-server/pull/622
+
+**Refactorings**
+
+- [08900b3][08900b3] Separate static pre-compression from dynamic compression features. ([#624][624]) by [@msuarezd][msuarezd]
+- [2839352][2839352] Enable `--ignore-hidden-files` and `--disable-symlinks` options by default. ([#621][621]) by [@joseluisq][joseluisq]
+- [d76106f][d76106f] Replace unmaintained `rustls-pemfile` dependency in `tls` module. ([#616][616]) by [@joseluisq][joseluisq]
+- [865e8e4][865e8e4] Improve SWS installer script functionality for Linux/BSDs. ([#611][611]) by [@joseluisq][joseluisq]
+- [be04262][be04262] Docker: Prefer 'gnueabihf' binary for Debian `linux/arm/v7` Docker image. ([#609][609]) by [@joseluisq][joseluisq]
+
+[08900b3]: https://github.com/static-web-server/static-web-server/commit/08900b3
+[2839352]: https://github.com/static-web-server/static-web-server/commit/2839352
+[d76106f]: https://github.com/static-web-server/static-web-server/commit/d76106f
+[865e8e4]: https://github.com/static-web-server/static-web-server/commit/865e8e4
+[be04262]: https://github.com/static-web-server/static-web-server/commit/be04262
+[dd43d06]: https://github.com/static-web-server/static-web-server/commit/dd43d06
+[ce3a51c]: https://github.com/static-web-server/static-web-server/commit/ce3a51c
+
+[624]: https://github.com/static-web-server/static-web-server/pull/624
+[621]: https://github.com/static-web-server/static-web-server/pull/621
+[616]: https://github.com/static-web-server/static-web-server/pull/616
+[611]: https://github.com/static-web-server/static-web-server/pull/611
+[609]: https://github.com/static-web-server/static-web-server/pull/609
+
+**Docs**
+
+- [beacdbc][beacdbc] Initial SWS 'showcases' page to highlight how SWS is being used. ([#605][605]) by [@joseluisq][joseluisq]. See [docs](https://static-web-server.net/showcases/).
+
+[beacdbc]: https://github.com/static-web-server/static-web-server/commit/beacdbc
+
+[605]: https://github.com/static-web-server/static-web-server/pull/605
+[601]: https://github.com/static-web-server/static-web-server/pull/601
+
+[mightyiam]: https://github.com/mightyiam
+[msuarezd]: https://github.com/msuarezd
+[naoyashiga]: https://github.com/naoyashiga
+
+For more details see the [v2.41.0 milestone][v2410-milestone] and the full changelog [v2.40.0...v2.41.0][v2410-diff].
+
+[v2410-diff]: https://github.com/static-web-server/static-web-server/compare/v2.40.1...v2.41.0
+[v2410-milestone]: https://github.com/static-web-server/static-web-server/milestone/36?closed=1
+
 ## v2.40.1 - 2025-12-08
 
 This new `v2.40.1` release brings important security bug fixes for users serving directories with symbilic links (_symlinks_) as well as other minor improvements.
