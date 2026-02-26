@@ -230,17 +230,6 @@ impl RequestHandler {
             #[cfg(all(unix, feature = "experimental"))]
             let req_start = std::time::Instant::now();
             #[cfg(all(unix, feature = "experimental"))]
-            let req_method = req.method().clone();
-            #[cfg(all(unix, feature = "experimental"))]
-            let req_host = req
-                .headers()
-                .get(hyper::header::HOST)
-                .and_then(|v| v.to_str().ok())
-                .unwrap_or("")
-                .to_owned();
-            #[cfg(all(unix, feature = "experimental"))]
-            let is_metrics_path = req.uri().path() == "/metrics";
-            #[cfg(all(unix, feature = "experimental"))]
             let metrics_enabled = self.opts.experimental_metrics;
 
             #[cfg(all(unix, feature = "experimental"))]
@@ -393,26 +382,22 @@ impl RequestHandler {
             }
             .await;
 
-            // Record HTTP metrics
             #[cfg(all(unix, feature = "experimental"))]
             if metrics_enabled {
                 metrics::dec_requests_inflight();
-                if !is_metrics_path {
-                    if let Ok(ref resp) = result {
-                        let bytes = resp
-                            .headers()
-                            .get(hyper::header::CONTENT_LENGTH)
-                            .and_then(|v| v.to_str().ok())
-                            .and_then(|v| v.parse::<u64>().ok())
-                            .unwrap_or(0);
-                        metrics::record_request(
-                            &req_method,
-                            resp.status(),
-                            &req_host,
-                            bytes,
-                            req_start.elapsed().as_secs_f64(),
-                        );
-                    }
+                if let Ok(ref resp) = result {
+                    let bytes = resp
+                        .headers()
+                        .get(hyper::header::CONTENT_LENGTH)
+                        .and_then(|v| v.to_str().ok())
+                        .and_then(|v| v.parse::<u64>().ok())
+                        .unwrap_or(0);
+                    metrics::record_request(
+                        req,
+                        resp.status(),
+                        bytes,
+                        req_start.elapsed().as_secs_f64(),
+                    );
                 }
             }
 

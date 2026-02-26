@@ -9,7 +9,7 @@
 use std::sync::LazyLock;
 
 use headers::{ContentType, HeaderMapExt};
-use hyper::{Body, Method, Request, Response, StatusCode};
+use hyper::{Body, Request, Response, StatusCode};
 use prometheus::{
     Encoder, HistogramOpts, HistogramVec, IntCounterVec, IntGauge, Opts, TextEncoder,
     default_registry,
@@ -141,8 +141,16 @@ pub fn pre_process<T>(
 }
 
 /// Records HTTP request metrics after a response is produced.
-pub fn record_request(method: &Method, status: StatusCode, host: &str, bytes: u64, elapsed: f64) {
-    let m = method.as_str();
+pub fn record_request<T>(req: &Request<T>, status: StatusCode, bytes: u64, elapsed: f64) {
+    if req.uri().path() == "/metrics" {
+        return;
+    }
+    let m = req.method().as_str();
+    let host = req
+        .headers()
+        .get(hyper::header::HOST)
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
     let sc = status_class(status.as_u16());
     HTTP_REQUESTS_TOTAL
         .with_label_values(&[m, sc, host])
@@ -269,7 +277,6 @@ mod tests {
 
     #[test]
     fn test_record_request() {
-        // Force lazy init so metrics exist
         let before = HTTP_REQUESTS_TOTAL
             .with_label_values(&["GET", "2xx", "example.com"])
             .get();
@@ -277,7 +284,13 @@ mod tests {
             .with_label_values(&["GET", "2xx", "example.com"])
             .get();
 
-        record_request(&Method::GET, StatusCode::OK, "example.com", 1024, 0.005);
+        let req = Request::builder()
+            .method("GET")
+            .uri("/index.html")
+            .header(hyper::header::HOST, "example.com")
+            .body(Body::empty())
+            .unwrap();
+        record_request(&req, StatusCode::OK, 1024, 0.005);
 
         assert_eq!(
             HTTP_REQUESTS_TOTAL
@@ -290,6 +303,23 @@ mod tests {
                 .with_label_values(&["GET", "2xx", "example.com"])
                 .get(),
             bytes_before + 1024
+        );
+    }
+
+    #[test]
+    fn test_record_request_skips_metrics_path() {
+        let before = HTTP_REQUESTS_TOTAL
+            .with_label_values(&["GET", "2xx", ""])
+            .get();
+
+        let req = make_request("GET", "/metrics");
+        record_request(&req, StatusCode::OK, 0, 0.001);
+
+        assert_eq!(
+            HTTP_REQUESTS_TOTAL
+                .with_label_values(&["GET", "2xx", ""])
+                .get(),
+            before
         );
     }
 
