@@ -193,6 +193,10 @@ Provide a custom HTTP status code when entering into maintenance mode. Default `
 
 Provide a custom maintenance mode HTML file. If not provided then a generic message will be displayed.
 
+### SERVER_METRICS
+
+Activate the Prometheus metrics endpoint. See [Metrics](../features/metrics.md) for details.
+
 ## Windows
 
 The following options and commands are Windows platform-specific.
