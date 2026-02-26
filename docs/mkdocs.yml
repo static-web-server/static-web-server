@@ -162,6 +162,7 @@ nav:
     - 'Ignore Files': 'features/ignore-files.md'
     - 'Disable Symlinks': 'features/disable-symlinks.md'
     - 'Health endpoint': 'features/health-endpoint.md'
+    - 'Metrics': 'features/metrics.md'
     - 'Virtual Hosting': 'features/virtual-hosting.md'
     - 'Multiple Index Files': 'features/multiple-index-files.md'
     - 'Maintenance Mode': 'features/maintenance-mode.md'
