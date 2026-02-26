@@ -92,6 +92,8 @@
 //! `basic-auth` | Activates the Basic HTTP Authorization Schema feature.
 //! [**Fallback Page**](./features/error-pages.md#fallback-page-for-use-with-client-routers) |
 //! `fallback-page` | Activates the Fallback Page feature.
+//! **Metrics** |
+//! `metrics` | Activates the Prometheus metrics endpoint (`/metrics`). Enabled by default but requires the `--metrics` flag at runtime. Tokio runtime metrics are additionally available via the `experimental` feature.
 //!
 
 #![deny(missing_docs)]
@@ -158,7 +160,7 @@ pub mod maintenance_mode;
 pub(crate) mod markdown;
 #[cfg(feature = "experimental")]
 pub(crate) mod mem_cache;
-#[cfg(all(unix, feature = "experimental"))]
+#[cfg(feature = "metrics")]
 pub(crate) mod metrics;
 pub mod redirects;
 pub(crate) mod response;

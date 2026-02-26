@@ -374,9 +374,9 @@ pub struct General {
     /// Accept markdown content negotiation feature.
     pub accept_markdown: Option<bool>,
 
-    #[cfg(all(unix, feature = "experimental"))]
-    /// Metrics endpoint feature (experimental).
-    pub experimental_metrics: Option<bool>,
+    #[cfg(feature = "metrics")]
+    /// Metrics endpoint feature.
+    pub metrics: Option<bool>,
 
     /// Maintenance mode feature.
     pub maintenance_mode: Option<bool>,

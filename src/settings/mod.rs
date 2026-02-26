@@ -204,8 +204,8 @@ impl Settings {
         let mut index_files = opts.index_files;
         let mut health = opts.health;
 
-        #[cfg(all(unix, feature = "experimental"))]
-        let mut experimental_metrics = opts.experimental_metrics;
+        #[cfg(feature = "metrics")]
+        let mut metrics = opts.metrics;
 
         let mut maintenance_mode = opts.maintenance_mode;
         let mut maintenance_mode_status = opts.maintenance_mode_status;
@@ -396,9 +396,9 @@ impl Settings {
                 if let Some(v) = general.accept_markdown {
                     accept_markdown = v
                 }
-                #[cfg(all(unix, feature = "experimental"))]
-                if let Some(v) = general.experimental_metrics {
-                    experimental_metrics = v
+                #[cfg(feature = "metrics")]
+                if let Some(v) = general.metrics {
+                    metrics = v
                 }
                 if let Some(v) = general.index_files {
                     index_files = v
@@ -681,8 +681,8 @@ impl Settings {
                 accept_markdown,
                 index_files,
                 health,
-                #[cfg(all(unix, feature = "experimental"))]
-                experimental_metrics,
+                #[cfg(feature = "metrics")]
+                metrics,
                 maintenance_mode,
                 maintenance_mode_status,
                 maintenance_mode_file,

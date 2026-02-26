@@ -14,7 +14,7 @@ use tokio::sync::{Mutex, watch::Receiver};
 
 use crate::handler::{RequestHandler, RequestHandlerOpts};
 
-#[cfg(all(unix, feature = "experimental"))]
+#[cfg(feature = "metrics")]
 use crate::metrics;
 #[cfg(any(unix, windows))]
 use crate::signals;
@@ -323,9 +323,9 @@ impl Server {
         // Log remote address option
         log_addr::init(general.log_remote_address, &mut handler_opts);
 
-        // Metrics endpoint option (experimental)
-        #[cfg(all(unix, feature = "experimental"))]
-        metrics::init(general.experimental_metrics, &mut handler_opts);
+        // Metrics endpoint option
+        #[cfg(feature = "metrics")]
+        metrics::init(general.metrics, &mut handler_opts);
 
         // CORS option
         cors::init(

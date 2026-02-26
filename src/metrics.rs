@@ -3,7 +3,7 @@
 // See https://static-web-server.net/ for more information
 // Copyright (C) 2019-present Jose Quintana <joseluisq.net>
 
-//! Module providing the experimental metrics endpoint and HTTP-level instrumentation.
+//! Module providing the metrics endpoint and HTTP-level instrumentation.
 //!
 
 use std::sync::LazyLock;
@@ -75,17 +75,27 @@ static HTTP_CONNECTIONS_ACTIVE: LazyLock<IntGauge> = LazyLock::new(|| {
 });
 
 /// Initializes the metrics endpoint and registers HTTP-level collectors.
+/// Tokio runtime metrics are additionally registered when the `experimental`
+/// feature is enabled and built with `RUSTFLAGS="--cfg tokio_unstable"`.
 pub fn init(enabled: bool, handler_opts: &mut RequestHandlerOpts) {
-    handler_opts.experimental_metrics = enabled;
-    tracing::info!("metrics endpoint (experimental): enabled={enabled}");
+    handler_opts.metrics_enabled = enabled;
+    tracing::info!("metrics endpoint: enabled={enabled}");
 
     if enabled {
         let registry = default_registry();
-        registry
-            .register(Box::new(
-                tokio_metrics_collector::default_runtime_collector(),
-            ))
-            .unwrap();
+
+        // Tokio runtime metrics (experimental, unix-only, requires tokio_unstable)
+        #[cfg(all(unix, feature = "experimental"))]
+        {
+            registry
+                .register(Box::new(
+                    tokio_metrics_collector::default_runtime_collector(),
+                ))
+                .unwrap();
+            tracing::info!("tokio runtime metrics: enabled");
+        }
+
+        // HTTP-level metrics
         registry
             .register(Box::new(HTTP_REQUESTS_TOTAL.clone()))
             .unwrap();
@@ -109,7 +119,7 @@ pub fn pre_process<T>(
     opts: &RequestHandlerOpts,
     req: &Request<T>,
 ) -> Option<Result<Response<Body>, Error>> {
-    if !opts.experimental_metrics {
+    if !opts.metrics_enabled {
         return None;
     }
 
@@ -212,7 +222,7 @@ mod tests {
         assert!(
             pre_process(
                 &RequestHandlerOpts {
-                    experimental_metrics: false,
+                    metrics_enabled: false,
                     ..Default::default()
                 },
                 &make_request("GET", "/metrics")
@@ -226,7 +236,7 @@ mod tests {
         assert!(
             pre_process(
                 &RequestHandlerOpts {
-                    experimental_metrics: true,
+                    metrics_enabled: true,
                     ..Default::default()
                 },
                 &make_request("GET", "/metrics2")
@@ -240,7 +250,7 @@ mod tests {
         assert!(
             pre_process(
                 &RequestHandlerOpts {
-                    experimental_metrics: true,
+                    metrics_enabled: true,
                     ..Default::default()
                 },
                 &make_request("POST", "/metrics")
@@ -254,7 +264,7 @@ mod tests {
         assert!(
             pre_process(
                 &RequestHandlerOpts {
-                    experimental_metrics: true,
+                    metrics_enabled: true,
                     ..Default::default()
                 },
                 &make_request("GET", "/metrics")
