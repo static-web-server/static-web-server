@@ -352,8 +352,7 @@ impl RequestHandler {
                 let resp = cors::post_process(&self.opts, req, resp)?;
 
                 // Set Content-Type for markdown files
-                let resp =
-                    crate::markdown::post_process(uri_path_md.is_some(), &self.opts, resp)?;
+                let resp = crate::markdown::post_process(uri_path_md.is_some(), &self.opts, resp)?;
 
                 // Add a `Vary` header if static compression is used
                 let resp = compression_static::post_process(&self.opts, req, resp)?;
@@ -375,8 +374,7 @@ impl RequestHandler {
                 let resp = security_headers::post_process(&self.opts, req, resp)?;
 
                 // Add/update custom headers
-                let resp =
-                    custom_headers::post_process(&self.opts, req, resp, file_path.as_ref())?;
+                let resp = custom_headers::post_process(&self.opts, req, resp, file_path.as_ref())?;
 
                 Ok(resp)
             }

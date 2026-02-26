@@ -20,8 +20,8 @@ use crate::{Error, handler::RequestHandlerOpts, http_ext::MethodExt};
 // Histogram buckets tuned for static file serving (50µs to 10s).
 // Sub-millisecond range captures cache hits and small in-memory responses.
 const LATENCY_BUCKETS: &[f64] = &[
-    0.00005, 0.0001, 0.00025, 0.0005, 0.001, 0.0025, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5,
-    1.0, 2.5, 5.0, 10.0,
+    0.00005, 0.0001, 0.00025, 0.0005, 0.001, 0.0025, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0,
+    2.5, 5.0, 10.0,
 ];
 
 static HTTP_REQUESTS_TOTAL: LazyLock<IntCounterVec> = LazyLock::new(|| {
@@ -152,9 +152,7 @@ pub fn record_request<T>(req: &Request<T>, status: StatusCode, bytes: u64, elaps
         .and_then(|v| v.to_str().ok())
         .unwrap_or("");
     let sc = status_class(status.as_u16());
-    HTTP_REQUESTS_TOTAL
-        .with_label_values(&[m, sc, host])
-        .inc();
+    HTTP_REQUESTS_TOTAL.with_label_values(&[m, sc, host]).inc();
     HTTP_REQUEST_DURATION_SECONDS
         .with_label_values(&[m, sc, host])
         .observe(elapsed);
