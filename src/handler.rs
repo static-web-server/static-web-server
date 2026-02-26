@@ -227,145 +227,179 @@ impl RequestHandler {
         log_addr::pre_process(&self.opts, req, remote_addr);
 
         async move {
-            // Reject if the HTTP request method is not allowed
-            if !req.method().is_allowed() {
-                return error_page::error_response(
-                    req.uri(),
-                    req.method(),
-                    &StatusCode::METHOD_NOT_ALLOWED,
-                    &self.opts.page404,
-                    &self.opts.page50x,
-                );
-            }
-
-            // Health endpoint check
-            if let Some(result) = health::pre_process(&self.opts, req) {
-                return result;
-            }
-
-            // Metrics endpoint check
             #[cfg(all(unix, feature = "experimental"))]
-            if let Some(result) = metrics::pre_process(&self.opts, req) {
-                return result;
+            let req_start = std::time::Instant::now();
+            #[cfg(all(unix, feature = "experimental"))]
+            let metrics_enabled = self.opts.experimental_metrics;
+
+            #[cfg(all(unix, feature = "experimental"))]
+            if metrics_enabled {
+                metrics::inc_requests_inflight();
             }
 
-            // CORS
-            if let Some(result) = cors::pre_process(&self.opts, req) {
-                return result;
-            }
+            let result: Result<Response<Body>, Error> = async {
+                // Reject if the HTTP request method is not allowed
+                if !req.method().is_allowed() {
+                    return error_page::error_response(
+                        req.uri(),
+                        req.method(),
+                        &StatusCode::METHOD_NOT_ALLOWED,
+                        &self.opts.page404,
+                        &self.opts.page50x,
+                    );
+                }
 
-            // `Basic` HTTP Authorization Schema
-            #[cfg(feature = "basic-auth")]
-            if let Some(response) = basic_auth::pre_process(&self.opts, req) {
-                return response;
-            }
+                // Health endpoint check
+                if let Some(result) = health::pre_process(&self.opts, req) {
+                    return result;
+                }
 
-            // Maintenance Mode
-            if let Some(response) = maintenance_mode::pre_process(&self.opts, req) {
-                return response;
-            }
+                // Metrics endpoint check
+                #[cfg(all(unix, feature = "experimental"))]
+                if let Some(result) = metrics::pre_process(&self.opts, req) {
+                    return result;
+                }
 
-            // Redirects
-            if let Some(result) = redirects::pre_process(&self.opts, req) {
-                return result;
-            }
+                // CORS
+                if let Some(result) = cors::pre_process(&self.opts, req) {
+                    return result;
+                }
 
-            // Rewrites
-            if let Some(result) = rewrites::pre_process(&self.opts, req) {
-                return result;
-            }
+                // `Basic` HTTP Authorization Schema
+                #[cfg(feature = "basic-auth")]
+                if let Some(response) = basic_auth::pre_process(&self.opts, req) {
+                    return response;
+                }
 
-            // Advanced options
-            if let Some(advanced) = &self.opts.advanced_opts {
-                // If the "Host" header matches any virtual_host, change the root directory
-                if let Some(root) =
-                    virtual_hosts::get_real_root(req, advanced.virtual_hosts.as_deref())
+                // Maintenance Mode
+                if let Some(response) = maintenance_mode::pre_process(&self.opts, req) {
+                    return response;
+                }
+
+                // Redirects
+                if let Some(result) = redirects::pre_process(&self.opts, req) {
+                    return result;
+                }
+
+                // Rewrites
+                if let Some(result) = rewrites::pre_process(&self.opts, req) {
+                    return result;
+                }
+
+                // Advanced options
+                if let Some(advanced) = &self.opts.advanced_opts {
+                    // If the "Host" header matches any virtual_host, change the root directory
+                    if let Some(root) =
+                        virtual_hosts::get_real_root(req, advanced.virtual_hosts.as_deref())
+                    {
+                        base_path = root;
+                    }
+                }
+
+                let index_files = index_files.as_ref();
+
+                // Check for markdown content negotiation (only if enabled)
+                let uri_path_md = if self.opts.accept_markdown {
+                    crate::markdown::pre_process(req, base_path, req.uri().path())
+                } else {
+                    None
+                };
+                let uri_path = uri_path_md.as_deref().unwrap_or(req.uri().path());
+
+                // Static files
+                let (resp, file_path) = match static_files::handle(&HandleOpts {
+                    method: req.method(),
+                    headers: req.headers(),
+                    #[cfg(feature = "experimental")]
+                    memory_cache,
+                    base_path,
+                    uri_path,
+                    uri_query: req.uri().query(),
+                    #[cfg(feature = "directory-listing")]
+                    dir_listing,
+                    #[cfg(feature = "directory-listing")]
+                    dir_listing_order,
+                    #[cfg(feature = "directory-listing")]
+                    dir_listing_format,
+                    #[cfg(feature = "directory-listing-download")]
+                    dir_listing_download,
+                    redirect_trailing_slash,
+                    compression_static,
+                    ignore_hidden_files,
+                    index_files,
+                    disable_symlinks,
+                })
+                .await
                 {
-                    base_path = root;
+                    Ok(result) => (result.resp, Some(result.file_path)),
+                    Err(status) => (
+                        error_page::error_response(
+                            req.uri(),
+                            req.method(),
+                            &status,
+                            &self.opts.page404,
+                            &self.opts.page50x,
+                        )?,
+                        None,
+                    ),
+                };
+
+                // Check for a fallback response
+                #[cfg(feature = "fallback-page")]
+                let resp = fallback_page::post_process(&self.opts, req, resp)?;
+
+                // Append CORS headers if they are present
+                let resp = cors::post_process(&self.opts, req, resp)?;
+
+                // Set Content-Type for markdown files
+                let resp = crate::markdown::post_process(uri_path_md.is_some(), &self.opts, resp)?;
+
+                // Add a `Vary` header if static compression is used
+                let resp = compression_static::post_process(&self.opts, req, resp)?;
+
+                // Auto compression based on the `Accept-Encoding` header
+                #[cfg(any(
+                    feature = "compression",
+                    feature = "compression-gzip",
+                    feature = "compression-brotli",
+                    feature = "compression-zstd",
+                    feature = "compression-deflate"
+                ))]
+                let resp = compression::post_process(&self.opts, req, resp)?;
+
+                // Append `Cache-Control` headers for web assets
+                let resp = control_headers::post_process(&self.opts, req, resp)?;
+
+                // Append security headers
+                let resp = security_headers::post_process(&self.opts, req, resp)?;
+
+                // Add/update custom headers
+                let resp = custom_headers::post_process(&self.opts, req, resp, file_path.as_ref())?;
+
+                Ok(resp)
+            }
+            .await;
+
+            #[cfg(all(unix, feature = "experimental"))]
+            if metrics_enabled {
+                metrics::dec_requests_inflight();
+                if let Ok(ref resp) = result {
+                    let bytes = resp
+                        .headers()
+                        .get(hyper::header::CONTENT_LENGTH)
+                        .and_then(|v| v.to_str().ok())
+                        .and_then(|v| v.parse::<u64>().ok())
+                        .unwrap_or(0);
+                    metrics::record_request(
+                        req,
+                        resp.status(),
+                        bytes,
+                        req_start.elapsed().as_secs_f64(),
+                    );
                 }
             }
 
-            let index_files = index_files.as_ref();
-
-            // Check for markdown content negotiation (only if enabled)
-            let uri_path_md = if self.opts.accept_markdown {
-                crate::markdown::pre_process(req, base_path, req.uri().path())
-            } else {
-                None
-            };
-            let uri_path = uri_path_md.as_deref().unwrap_or(req.uri().path());
-
-            // Static files
-            let (resp, file_path) = match static_files::handle(&HandleOpts {
-                method: req.method(),
-                headers: req.headers(),
-                #[cfg(feature = "experimental")]
-                memory_cache,
-                base_path,
-                uri_path,
-                uri_query: req.uri().query(),
-                #[cfg(feature = "directory-listing")]
-                dir_listing,
-                #[cfg(feature = "directory-listing")]
-                dir_listing_order,
-                #[cfg(feature = "directory-listing")]
-                dir_listing_format,
-                #[cfg(feature = "directory-listing-download")]
-                dir_listing_download,
-                redirect_trailing_slash,
-                compression_static,
-                ignore_hidden_files,
-                index_files,
-                disable_symlinks,
-            })
-            .await
-            {
-                Ok(result) => (result.resp, Some(result.file_path)),
-                Err(status) => (
-                    error_page::error_response(
-                        req.uri(),
-                        req.method(),
-                        &status,
-                        &self.opts.page404,
-                        &self.opts.page50x,
-                    )?,
-                    None,
-                ),
-            };
-
-            // Check for a fallback response
-            #[cfg(feature = "fallback-page")]
-            let resp = fallback_page::post_process(&self.opts, req, resp)?;
-
-            // Append CORS headers if they are present
-            let resp = cors::post_process(&self.opts, req, resp)?;
-
-            // Set Content-Type for markdown files
-            let resp = crate::markdown::post_process(uri_path_md.is_some(), &self.opts, resp)?;
-
-            // Add a `Vary` header if static compression is used
-            let resp = compression_static::post_process(&self.opts, req, resp)?;
-
-            // Auto compression based on the `Accept-Encoding` header
-            #[cfg(any(
-                feature = "compression",
-                feature = "compression-gzip",
-                feature = "compression-brotli",
-                feature = "compression-zstd",
-                feature = "compression-deflate"
-            ))]
-            let resp = compression::post_process(&self.opts, req, resp)?;
-
-            // Append `Cache-Control` headers for web assets
-            let resp = control_headers::post_process(&self.opts, req, resp)?;
-
-            // Append security headers
-            let resp = security_headers::post_process(&self.opts, req, resp)?;
-
-            // Add/update custom headers
-            let resp = custom_headers::post_process(&self.opts, req, resp, file_path.as_ref())?;
-
-            Ok(resp)
+            result
         }
     }
 }
