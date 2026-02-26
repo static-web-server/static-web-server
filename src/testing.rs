@@ -111,8 +111,8 @@ pub mod fixtures {
             accept_markdown: general.accept_markdown,
             index_files: vec![general.index_files],
             health: general.health,
-            #[cfg(all(unix, feature = "experimental"))]
-            experimental_metrics: general.experimental_metrics,
+            #[cfg(feature = "metrics")]
+            metrics_enabled: general.metrics,
             maintenance_mode: general.maintenance_mode,
             maintenance_mode_status: general.maintenance_mode_status,
             maintenance_mode_file: general.maintenance_mode_file,

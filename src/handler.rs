@@ -31,7 +31,7 @@ use crate::basic_auth;
 #[cfg(feature = "fallback-page")]
 use crate::fallback_page;
 
-#[cfg(all(unix, feature = "experimental"))]
+#[cfg(feature = "metrics")]
 use crate::metrics;
 
 #[cfg(feature = "experimental")]
@@ -127,9 +127,9 @@ pub struct RequestHandlerOpts {
     pub accept_markdown: bool,
     /// Health endpoint feature.
     pub health: bool,
-    /// Metrics endpoint feature (experimental).
-    #[cfg(all(unix, feature = "experimental"))]
-    pub experimental_metrics: bool,
+    /// Metrics endpoint feature.
+    #[cfg(feature = "metrics")]
+    pub metrics_enabled: bool,
     /// Maintenance mode feature.
     pub maintenance_mode: bool,
     /// Custom HTTP status for when entering into maintenance mode.
@@ -184,8 +184,8 @@ impl Default for RequestHandlerOpts {
             disable_symlinks: false,
             accept_markdown: false,
             health: false,
-            #[cfg(all(unix, feature = "experimental"))]
-            experimental_metrics: false,
+            #[cfg(feature = "metrics")]
+            metrics_enabled: false,
             maintenance_mode: false,
             maintenance_mode_status: StatusCode::SERVICE_UNAVAILABLE,
             maintenance_mode_file: PathBuf::new(),
@@ -227,12 +227,12 @@ impl RequestHandler {
         log_addr::pre_process(&self.opts, req, remote_addr);
 
         async move {
-            #[cfg(all(unix, feature = "experimental"))]
+            #[cfg(feature = "metrics")]
             let req_start = std::time::Instant::now();
-            #[cfg(all(unix, feature = "experimental"))]
-            let metrics_enabled = self.opts.experimental_metrics;
+            #[cfg(feature = "metrics")]
+            let metrics_enabled = self.opts.metrics_enabled;
 
-            #[cfg(all(unix, feature = "experimental"))]
+            #[cfg(feature = "metrics")]
             if metrics_enabled {
                 metrics::inc_requests_inflight();
             }
@@ -255,7 +255,7 @@ impl RequestHandler {
                 }
 
                 // Metrics endpoint check
-                #[cfg(all(unix, feature = "experimental"))]
+                #[cfg(feature = "metrics")]
                 if let Some(result) = metrics::pre_process(&self.opts, req) {
                     return result;
                 }
@@ -380,7 +380,7 @@ impl RequestHandler {
             }
             .await;
 
-            #[cfg(all(unix, feature = "experimental"))]
+            #[cfg(feature = "metrics")]
             if metrics_enabled {
                 metrics::dec_requests_inflight();
                 if let Ok(ref resp) = result {

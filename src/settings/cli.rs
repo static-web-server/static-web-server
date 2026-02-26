@@ -525,18 +525,18 @@ pub struct General {
     /// This is especially useful with Kubernetes liveness and readiness probes.
     pub health: bool,
 
-    #[cfg(all(unix, feature = "experimental"))]
+    #[cfg(feature = "metrics")]
     #[arg(
-        long = "experimental-metrics",
+        long,
         default_value = "false",
         default_missing_value("true"),
         num_args(0..=1),
         require_equals(false),
         action = clap::ArgAction::Set,
-        env = "SERVER_EXPERIMENTAL_METRICS",
+        env = "SERVER_METRICS",
     )]
-    /// Add a /metrics endpoint that returns a Prometheus metrics response.
-    pub experimental_metrics: bool,
+    /// Enable the /metrics endpoint that exposes Prometheus metrics for HTTP requests, connections, and latency.
+    pub metrics: bool,
 
     #[arg(
         long,
