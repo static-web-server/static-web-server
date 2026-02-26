@@ -97,7 +97,7 @@ tokio-rustls = { version = "0.26", optional = true, default-features = false, fe
 tokio-util = { version = "0.7", default-features = false, features = ["compat", "io"] }
 toml = "0.9"
 tracing = { version = "0.1", default-features = false, features = ["std"] }
-tracing-subscriber = { version = "0.3", default-features = false, features = ["smallvec", "registry", "parking_lot", "fmt", "ansi", "tracing-log"] }
+tracing-subscriber = { version = "0.3", default-features = false, features = ["smallvec", "registry", "parking_lot", "fmt", "ansi", "tracing-log", "local-time"] }
 
 [target.'cfg(all(target_env = "musl", target_pointer_width = "64"))'.dependencies.mimalloc]
 version = "0.1.48"
