@@ -64,6 +64,7 @@ Cross-platform and available for `Linux`, `macOS`, `Windows`, `FreeBSD`, `NetBSD
 - Default and custom error pages.
 - Built-in HTTP to HTTPS redirect.
 - GET/HEAD Health check endpoint.
+- Prometheus-compatible `/metrics` endpoint for traffic monitoring.
 - Support for serving pre-compressed (Gzip/Brotli/Zstd) files directly from disk.
 - Custom URL rewrites and redirects via glob patterns with replacements.
 - Virtual hosting support.
