@@ -155,7 +155,7 @@ pub(crate) mod health;
 #[cfg(feature = "http2")]
 #[cfg_attr(docsrs, doc(cfg(feature = "http2")))]
 pub mod https_redirect;
-pub(crate) mod log_addr;
+pub(crate) mod access_logs;
 pub mod maintenance_mode;
 pub(crate) mod markdown;
 #[cfg(feature = "experimental")]

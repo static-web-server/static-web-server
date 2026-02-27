@@ -55,7 +55,8 @@ use crate::mem_cache;
 
 use crate::{Context, Result, service::RouterService};
 use crate::{
-    Settings, control_headers, cors, health, helpers, log_addr, maintenance_mode, security_headers,
+    Settings, access_logs, control_headers, cors, health, helpers, maintenance_mode,
+    security_headers,
 };
 
 /// Define a multi-threaded HTTP or HTTP/2 web server.
@@ -240,6 +241,16 @@ impl Server {
             );
         }
 
+        // Access log format option
+        let access_log_format = if general.access_log_format.is_empty() {
+            None
+        } else {
+            Some(
+                access_logs::AccessLogFormat::parse(&general.access_log_format)
+                    .with_context(|| "invalid access log format")?,
+            )
+        };
+
         // Log remote address option
         let log_remote_address = general.log_remote_address;
 
@@ -287,6 +298,7 @@ impl Server {
             root_dir,
             page404: page404.clone(),
             page50x: page50x.clone(),
+            access_log_format,
             log_remote_address,
             log_x_real_ip,
             log_forwarded_for,
@@ -320,8 +332,13 @@ impl Server {
         // Health endpoint option
         health::init(general.health, &mut handler_opts);
 
-        // Log remote address option
-        log_addr::init(general.log_remote_address, &mut handler_opts);
+        // Access log option
+        let has_access_log_format = handler_opts.access_log_format.is_some();
+        access_logs::init(
+            general.log_remote_address,
+            has_access_log_format,
+            &mut handler_opts,
+        );
 
         // Metrics endpoint option
         #[cfg(feature = "metrics")]

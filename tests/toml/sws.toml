@@ -55,6 +55,12 @@ grace-period = 0
 #### Page fallback for 404s
 page-fallback = ""
 
+#### Custom access log format (replaces default logging when set)
+#### Tokens: %{method}, %{uri}, %{status}, %{bytes}, %{duration}, %{remote_addr},
+####         %{x_real_ip}, %{forwarded_for}, %{host}, %{user_agent}, %{referer},
+####         %{time_local}, %{version}. Use %% for literal %.
+# access-log-format = '%{remote_addr} - [%{time_local}] "%{method} %{uri} %{version}" %{status} %{bytes} "%{referer}" "%{user_agent}"'
+
 #### Log request Remote Address if available
 log-remote-address = false
 
