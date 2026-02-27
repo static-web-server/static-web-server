@@ -16,7 +16,7 @@ use std::task::{Context, Poll};
 
 use crate::{Error, handler::RequestHandler, transport::Transport};
 
-#[cfg(all(unix, feature = "experimental"))]
+#[cfg(feature = "metrics")]
 use crate::metrics;
 
 /// It defines the router service which is the main entry point for Hyper Server.
@@ -55,7 +55,7 @@ pub struct RequestService {
 
 impl RequestService {
     fn new(handler: Arc<RequestHandler>, remote_addr: Option<SocketAddr>) -> Self {
-        #[cfg(all(unix, feature = "experimental"))]
+        #[cfg(feature = "metrics")]
         metrics::inc_connections();
         Self {
             handler,
@@ -64,7 +64,7 @@ impl RequestService {
     }
 }
 
-#[cfg(all(unix, feature = "experimental"))]
+#[cfg(feature = "metrics")]
 impl Drop for RequestService {
     fn drop(&mut self) {
         metrics::dec_connections();

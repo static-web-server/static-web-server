@@ -38,7 +38,7 @@ doc = false
 
 [features]
 # All features enabled by default
-default = ["compression", "http2", "directory-listing", "directory-listing-download", "basic-auth", "fallback-page"]
+default = ["compression", "http2", "directory-listing", "directory-listing-download", "basic-auth", "fallback-page", "metrics"]
 # Include all features (used when building SWS binaries)
 all = ["default", "experimental"]
 # HTTP2
@@ -57,9 +57,10 @@ directory-listing-download = ["async-tar",  "compression-gzip", "directory-listi
 basic-auth = ["bcrypt"]
 # Fallback Page
 fallback-page = []
+# Metrics endpoint with Prometheus integration
+metrics = ["prometheus"]
 # Experimental features (requires: `RUSTFLAGS="--cfg tokio_unstable"`)
-# --experimental-metrics
-experimental = ["tokio-metrics-collector", "prometheus", "compact_str", "mini-moka"]
+experimental = ["metrics", "tokio-metrics-collector", "compact_str", "mini-moka"]
 
 [dependencies]
 aho-corasick = "1.1.4"
@@ -85,6 +86,7 @@ mime_guess = "2.0"
 mini-moka = { version = "0.10.3", optional = true }
 percent-encoding = "2.3"
 pin-project = "1.1"
+prometheus = { version = "0.14.0", default-features = false, optional = true }
 regex-lite = "0.1.8"
 rustls-pki-types = { version = "1.13.2", optional = true }
 serde = { version = "1.0", default-features = false, features = ["derive"] }
@@ -97,7 +99,7 @@ tokio-rustls = { version = "0.26", optional = true, default-features = false, fe
 tokio-util = { version = "0.7", default-features = false, features = ["compat", "io"] }
 toml = "0.9"
 tracing = { version = "0.1", default-features = false, features = ["std"] }
-tracing-subscriber = { version = "0.3", default-features = false, features = ["smallvec", "registry", "parking_lot", "fmt", "ansi", "tracing-log"] }
+tracing-subscriber = { version = "0.3", default-features = false, features = ["smallvec", "registry", "parking_lot", "fmt", "ansi", "tracing-log", "local-time"] }
 
 [target.'cfg(all(target_env = "musl", target_pointer_width = "64"))'.dependencies.mimalloc]
 version = "0.1.48"
@@ -106,7 +108,6 @@ version = "0.1.48"
 signal-hook = { version = "0.4.1", features = ["extended-siginfo"] }
 signal-hook-tokio = { version = "0.4.0", features = ["futures-v0_3"], default-features = false }
 tokio-metrics-collector = { version = "0.3.1", optional = true }
-prometheus = { version = "0.14.0", default-features = false, optional = true }
 
 [target.'cfg(windows)'.dependencies]
 windows-service = "0.8"

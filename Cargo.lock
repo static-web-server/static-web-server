@@ -2506,6 +2506,7 @@ dependencies = [
  "sharded-slab",
  "smallvec",
  "thread_local",
+ "time",
  "tracing-core",
  "tracing-log",
 ]

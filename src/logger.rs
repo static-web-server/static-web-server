@@ -7,7 +7,11 @@
 //!
 
 use tracing::Level;
-use tracing_subscriber::{filter::Targets, fmt::format::FmtSpan, prelude::*};
+use tracing_subscriber::{
+    filter::Targets,
+    fmt::{format::FmtSpan, time},
+    prelude::*,
+};
 
 use crate::{Context, Result};
 
@@ -30,6 +34,7 @@ fn configure(level: &str, enable_ansi: bool) -> Result {
         .with_writer(std::io::stderr)
         .with_span_events(FmtSpan::CLOSE)
         .with_ansi(enable_ansi)
+        .with_timer(time::LocalTime::rfc_3339())
         .with_filter(Targets::default().with_default(level));
 
     match tracing_subscriber::registry()
