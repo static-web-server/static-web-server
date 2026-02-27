@@ -295,9 +295,7 @@ pub(crate) fn init(
         } else {
             format!("{:?}", handler_opts.trusted_proxies)
         };
-        tracing::info!(
-            "log requests with remote IP addresses: enabled={log_remote_address}"
-        );
+        tracing::info!("log requests with remote IP addresses: enabled={log_remote_address}");
         tracing::info!(
             "log X-Real-IP header: enabled={}",
             handler_opts.log_x_real_ip
@@ -453,10 +451,12 @@ mod tests {
 
     #[test]
     fn parse_mixed() {
-        let fmt =
-            AccessLogFormat::parse("%{remote_addr} \"%{method} %{uri}\" %{status}").unwrap();
+        let fmt = AccessLogFormat::parse("%{remote_addr} \"%{method} %{uri}\" %{status}").unwrap();
         assert_eq!(fmt.segments.len(), 7);
-        assert!(matches!(&fmt.segments[0], Segment::Token(Token::RemoteAddr)));
+        assert!(matches!(
+            &fmt.segments[0],
+            Segment::Token(Token::RemoteAddr)
+        ));
         assert!(matches!(&fmt.segments[1], Segment::Literal(s) if s == " \""));
         assert!(matches!(&fmt.segments[2], Segment::Token(Token::Method)));
         assert!(matches!(&fmt.segments[3], Segment::Literal(s) if s == " "));
@@ -615,11 +615,8 @@ mod tests {
 
     #[test]
     fn extract_forwarded_for_first_ip() {
-        let req = make_request_with_headers(
-            "GET",
-            "/",
-            vec![("X-Forwarded-For", "10.0.0.1, 10.0.0.2")],
-        );
+        let req =
+            make_request_with_headers("GET", "/", vec![("X-Forwarded-For", "10.0.0.1, 10.0.0.2")]);
         let opts = RequestHandlerOpts {
             log_forwarded_for: true,
             trusted_proxies: vec![],
@@ -648,13 +645,6 @@ mod tests {
         let req = make_request("GET", "/test");
         let resp = make_response(200, 512);
         // Just verify it doesn't panic; actual log output goes through tracing
-        post_process(
-            &fmt,
-            &opts,
-            &req,
-            None,
-            &resp,
-            Duration::from_millis(5),
-        );
+        post_process(&fmt, &opts, &req, None, &resp, Duration::from_millis(5));
     }
 }
