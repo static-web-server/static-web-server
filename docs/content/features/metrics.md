@@ -39,6 +39,10 @@ sws_http_request_duration_seconds_bucket{host="localhost",method="GET",status="2
 sws_http_connections_active 2
 ```
 
+## Grafana dashboard
+
+An example Grafana dashboard is included in [`contrib/grafana/dashboard.json`](https://github.com/static-web-server/static-web-server/blob/master/contrib/grafana/dashboard.json). Import it into Grafana to get panels for request rates, latency histograms, error rates, and active connections out of the box.
+
 ## TOML configuration
 
 ```toml
