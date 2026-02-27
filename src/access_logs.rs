@@ -42,7 +42,7 @@ enum Token {
     Host,
     UserAgent,
     Referer,
-    TimeLocal,
+    Timestamp,
     Version,
 }
 
@@ -60,7 +60,7 @@ impl Token {
             "host" => Some(Self::Host),
             "user_agent" => Some(Self::UserAgent),
             "referer" => Some(Self::Referer),
-            "time_local" => Some(Self::TimeLocal),
+            "timestamp" => Some(Self::Timestamp),
             "version" => Some(Self::Version),
             _ => None,
         }
@@ -215,7 +215,8 @@ fn render_token(buf: &mut String, token: &Token, ctx: &LogContext<'_>) {
                 buf.push_str(ctx.referer);
             }
         }
-        Token::TimeLocal => {
+        Token::Timestamp => {
+            // Uses local time, respecting the TZ environment variable
             let now = chrono::Local::now();
             let _ = write!(buf, "{}", now.format("%d/%b/%Y:%H:%M:%S %z"));
         }
@@ -475,7 +476,7 @@ mod tests {
     fn parse_all_tokens() {
         let all = "%{method} %{uri} %{status} %{bytes} %{duration} %{remote_addr} \
                    %{x_real_ip} %{forwarded_for} %{host} %{user_agent} %{referer} \
-                   %{time_local} %{version}";
+                   %{timestamp} %{version}";
         let fmt = AccessLogFormat::parse(all).unwrap();
         let token_count = fmt
             .segments
