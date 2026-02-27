@@ -15,6 +15,38 @@ static-web-server \
 
 > Note: The log format is not well defined and is subject to change.
 
+## Log Date-Timestamp
+
+SWS prefers the local-time (system date and time) for logs by default to respect the user's system time.
+But SWS also allows the usage of the POSIX [TZ](https://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap08.html) environment variable to override the default timezone.
+
+Below are some examples.
+
+Use the default system time zone (e.g. CET "UTC +1"):
+
+```sh
+$ static-web-server -p 8788 -d /var/public/ -g info
+# 2026-02-26T22:26:56.369326294+01:00  INFO static_web_server::server: static-web-server 2.41.0
+# 2026-02-26T22:26:56.369448665+01:00  INFO static_web_server::server: log level: info
+# 2026-02-26T22:26:56.369514676+01:00  INFO static_web_server::server: server bound to tcp socket [::]:8788
+# 2026-02-26T22:26:56.369553858+01:00  INFO static_web_server::server: runtime worker threads: 4
+# 2026-02-26T22:26:56.369591864+01:00  INFO static_web_server::server: runtime max blocking threads: 512
+# ....
+```
+
+Use a particular time zone via the `TZ` env (e.g. PET "UTC -5"):
+
+```sh
+$ TZ="America/Lima" \
+    static-web-server -p 8788 -d /var/public/ -g info
+# 2026-02-26T16:25:55.345113713-05:00  INFO static_web_server::server: static-web-server 2.41.0
+# 2026-02-26T16:25:55.349553610-05:00  INFO static_web_server::server: log level: info
+# 2026-02-26T16:25:55.350314431-05:00  INFO static_web_server::server: server bound to tcp socket [::]:8788
+# 2026-02-26T16:25:55.350388002-05:00  INFO static_web_server::server: runtime worker threads: 4
+# 2026-02-26T16:25:55.350436754-05:00  INFO static_web_server::server: runtime max blocking threads: 512
+# ....
+```
+
 ## Log output with ANSI
 
 SWS does not output ANSI escape codes by default. However, If you want ANSI escape for colors and other text formatting when logging then use the boolean `--log-with-ansi` CLI option and its equivalent [SERVER_LOG_WITH_ANSI](./../configuration/environment-variables.md#server_log_with_ansi) env.
