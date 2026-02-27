@@ -38,9 +38,9 @@ use crate::metrics;
 use crate::mem_cache::cache::MemCacheOpts;
 
 use crate::{
-    Error, Result, control_headers, cors, custom_headers, error_page, health,
+    Error, Result, access_logs, control_headers, cors, custom_headers, error_page, health,
     http_ext::MethodExt,
-    log_addr, maintenance_mode, redirects, rewrites, security_headers,
+    maintenance_mode, redirects, rewrites, security_headers,
     settings::Advanced,
     static_files::{self, HandleOpts},
     virtual_hosts,
@@ -109,6 +109,8 @@ pub struct RequestHandlerOpts {
     pub basic_auth: String,
     /// Index files feature.
     pub index_files: Vec<String>,
+    /// Compiled access log format.
+    pub access_log_format: Option<access_logs::AccessLogFormat>,
     /// Log remote address feature.
     pub log_remote_address: bool,
     /// Log the X-Real-IP header.
@@ -175,6 +177,7 @@ impl Default for RequestHandlerOpts {
             #[cfg(feature = "basic-auth")]
             basic_auth: String::new(),
             index_files: vec!["index.html".into()],
+            access_log_format: None,
             log_remote_address: false,
             log_x_real_ip: false,
             log_forwarded_for: false,
@@ -224,10 +227,11 @@ impl RequestHandler {
         #[cfg(feature = "experimental")]
         let memory_cache = self.opts.memory_cache.as_ref();
 
-        log_addr::pre_process(&self.opts, req, remote_addr);
+        if self.opts.access_log_format.is_none() {
+            access_logs::pre_process(&self.opts, req, remote_addr);
+        }
 
         async move {
-            #[cfg(feature = "metrics")]
             let req_start = std::time::Instant::now();
             #[cfg(feature = "metrics")]
             let metrics_enabled = self.opts.metrics_enabled;
@@ -379,6 +383,17 @@ impl RequestHandler {
                 Ok(resp)
             }
             .await;
+
+            if let (Some(fmt), Ok(resp)) = (&self.opts.access_log_format, &result) {
+                access_logs::post_process(
+                    fmt,
+                    &self.opts,
+                    req,
+                    remote_addr,
+                    resp,
+                    req_start.elapsed(),
+                );
+            }
 
             #[cfg(feature = "metrics")]
             if metrics_enabled {

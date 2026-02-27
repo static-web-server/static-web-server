@@ -112,6 +112,7 @@ extern crate serde;
 // Public modules
 #[macro_use]
 pub mod logger;
+pub(crate) mod access_logs;
 #[cfg(feature = "basic-auth")]
 #[cfg_attr(docsrs, doc(cfg(feature = "basic-auth")))]
 pub mod basic_auth;
@@ -155,7 +156,6 @@ pub(crate) mod health;
 #[cfg(feature = "http2")]
 #[cfg_attr(docsrs, doc(cfg(feature = "http2")))]
 pub mod https_redirect;
-pub(crate) mod log_addr;
 pub mod maintenance_mode;
 pub(crate) mod markdown;
 #[cfg(feature = "experimental")]
