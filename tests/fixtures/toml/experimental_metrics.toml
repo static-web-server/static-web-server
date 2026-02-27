@@ -2,4 +2,4 @@
 
 root = "docker/public"
 
-experimental-metrics = true
+metrics = true
