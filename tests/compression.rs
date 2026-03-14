@@ -29,6 +29,7 @@ pub mod tests {
         let general = General {
             compression: true,
             compression_static: true,
+            index_files: "index.htm, index.html".to_owned(),
             ..opts.general
         };
         let req_handler_opts = fixture_req_handler_opts(general, opts.advanced);
@@ -37,7 +38,7 @@ pub mod tests {
 
         let mut req = Request::default();
         *req.method_mut() = hyper::Method::GET;
-        *req.uri_mut() = "http://localhost/index.html".parse().unwrap();
+        *req.uri_mut() = "http://localhost".parse().unwrap();
         req.headers_mut().insert(
             http::header::ACCEPT_ENCODING,
             "gzip, deflate, br".parse().unwrap(),
@@ -56,7 +57,7 @@ pub mod tests {
                 );
                 assert_eq!(
                     res.headers().get("content-encoding"),
-                    Some(&HeaderValue::from_static("gzip"))
+                    Some(&HeaderValue::from_static("br"))
                 );
                 assert_eq!(
                     res.headers().get("cache-control"),

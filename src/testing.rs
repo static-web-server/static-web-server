@@ -109,7 +109,11 @@ pub mod fixtures {
             ignore_hidden_files: general.ignore_hidden_files,
             disable_symlinks: general.disable_symlinks,
             accept_markdown: general.accept_markdown,
-            index_files: vec![general.index_files],
+            index_files: general
+                .index_files
+                .split(',')
+                .map(|s| s.trim().to_owned())
+                .collect(),
             health: general.health,
             #[cfg(feature = "metrics")]
             metrics_enabled: general.metrics,

@@ -99,15 +99,19 @@ pub(crate) fn post_process<T>(
     }
 
     // Compression content encoding varies so use a `Vary` header
-    let value = resp.headers().get(hyper::header::VARY).map_or(
-        HeaderValue::from_name(hyper::header::ACCEPT_ENCODING),
-        |h| {
-            let mut s = h.to_str().unwrap_or_default().to_owned();
-            s.push(',');
-            s.push_str(hyper::header::ACCEPT_ENCODING.as_str());
-            HeaderValue::from_str(s.as_str()).unwrap()
-        },
-    );
+    let enc = HeaderValue::from_name(hyper::header::ACCEPT_ENCODING);
+    let value = resp.headers().get(hyper::header::VARY).map_or(enc, |h| {
+        let mut a = h.to_str().unwrap_or_default().to_owned();
+        let b = hyper::header::ACCEPT_ENCODING.as_str();
+        if !a.contains(b) {
+            if !a.is_empty() {
+                a.push(',');
+            }
+            a.push_str(b);
+        }
+        HeaderValue::from_str(a.as_str()).unwrap()
+    });
+
     resp.headers_mut().insert(hyper::header::VARY, value);
 
     // Auto compression based on the `Accept-Encoding` header
