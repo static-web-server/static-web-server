@@ -8,8 +8,8 @@ This feature is enabled by default and can be controlled by the boolean `--disab
 
 !!! info "Possible performance impact for large paths"
 
-    Take into account that when `disable-symlinks` is enabled (`--disable-symlinks=true` by default in SWS), the server will check if the whole requested path is a symlink (1) or contains intermediate symlink components (2).
-    The last check (2) will involve filesystem access (syscall) for verification of each path component. Therefore, depending on the depth of the path, it may require multiple file system calls.
+    Take into account that when `disable-symlinks` is enabled (`--disable-symlinks=true` by default in SWS), the server will check if the whole requested path is a symlink or contains intermediate symlink components.
+    This involves filesystem access (syscall) for verification of each path component. Therefore, depending on the depth of the path, it may require multiple file system calls.
 
     If this feature results in a _noticeable_ negative performance impact (e.g., large paths), then you could consider turning the feature off. If doing so, remember that SWS will allow symlinks in the webroot, but it won't follow them if they resolve outside of it, which is SWS's behaviour regardless of this feature.
 

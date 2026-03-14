@@ -32,7 +32,7 @@ impl PathExt for Path {
     }
 
     /// Checks if the path is a symlink or contains intermediate symlink components.
-    /// Second check could be an expensive operation as it requires filesystem access for each path component.
+    /// This could be an expensive operation as it requires filesystem access for each path component.
     fn contains_symlink(&self, base: &Path) -> Result<bool> {
         let mut current = base.to_path_buf();
         current.reserve(self.as_os_str().len());

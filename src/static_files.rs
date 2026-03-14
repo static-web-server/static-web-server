@@ -177,18 +177,17 @@ pub async fn handle(opts: &HandleOpts<'_>) -> Result<StaticFileResponse, StatusC
 
     if opts.disable_symlinks {
         // Check if the whole path or any path component contains a symlink.
-        // Note that the second check can be expensive as requires filesystem access for each path component.
-        let has_symlink = file_path_temp.is_symlink()
-            || file_path_relative
-                .contains_symlink(opts.base_path)
-                .map_err(|err| {
-                    tracing::error!(
-                        "unable to check if file path '{}' contains symlink: {}",
-                        file_path_relative.display(),
-                        err,
-                    );
-                    StatusCode::NOT_FOUND
-                })?;
+        // Note that this could be expensive as it requires filesystem access for each path component.
+        let has_symlink = file_path_relative
+            .contains_symlink(opts.base_path)
+            .map_err(|err| {
+                tracing::error!(
+                    "unable to check if file path '{}' contains symlink: {}",
+                    file_path_relative.display(),
+                    err,
+                );
+                StatusCode::NOT_FOUND
+            })?;
 
         if has_symlink {
             tracing::warn!(
