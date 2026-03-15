@@ -123,43 +123,6 @@ pub async fn handle(opts: &HandleOpts<'_>) -> Result<StaticFileResponse, StatusC
         }
     }
 
-    // Prevent symlinks access if option is enabled
-    if file_path.is_symlink() {
-        if opts.disable_symlinks {
-            tracing::warn!(
-                "file path {} is a symlink, access denied",
-                file_path.display()
-            );
-            return Err(StatusCode::FORBIDDEN);
-        }
-
-        let symlink_file_path = file_path.canonicalize().map_err(|err| {
-            tracing::error!(
-                "unable to resolve `{}` symlink path: {}",
-                file_path.display(),
-                err,
-            );
-            StatusCode::NOT_FOUND
-        })?;
-
-        let base_path = opts.base_path.canonicalize().map_err(|err| {
-            tracing::error!(
-                "unable to resolve `{}` symlink path: {}",
-                file_path.display(),
-                err,
-            );
-            StatusCode::NOT_FOUND
-        })?;
-
-        if !symlink_file_path.starts_with(base_path) {
-            tracing::error!(
-                "file path {} is a symlink, access denied",
-                symlink_file_path.display()
-            );
-            return Err(StatusCode::NOT_FOUND);
-        }
-    }
-
     let FileMetadata {
         file_path,
         metadata,
@@ -172,8 +135,71 @@ pub async fn handle(opts: &HandleOpts<'_>) -> Result<StaticFileResponse, StatusC
         opts.index_files,
     )?;
 
+    let mut file_path_temp = file_path.clone();
+    if is_dir {
+        file_path_temp.pop();
+    }
+
+    let file_path_relative = file_path_temp.strip_prefix(opts.base_path).map_err(|err| {
+        tracing::error!(
+            "unable to strip prefix from file path '{}': {}",
+            file_path.display(),
+            err,
+        );
+        StatusCode::NOT_FOUND
+    })?;
+
+    let file_path_resolved = file_path_temp.canonicalize().map_err(|err| {
+        tracing::error!(
+            "unable to resolve '{}' symlink path: {}",
+            file_path_temp.display(),
+            err,
+        );
+        StatusCode::NOT_FOUND
+    })?;
+
+    let base_path = opts.base_path.canonicalize().map_err(|err| {
+        tracing::error!(
+            "unable to resolve '{}' base path: {}",
+            opts.base_path.display(),
+            err,
+        );
+        StatusCode::NOT_FOUND
+    })?;
+
+    if !file_path_resolved.starts_with(base_path) {
+        tracing::error!(
+            "file path '{}' resolves outside of the base path, access denied",
+            file_path_resolved.display()
+        );
+        return Err(StatusCode::NOT_FOUND);
+    }
+
+    if opts.disable_symlinks {
+        // Check if the whole path or any path component contains a symlink.
+        // Note that this could be expensive as it requires filesystem access for each path component.
+        let has_symlink = file_path_relative
+            .contains_symlink(opts.base_path)
+            .map_err(|err| {
+                tracing::error!(
+                    "unable to check if file path '{}' contains symlink: {}",
+                    file_path_relative.display(),
+                    err,
+                );
+                StatusCode::NOT_FOUND
+            })?;
+
+        if has_symlink {
+            tracing::warn!(
+                "file path '{}' contains a symlink, access denied",
+                file_path.display()
+            );
+            return Err(StatusCode::FORBIDDEN);
+        }
+    }
+
     // Check for a hidden file/directory (dotfile) and ignore it if feature enabled
-    if opts.ignore_hidden_files && file_path.strip_prefix(opts.base_path).unwrap().is_hidden() {
+    if opts.ignore_hidden_files && file_path_relative.is_hidden() {
         tracing::trace!(
             "considering hidden file {} as not found",
             file_path.display()
