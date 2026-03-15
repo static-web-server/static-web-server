@@ -322,6 +322,10 @@ typos:
 	@typos . --config ./.github/workflows/config/typos.toml
 .PHONY: typos
 
+docs-format:
+	@uvx --python ">=3.13" --with mdformat-mkdocs mdformat ./*.md docs/
+.ONESHELL: docs-format
+
 man:
 	@asciidoctor --doctype=manpage --backend=manpage docs/man/static-web-server.1.rst
 .PHONY: man

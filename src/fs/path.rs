@@ -5,14 +5,19 @@
 
 //! A module that provides file path-related facilities.
 
+use anyhow::Context;
 use hyper::StatusCode;
 use percent_encoding::percent_decode_str;
 use std::path::{Component, Path, PathBuf};
+
+use crate::Result;
 
 /// `Path` extensions trait.
 pub(crate) trait PathExt {
     /// If file path is hidden.
     fn is_hidden(&self) -> bool;
+    /// If the path is a symlink or contains intermediate symlink components.
+    fn contains_symlink(&self, base: &Path) -> Result<bool>;
 }
 
 impl PathExt for Path {
@@ -24,6 +29,33 @@ impl PathExt for Path {
                 _ => None,
             })
             .any(|s| s.starts_with('.'))
+    }
+
+    /// Checks if the path is a symlink or contains intermediate symlink components.
+    /// This could be an expensive operation as it requires filesystem access for each path component.
+    fn contains_symlink(&self, base: &Path) -> Result<bool> {
+        let mut current = base.to_path_buf();
+        current.reserve(self.as_os_str().len());
+        for component in self.components() {
+            match component {
+                Component::Normal(c) => {
+                    current.push(c);
+                    let meta = std::fs::symlink_metadata(&current).with_context(|| {
+                        format!("unable to get metadata for path '{}'", current.display())
+                    })?;
+                    if meta.file_type().is_symlink() {
+                        return Ok(true);
+                    }
+                }
+                Component::CurDir => {}
+                Component::Prefix(_) | Component::RootDir | Component::ParentDir => {
+                    tracing::debug!(
+                        "dir: skipping segment containing invalid prefix, dots or backslashes"
+                    );
+                }
+            }
+        }
+        Ok(false)
     }
 }
 
@@ -80,7 +112,7 @@ pub(crate) fn sanitize_path(base: &Path, tail: &str) -> Result<PathBuf, StatusCo
 
 #[cfg(test)]
 mod tests {
-    use super::sanitize_path;
+    use super::{PathExt, sanitize_path};
     use std::path::PathBuf;
 
     fn root_dir() -> PathBuf {
@@ -122,5 +154,41 @@ mod tests {
             sanitize_path(base_dir, "/C:\\/foo.html").unwrap(),
             expected_path
         );
+    }
+
+    #[test]
+    fn test_contains_symlink_returns_false() {
+        let base = PathBuf::from("tests/fixtures/public");
+        let user_path = PathBuf::from("./index.htm");
+
+        match user_path.contains_symlink(&base) {
+            Ok(contains) => assert!(!contains),
+            Err(err) => panic!("unexpected error when checking for symlinks: {err}"),
+        }
+    }
+
+    #[test]
+    fn test_contains_symlink_returns_true() {
+        let base = PathBuf::from("tests/fixtures/public");
+        let user_path = PathBuf::from("./readme.md");
+
+        match user_path.contains_symlink(&base) {
+            Ok(contains) => assert!(contains),
+            Err(err) => panic!("unexpected error when checking for symlinks: {err}"),
+        }
+    }
+
+    #[test]
+    fn test_contains_symlink_returns_error() {
+        let base = PathBuf::from("tests/fixtures/public");
+        let user_path = PathBuf::from("./unknown_file.txt");
+
+        match user_path.contains_symlink(&base) {
+            Ok(_) => panic!("expected error when checking for symlinks on non-existent path"),
+            Err(err) => assert!(
+                err.to_string().contains("unable to get metadata for path"),
+                "unexpected error message: {err}"
+            ),
+        }
     }
 }
