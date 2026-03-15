@@ -101,6 +101,7 @@ pub mod fixtures {
             page_fallback: vec![],
             #[cfg(feature = "basic-auth")]
             basic_auth: general.basic_auth,
+            access_log_format: None,
             log_remote_address: general.log_remote_address,
             log_x_real_ip: general.log_x_real_ip,
             log_forwarded_for: general.log_forwarded_for,

@@ -347,6 +347,9 @@ pub struct General {
     #[cfg_attr(docsrs, doc(cfg(feature = "fallback-page")))]
     pub page_fallback: Option<PathBuf>,
 
+    /// Custom access log format string.
+    pub access_log_format: Option<String>,
+
     /// Log remote address feature.
     pub log_remote_address: Option<bool>,
 

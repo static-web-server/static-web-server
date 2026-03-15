@@ -418,6 +418,14 @@ pub struct General {
     /// Server TOML configuration file path.
     pub config_file: PathBuf,
 
+    #[arg(long, default_value = "", env = "SERVER_ACCESS_LOG_FORMAT")]
+    /// Custom access log format string using %{token} syntax. When set, replaces the default
+    /// request logging with a configurable format that includes response data.
+    /// Tokens: method, uri, status, bytes, duration, remote_addr, x_real_ip,
+    /// forwarded_for, host, user_agent, referer, timestamp, version.
+    /// Example: '%{remote_addr} "%{method} %{uri}" %{status} %{bytes}'
+    pub access_log_format: String,
+
     #[arg(
         long,
         default_value = "false",
