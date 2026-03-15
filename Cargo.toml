@@ -101,8 +101,8 @@ toml = "0.9"
 tracing = { version = "0.1", default-features = false, features = ["std"] }
 tracing-subscriber = { version = "0.3", default-features = false, features = ["smallvec", "registry", "parking_lot", "fmt", "ansi", "tracing-log", "local-time"] }
 
-[target.'cfg(all(target_env = "musl", target_pointer_width = "64"))'.dependencies.mimalloc]
-version = "0.1.48"
+[target.'cfg(all(target_env = "musl", target_pointer_width = "64"))'.dependencies]
+mimalloc = { version = "0.1.48", features = ["v3"] }
 
 [target.'cfg(unix)'.dependencies]
 signal-hook = { version = "0.4.1", features = ["extended-siginfo"] }
