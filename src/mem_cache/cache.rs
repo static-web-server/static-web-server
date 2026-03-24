@@ -54,41 +54,41 @@ impl MemCacheOpts {
 
 /// Make sure to initialize the in-memory cache store.
 pub(crate) fn init(handler_opts: &mut RequestHandlerOpts) -> Result {
-    if let Some(advanced_opts) = handler_opts.advanced_opts.as_ref() {
-        if let Some(opts) = advanced_opts.memory_cache.as_ref() {
-            // TODO: define maximum values
+    if let Some(advanced_opts) = handler_opts.advanced_opts.as_ref()
+        && let Some(opts) = advanced_opts.memory_cache.as_ref()
+    {
+        // TODO: define maximum values
 
-            // Default 256 entries
-            let capacity = opts.capacity.unwrap_or(256);
-            // Default 1h
-            let ttl = opts.ttl.unwrap_or(3600);
-            // Default 5min
-            let tti = opts.tti.unwrap_or(300);
-            // Default 8mb
-            let max_file_size = opts.max_file_size.unwrap_or(8192);
+        // Default 256 entries
+        let capacity = opts.capacity.unwrap_or(256);
+        // Default 1h
+        let ttl = opts.ttl.unwrap_or(3600);
+        // Default 5min
+        let tti = opts.tti.unwrap_or(300);
+        // Default 8mb
+        let max_file_size = opts.max_file_size.unwrap_or(8192);
 
-            tracing::info!(
-                "in-memory cache (experimental): enabled=true, capacity={capacity}, ttl={ttl}, tti={tti}, max_file_size={max_file_size}"
-            );
+        tracing::info!(
+            "in-memory cache (experimental): enabled=true, capacity={capacity}, ttl={ttl}, tti={tti}, max_file_size={max_file_size}"
+        );
 
-            let mem_opts = MemCacheOpts::new(max_file_size);
+        let mem_opts = MemCacheOpts::new(max_file_size);
 
-            let cache = Cache::builder()
-                .max_capacity(capacity)
-                // Time to live (TTL): 30 minutes
-                .time_to_live(Duration::from_secs(ttl))
-                // Time to idle (TTI):  5 minutes
-                .time_to_idle(Duration::from_secs(tti))
-                .build();
+        let cache = Cache::builder()
+            .max_capacity(capacity)
+            // Time to live (TTL): 30 minutes
+            .time_to_live(Duration::from_secs(ttl))
+            // Time to idle (TTI):  5 minutes
+            .time_to_idle(Duration::from_secs(tti))
+            .build();
 
-            if CACHE_STORE.set(cache).is_err() {
-                bail!("unable to initialize the in-memory cache store")
-            }
-
-            handler_opts.memory_cache = Some(mem_opts);
-
-            return Ok(());
+        if CACHE_STORE.set(cache).is_err() {
+            bail!("unable to initialize the in-memory cache store")
         }
+
+        handler_opts.memory_cache = Some(mem_opts);
+
+        return Ok(());
     }
 
     tracing::info!("in-memory cache (experimental): enabled=false");

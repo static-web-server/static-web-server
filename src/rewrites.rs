@@ -88,13 +88,13 @@ fn merge_uris(orig_uri: &Uri, new_uri: &str) -> Result<Uri, Error> {
     if parts.path_and_query.is_none() {
         parts.path_and_query = orig_uri.path_and_query().cloned();
     }
-    if let Some(path_and_query) = &mut parts.path_and_query {
-        if let (None, Some(query)) = (path_and_query.query(), orig_uri.query()) {
-            *path_and_query = [path_and_query.as_str(), "?", query]
-                .into_iter()
-                .collect::<String>()
-                .parse()?;
-        }
+    if let Some(path_and_query) = &mut parts.path_and_query
+        && let (None, Some(query)) = (path_and_query.query(), orig_uri.query())
+    {
+        *path_and_query = [path_and_query.as_str(), "?", query]
+            .into_iter()
+            .collect::<String>()
+            .parse()?;
     }
     Ok(Uri::from_parts(parts)?)
 }

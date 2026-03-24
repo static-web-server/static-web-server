@@ -419,19 +419,18 @@ pub(crate) fn post_process<T>(
     req: &Request<T>,
     mut resp: Response<Body>,
 ) -> Result<Response<Body>, Error> {
-    if let Some(cors) = opts.cors.as_ref() {
-        if let Ok((headers, _)) = cors.check_request(req.method(), req.headers()) {
-            if !headers.is_empty() {
-                for (k, v) in headers.iter() {
-                    resp.headers_mut().insert(k, v.to_owned());
-                }
-                resp.headers_mut().insert(
-                    hyper::header::VARY,
-                    HeaderValue::from_name(hyper::header::ORIGIN),
-                );
-                resp.headers_mut().remove(http::header::ALLOW);
-            }
+    if let Some(cors) = opts.cors.as_ref()
+        && let Ok((headers, _)) = cors.check_request(req.method(), req.headers())
+        && !headers.is_empty()
+    {
+        for (k, v) in headers.iter() {
+            resp.headers_mut().insert(k, v.to_owned());
         }
+        resp.headers_mut().insert(
+            hyper::header::VARY,
+            HeaderValue::from_name(hyper::header::ORIGIN),
+        );
+        resp.headers_mut().remove(http::header::ALLOW);
     }
     Ok(resp)
 }

@@ -153,10 +153,10 @@ pub fn auto(
         );
 
         // Skip compression for non-text-based MIME types
-        if let Some(content_type) = resp.headers().typed_get::<ContentType>() {
-            if !is_text(Mime::from(content_type)) {
-                return Ok(resp);
-            }
+        if let Some(content_type) = resp.headers().typed_get::<ContentType>()
+            && !is_text(Mime::from(content_type))
+        {
+            return Ok(resp);
         }
 
         #[cfg(any(feature = "compression", feature = "compression-gzip"))]
@@ -314,11 +314,11 @@ pub fn zstd(
 
 /// Given an optional existing encoding header, appends to the existing or creates a new one.
 pub fn create_encoding_header(existing: Option<HeaderValue>, coding: ContentCoding) -> HeaderValue {
-    if let Some(val) = existing {
-        if let Ok(str_val) = val.to_str() {
-            return HeaderValue::from_str(&[str_val, ", ", coding.as_str()].concat())
-                .unwrap_or_else(|_| coding.into());
-        }
+    if let Some(val) = existing
+        && let Ok(str_val) = val.to_str()
+    {
+        return HeaderValue::from_str(&[str_val, ", ", coding.as_str()].concat())
+            .unwrap_or_else(|_| coding.into());
     }
     coding.into()
 }

@@ -258,32 +258,31 @@ pub async fn handle(opts: &HandleOpts<'_>) -> Result<StaticFileResponse, StatusC
         // if current path is a valid directory and
         // if query string has parameter "download" set
         #[cfg(feature = "directory-listing-download")]
-        if !opts.dir_listing_download.is_empty() {
-            if let Some((_k, _dl_archive_opt)) =
+        if !opts.dir_listing_download.is_empty()
+            && let Some((_k, _dl_archive_opt)) =
                 form_urlencoded::parse(opts.uri_query.unwrap_or("").as_bytes())
                     .find(|(k, _v)| k == DOWNLOAD_PARAM_KEY)
-            {
-                // file path is index.html, need pop
-                let mut fp = file_path.clone();
-                fp.pop();
-                if let Some(filename) = fp.file_name() {
-                    let resp = archive_reply(
-                        filename,
-                        &fp,
-                        DirDownloadOpts {
-                            method,
-                            disable_symlinks: opts.disable_symlinks,
-                            ignore_hidden_files: opts.ignore_hidden_files,
-                        },
-                    );
-                    return Ok(StaticFileResponse {
-                        resp,
-                        file_path: resp_file_path,
-                    });
-                } else {
-                    tracing::error!("Unable to get filename from {}", fp.to_string_lossy());
-                    return Err(StatusCode::INTERNAL_SERVER_ERROR);
-                }
+        {
+            // file path is index.html, need pop
+            let mut fp = file_path.clone();
+            fp.pop();
+            if let Some(filename) = fp.file_name() {
+                let resp = archive_reply(
+                    filename,
+                    &fp,
+                    DirDownloadOpts {
+                        method,
+                        disable_symlinks: opts.disable_symlinks,
+                        ignore_hidden_files: opts.ignore_hidden_files,
+                    },
+                );
+                return Ok(StaticFileResponse {
+                    resp,
+                    file_path: resp_file_path,
+                });
+            } else {
+                tracing::error!("Unable to get filename from {}", fp.to_string_lossy());
+                return Err(StatusCode::INTERNAL_SERVER_ERROR);
             }
         }
 
@@ -376,17 +375,16 @@ fn get_composed_file_metadata<'a>(
                     tracing::debug!("dir: appending {} to the directory path", index);
                     file_path.push(index);
 
-                    if compression_static {
-                        if let Some(p) =
+                    if compression_static
+                        && let Some(p) =
                             compression_static::precompressed_variant(file_path, headers)
-                        {
-                            return Ok(FileMetadata {
-                                file_path,
-                                metadata: p.metadata,
-                                is_dir: false,
-                                precompressed_variant: Some((p.file_path, p.encoding)),
-                            });
-                        }
+                    {
+                        return Ok(FileMetadata {
+                            file_path,
+                            metadata: p.metadata,
+                            is_dir: false,
+                            precompressed_variant: Some((p.file_path, p.encoding)),
+                        });
                     }
 
                     // Otherwise, just fallback to finding the index.html
@@ -430,15 +428,15 @@ fn get_composed_file_metadata<'a>(
         }
         Err(err) => {
             // Pre-compressed variant check for the file not found
-            if compression_static {
-                if let Some(p) = compression_static::precompressed_variant(file_path, headers) {
-                    return Ok(FileMetadata {
-                        file_path,
-                        metadata: p.metadata,
-                        is_dir: false,
-                        precompressed_variant: Some((p.file_path, p.encoding)),
-                    });
-                }
+            if compression_static
+                && let Some(p) = compression_static::precompressed_variant(file_path, headers)
+            {
+                return Ok(FileMetadata {
+                    file_path,
+                    metadata: p.metadata,
+                    is_dir: false,
+                    precompressed_variant: Some((p.file_path, p.encoding)),
+                });
             }
 
             // Otherwise, if the file path doesn't exist then
@@ -465,17 +463,16 @@ fn get_composed_file_metadata<'a>(
                 }
                 _ => {
                     // Last pre-compressed variant check or the suffixed file not found
-                    if compression_static {
-                        if let Some(p) =
+                    if compression_static
+                        && let Some(p) =
                             compression_static::precompressed_variant(file_path, headers)
-                        {
-                            return Ok(FileMetadata {
-                                file_path,
-                                metadata: p.metadata,
-                                is_dir: false,
-                                precompressed_variant: Some((p.file_path, p.encoding)),
-                            });
-                        }
+                    {
+                        return Ok(FileMetadata {
+                            file_path,
+                            metadata: p.metadata,
+                            is_dir: false,
+                            precompressed_variant: Some((p.file_path, p.encoding)),
+                        });
                     }
                 }
             }

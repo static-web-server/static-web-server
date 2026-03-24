@@ -199,18 +199,11 @@ pub(crate) fn read_dir_entries(mut opt: DirEntryOpts<'_>) -> Result<Response<Bod
         let mut parts = form_urlencoded::parse(q.as_bytes());
         if parts.count() > 0 {
             // NOTE: we just pick up the first value (pair)
-            if let Some(sort) = parts.next() {
-                if sort.0 == "sort" && !sort.1.trim().is_empty() {
-                    match sort.1.parse::<u8>() {
-                        Ok(code) => opt.order_code = code,
-                        Err(err) => {
-                            tracing::error!(
-                                "sorting: query value error when converting to u8: {:?}",
-                                err
-                            );
-                        }
-                    }
-                }
+            if let Some(code) = parts
+                .find(|(key, _)| key == "sort" && !key.is_empty())
+                .and_then(|(_, value)| value.trim().parse::<u8>().ok())
+            {
+                opt.order_code = code;
             }
         }
     }

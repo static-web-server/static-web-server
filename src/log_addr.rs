@@ -40,37 +40,33 @@ pub(crate) fn pre_process<T>(
 ) {
     let mut remote_addrs = String::new();
 
-    if opts.log_remote_address {
-        if let Some(addr) = remote_addr {
-            remote_addrs.push_str(format!(" remote_addr={addr}").as_str());
-        }
+    if opts.log_remote_address
+        && let Some(addr) = remote_addr
+    {
+        remote_addrs.push_str(format!(" remote_addr={addr}").as_str());
     }
     if opts.log_x_real_ip
         && (opts.trusted_proxies.is_empty()
             || remote_addr.is_some_and(|addr| opts.trusted_proxies.contains(&addr.ip())))
-    {
-        if let Some(real_ip) = req
+        && let Some(real_ip) = req
             .headers()
             .get("X-Real-IP")
             .and_then(|h| h.to_str().ok())
             .and_then(|s| s.trim().parse::<IpAddr>().ok())
-        {
-            remote_addrs.push_str(format!(" x_real_ip={real_ip}").as_str());
-        }
+    {
+        remote_addrs.push_str(format!(" x_real_ip={real_ip}").as_str());
     }
     if opts.log_forwarded_for
         && (opts.trusted_proxies.is_empty()
             || remote_addr.is_some_and(|addr| opts.trusted_proxies.contains(&addr.ip())))
-    {
-        if let Some(forwarded_for) = req
+        && let Some(forwarded_for) = req
             .headers()
             .get("X-Forwarded-For")
             .and_then(|h| h.to_str().ok())
             .and_then(|s| s.split(',').next())
             .and_then(|s| s.trim().parse::<IpAddr>().ok())
-        {
-            remote_addrs.push_str(format!(" real_remote_ip={forwarded_for}").as_str());
-        }
+    {
+        remote_addrs.push_str(format!(" real_remote_ip={forwarded_for}").as_str());
     }
 
     // Log incoming requests in debug mode only if the health option is enabled
