@@ -2355,6 +2355,7 @@ dependencies = [
  "anyhow",
  "async-compression",
  "async-tar",
+ "aws-lc-rs",
  "bcrypt",
  "bytes",
  "chrono",

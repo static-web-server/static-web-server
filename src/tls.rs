@@ -393,4 +393,11 @@ mod tests {
             .build()
             .unwrap();
     }
+
+    #[cfg(feature = "http2-fips")]
+    #[test]
+    fn fips_mode_is_active() {
+        aws_lc_rs::try_fips_mode()
+            .expect("FIPS mode should be active when http2-fips feature is enabled");
+    }
 }
