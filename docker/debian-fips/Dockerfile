@@ -1,0 +1,103 @@
+FROM --platform=$BUILDPLATFORM debian:13.3-slim AS build
+
+ARG TARGETPLATFORM
+ARG SERVER_VERSION=0.0.0
+ENV SERVER_VERSION=${SERVER_VERSION}
+
+RUN set -eux \
+    && DEBIAN_FRONTEND=noninteractive apt-get update -qq \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -qq -y --no-install-recommends --no-install-suggests \
+        ca-certificates \
+        curl \
+        file \
+        tzdata \
+    && true
+
+RUN set -ex \
+    && case "$TARGETPLATFORM" in \
+        "linux/amd64") target='x86_64-unknown-linux-gnu' ;; \
+        "linux/arm64") target='aarch64-unknown-linux-gnu' ;; \
+        *) echo >&2 "error: unsupported $TARGETPLATFORM architecture for FIPS build"; exit 1 ;; \
+    esac \
+    && curl -Lo /tmp/static-web-server.tar.gz \
+        "https://github.com/static-web-server/static-web-server/releases/download/v${SERVER_VERSION}/static-web-server-v${SERVER_VERSION}-${target}-fips.tar.gz" \
+    && tar xzvf /tmp/static-web-server.tar.gz \
+    && cp static-web-server-v${SERVER_VERSION}-${target}-fips/static-web-server /usr/local/bin/ \
+    && rm -rf /tmp/static-web-server.tar.gz static-web-server-v${SERVER_VERSION}-${target}-fips \
+    && chmod +x /usr/local/bin/static-web-server \
+    && true
+
+RUN set -ex \
+    && echo "Testing Docker image..." \
+    && uname -a \
+    && cat /etc/os-release \
+    && echo VERSION_NUMBER=$(cat /etc/debian_version) \
+    && echo TARGET_PLATFORM=$TARGETPLATFORM \
+    && file /usr/local/bin/static-web-server \
+    && true
+
+FROM debian:13.3-slim
+
+ARG SERVER_VERSION=0.0.0
+ARG SERVER_USER_NAME=sws
+ARG SERVER_USER_ID=1000
+ARG SERVER_GROUP_NAME=sws
+ARG SERVER_GROUP_ID=1000
+
+ENV SERVER_VERSION=$SERVER_VERSION
+ENV SERVER_USER_ID=$SERVER_USER_ID
+ENV SERVER_USER_NAME=$SERVER_USER_NAME
+ENV SERVER_GROUP_ID=$SERVER_GROUP_ID
+ENV SERVER_GROUP_NAME=$SERVER_GROUP_NAME
+
+LABEL version="${SERVER_VERSION}" \
+    description="A cross-platform, high-performance and asynchronous web server for static files-serving. (FIPS build)" \
+    maintainer="Jose Quintana <joseluisq.net>"
+
+RUN set -eux \
+    && groupadd -r -g $SERVER_GROUP_ID $SERVER_GROUP_NAME \
+    && useradd -r -g $SERVER_GROUP_ID -u $SERVER_USER_ID $SERVER_USER_NAME \
+    && true
+
+RUN set -eux \
+    && DEBIAN_FRONTEND=noninteractive apt-get update -qq \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -qq -y --no-install-recommends --no-install-suggests \
+        ca-certificates \
+        tzdata \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* \
+    && true
+
+RUN set -eux \
+    && mkdir -p /home/$SERVER_USER_NAME/public \
+    && chown -R $SERVER_USER_NAME:$SERVER_GROUP_NAME /home/$SERVER_USER_NAME \
+    && ln -s /home/$SERVER_USER_NAME/public /var/public \
+    && chown -R $SERVER_USER_NAME:$SERVER_GROUP_NAME /var/public \
+    && true
+
+USER $SERVER_USER_NAME:$SERVER_GROUP_NAME
+
+COPY --from=build --chown=$SERVER_USER_NAME:$SERVER_GROUP_NAME \
+    /usr/local/bin/static-web-server /usr/local/bin/static-web-server
+COPY --chown=$SERVER_USER_NAME:$SERVER_GROUP_NAME \
+    ./docker/debian/entrypoint.sh /usr/local/bin/entrypoint.sh
+COPY --chown=$SERVER_USER_NAME:$SERVER_GROUP_NAME \
+    ./docker/public /home/$SERVER_USER_NAME/public
+
+WORKDIR /home/$SERVER_USER_NAME
+
+EXPOSE 80
+
+STOPSIGNAL SIGQUIT
+
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+
+CMD ["static-web-server"]
+
+# Metadata
+LABEL org.opencontainers.image.vendor="Jose Quintana" \
+    org.opencontainers.image.url="https://github.com/static-web-server/static-web-server" \
+    org.opencontainers.image.title="Static Web Server (FIPS)" \
+    org.opencontainers.image.description="A cross-platform, high-performance and asynchronous web server for static files-serving. FIPS-validated TLS." \
+    org.opencontainers.image.version="${SERVER_VERSION}" \
+    org.opencontainers.image.documentation="https://static-web-server.net"
