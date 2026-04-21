@@ -156,7 +156,9 @@ mod tests {
                             .starts_with("attachment")
                     );
 
-                    let body = res.into_body().collect()
+                    let body = res
+                        .into_body()
+                        .collect()
                         .await
                         .expect("unexpected bytes error during `body` conversion")
                         .to_bytes();
@@ -229,7 +231,9 @@ mod tests {
                             .starts_with("attachment")
                     );
 
-                    let body = res.into_body().collect()
+                    let body = res
+                        .into_body()
+                        .collect()
                         .await
                         .expect("unexpected bytes error during `body` conversion")
                         .to_bytes();
@@ -291,7 +295,9 @@ mod tests {
                             .starts_with("attachment")
                     );
 
-                    let body = res.into_body().collect()
+                    let body = res
+                        .into_body()
+                        .collect()
                         .await
                         .expect("unexpected bytes error during `body` conversion")
                         .to_bytes();

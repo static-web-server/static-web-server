@@ -81,8 +81,8 @@ http = "1"
 http-body = "1"
 http-body-util = "0.1"
 http-serde = "2"
-hyper = { version = "1", features = ["http1", "http2", "server"] }
-hyper-util = { version = "0.1", features = ["tokio", "server", "server-auto", "server-graceful"] }
+hyper = { version = "1", default-features = false, features = ["http1", "http2", "server"] }
+hyper-util = { version = "0.1", default-features = false, features = ["tokio", "server", "server-auto", "server-graceful"] }
 listenfd = "1.0"
 maud = { version = "0.27" }
 mime_guess = "2.0"

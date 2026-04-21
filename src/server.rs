@@ -7,9 +7,7 @@
 //!
 
 use hyper::server::conn::http1;
-use hyper::service::service_fn;
-use hyper_util::rt::{TokioExecutor, TokioIo};
-use hyper_util::server::conn::auto;
+use hyper_util::rt::TokioIo;
 use hyper_util::server::graceful::GracefulShutdown;
 use listenfd::ListenFd;
 use std::net::{IpAddr, SocketAddr, TcpListener};
@@ -55,7 +53,6 @@ use crate::basic_auth;
 #[cfg(feature = "experimental")]
 use crate::mem_cache;
 
-use crate::Error;
 use crate::{Context, Result, service::RouterService};
 use crate::{
     Settings, control_headers, cors, health, helpers, log_addr, maintenance_mode, security_headers,
@@ -400,7 +397,7 @@ impl Server {
                 tracing::info!("graceful shutdown ctrl+c signal received");
                 let _ = sender.send(());
             }
-            Ok::<_, Error>(())
+            Ok::<_, crate::Error>(())
         });
 
         // Run the corresponding HTTP Server asynchronously with its given options
@@ -488,7 +485,9 @@ impl Server {
                 let router = router_service.clone();
                 async move {
                     let graceful = GracefulShutdown::new();
-                    let builder = auto::Builder::new(TokioExecutor::new());
+                    let builder = hyper_util::server::conn::auto::Builder::new(
+                        hyper_util::rt::TokioExecutor::new(),
+                    );
 
                     #[cfg(unix)]
                     let shutdown =
@@ -550,7 +549,7 @@ impl Server {
                         }
                     }
                     graceful.shutdown().await;
-                    Ok::<_, Error>(())
+                    Ok::<_, crate::Error>(())
                 }
             });
 
@@ -642,7 +641,7 @@ impl Server {
                                 let redirect_opts = redirect_opts.clone();
                                 let page404 = page404.clone();
                                 let page50x = page50x.clone();
-                                let svc = service_fn(move |req| {
+                                let svc = hyper::service::service_fn(move |req| {
                                     let redirect_opts = redirect_opts.clone();
                                     let page404 = page404.clone();
                                     let page50x = page50x.clone();
@@ -676,10 +675,10 @@ impl Server {
                     #[cfg(unix)]
                     redirect_handle.close();
 
-                    Ok::<_, Error>(())
+                    Ok::<_, crate::Error>(())
                 })
             } else {
-                tokio::spawn(async { Ok::<_, Error>(()) })
+                tokio::spawn(async { Ok::<_, crate::Error>(()) })
             };
 
             tracing::info!("press ctrl+c to shut down the servers");

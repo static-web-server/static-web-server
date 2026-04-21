@@ -140,8 +140,6 @@ mod tests {
 
     #[tokio::test]
     async fn compression_static_file_does_not_exist() {
-        assert_eq!(std::env::consts::FAMILY, "unix");
-
         let opts = fixture_settings("toml/handler_fixtures.toml");
         let general = General {
             compression: false,

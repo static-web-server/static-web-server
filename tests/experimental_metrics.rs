@@ -5,8 +5,8 @@
 
 #[cfg(all(unix, feature = "experimental"))]
 pub mod tests {
-    use hyper::Request;
     use http_body_util::BodyExt;
+    use hyper::Request;
     use std::net::SocketAddr;
 
     use static_web_server::testing::fixtures::{
@@ -35,7 +35,9 @@ pub mod tests {
                 assert_eq!(res.status(), 200);
                 assert_eq!(res.headers()["content-type"], "text/plain; charset=utf-8");
 
-                let body = res.into_body().collect()
+                let body = res
+                    .into_body()
+                    .collect()
                     .await
                     .expect("unexpected bytes error during `body` conversion")
                     .to_bytes();
