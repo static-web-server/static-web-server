@@ -7,11 +7,12 @@
 //!
 
 use headers::{AcceptRanges, ContentLength, ContentType, HeaderMapExt};
-use hyper::{Body, Method, Response, StatusCode, Uri};
+use hyper::{Method, Response, StatusCode, Uri};
 use maud::{DOCTYPE, html};
 use mime_guess::mime;
 use std::path::Path;
 
+use crate::body::Body;
 use crate::{Result, helpers, http_ext::MethodExt};
 
 /// It returns a HTTP error response which also handles available `404` or `50x` HTML content.
@@ -117,11 +118,11 @@ pub fn error_response(
         }.into();
     }
 
-    let mut body = Body::empty();
+    let mut body = crate::body::empty();
     let len = page_content.len() as u64;
 
     if !method.is_head() {
-        body = Body::from(page_content)
+        body = crate::body::full(page_content)
     }
 
     let mut resp = Response::new(body);

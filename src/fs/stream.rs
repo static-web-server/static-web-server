@@ -9,11 +9,9 @@
 use bytes::{Bytes, BytesMut};
 use futures_util::Stream;
 use std::fs::Metadata;
-use std::io::Read;
+use std::io::{self, Read};
 use std::pin::Pin;
 use std::task::{Context, Poll};
-
-use crate::Result;
 
 #[cfg(unix)]
 const DEFAULT_READ_BUF_SIZE: usize = 4_096;
@@ -28,7 +26,7 @@ pub(crate) struct FileStream<T> {
 }
 
 impl<T: Read + Unpin> Stream for FileStream<T> {
-    type Item = Result<Bytes>;
+    type Item = io::Result<Bytes>;
 
     fn poll_next(self: Pin<&mut Self>, _: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let mut buf = BytesMut::zeroed(self.buf_size);
@@ -41,7 +39,7 @@ impl<T: Read + Unpin> Stream for FileStream<T> {
                     Poll::Ready(Some(Ok(buf.freeze())))
                 }
             }
-            Err(err) => Poll::Ready(Some(Err(anyhow::Error::from(err)))),
+            Err(err) => Poll::Ready(Some(Err(err))),
         }
     }
 }

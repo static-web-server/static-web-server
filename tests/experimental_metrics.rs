@@ -6,6 +6,7 @@
 #[cfg(all(unix, feature = "experimental"))]
 pub mod tests {
     use hyper::Request;
+    use http_body_util::BodyExt;
     use std::net::SocketAddr;
 
     use static_web_server::testing::fixtures::{
@@ -19,7 +20,7 @@ pub mod tests {
         let req_handler = fixture_req_handler(req_handler_opts);
         let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
 
-        let mut req = Request::default();
+        let mut req = Request::new(());
         *req.method_mut() = hyper::Method::GET;
         *req.uri_mut() = "http://localhost/metrics".parse().unwrap();
 
@@ -34,9 +35,10 @@ pub mod tests {
                 assert_eq!(res.status(), 200);
                 assert_eq!(res.headers()["content-type"], "text/plain; charset=utf-8");
 
-                let body = hyper::body::to_bytes(res.into_body())
+                let body = res.into_body().collect()
                     .await
-                    .expect("unexpected bytes error during `body` conversion");
+                    .expect("unexpected bytes error during `body` conversion")
+                    .to_bytes();
                 let body_str = std::str::from_utf8(&body).unwrap();
 
                 assert!(body_str.contains("tokio_budget_forced_yield_count 0"));

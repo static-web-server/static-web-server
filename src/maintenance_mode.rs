@@ -7,10 +7,11 @@
 //!
 
 use headers::{AcceptRanges, ContentLength, ContentType, HeaderMapExt};
-use hyper::{Body, Method, Request, Response, StatusCode};
+use hyper::{Method, Request, Response, StatusCode};
 use mime_guess::mime;
 use std::path::{Path, PathBuf};
 
+use crate::body::Body;
 use crate::{Error, Result, handler::RequestHandlerOpts, helpers, http_ext::MethodExt};
 
 const DEFAULT_BODY_CONTENT: &str = "The server is in maintenance mode.";
@@ -77,11 +78,11 @@ pub fn get_response(
         )
     };
 
-    let mut body = Body::empty();
+    let mut body = crate::body::empty();
     let len = body_content.len() as u64;
 
     if !method.is_head() {
-        body = Body::from(body_content)
+        body = crate::body::full(body_content)
     }
 
     let mut resp = Response::new(body);
@@ -97,14 +98,15 @@ pub fn get_response(
 #[cfg(test)]
 mod tests {
     use super::pre_process;
+    use crate::body::Body;
     use crate::{Error, handler::RequestHandlerOpts};
-    use hyper::{Body, Request, Response, StatusCode};
+    use hyper::{Request, Response, StatusCode};
 
     fn make_request() -> Request<Body> {
         Request::builder()
             .method("GET")
             .uri("/")
-            .body(Body::empty())
+            .body(crate::body::empty())
             .unwrap()
     }
 

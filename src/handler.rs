@@ -6,13 +6,15 @@
 //! Request handler module intended to manage incoming HTTP requests.
 //!
 
-use hyper::{Body, Request, Response, StatusCode};
+use hyper::{Request, Response, StatusCode};
 use std::{
     future::Future,
     net::{IpAddr, SocketAddr},
     path::PathBuf,
     sync::Arc,
 };
+
+use crate::body::Body;
 
 #[cfg(any(
     feature = "compression",
@@ -202,11 +204,14 @@ pub struct RequestHandler {
 
 impl RequestHandler {
     /// Main entry point for incoming requests.
-    pub fn handle<'a>(
+    pub fn handle<'a, B>(
         &'a self,
-        req: &'a mut Request<Body>,
+        req: &'a mut Request<B>,
         remote_addr: Option<SocketAddr>,
-    ) -> impl Future<Output = Result<Response<Body>, Error>> + Send + 'a {
+    ) -> impl Future<Output = Result<Response<Body>, Error>> + Send + 'a
+    where
+        B: Send + 'a,
+    {
         let mut base_path = &self.opts.root_dir;
         #[cfg(feature = "directory-listing")]
         let dir_listing = self.opts.dir_listing;
@@ -386,7 +391,7 @@ impl RequestHandler {
                 if let Ok(ref resp) = result {
                     let bytes = resp
                         .headers()
-                        .get(hyper::header::CONTENT_LENGTH)
+                        .get(http::header::CONTENT_LENGTH)
                         .and_then(|v| v.to_str().ok())
                         .and_then(|v| v.parse::<u64>().ok())
                         .unwrap_or(0);

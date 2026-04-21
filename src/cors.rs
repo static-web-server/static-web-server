@@ -13,9 +13,10 @@ use headers::{
     HeaderMapExt, HeaderName, HeaderValue, Origin,
 };
 use http::header;
-use hyper::{Body, Request, Response, StatusCode};
+use hyper::{Request, Response, StatusCode};
 use std::collections::HashSet;
 
+use crate::body::Body;
 use crate::{Error, error_page, handler::RequestHandlerOpts};
 
 /// It defines CORS instance.
@@ -427,8 +428,8 @@ pub(crate) fn post_process<T>(
             resp.headers_mut().insert(k, v.to_owned());
         }
         resp.headers_mut().insert(
-            hyper::header::VARY,
-            HeaderValue::from_name(hyper::header::ORIGIN),
+            http::header::VARY,
+            HeaderValue::from_name(http::header::ORIGIN),
         );
         resp.headers_mut().remove(http::header::ALLOW);
     }
@@ -438,19 +439,24 @@ pub(crate) fn post_process<T>(
 #[cfg(test)]
 mod tests {
     use super::{Configured, Cors, post_process, pre_process};
+    use crate::body::Body;
     use crate::{Error, handler::RequestHandlerOpts};
-    use hyper::{Body, Request, Response, StatusCode};
+    use hyper::{Request, Response, StatusCode};
 
     fn make_request(method: &str, origin: &str) -> Request<Body> {
         let mut builder = Request::builder();
         if !origin.is_empty() {
             builder = builder.header("Origin", origin);
         }
-        builder.method(method).uri("/").body(Body::empty()).unwrap()
+        builder
+            .method(method)
+            .uri("/")
+            .body(crate::body::empty())
+            .unwrap()
     }
 
     fn make_response() -> Response<Body> {
-        Response::builder().body(Body::empty()).unwrap()
+        Response::builder().body(crate::body::empty()).unwrap()
     }
 
     fn make_cors_config() -> Option<Configured> {

@@ -8,6 +8,7 @@ mod tests {
     use bytes::Bytes;
     use headers::HeaderMap;
     use http::{Method, StatusCode};
+    use http_body_util::BodyExt;
     use static_web_server::http_ext::MethodExt;
     use std::fs;
     use std::path::PathBuf;
@@ -66,7 +67,7 @@ mod tests {
         })
         .await
         .expect("unexpected error response on `handle` function");
-        let mut res = result.resp;
+        let res = result.resp;
 
         let buf = fs::read(root_dir().join("index.htm"))
             .expect("unexpected error during index.html reading");
@@ -81,9 +82,12 @@ mod tests {
 
         assert!(ctype == "text/html", "content-type is not html: {ctype:?}",);
 
-        let body = hyper::body::to_bytes(res.body_mut())
+        let body = res
+            .into_body()
+            .collect()
             .await
-            .expect("unexpected bytes error during `body` conversion");
+            .expect("unexpected bytes error during `body` conversion")
+            .to_bytes();
 
         assert_eq!(body, buf);
     }
@@ -114,7 +118,7 @@ mod tests {
         })
         .await
         .expect("unexpected error response on `handle` function");
-        let mut res = result.resp;
+        let res = result.resp;
 
         let buf = fs::read(root_dir().join("index.htm"))
             .expect("unexpected error during index.html reading");
@@ -129,9 +133,12 @@ mod tests {
 
         assert!(ctype == "text/html", "content-type is not html: {ctype:?}",);
 
-        let body = hyper::body::to_bytes(res.body_mut())
+        let body = res
+            .into_body()
+            .collect()
             .await
-            .expect("unexpected bytes error during `body` conversion");
+            .expect("unexpected bytes error during `body` conversion")
+            .to_bytes();
 
         assert_eq!(body, buf);
     }
@@ -199,14 +206,17 @@ mod tests {
         })
         .await
         .expect("unexpected error response on `handle` function");
-        let mut res = result.resp;
+        let res = result.resp;
 
         assert_eq!(res.status(), 308);
         assert_eq!(res.headers()["location"], "assets/");
 
-        let body = hyper::body::to_bytes(res.body_mut())
+        let body = res
+            .into_body()
+            .collect()
             .await
-            .expect("unexpected bytes error during `body` conversion");
+            .expect("unexpected bytes error during `body` conversion")
+            .to_bytes();
 
         assert_eq!(body, Bytes::new());
     }
@@ -317,15 +327,18 @@ mod tests {
                 .await
                 {
                     Ok(result) => {
-                        let mut res = result.resp;
+                        let res = result.resp;
                         if uri == "/assets" {
                             // it should redirect permanently
                             assert_eq!(res.status(), 308);
                             assert_eq!(res.headers()["location"], "/assets/");
 
-                            let body = hyper::body::to_bytes(res.body_mut())
+                            let body = res
+                                .into_body()
+                                .collect()
                                 .await
-                                .expect("unexpected bytes error during `body` conversion");
+                                .expect("unexpected bytes error during `body` conversion")
+                                .to_bytes();
 
                             assert_eq!(body, Bytes::new());
                         } else {
@@ -496,12 +509,15 @@ mod tests {
             .await
             {
                 Ok(result) => {
-                    let mut res = result.resp;
+                    let res = result.resp;
                     assert_eq!(res.status(), 304);
                     assert_eq!(res.headers().get("content-length"), None);
-                    let body = hyper::body::to_bytes(res.body_mut())
+                    let body = res
+                        .into_body()
+                        .collect()
                         .await
-                        .expect("unexpected bytes error during `body` conversion");
+                        .expect("unexpected bytes error during `body` conversion")
+                        .to_bytes();
                     assert_eq!(body, "");
                 }
                 Err(_) => {
@@ -541,11 +557,14 @@ mod tests {
             .await
             {
                 Ok(result) => {
-                    let mut res = result.resp;
+                    let res = result.resp;
                     assert_eq!(res.status(), 200);
-                    let body = hyper::body::to_bytes(res.body_mut())
+                    let body = res
+                        .into_body()
+                        .collect()
                         .await
-                        .expect("unexpected bytes error during `body` conversion");
+                        .expect("unexpected bytes error during `body` conversion")
+                        .to_bytes();
                     assert_eq!(body, buf);
                     assert_eq!(res1.headers()["content-length"], buf.len().to_string());
                 }
@@ -665,12 +684,15 @@ mod tests {
             .await
             {
                 Ok(result) => {
-                    let mut res = result.resp;
+                    let res = result.resp;
                     assert_eq!(res.status(), 412);
 
-                    let body = hyper::body::to_bytes(res.body_mut())
+                    let body = res
+                        .into_body()
+                        .collect()
                         .await
-                        .expect("unexpected bytes error during `body` conversion");
+                        .expect("unexpected bytes error during `body` conversion")
+                        .to_bytes();
 
                     assert_eq!(body, "");
                 }
@@ -711,7 +733,7 @@ mod tests {
                 Ok(result) => match method {
                     // The handle only accepts HEAD or GET request methods
                     Method::GET | Method::HEAD => {
-                        let mut res = result.resp;
+                        let res = result.resp;
                         let buf = fs::read(root_dir().join("index.htm"))
                             .expect("unexpected error during index.html reading");
                         let buf = Bytes::from(buf);
@@ -725,9 +747,12 @@ mod tests {
 
                         assert!(ctype == "text/html", "content-type is not html: {ctype:?}",);
 
-                        let body = hyper::body::to_bytes(res.body_mut())
+                        let body = res
+                            .into_body()
+                            .collect()
                             .await
-                            .expect("unexpected bytes error during `body` conversion");
+                            .expect("unexpected bytes error during `body` conversion")
+                            .to_bytes();
 
                         assert_eq!(body, buf);
                     }
@@ -871,16 +896,19 @@ mod tests {
             .await
             {
                 Ok(result) => {
-                    let mut res = result.resp;
+                    let res = result.resp;
                     assert_eq!(res.status(), 206);
                     assert_eq!(
                         res.headers()["content-range"],
                         format!("bytes 0-0/{}", buf.len())
                     );
                     assert_eq!(res.headers()["content-length"], "1");
-                    let body = hyper::body::to_bytes(res.body_mut())
+                    let body = res
+                        .into_body()
+                        .collect()
                         .await
-                        .expect("unexpected bytes error during `body` conversion");
+                        .expect("unexpected bytes error during `body` conversion")
+                        .to_bytes();
                     assert_eq!(body, &buf[..=0]);
                 }
                 Err(_) => {
@@ -925,16 +953,19 @@ mod tests {
             .await
             {
                 Ok(result) => {
-                    let mut res = result.resp;
+                    let res = result.resp;
                     assert_eq!(res.status(), 206);
                     assert_eq!(
                         res.headers()["content-range"],
                         format!("bytes 100-200/{}", buf.len())
                     );
                     assert_eq!(res.headers()["content-length"], "101");
-                    let body = hyper::body::to_bytes(res.body_mut())
+                    let body = res
+                        .into_body()
+                        .collect()
                         .await
-                        .expect("unexpected bytes error during `body` conversion");
+                        .expect("unexpected bytes error during `body` conversion")
+                        .to_bytes();
                     assert_eq!(body, &buf[100..=200]);
                 }
                 Err(_) => {
@@ -979,16 +1010,19 @@ mod tests {
             .await
             {
                 Ok(result) => {
-                    let mut res = result.resp;
+                    let res = result.resp;
                     assert_eq!(res.status(), 206);
                     assert_eq!(
                         res.headers()["content-range"],
                         format!("bytes 100-{}/{}", buf.len() - 1, buf.len())
                     );
                     assert!(res.headers().get("content-length").is_some());
-                    let body = hyper::body::to_bytes(res.body_mut())
+                    let body = res
+                        .into_body()
+                        .collect()
                         .await
-                        .expect("unexpected bytes error during `body` conversion");
+                        .expect("unexpected bytes error during `body` conversion")
+                        .to_bytes();
                     assert!(body.len() > 400);
                 }
                 Err(_) => {
@@ -1081,7 +1115,7 @@ mod tests {
             .await
             {
                 Ok(result) => {
-                    let mut res = result.resp;
+                    let res = result.resp;
                     assert_eq!(res.status(), 206);
                     assert_eq!(
                         res.headers()["content-range"],
@@ -1091,9 +1125,12 @@ mod tests {
                         res.headers()["content-length"],
                         &buf[100..].len().to_string()
                     );
-                    let body = hyper::body::to_bytes(res.body_mut())
+                    let body = res
+                        .into_body()
+                        .collect()
                         .await
-                        .expect("unexpected bytes error during `body` conversion");
+                        .expect("unexpected bytes error during `body` conversion")
+                        .to_bytes();
                     assert_eq!(body, &buf[100..]);
                 }
                 Err(_) => {
@@ -1138,16 +1175,19 @@ mod tests {
             .await
             {
                 Ok(result) => {
-                    let mut res = result.resp;
+                    let res = result.resp;
                     assert_eq!(res.status(), 206);
                     assert_eq!(
                         res.headers()["content-range"],
                         format!("bytes {}-{}/{}", buf.len() - 100, buf.len() - 1, buf.len())
                     );
                     assert_eq!(res.headers()["content-length"], "100");
-                    let body = hyper::body::to_bytes(res.body_mut())
+                    let body = res
+                        .into_body()
+                        .collect()
                         .await
-                        .expect("unexpected bytes error during `body` conversion");
+                        .expect("unexpected bytes error during `body` conversion")
+                        .to_bytes();
                     assert_eq!(body, &buf[buf.len() - 100..]);
                 }
                 Err(_) => {
@@ -1192,16 +1232,19 @@ mod tests {
             .await
             {
                 Ok(result) => {
-                    let mut res = result.resp;
+                    let res = result.resp;
                     assert_eq!(res.status(), 416);
                     assert_eq!(
                         res.headers()["content-range"],
                         format!("bytes */{}", buf.len())
                     );
                     assert_eq!(res.headers().get("content-length"), None);
-                    let body = hyper::body::to_bytes(res.body_mut())
+                    let body = res
+                        .into_body()
+                        .collect()
                         .await
-                        .expect("unexpected bytes error during `body` conversion");
+                        .expect("unexpected bytes error during `body` conversion")
+                        .to_bytes();
                     assert_eq!(body, "");
                 }
                 Err(_) => {
@@ -1246,16 +1289,19 @@ mod tests {
             .await
             {
                 Ok(result) => {
-                    let mut res = result.resp;
+                    let res = result.resp;
                     assert_eq!(res.status(), 416);
                     assert_eq!(
                         res.headers()["content-range"],
                         format!("bytes */{}", buf.len())
                     );
                     assert!(res.headers().get("content-length").is_none());
-                    let body = hyper::body::to_bytes(res.body_mut())
+                    let body = res
+                        .into_body()
+                        .collect()
                         .await
-                        .expect("unexpected bytes error during `body` conversion");
+                        .expect("unexpected bytes error during `body` conversion")
+                        .to_bytes();
                     assert!(body.is_empty());
                 }
                 Err(_) => {
@@ -1303,12 +1349,15 @@ mod tests {
             .await
             {
                 Ok(result) => {
-                    let mut res = result.resp;
+                    let res = result.resp;
                     assert_eq!(res.status(), 200);
                     assert!(res.headers().get("content-length").is_some());
-                    let body = hyper::body::to_bytes(res.body_mut())
+                    let body = res
+                        .into_body()
+                        .collect()
                         .await
-                        .expect("unexpected bytes error during `body` conversion");
+                        .expect("unexpected bytes error during `body` conversion")
+                        .to_bytes();
                     assert!(body.len() > 500);
                 }
                 Err(_) => {
@@ -1396,7 +1445,7 @@ mod tests {
             .await
             {
                 Ok(result) => {
-                    let mut res = result.resp;
+                    let res = result.resp;
                     assert_eq!(res.status(), 206);
                     assert_eq!(
                         res.headers()["content-range"],
@@ -1406,9 +1455,12 @@ mod tests {
                         res.headers()["content-length"],
                         format!("{}", buf.len() - 100)
                     );
-                    let body = hyper::body::to_bytes(res.body_mut())
+                    let body = res
+                        .into_body()
+                        .collect()
                         .await
-                        .expect("unexpected bytes error during `body` conversion");
+                        .expect("unexpected bytes error during `body` conversion")
+                        .to_bytes();
                     assert_eq!(body, &buf[100..=buf.len() - 1]);
                 }
                 Err(_) => {
@@ -1457,7 +1509,7 @@ mod tests {
             .await
             {
                 Ok(result) => {
-                    let mut res = result.resp;
+                    let res = result.resp;
                     assert_eq!(res.status(), 206);
                     assert_eq!(
                         res.headers()["content-range"],
@@ -1467,9 +1519,12 @@ mod tests {
                         res.headers()["content-length"],
                         format!("{}", buf.len() - 100)
                     );
-                    let body = hyper::body::to_bytes(res.body_mut())
+                    let body = res
+                        .into_body()
+                        .collect()
                         .await
-                        .expect("unexpected bytes error during `body` conversion");
+                        .expect("unexpected bytes error during `body` conversion")
+                        .to_bytes();
                     assert_eq!(body, &buf[100..=buf.len() - 1]);
                 }
                 Err(_) => {
@@ -1549,7 +1604,7 @@ mod tests {
             })
             .await
             .expect("unexpected error response on `handle` function");
-            let mut res = result.resp;
+            let res = result.resp;
 
             let buf = fs::read(root_dir.join("foo.html"))
                 .expect("unexpected error during index.html reading");
@@ -1564,9 +1619,12 @@ mod tests {
 
             assert!(ctype == "text/html", "content-type is not html: {ctype:?}",);
 
-            let body = hyper::body::to_bytes(res.body_mut())
+            let body = res
+                .into_body()
+                .collect()
                 .await
-                .expect("unexpected bytes error during `body` conversion");
+                .expect("unexpected bytes error during `body` conversion")
+                .to_bytes();
 
             assert_eq!(body, buf);
         }
@@ -1647,12 +1705,15 @@ mod tests {
             .await
             {
                 Ok(result) => {
-                    let mut res = result.resp;
+                    let res = result.resp;
                     assert_eq!(res.status(), 200);
                     assert_eq!(res.headers()["content-length"], format!("{}", buf.len()));
-                    let body = hyper::body::to_bytes(res.body_mut())
+                    let body = res
+                        .into_body()
+                        .collect()
                         .await
-                        .expect("unexpected bytes error during `body` conversion");
+                        .expect("unexpected bytes error during `body` conversion")
+                        .to_bytes();
                     assert_eq!(body, &buf);
                 }
                 Err(_) => {

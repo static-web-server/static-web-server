@@ -115,6 +115,7 @@ pub mod logger;
 #[cfg(feature = "basic-auth")]
 #[cfg_attr(docsrs, doc(cfg(feature = "basic-auth")))]
 pub mod basic_auth;
+pub mod body;
 #[cfg(any(
     feature = "compression",
     feature = "compression-gzip",

@@ -6,6 +6,7 @@
 #[cfg(test)]
 pub mod tests {
     use hyper::Request;
+    use http_body_util::BodyExt;
     use std::net::SocketAddr;
 
     use static_web_server::testing::fixtures::{
@@ -20,7 +21,7 @@ pub mod tests {
         let req_handler = fixture_req_handler(req_handler_opts);
         let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
 
-        let mut req = Request::default();
+        let mut req = Request::new(());
         *req.uri_mut() = "http://development".parse().unwrap();
 
         match req_handler.handle(&mut req, remote_addr).await {
@@ -41,17 +42,18 @@ pub mod tests {
         let req_handler = fixture_req_handler(req_handler_opts);
         let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
 
-        let mut req = Request::default();
+        let mut req = Request::new(());
         *req.uri_mut() = "http://localhost/some/error-page.html".parse().unwrap();
 
         match req_handler.handle(&mut req, remote_addr).await {
-            Ok(mut res) => {
+            Ok(res) => {
                 assert_eq!(res.status(), 200);
                 assert_eq!(res.headers()["content-type"], "text/html");
 
-                let body = hyper::body::to_bytes(res.body_mut())
+                let body = res.into_body().collect()
                     .await
-                    .expect("unexpected bytes error during `body` conversion");
+                    .expect("unexpected bytes error during `body` conversion")
+                    .to_bytes();
                 let body_str = std::str::from_utf8(&body).unwrap();
                 assert!(body_str.contains("404 Content"))
             }
@@ -68,17 +70,18 @@ pub mod tests {
         let req_handler = fixture_req_handler(req_handler_opts);
         let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
 
-        let mut req = Request::default();
+        let mut req = Request::new(());
         *req.uri_mut() = "http://localhost/error-page/50x.html".parse().unwrap();
 
         match req_handler.handle(&mut req, remote_addr).await {
-            Ok(mut res) => {
+            Ok(res) => {
                 assert_eq!(res.status(), 200);
                 assert_eq!(res.headers()["content-type"], "text/html");
 
-                let body = hyper::body::to_bytes(res.body_mut())
+                let body = res.into_body().collect()
                     .await
-                    .expect("unexpected bytes error during `body` conversion");
+                    .expect("unexpected bytes error during `body` conversion")
+                    .to_bytes();
                 let body_str = std::str::from_utf8(&body).unwrap();
                 assert!(body_str.contains("50x Service Unavailable"))
             }
@@ -95,17 +98,18 @@ pub mod tests {
         let req_handler = fixture_req_handler(req_handler_opts);
         let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
 
-        let mut req = Request::default();
+        let mut req = Request::new(());
         *req.uri_mut() = "http://localhost/errors/50x.html".parse().unwrap();
 
         match req_handler.handle(&mut req, remote_addr).await {
-            Ok(mut res) => {
+            Ok(res) => {
                 assert_eq!(res.status(), 200);
                 assert_eq!(res.headers()["content-type"], "text/html");
 
-                let body = hyper::body::to_bytes(res.body_mut())
+                let body = res.into_body().collect()
                     .await
-                    .expect("unexpected bytes error during `body` conversion");
+                    .expect("unexpected bytes error during `body` conversion")
+                    .to_bytes();
                 let body_str = std::str::from_utf8(&body).unwrap();
                 assert!(body_str.contains("50x Service Unavailable"))
             }
@@ -122,17 +126,18 @@ pub mod tests {
         let req_handler = fixture_req_handler(req_handler_opts);
         let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
 
-        let mut req = Request::default();
+        let mut req = Request::new(());
         *req.uri_mut() = "http://localhost/scripts/main.js".parse().unwrap();
 
         match req_handler.handle(&mut req, remote_addr).await {
-            Ok(mut res) => {
+            Ok(res) => {
                 assert_eq!(res.status(), 200);
                 assert_eq!(res.headers()["content-type"], "text/javascript");
 
-                let body = hyper::body::to_bytes(res.body_mut())
+                let body = res.into_body().collect()
                     .await
-                    .expect("unexpected bytes error during `body` conversion");
+                    .expect("unexpected bytes error during `body` conversion")
+                    .to_bytes();
                 let body_str = std::str::from_utf8(&body).unwrap();
                 assert!(body_str.contains("Static Web Server"))
             }
@@ -149,7 +154,7 @@ pub mod tests {
         let req_handler = fixture_req_handler(req_handler_opts);
         let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
 
-        let mut req = Request::default();
+        let mut req = Request::new(());
         *req.uri_mut() = "http://localhost/images/icon.ico".parse().unwrap();
 
         match req_handler.handle(&mut req, remote_addr).await {
@@ -170,7 +175,7 @@ pub mod tests {
         let req_handler = fixture_req_handler(req_handler_opts);
         let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
 
-        let mut req = Request::default();
+        let mut req = Request::new(());
         *req.uri_mut() = "http://localhost/old/fonts/text.ttf".parse().unwrap();
 
         match req_handler.handle(&mut req, remote_addr).await {
@@ -194,7 +199,7 @@ pub mod tests {
         let req_handler = fixture_req_handler(req_handler_opts);
         let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
 
-        let mut req = Request::default();
+        let mut req = Request::new(());
         *req.uri_mut() = "http://localhost/generic-page.html".parse().unwrap();
 
         match req_handler.handle(&mut req, remote_addr).await {

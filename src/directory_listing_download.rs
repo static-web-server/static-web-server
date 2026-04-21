@@ -8,23 +8,21 @@
 
 use async_compression::tokio::write::GzipEncoder;
 use async_tar::Builder;
-use bytes::BytesMut;
 use clap::ValueEnum;
 use headers::{ContentType, HeaderMapExt};
 use http::{HeaderValue, Method, Response};
-use hyper::{Body, body::Sender};
 use mime_guess::Mime;
 use std::fmt::Display;
 use std::path::Path;
 use std::path::PathBuf;
 use std::str::FromStr;
-use std::task::Poll::{Pending, Ready};
 use tokio::fs;
-use tokio::io;
 use tokio::io::AsyncWriteExt;
 use tokio_util::compat::TokioAsyncWriteCompatExt;
+use tokio_util::io::ReaderStream;
 
 use crate::Result;
+use crate::body::Body;
 use crate::handler::RequestHandlerOpts;
 use crate::http_ext::MethodExt;
 
@@ -70,9 +68,9 @@ pub fn init(formats: &Vec<DirDownloadFmt>, handler_opts: &mut RequestHandlerOpts
     );
 }
 
-/// impl AsyncWrite for hyper::Body::Sender
+/// It implements `AsyncWrite` backed by a Tokio duplex writer used as the `GzipEncoder` write target.
 pub struct ChannelBuffer {
-    s: Sender,
+    writer: tokio::io::DuplexStream,
 }
 
 impl tokio::io::AsyncWrite for ChannelBuffer {
@@ -81,32 +79,21 @@ impl tokio::io::AsyncWrite for ChannelBuffer {
         cx: &mut std::task::Context<'_>,
         buf: &[u8],
     ) -> std::task::Poll<Result<usize, std::io::Error>> {
-        let this = self.get_mut();
-        let b = BytesMut::from(buf);
-        match this.s.poll_ready(cx) {
-            Ready(r) => match r {
-                Ok(()) => match this.s.try_send_data(b.freeze()) {
-                    Ok(_) => Ready(Ok(buf.len())),
-                    Err(_) => Pending,
-                },
-                Err(e) => Ready(Err(io::Error::new(io::ErrorKind::BrokenPipe, e))),
-            },
-            Pending => Pending,
-        }
+        std::pin::Pin::new(&mut self.get_mut().writer).poll_write(cx, buf)
     }
 
     fn poll_flush(
         self: std::pin::Pin<&mut Self>,
-        _cx: &mut std::task::Context<'_>,
+        cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Result<(), std::io::Error>> {
-        std::task::Poll::Ready(Ok(()))
+        std::pin::Pin::new(&mut self.get_mut().writer).poll_flush(cx)
     }
 
     fn poll_shutdown(
         self: std::pin::Pin<&mut Self>,
-        _cx: &mut std::task::Context<'_>,
+        cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Result<(), std::io::Error>> {
-        std::task::Poll::Ready(Ok(()))
+        std::pin::Pin::new(&mut self.get_mut().writer).poll_shutdown(cx)
     }
 }
 
@@ -171,7 +158,7 @@ where
     Q: AsRef<Path>,
 {
     let archive_name = path.as_ref().with_extension("tar.gz");
-    let mut resp = Response::new(Body::empty());
+    let mut resp = Response::new(crate::body::empty());
 
     resp.headers_mut().typed_insert(ContentType::from(
         // since this satisfies the required format: `*/*`, it should not fail
@@ -198,11 +185,12 @@ where
         return resp;
     }
 
-    let (tx, body) = Body::channel();
+    let (read_half, write_half) = tokio::io::duplex(64 * 1024);
+    let body = crate::body::stream(ReaderStream::new(read_half));
     tokio::task::spawn(archive(
         path.as_ref().into(),
         src_path.as_ref().into(),
-        ChannelBuffer { s: tx },
+        ChannelBuffer { writer: write_half },
         !opts.disable_symlinks,
         opts.ignore_hidden_files,
     ));

@@ -13,19 +13,12 @@ use std::net::SocketAddr;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 
-use hyper::server::conn::AddrStream;
 use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
 
 /// Transport trait that supports the remote (peer) address.
 pub trait Transport: AsyncRead + AsyncWrite {
     /// Returns the remote (peer) address of this connection.
     fn remote_addr(&self) -> Option<SocketAddr>;
-}
-
-impl Transport for AddrStream {
-    fn remote_addr(&self) -> Option<SocketAddr> {
-        Some(self.remote_addr())
-    }
 }
 
 /// Type to support `Transport`, `AsyncRead` and `AsyncWrite`.

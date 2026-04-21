@@ -11,6 +11,7 @@ mod tests {
     use futures_util::StreamExt;
     use headers::HeaderMap;
     use http::{Method, StatusCode};
+    use http_body_util::BodyExt;
     use std::{
         collections::HashSet,
         path::{Path, PathBuf},
@@ -145,7 +146,7 @@ mod tests {
             .await
             {
                 Ok(result) => {
-                    let mut res = result.resp;
+                    let res = result.resp;
                     assert_eq!(res.status(), 200);
                     assert_eq!(res.headers()["content-type"], "application/gzip");
                     assert!(
@@ -155,9 +156,10 @@ mod tests {
                             .starts_with("attachment")
                     );
 
-                    let body = hyper::body::to_bytes(res.body_mut())
+                    let body = res.into_body().collect()
                         .await
-                        .expect("unexpected bytes error during `body` conversion");
+                        .expect("unexpected bytes error during `body` conversion")
+                        .to_bytes();
 
                     if method == Method::GET {
                         let mut prefix = base_path.clone();
@@ -217,7 +219,7 @@ mod tests {
             .await
             {
                 Ok(result) => {
-                    let mut res = result.resp;
+                    let res = result.resp;
                     assert_eq!(res.status(), 200);
                     assert_eq!(res.headers()["content-type"], "application/gzip");
                     assert!(
@@ -227,9 +229,10 @@ mod tests {
                             .starts_with("attachment")
                     );
 
-                    let body = hyper::body::to_bytes(res.body_mut())
+                    let body = res.into_body().collect()
                         .await
-                        .expect("unexpected bytes error during `body` conversion");
+                        .expect("unexpected bytes error during `body` conversion")
+                        .to_bytes();
 
                     if method == Method::GET {
                         let mut prefix = base_path.clone();
@@ -278,7 +281,7 @@ mod tests {
             .await
             {
                 Ok(result) => {
-                    let mut res = result.resp;
+                    let res = result.resp;
                     assert_eq!(res.status(), 200);
                     assert_eq!(res.headers()["content-type"], "application/gzip");
                     assert!(
@@ -288,9 +291,10 @@ mod tests {
                             .starts_with("attachment")
                     );
 
-                    let body = hyper::body::to_bytes(res.body_mut())
+                    let body = res.into_body().collect()
                         .await
-                        .expect("unexpected bytes error during `body` conversion");
+                        .expect("unexpected bytes error during `body` conversion")
+                        .to_bytes();
 
                     if method == Method::GET {
                         let mut prefix = base_path.clone();

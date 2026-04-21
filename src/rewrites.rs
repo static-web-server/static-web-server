@@ -7,8 +7,9 @@
 //!
 
 use headers::HeaderValue;
-use hyper::{Body, Request, Response, StatusCode, Uri, header::HOST};
+use hyper::{Request, Response, StatusCode, Uri, header::HOST};
 
+use crate::body::Body;
 use crate::{
     Error,
     handler::RequestHandlerOpts,
@@ -42,7 +43,7 @@ pub(crate) fn pre_process<T>(
                 );
             }
         };
-        let mut resp = Response::new(Body::empty());
+        let mut resp = Response::new(crate::body::empty());
         resp.headers_mut().insert(hyper::header::LOCATION, loc);
         *resp.status_mut() = match redirect_type {
             RedirectsKind::Permanent => StatusCode::MOVED_PERMANENTLY,
@@ -120,12 +121,13 @@ pub fn rewrite_uri_path<'a>(
 #[cfg(test)]
 mod tests {
     use super::pre_process;
+    use crate::body::Body;
     use crate::{
         Error,
         handler::RequestHandlerOpts,
         settings::{Advanced, Rewrites, file::RedirectsKind},
     };
-    use hyper::{Body, Request, Response, StatusCode, header::HOST};
+    use hyper::{Request, Response, StatusCode, header::HOST};
     use regex_lite::Regex;
 
     fn make_request(host: &str, uri: &str) -> Request<Body> {
@@ -133,7 +135,11 @@ mod tests {
         if !host.is_empty() {
             builder = builder.header("Host", host);
         }
-        builder.method("GET").uri(uri).body(Body::empty()).unwrap()
+        builder
+            .method("GET")
+            .uri(uri)
+            .body(crate::body::empty())
+            .unwrap()
     }
 
     fn get_rewrites() -> Vec<Rewrites> {

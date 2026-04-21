@@ -10,12 +10,13 @@
 // https://github.com/seanmonstar/warp/blob/master/src/filters/fs.rs
 
 use headers::{AcceptRanges, HeaderMap, HeaderMapExt, HeaderValue};
-use hyper::{Body, Method, Response, StatusCode, header::CONTENT_ENCODING, header::CONTENT_LENGTH};
+use hyper::{Method, Response, StatusCode, header::CONTENT_ENCODING, header::CONTENT_LENGTH};
 use std::fs::{File, Metadata};
 use std::io;
 use std::path::PathBuf;
 
 use crate::Result;
+use crate::body::Body;
 use crate::conditional_headers::ConditionalHeaders;
 use crate::fs::meta::{FileMetadata, try_metadata, try_metadata_with_html_suffix};
 use crate::fs::path::{PathExt, sanitize_path};
@@ -222,7 +223,7 @@ pub async fn handle(opts: &HandleOpts<'_>) -> Result<StaticFileResponse, StatusC
             }
         };
 
-        let mut resp = Response::new(Body::empty());
+        let mut resp = Response::new(crate::body::empty());
         resp.headers_mut().insert(hyper::header::LOCATION, loc);
         *resp.status_mut() = StatusCode::PERMANENT_REDIRECT;
 
@@ -235,7 +236,7 @@ pub async fn handle(opts: &HandleOpts<'_>) -> Result<StaticFileResponse, StatusC
 
     // Respond with the permitted communication methods
     if method.is_options() {
-        let mut resp = Response::new(Body::empty());
+        let mut resp = Response::new(crate::body::empty());
         *resp.status_mut() = StatusCode::NO_CONTENT;
         resp.headers_mut()
             .typed_insert(headers::Allow::from_iter(HTTP_SUPPORTED_METHODS.clone()));

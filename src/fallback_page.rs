@@ -7,10 +7,11 @@
 //!
 
 use headers::{AcceptRanges, ContentLength, ContentType, HeaderMapExt};
-use hyper::{Body, Request, Response, StatusCode};
+use hyper::{Request, Response, StatusCode};
 use mime_guess::mime;
 use std::path::Path;
 
+use crate::body::Body;
 use crate::{Error, handler::RequestHandlerOpts, helpers, http_ext::MethodExt};
 
 /// Initializes fallback page processing
@@ -55,7 +56,7 @@ pub(crate) fn post_process<T>(
 /// that would result in a `404` error and a fallback page is configured.
 /// If a response can be generated then is returned otherwise `None`.
 pub fn fallback_response(page_fallback: &[u8]) -> Response<Body> {
-    let body = Body::from(page_fallback.to_owned());
+    let body = crate::body::full(page_fallback.to_owned());
     let len = page_fallback.len() as u64;
 
     let mut resp = Response::new(body);
@@ -72,15 +73,16 @@ pub fn fallback_response(page_fallback: &[u8]) -> Response<Body> {
 #[cfg(test)]
 mod tests {
     use super::post_process;
+    use crate::body::Body;
     use crate::{Error, error_page, handler::RequestHandlerOpts};
-    use hyper::{Body, Method, Request, Response, StatusCode, Uri};
+    use hyper::{Method, Request, Response, StatusCode, Uri};
     use std::path::PathBuf;
 
     fn make_request(method: &str) -> Request<Body> {
         Request::builder()
             .method(method)
             .uri("/")
-            .body(Body::empty())
+            .body(crate::body::empty())
             .unwrap()
     }
 

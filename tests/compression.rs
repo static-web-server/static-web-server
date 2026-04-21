@@ -36,7 +36,7 @@ pub mod tests {
         let req_handler = fixture_req_handler(req_handler_opts);
         let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
 
-        let mut req = Request::default();
+        let mut req = Request::new(());
         *req.method_mut() = hyper::Method::GET;
         *req.uri_mut() = "http://localhost".parse().unwrap();
         req.headers_mut().insert(

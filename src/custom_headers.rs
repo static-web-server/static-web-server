@@ -6,9 +6,10 @@
 //! Module to append custom HTTP headers via TOML config file.
 //!
 
-use hyper::{Body, Request, Response};
+use hyper::{Request, Response};
 use std::{ffi::OsStr, path::PathBuf};
 
+use crate::body::Body;
 use crate::{Error, handler::RequestHandlerOpts, settings::Headers};
 
 /// Appends custom HTTP headers to a response if necessary

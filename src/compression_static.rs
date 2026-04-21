@@ -7,12 +7,13 @@
 //!
 
 use headers::{HeaderMap, HeaderMapExt, HeaderValue};
-use hyper::{Body, Request, Response};
+use hyper::{Request, Response};
 use std::ffi::OsStr;
 use std::fs::Metadata;
 use std::path::{Path, PathBuf};
 
 use crate::Error;
+use crate::body::Body;
 use crate::fs::meta::try_metadata;
 use crate::handler::RequestHandlerOpts;
 use crate::headers_ext::{AcceptEncoding, ContentCoding};

@@ -9,8 +9,6 @@
 // Most of the file is borrowed from https://github.com/seanmonstar/warp/blob/master/src/tls.rs
 
 use futures_util::ready;
-use hyper::server::accept::Accept;
-use hyper::server::conn::{AddrIncoming, AddrStream};
 use rustls_pki_types::pem::PemObject;
 use rustls_pki_types::{CertificateDer, PrivateKeyDer};
 use std::fs::File;
@@ -22,6 +20,7 @@ use std::pin::Pin;
 use std::sync::Arc;
 use std::task::{Context, Poll};
 use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
+use tokio::net::TcpStream;
 use tokio_rustls::rustls::{Error as TlsError, ServerConfig};
 
 use crate::transport::Transport;
@@ -204,9 +203,10 @@ impl Transport for TlsStream {
     }
 }
 
+/// State of the TLS stream, either handshaking or streaming.
 enum State {
-    Handshaking(tokio_rustls::Accept<AddrStream>),
-    Streaming(tokio_rustls::server::TlsStream<AddrStream>),
+    Handshaking(tokio_rustls::Accept<TcpStream>),
+    Streaming(tokio_rustls::server::TlsStream<TcpStream>),
 }
 
 /// TlsStream implements AsyncRead/AsyncWrite handshaking tokio_rustls::Accept first.
@@ -219,12 +219,11 @@ pub struct TlsStream {
 }
 
 impl TlsStream {
-    fn new(stream: AddrStream, config: Arc<ServerConfig>) -> TlsStream {
-        let remote_addr = stream.remote_addr();
+    fn new(stream: TcpStream, config: Arc<ServerConfig>, addr: SocketAddr) -> TlsStream {
         let accept = tokio_rustls::TlsAcceptor::from(config).accept(stream);
         TlsStream {
             state: State::Handshaking(accept),
-            remote_addr,
+            remote_addr: addr,
         }
     }
 }
@@ -286,35 +285,26 @@ impl AsyncWrite for TlsStream {
 }
 
 /// Type to intercept Tls incoming connections.
+#[derive(Clone)]
 pub struct TlsAcceptor {
     config: Arc<ServerConfig>,
-    incoming: AddrIncoming,
 }
 
 impl TlsAcceptor {
-    /// Creates a new Tls interceptor.
-    pub fn new(config: ServerConfig, incoming: AddrIncoming) -> TlsAcceptor {
+    /// Creates a new Tls interceptor from a built [`ServerConfig`].
+    pub fn new(config: ServerConfig) -> TlsAcceptor {
         TlsAcceptor {
             config: Arc::new(config),
-            incoming,
         }
     }
-}
 
-impl Accept for TlsAcceptor {
-    type Conn = TlsStream;
-    type Error = io::Error;
-
-    fn poll_accept(
-        self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
-    ) -> Poll<Option<Result<Self::Conn, Self::Error>>> {
-        let pin = self.get_mut();
-        match ready!(Pin::new(&mut pin.incoming).poll_accept(cx)) {
-            Some(Ok(sock)) => Poll::Ready(Some(Ok(TlsStream::new(sock, pin.config.clone())))),
-            Some(Err(e)) => Poll::Ready(Some(Err(e))),
-            None => Poll::Ready(None),
-        }
+    /// Wraps an accepted [`TcpStream`] in a [`TlsStream`].
+    ///
+    /// The TLS handshake is driven lazily inside the returned stream's
+    /// [`AsyncRead`] / [`AsyncWrite`] implementations, so this method
+    /// returns immediately.
+    pub async fn accept(&self, stream: TcpStream, addr: SocketAddr) -> io::Result<TlsStream> {
+        Ok(TlsStream::new(stream, self.config.clone(), addr))
     }
 }
 

@@ -1,11 +1,10 @@
 use bytes::{BufMut, Bytes, BytesMut};
 use futures_util::Stream;
-use std::io::Read;
+use std::io::{self, Read};
 use std::pin::Pin;
 use std::sync::Arc;
 use std::task::{Context, Poll};
 
-use crate::Result;
 use crate::mem_cache::cache::{CACHE_STORE, MemFile, MemFileTempOpts};
 
 #[derive(Debug)]
@@ -17,7 +16,7 @@ pub(crate) struct MemCacheFileStream<T> {
 }
 
 impl<T: Read + Unpin> Stream for MemCacheFileStream<T> {
-    type Item = Result<Bytes>;
+    type Item = io::Result<Bytes>;
 
     fn poll_next(self: Pin<&mut Self>, _: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let buf_size = self.buf_size;
@@ -65,7 +64,7 @@ impl<T: Read + Unpin> Stream for MemCacheFileStream<T> {
                     Poll::Ready(Some(Ok(buf)))
                 }
             }
-            Err(err) => Poll::Ready(Some(Err(anyhow::Error::from(err)))),
+            Err(err) => Poll::Ready(Some(Err(err))),
         }
     }
 }

@@ -9,10 +9,11 @@ mod json;
 pub(crate) use html::html_auto_index;
 pub(crate) use json::json_auto_index;
 
-use hyper::{Body, Response, StatusCode};
+use hyper::{Response, StatusCode};
 use std::io;
 
 use crate::Result;
+use crate::body::Body;
 use crate::directory_listing::dir::{DirEntryOpts, DirListOpts, read_dir_entries};
 use crate::http_ext::MethodExt;
 
