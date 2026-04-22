@@ -515,7 +515,7 @@ impl Server {
                                 let _ = stream.set_nodelay(true);
                                 let tls_acceptor = tls_acceptor.clone();
                                 let svc = router.build(Some(addr));
-                                match tls_acceptor.accept(stream, addr).await {
+                                match tls_acceptor.accept(stream).await {
                                     Ok(tls_stream) => {
                                         let watcher = graceful.watcher();
                                         let builder_clone = builder.clone();

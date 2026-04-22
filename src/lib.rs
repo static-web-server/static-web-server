@@ -177,7 +177,6 @@ pub mod static_files;
 #[cfg(feature = "http2")]
 #[cfg_attr(docsrs, doc(cfg(feature = "http2")))]
 pub mod tls;
-pub mod transport;
 pub(crate) mod virtual_hosts;
 #[cfg(windows)]
 #[cfg_attr(docsrs, doc(cfg(windows)))]

@@ -14,7 +14,6 @@ use rustls_pki_types::{CertificateDer, PrivateKeyDer};
 use std::fs::File;
 use std::future::Future;
 use std::io::{self, BufReader, Cursor, Read};
-use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
 use std::pin::Pin;
 use std::sync::Arc;
@@ -22,8 +21,6 @@ use std::task::{Context, Poll};
 use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
 use tokio::net::TcpStream;
 use tokio_rustls::rustls::{Error as TlsError, ServerConfig};
-
-use crate::transport::Transport;
 
 /// Represents errors that can occur building the TlsConfig
 #[derive(Debug)]
@@ -197,12 +194,6 @@ impl Read for LazyFile {
     }
 }
 
-impl Transport for TlsStream {
-    fn remote_addr(&self) -> Option<SocketAddr> {
-        Some(self.remote_addr)
-    }
-}
-
 /// State of the TLS stream, either handshaking or streaming.
 enum State {
     Handshaking(tokio_rustls::Accept<TcpStream>),
@@ -215,15 +206,13 @@ enum State {
 /// so we have to TlsAcceptor::accept and handshake to have access to it.
 pub struct TlsStream {
     state: State,
-    remote_addr: SocketAddr,
 }
 
 impl TlsStream {
-    fn new(stream: TcpStream, config: Arc<ServerConfig>, addr: SocketAddr) -> TlsStream {
+    fn new(stream: TcpStream, config: Arc<ServerConfig>) -> TlsStream {
         let accept = tokio_rustls::TlsAcceptor::from(config).accept(stream);
         TlsStream {
             state: State::Handshaking(accept),
-            remote_addr: addr,
         }
     }
 }
@@ -303,8 +292,8 @@ impl TlsAcceptor {
     /// The TLS handshake is driven lazily inside the returned stream's
     /// [`AsyncRead`] / [`AsyncWrite`] implementations, so this method
     /// returns immediately.
-    pub async fn accept(&self, stream: TcpStream, addr: SocketAddr) -> io::Result<TlsStream> {
-        Ok(TlsStream::new(stream, self.config.clone(), addr))
+    pub async fn accept(&self, stream: TcpStream) -> io::Result<TlsStream> {
+        Ok(TlsStream::new(stream, self.config.clone()))
     }
 }
 
