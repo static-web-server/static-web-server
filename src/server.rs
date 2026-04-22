@@ -521,10 +521,11 @@ impl Server {
                                         let builder_clone = builder.clone();
                                         tokio::spawn(async move {
                                             let conn = builder_clone
-                                                .serve_connection_with_upgrades(
+                                                .serve_connection(
                                                     TokioIo::new(tls_stream),
                                                     svc,
-                                                );
+                                                )
+                                                .into_owned();
                                             if let Err(e) = watcher.watch(conn).await {
                                                 tracing::debug!(
                                                     "TLS connection error: {:?}", e
