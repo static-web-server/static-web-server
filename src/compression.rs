@@ -17,8 +17,6 @@ use async_compression::tokio::bufread::GzipEncoder;
 #[cfg(any(feature = "compression", feature = "compression-zstd"))]
 use async_compression::tokio::bufread::ZstdEncoder;
 
-use bytes::Bytes;
-use futures_util::Stream;
 use headers::{ContentType, HeaderMap, HeaderMapExt, HeaderValue};
 use http_body_util::BodyExt as _;
 use hyper::{
@@ -26,15 +24,13 @@ use hyper::{
     header::{CONTENT_ENCODING, CONTENT_LENGTH},
 };
 use mime_guess::{Mime, mime};
-use std::pin::Pin;
-use std::task::{Context, Poll};
 use tokio_util::io::{ReaderStream, StreamReader};
 
 use crate::body::Body;
 use crate::error_page;
 use crate::handler::RequestHandlerOpts;
 use crate::headers_ext::{AcceptEncoding, ContentCoding};
-use crate::http_ext::MethodExt;
+use crate::http_ext::{MethodExt, append_vary_accept_encoding};
 use crate::settings::CompressionLevel;
 use crate::{Error, Result};
 
@@ -99,20 +95,7 @@ pub(crate) fn post_process<T>(
     }
 
     // Compression content encoding varies so use a `Vary` header
-    let enc = HeaderValue::from_name(hyper::header::ACCEPT_ENCODING);
-    let value = resp.headers().get(hyper::header::VARY).map_or(enc, |h| {
-        let mut a = h.to_str().unwrap_or_default().to_owned();
-        let b = hyper::header::ACCEPT_ENCODING.as_str();
-        if !a.contains(b) {
-            if !a.is_empty() {
-                a.push(',');
-            }
-            a.push_str(b);
-        }
-        HeaderValue::from_str(a.as_str()).unwrap()
-    });
-
-    resp.headers_mut().insert(hyper::header::VARY, value);
+    append_vary_accept_encoding(&mut resp);
 
     // Auto compression based on the `Accept-Encoding` header
     match auto(req.method(), req.headers(), opts.compression_level, resp) {
@@ -350,30 +333,4 @@ pub fn get_encodings(headers: &HeaderMap<HeaderValue>) -> Vec<ContentCoding> {
             .collect::<Vec<_>>();
     }
     vec![]
-}
-
-/// A wrapper around any type that implements [`Stream`](futures_util::Stream) to be
-/// compatible with async_compression's `Stream` based encoders.
-#[derive(Debug)]
-pub struct CompressableBody<S, E>
-where
-    S: Stream<Item = Result<Bytes, E>>,
-    E: std::error::Error,
-{
-    body: std::pin::Pin<Box<S>>,
-}
-
-impl<S, E> Stream for CompressableBody<S, E>
-where
-    S: Stream<Item = Result<Bytes, E>>,
-    E: std::error::Error,
-{
-    type Item = std::io::Result<Bytes>;
-
-    fn poll_next(self: Pin<&mut Self>, ctx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        use std::io::{Error, ErrorKind};
-
-        let pin = self.get_mut();
-        S::poll_next(pin.body.as_mut(), ctx).map_err(|_| Error::from(ErrorKind::InvalidData))
-    }
 }

@@ -30,6 +30,14 @@ pub fn read_bytes_default(path: &Path) -> Vec<u8> {
     fs::read(path).unwrap_or_default()
 }
 
+/// Read a file into a trimmed `String`, returning an empty string on any error.
+/// Non-UTF-8 bytes are replaced with the Unicode replacement character.
+pub fn read_text_default(path: &Path) -> String {
+    String::from_utf8_lossy(&read_bytes_default(path))
+        .trim()
+        .to_owned()
+}
+
 /// Read an UTF-8 file from a specific path.
 pub fn read_file(path: &Path) -> Result<String> {
     match String::from_utf8(read_bytes(path)?) {

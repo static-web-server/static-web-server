@@ -15,6 +15,35 @@ use std::path::Path;
 use crate::body::Body;
 use crate::{Result, helpers, http_ext::MethodExt};
 
+/// Build an `text/html` response with the correct `Content-Length` and
+/// `Accept-Ranges` headers.
+///
+/// When `method` is `HEAD` the body is omitted but the `Content-Length`
+/// still reflects the full content length, exactly as for a normal `GET`.
+/// Pass `method = None` to always include the body (e.g. fallback pages
+/// where the caller never receives `HEAD` requests at this point).
+pub(crate) fn build_html_response(
+    content: impl Into<bytes::Bytes>,
+    status: hyper::StatusCode,
+    method: Option<&Method>,
+) -> Response<Body> {
+    let bytes: bytes::Bytes = content.into();
+    let len = bytes.len() as u64;
+    let is_head = method.is_some_and(|m| m.is_head());
+    let body = if is_head {
+        crate::body::empty()
+    } else {
+        crate::body::full(bytes)
+    };
+    let mut resp = Response::new(body);
+    *resp.status_mut() = status;
+    resp.headers_mut()
+        .typed_insert(ContentType::from(mime::TEXT_HTML_UTF_8));
+    resp.headers_mut().typed_insert(ContentLength(len));
+    resp.headers_mut().typed_insert(AcceptRanges::bytes());
+    resp
+}
+
 /// It returns a HTTP error response which also handles available `404` or `50x` HTML content.
 pub fn error_response(
     uri: &Uri,
@@ -53,9 +82,7 @@ pub fn error_response(
             // Extra check for 404 status code and its HTML content
             if status_code == &StatusCode::NOT_FOUND {
                 if page404.is_file() {
-                    String::from_utf8_lossy(&helpers::read_bytes_default(page404))
-                        .trim()
-                        .clone_into(&mut page_content);
+                    helpers::read_text_default(page404).clone_into(&mut page_content);
                 } else {
                     tracing::debug!(
                         "page404 file path not found or not a regular file: {}",
@@ -77,9 +104,7 @@ pub fn error_response(
         | &StatusCode::LOOP_DETECTED => {
             // HTML content check for status codes 50x
             if page50x.is_file() {
-                String::from_utf8_lossy(&helpers::read_bytes_default(page50x))
-                    .trim()
-                    .clone_into(&mut page_content);
+                helpers::read_text_default(page50x).clone_into(&mut page_content);
             } else {
                 tracing::debug!(
                     "page50x file path not found or not a regular file: {}",
@@ -118,19 +143,9 @@ pub fn error_response(
         }.into();
     }
 
-    let mut body = crate::body::empty();
-    let len = page_content.len() as u64;
-
-    if !method.is_head() {
-        body = crate::body::full(page_content)
-    }
-
-    let mut resp = Response::new(body);
-    *resp.status_mut() = *status_code;
-    resp.headers_mut()
-        .typed_insert(ContentType::from(mime::TEXT_HTML_UTF_8));
-    resp.headers_mut().typed_insert(ContentLength(len));
-    resp.headers_mut().typed_insert(AcceptRanges::bytes());
-
-    Ok(resp)
+    Ok(build_html_response(
+        page_content,
+        *status_code,
+        Some(method),
+    ))
 }

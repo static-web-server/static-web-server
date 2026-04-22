@@ -473,12 +473,6 @@ impl Server {
             #[cfg(windows)]
             let redirect_ctrlc_recv = http2_ctrlc_recv.clone();
 
-            tracing::info!(
-                parent: tracing::info_span!("Server::start_server", ?addr_str, ?threads),
-                "http2 server is listening on https://{}",
-                addr_str
-            );
-
             // HTTP/2 + TLS accept-loop task.
             let http2_task = tokio::spawn({
                 let tls_acceptor = tls_acceptor.clone();
