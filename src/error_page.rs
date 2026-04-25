@@ -149,3 +149,103 @@ pub fn error_response(
         Some(method),
     ))
 }
+
+#[cfg(test)]
+mod tests {
+    use headers::{ContentLength, ContentType, HeaderMapExt};
+    use hyper::{Method, StatusCode};
+    use std::path::Path;
+
+    use super::{build_html_response, error_response};
+
+    #[test]
+    fn build_html_response_get_includes_body() {
+        let resp = build_html_response("hello", StatusCode::OK, Some(&Method::GET));
+        assert_eq!(resp.status(), StatusCode::OK);
+        let ct: ContentType = resp.headers().typed_get().unwrap();
+        assert_eq!(ct, ContentType::from(mime_guess::mime::TEXT_HTML_UTF_8));
+        let cl: ContentLength = resp.headers().typed_get().unwrap();
+        assert_eq!(cl.0, 5);
+    }
+
+    #[test]
+    fn build_html_response_head_omits_body_but_keeps_length() {
+        let content = "hello";
+        let resp = build_html_response(content, StatusCode::NOT_FOUND, Some(&Method::HEAD));
+        assert_eq!(resp.status(), StatusCode::NOT_FOUND);
+        let cl: ContentLength = resp.headers().typed_get().unwrap();
+        assert_eq!(cl.0, content.len() as u64);
+    }
+
+    #[test]
+    fn build_html_response_none_method_always_includes_body() {
+        let resp = build_html_response("body content", StatusCode::INTERNAL_SERVER_ERROR, None);
+        assert_eq!(resp.status(), StatusCode::INTERNAL_SERVER_ERROR);
+        let cl: ContentLength = resp.headers().typed_get().unwrap();
+        assert_eq!(cl.0, "body content".len() as u64);
+    }
+
+    #[test]
+    fn error_response_404_no_custom_page() {
+        let uri = "/missing".parse().unwrap();
+        let resp = error_response(
+            &uri,
+            &Method::GET,
+            &StatusCode::NOT_FOUND,
+            Path::new("/nonexistent/404.html"),
+            Path::new("/nonexistent/50x.html"),
+        )
+        .unwrap();
+        assert_eq!(resp.status(), StatusCode::NOT_FOUND);
+    }
+
+    #[test]
+    fn error_response_404_with_custom_page() {
+        let page404 = std::env::temp_dir().join("sws_error_page_404_test.html");
+        std::fs::write(&page404, b"<h1>Not Found</h1>").unwrap();
+        let uri = "/missing".parse().unwrap();
+        let resp = error_response(
+            &uri,
+            &Method::GET,
+            &StatusCode::NOT_FOUND,
+            &page404,
+            Path::new("/nonexistent/50x.html"),
+        )
+        .unwrap();
+        std::fs::remove_file(&page404).ok();
+        assert_eq!(resp.status(), StatusCode::NOT_FOUND);
+    }
+
+    #[test]
+    fn error_response_500_no_custom_page() {
+        let uri = "/crash".parse().unwrap();
+        let resp = error_response(
+            &uri,
+            &Method::GET,
+            &StatusCode::INTERNAL_SERVER_ERROR,
+            Path::new("/nonexistent/404.html"),
+            Path::new("/nonexistent/50x.html"),
+        )
+        .unwrap();
+        assert_eq!(resp.status(), StatusCode::INTERNAL_SERVER_ERROR);
+    }
+
+    #[test]
+    fn error_response_head_omits_body() {
+        let uri = "/missing".parse().unwrap();
+        let resp = error_response(
+            &uri,
+            &Method::HEAD,
+            &StatusCode::NOT_FOUND,
+            Path::new("/nonexistent/404.html"),
+            Path::new("/nonexistent/50x.html"),
+        )
+        .unwrap();
+        assert_eq!(resp.status(), StatusCode::NOT_FOUND);
+        let cl: ContentLength = resp.headers().typed_get().unwrap();
+        assert!(
+            cl.0 > 0,
+            "Content-Length should reflect body size even for HEAD"
+        );
+    }
+}
