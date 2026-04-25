@@ -6,22 +6,18 @@
 //! Fallback page module useful for a custom page default.
 //!
 
-use headers::{AcceptRanges, ContentLength, ContentType, HeaderMapExt};
-use hyper::{Body, Request, Response, StatusCode};
-use mime_guess::mime;
+use hyper::{Request, Response, StatusCode};
 use std::path::Path;
 
+use crate::body::Body;
+use crate::error_page::build_html_response;
 use crate::{Error, handler::RequestHandlerOpts, helpers, http_ext::MethodExt};
 
 /// Initializes fallback page processing
 pub(crate) fn init(file_path: &Path, handler_opts: &mut RequestHandlerOpts) {
     let found = file_path.is_file();
     if found {
-        handler_opts.page_fallback =
-            String::from_utf8_lossy(&helpers::read_bytes_default(file_path))
-                .trim()
-                .as_bytes()
-                .to_owned();
+        handler_opts.page_fallback = helpers::read_text_default(file_path).into_bytes();
     } else {
         tracing::debug!("fallback page path not found or not a regular file");
     }
@@ -55,32 +51,22 @@ pub(crate) fn post_process<T>(
 /// that would result in a `404` error and a fallback page is configured.
 /// If a response can be generated then is returned otherwise `None`.
 pub fn fallback_response(page_fallback: &[u8]) -> Response<Body> {
-    let body = Body::from(page_fallback.to_owned());
-    let len = page_fallback.len() as u64;
-
-    let mut resp = Response::new(body);
-    *resp.status_mut() = StatusCode::OK;
-
-    resp.headers_mut().typed_insert(ContentLength(len));
-    resp.headers_mut()
-        .typed_insert(ContentType::from(mime::TEXT_HTML_UTF_8));
-    resp.headers_mut().typed_insert(AcceptRanges::bytes());
-
-    resp
+    build_html_response(page_fallback.to_owned(), StatusCode::OK, None)
 }
 
 #[cfg(test)]
 mod tests {
     use super::post_process;
+    use crate::body::Body;
     use crate::{Error, error_page, handler::RequestHandlerOpts};
-    use hyper::{Body, Method, Request, Response, StatusCode, Uri};
+    use hyper::{Method, Request, Response, StatusCode, Uri};
     use std::path::PathBuf;
 
     fn make_request(method: &str) -> Request<Body> {
         Request::builder()
             .method(method)
             .uri("/")
-            .body(Body::empty())
+            .body(crate::body::empty())
             .unwrap()
     }
 

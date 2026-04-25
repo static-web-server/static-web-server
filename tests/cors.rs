@@ -208,7 +208,7 @@ mod tests {
             Method::TRACE,
         ];
         for method in methods {
-            let mut req = Request::default();
+            let mut req = Request::new(());
             let mut headers = HeaderMap::new();
             headers.insert("origin", HeaderValue::from_str(origin.as_str()).unwrap());
             headers.insert(

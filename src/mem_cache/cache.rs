@@ -15,7 +15,7 @@ use compact_str::CompactString;
 use headers::{
     AcceptRanges, ContentLength, ContentRange, ContentType, HeaderMap, HeaderMapExt, LastModified,
 };
-use hyper::{Body, Response, StatusCode};
+use hyper::{Response, StatusCode};
 use mini_moka::sync::Cache;
 use std::io::{Read, Seek, SeekFrom};
 use std::path::Path;
@@ -24,6 +24,7 @@ use std::time::Duration;
 use tokio::sync::Semaphore;
 
 use crate::Result;
+use crate::body::Body;
 use crate::conditional_headers::{ConditionalBody, ConditionalHeaders};
 use crate::fs::stream::FileStream;
 use crate::handler::RequestHandlerOpts;
@@ -209,7 +210,7 @@ impl MemFile {
                         let sub_len = end - start;
                         let reader = reader.take(sub_len);
 
-                        let body = Body::wrap_stream(FileStream { reader, buf_size });
+                        let body = crate::body::stream(FileStream { reader, buf_size });
                         let mut resp = Response::new(body);
 
                         if sub_len != len {
@@ -219,7 +220,7 @@ impl MemFile {
                                     Ok(range) => range,
                                     Err(err) => {
                                         tracing::error!("invalid content range error: {:?}", err);
-                                        let mut resp = Response::new(Body::empty());
+                                        let mut resp = Response::new(crate::body::empty());
                                         *resp.status_mut() = StatusCode::RANGE_NOT_SATISFIABLE;
                                         resp.headers_mut()
                                             .typed_insert(ContentRange::unsatisfied_bytes(len));
@@ -243,7 +244,7 @@ impl MemFile {
                     })
                     .unwrap_or_else(|BadRangeError| {
                         // bad byte range
-                        let mut resp = Response::new(Body::empty());
+                        let mut resp = Response::new(crate::body::empty());
                         *resp.status_mut() = StatusCode::RANGE_NOT_SATISFIABLE;
                         resp.headers_mut()
                             .typed_insert(ContentRange::unsatisfied_bytes(len));

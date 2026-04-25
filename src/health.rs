@@ -7,8 +7,9 @@
 //!
 
 use headers::{ContentType, HeaderMapExt};
-use hyper::{Body, Method, Request, Response};
+use hyper::{Method, Request, Response};
 
+use crate::body::Body;
 use crate::{Error, handler::RequestHandlerOpts};
 
 /// Initializes the health endpoint.
@@ -31,8 +32,8 @@ pub fn pre_process<T>(
     }
 
     let body = match *req.method() {
-        Method::HEAD => Body::empty(),
-        Method::GET => Body::from("OK"),
+        Method::HEAD => crate::body::empty(),
+        Method::GET => crate::body::full("OK"),
         _ => return None,
     };
 
@@ -48,14 +49,15 @@ pub(crate) fn is_health_endpoint<T>(req: &Request<T>) -> bool {
 #[cfg(test)]
 mod tests {
     use super::pre_process;
+    use crate::body::Body;
     use crate::handler::RequestHandlerOpts;
-    use hyper::{Body, Request};
+    use hyper::Request;
 
     fn make_request(method: &str, uri: &str) -> Request<Body> {
         Request::builder()
             .method(method)
             .uri(uri)
-            .body(Body::empty())
+            .body(crate::body::empty())
             .unwrap()
     }
 

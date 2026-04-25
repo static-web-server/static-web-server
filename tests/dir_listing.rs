@@ -8,6 +8,7 @@
 mod tests {
     use headers::HeaderMap;
     use http::{Method, StatusCode};
+    use http_body_util::BodyExt;
     use serde::{Deserialize, Serialize};
     use std::path::{Path, PathBuf};
 
@@ -99,13 +100,16 @@ mod tests {
             .await
             {
                 Ok(result) => {
-                    let mut res = result.resp;
+                    let res = result.resp;
                     assert_eq!(res.status(), 200);
                     assert_eq!(res.headers()["content-type"], "text/html; charset=utf-8");
 
-                    let body = hyper::body::to_bytes(res.body_mut())
+                    let body = res
+                        .into_body()
+                        .collect()
                         .await
-                        .expect("unexpected bytes error during `body` conversion");
+                        .expect("unexpected bytes error during `body` conversion")
+                        .to_bytes();
                     let body_str = std::str::from_utf8(&body).unwrap();
                     // directory link should only contain "dir-name/" in a relative way
                     assert_eq!(
@@ -146,13 +150,16 @@ mod tests {
             .await
             {
                 Ok(result) => {
-                    let mut res = result.resp;
+                    let res = result.resp;
                     assert_eq!(res.status(), 200);
                     assert_eq!(res.headers()["content-type"], "text/html; charset=utf-8");
 
-                    let body = hyper::body::to_bytes(res.body_mut())
+                    let body = res
+                        .into_body()
+                        .collect()
                         .await
-                        .expect("unexpected bytes error during `body` conversion");
+                        .expect("unexpected bytes error during `body` conversion")
+                        .to_bytes();
                     let body_str = std::str::from_utf8(&body).unwrap();
                     // directory link should contain "parent/dir-name/" in a relative way
                     assert_eq!(
@@ -230,13 +237,16 @@ mod tests {
             .await
             {
                 Ok(result) => {
-                    let mut res = result.resp;
+                    let res = result.resp;
                     assert_eq!(res.status(), 200);
                     assert_eq!(res.headers()["content-type"], "text/html; charset=utf-8");
 
-                    let body = hyper::body::to_bytes(res.body_mut())
+                    let body = res
+                        .into_body()
+                        .collect()
                         .await
-                        .expect("unexpected bytes error during `body` conversion");
+                        .expect("unexpected bytes error during `body` conversion")
+                        .to_bytes();
                     let body_str = std::str::from_utf8(&body).unwrap();
 
                     assert_eq!(
@@ -288,13 +298,16 @@ mod tests {
             .await
             {
                 Ok(result) => {
-                    let mut res = result.resp;
+                    let res = result.resp;
                     assert_eq!(res.status(), 200);
                     assert_eq!(res.headers()["content-type"], "application/json");
 
-                    let body = hyper::body::to_bytes(res.body_mut())
+                    let body = res
+                        .into_body()
+                        .collect()
                         .await
-                        .expect("unexpected bytes error during `body` conversion");
+                        .expect("unexpected bytes error during `body` conversion")
+                        .to_bytes();
                     let body_str = std::str::from_utf8(&body).unwrap();
 
                     if method == Method::GET {
@@ -364,13 +377,16 @@ mod tests {
             .await
             {
                 Ok(result) => {
-                    let mut res = result.resp;
+                    let res = result.resp;
                     assert_eq!(res.status(), 200);
                     assert_eq!(res.headers()["content-type"], "application/json");
 
-                    let body = hyper::body::to_bytes(res.body_mut())
+                    let body = res
+                        .into_body()
+                        .collect()
                         .await
-                        .expect("unexpected bytes error during `body` conversion");
+                        .expect("unexpected bytes error during `body` conversion")
+                        .to_bytes();
                     let body_str = std::str::from_utf8(&body).unwrap();
 
                     if method == Method::GET {
@@ -413,13 +429,16 @@ mod tests {
             .await
             {
                 Ok(result) => {
-                    let mut res = result.resp;
+                    let res = result.resp;
                     assert_eq!(res.status(), 200);
                     assert_eq!(res.headers()["content-type"], "text/html; charset=utf-8");
 
-                    let body = hyper::body::to_bytes(res.body_mut())
+                    let body = res
+                        .into_body()
+                        .collect()
                         .await
-                        .expect("unexpected bytes error during `body` conversion");
+                        .expect("unexpected bytes error during `body` conversion")
+                        .to_bytes();
                     let body_str = std::str::from_utf8(&body).unwrap();
 
                     if method == Method::GET {
@@ -461,13 +480,16 @@ mod tests {
             .await
             {
                 Ok(result) => {
-                    let mut res = result.resp;
+                    let res = result.resp;
                     assert_eq!(res.status(), 200);
                     assert_eq!(res.headers()["content-type"], "text/html; charset=utf-8");
 
-                    let body = hyper::body::to_bytes(res.body_mut())
+                    let body = res
+                        .into_body()
+                        .collect()
                         .await
-                        .expect("unexpected bytes error during `body` conversion");
+                        .expect("unexpected bytes error during `body` conversion")
+                        .to_bytes();
                     let body_str = std::str::from_utf8(&body).unwrap();
 
                     if method == Method::GET {
@@ -509,13 +531,16 @@ mod tests {
             .await
             {
                 Ok(result) => {
-                    let mut res = result.resp;
+                    let res = result.resp;
                     assert_eq!(res.status(), 200);
                     assert_eq!(res.headers()["content-type"], "text/html; charset=utf-8");
 
-                    let body = hyper::body::to_bytes(res.body_mut())
+                    let body = res
+                        .into_body()
+                        .collect()
                         .await
-                        .expect("unexpected bytes error during `body` conversion");
+                        .expect("unexpected bytes error during `body` conversion")
+                        .to_bytes();
                     let body_str = std::str::from_utf8(&body).unwrap();
 
                     if method == Method::GET {

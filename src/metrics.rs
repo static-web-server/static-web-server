@@ -9,12 +9,13 @@
 use std::sync::LazyLock;
 
 use headers::{ContentType, HeaderMapExt};
-use hyper::{Body, Request, Response, StatusCode};
+use hyper::{Request, Response, StatusCode};
 use prometheus::{
     Encoder, HistogramOpts, HistogramVec, IntCounterVec, IntGauge, Opts, TextEncoder,
     default_registry,
 };
 
+use crate::body::Body;
 use crate::{Error, handler::RequestHandlerOpts, http_ext::MethodExt};
 
 // Histogram buckets tuned for static file serving (50µs to 10s).
@@ -140,9 +141,9 @@ pub fn pre_process<T>(
             .encode(&default_registry().gather(), &mut buffer)
             .unwrap();
         let data = String::from_utf8(buffer).unwrap();
-        Body::from(data)
+        crate::body::full(data)
     } else {
-        Body::empty()
+        crate::body::empty()
     };
     let mut resp = Response::new(body);
     resp.headers_mut()
@@ -207,13 +208,13 @@ fn status_class(code: u16) -> &'static str {
 mod tests {
     use super::*;
     use crate::handler::RequestHandlerOpts;
-    use hyper::{Body, Request};
+    use hyper::Request;
 
     fn make_request(method: &str, uri: &str) -> Request<Body> {
         Request::builder()
             .method(method)
             .uri(uri)
-            .body(Body::empty())
+            .body(crate::body::empty())
             .unwrap()
     }
 
@@ -296,7 +297,7 @@ mod tests {
             .method("GET")
             .uri("/index.html")
             .header(hyper::header::HOST, "example.com")
-            .body(Body::empty())
+            .body(crate::body::empty())
             .unwrap();
         record_request(&req, StatusCode::OK, 1024, 0.005);
 

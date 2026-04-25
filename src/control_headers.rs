@@ -7,8 +7,9 @@
 //! for incoming requests based on a set of file types.
 //!
 
-use hyper::{Body, Request, Response};
+use hyper::{Request, Response};
 
+use crate::body::Body;
 use crate::{Error, handler::RequestHandlerOpts};
 
 // Cache-Control `max-age` variants
@@ -81,7 +82,7 @@ fn get_max_age(uri: &str) -> u64 {
 
 #[cfg(test)]
 mod tests {
-    use hyper::{Body, Response, StatusCode};
+    use hyper::{Response, StatusCode};
 
     use super::{
         CACHE_EXT_ONE_HOUR, CACHE_EXT_ONE_YEAR, MAX_AGE_ONE_DAY, MAX_AGE_ONE_HOUR,
@@ -90,7 +91,7 @@ mod tests {
 
     #[test]
     fn headers_one_hour() {
-        let mut resp = Response::new(Body::empty());
+        let mut resp = Response::new(crate::body::empty());
         *resp.status_mut() = StatusCode::OK;
 
         for ext in CACHE_EXT_ONE_HOUR.iter() {
@@ -107,7 +108,7 @@ mod tests {
 
     #[test]
     fn headers_one_day_default() {
-        let mut resp = Response::new(Body::empty());
+        let mut resp = Response::new(crate::body::empty());
         *resp.status_mut() = StatusCode::OK;
 
         append_headers("/", &mut resp);
@@ -122,7 +123,7 @@ mod tests {
 
     #[test]
     fn headers_one_year() {
-        let mut resp = Response::new(Body::empty());
+        let mut resp = Response::new(crate::body::empty());
         *resp.status_mut() = StatusCode::OK;
 
         for ext in CACHE_EXT_ONE_YEAR.iter() {

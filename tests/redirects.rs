@@ -18,7 +18,7 @@ pub mod tests {
         let req_handler_opts = fixture_req_handler_opts(opts.general, opts.advanced);
         let req_handler = fixture_req_handler(req_handler_opts);
 
-        let mut req = Request::default();
+        let mut req = Request::new(());
         *req.uri_mut() = "http://localhost".parse().unwrap();
 
         let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
@@ -40,7 +40,7 @@ pub mod tests {
         let req_handler = fixture_req_handler(req_handler_opts);
         let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
 
-        let mut req = Request::default();
+        let mut req = Request::new(());
         *req.uri_mut() = "http://127.0.0.1:1234".parse().unwrap();
 
         match req_handler.handle(&mut req, remote_addr).await {
@@ -60,7 +60,7 @@ pub mod tests {
         let req_handler_opts = fixture_req_handler_opts(opts.general, opts.advanced);
         let req_handler = fixture_req_handler(req_handler_opts);
 
-        let mut req = Request::default();
+        let mut req = Request::new(());
         *req.uri_mut() = "http://localhost/assets/main.css".parse().unwrap();
 
         let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
@@ -84,7 +84,7 @@ pub mod tests {
         let req_handler_opts = fixture_req_handler_opts(opts.general, opts.advanced);
         let req_handler = fixture_req_handler(req_handler_opts);
 
-        let mut req = Request::default();
+        let mut req = Request::new(());
         *req.uri_mut() = "http://localhost/style.css".parse().unwrap();
 
         let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
@@ -108,7 +108,7 @@ pub mod tests {
         let req_handler_opts = fixture_req_handler_opts(opts.general, opts.advanced);
         let req_handler = fixture_req_handler(req_handler_opts);
 
-        let mut req = Request::default();
+        let mut req = Request::new(());
         *req.uri_mut() = "http://localhost/rust-lang.rs".parse().unwrap();
 
         let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
@@ -132,7 +132,7 @@ pub mod tests {
         let req_handler_opts = fixture_req_handler_opts(opts.general, opts.advanced);
         let req_handler = fixture_req_handler(req_handler_opts);
 
-        let mut req = Request::default();
+        let mut req = Request::new(());
         *req.uri_mut() = "http://localhost/assets/main.js".parse().unwrap();
 
         let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
@@ -156,7 +156,7 @@ pub mod tests {
         let req_handler_opts = fixture_req_handler_opts(opts.general, opts.advanced);
         let req_handler = fixture_req_handler(req_handler_opts);
 
-        let mut req = Request::default();
+        let mut req = Request::new(());
         *req.uri_mut() = "http://localhost/old/images/avatar.jpeg".parse().unwrap();
 
         let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
@@ -180,7 +180,7 @@ pub mod tests {
         let req_handler_opts = fixture_req_handler_opts(opts.general, opts.advanced);
         let req_handler = fixture_req_handler(req_handler_opts);
 
-        let mut req = Request::default();
+        let mut req = Request::new(());
         *req.uri_mut() = "http://localhost/old/fonts/title.ttf".parse().unwrap();
 
         let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
@@ -204,7 +204,7 @@ pub mod tests {
         let req_handler_opts = fixture_req_handler_opts(opts.general, opts.advanced);
         let req_handler = fixture_req_handler(req_handler_opts);
 
-        let mut req = Request::default();
+        let mut req = Request::new(());
         *req.uri_mut() = "http://localhost/generic-page.html".parse().unwrap();
 
         let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
@@ -228,7 +228,7 @@ pub mod tests {
         let req_handler_opts = fixture_req_handler_opts(opts.general, opts.advanced);
         let req_handler = fixture_req_handler(req_handler_opts);
 
-        let mut req = Request::default();
+        let mut req = Request::new(());
         *req.uri_mut() = "http://localhost/2024/11/".parse().unwrap();
 
         let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
@@ -252,7 +252,7 @@ pub mod tests {
         let req_handler_opts = fixture_req_handler_opts(opts.general, opts.advanced);
         let req_handler = fixture_req_handler(req_handler_opts);
 
-        let mut req = Request::default();
+        let mut req = Request::new(());
         *req.uri_mut() = "http://localhost/archive/2024/11/".parse().unwrap();
 
         let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
@@ -272,7 +272,7 @@ pub mod tests {
         let req_handler_opts = fixture_req_handler_opts(opts.general, opts.advanced);
         let req_handler = fixture_req_handler(req_handler_opts);
 
-        let mut req = Request::default();
+        let mut req = Request::new(());
         *req.uri_mut() = "http://localhost/2/a/random/".parse().unwrap();
 
         let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
@@ -296,7 +296,7 @@ pub mod tests {
         let req_handler_opts = fixture_req_handler_opts(opts.general, opts.advanced);
         let req_handler = fixture_req_handler(req_handler_opts);
 
-        let mut req = Request::default();
+        let mut req = Request::new(());
         *req.uri_mut() = "http://localhost/crop-x/image.png".parse().unwrap();
 
         let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());

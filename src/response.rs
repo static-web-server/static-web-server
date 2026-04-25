@@ -9,12 +9,13 @@
 use headers::{
     AcceptRanges, ContentLength, ContentRange, ContentType, HeaderMapExt, LastModified, Range,
 };
-use hyper::{Body, Response, StatusCode};
+use hyper::{Response, StatusCode};
 use std::fs::{File, Metadata};
 use std::io::{BufReader, Read, Seek, SeekFrom};
 use std::ops::Bound;
 use std::path::PathBuf;
 
+use crate::body::Body;
 use crate::conditional_headers::{ConditionalBody, ConditionalHeaders};
 use crate::fs::stream::{FileStream, optimal_buf_size};
 
@@ -90,21 +91,21 @@ pub(crate) fn response_body(
                                         "preparing `{}` to be inserted in-memory cache store",
                                         path_str,
                                     );
-                                    Body::wrap_stream(MemCacheFileStream {
+                                    crate::body::stream(MemCacheFileStream {
                                         reader,
                                         buf_size,
                                         mem_opts,
                                         mem_buf,
                                     })
                                 }
-                                _ => Body::wrap_stream(FileStream { reader, buf_size }),
+                                _ => crate::body::stream(FileStream { reader, buf_size }),
                             }
                         }
-                        _ => Body::wrap_stream(FileStream { reader, buf_size }),
+                        _ => crate::body::stream(FileStream { reader, buf_size }),
                     };
 
                     #[cfg(not(feature = "experimental"))]
-                    let body = Body::wrap_stream(FileStream { reader, buf_size });
+                    let body = crate::body::stream(FileStream { reader, buf_size });
 
                     let mut resp = Response::new(body);
 
@@ -115,7 +116,7 @@ pub(crate) fn response_body(
                                 Ok(range) => range,
                                 Err(err) => {
                                     tracing::error!("invalid content range error: {:?}", err);
-                                    let mut resp = Response::new(Body::empty());
+                                    let mut resp = Response::new(crate::body::empty());
                                     *resp.status_mut() = StatusCode::RANGE_NOT_SATISFIABLE;
                                     resp.headers_mut()
                                         .typed_insert(ContentRange::unsatisfied_bytes(len));
@@ -139,7 +140,7 @@ pub(crate) fn response_body(
                 })
                 .unwrap_or_else(|BadRangeError| {
                     // bad byte range
-                    let mut resp = Response::new(Body::empty());
+                    let mut resp = Response::new(crate::body::empty());
                     *resp.status_mut() = StatusCode::RANGE_NOT_SATISFIABLE;
                     resp.headers_mut()
                         .typed_insert(ContentRange::unsatisfied_bytes(len));
@@ -161,7 +162,7 @@ pub(crate) fn bytes_range(range: Option<Range>, max_len: u64) -> Result<(u64, u6
     };
 
     range
-        .iter()
+        .satisfiable_ranges(max_len)
         .map(|(start, end)| {
             tracing::trace!("range request received, {:?}-{:?}-{}", start, end, max_len);
 
@@ -176,17 +177,7 @@ pub(crate) fn bytes_range(range: Option<Range>, max_len: u64) -> Result<(u64, u6
                     (a, if b == max_len { b } else { b + 1 })
                 }
                 (Bound::Included(a), Bound::Unbounded) => (a, max_len),
-                (Bound::Unbounded, Bound::Included(b)) => {
-                    if b > max_len {
-                        // `Range` request out of bounds, return only what's available
-                        tracing::trace!("unsatisfiable byte range: -{}/{}", b, max_len);
-                        tracing::trace!("returning only what's available: 0-{}", max_len);
-                        (0, max_len)
-                    } else {
-                        (max_len - b, max_len)
-                    }
-                }
-                _ => unreachable!(),
+                _ => return Err(BadRangeError),
             };
 
             if start < end && end <= max_len {
@@ -210,6 +201,21 @@ pub(crate) fn bytes_range(range: Option<Range>, max_len: u64) -> Result<(u64, u6
             Err(BadRangeError)
         })
         .next()
-        // NOTE: default to `BadRangeError` in case of wrong `Range` bytes format
-        .unwrap_or(Err(BadRangeError))
+        // NOTE: default to `BadRangeError` in case of wrong `Range` bytes format.
+        // Special case: suffix ranges (bytes=-N) where N > file size are valid per
+        // RFC 9110 §14.1.2 and should return the entire file (200), but headers 0.4
+        // `satisfiable_ranges(len)` filters them out. Detect this by re-checking with
+        // `u64::MAX`. If that yields a result, then it was a valid-but-oversized suffix range.
+        .unwrap_or_else(|| {
+            if range.satisfiable_ranges(u64::MAX).next().is_some() {
+                tracing::trace!(
+                    "suffix range exceeds file size, returning full content: 0-{}/{}",
+                    max_len,
+                    max_len
+                );
+                Ok((0, max_len))
+            } else {
+                Err(BadRangeError)
+            }
+        })
 }

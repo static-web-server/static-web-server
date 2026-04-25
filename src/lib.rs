@@ -115,6 +115,7 @@ pub mod logger;
 #[cfg(feature = "basic-auth")]
 #[cfg_attr(docsrs, doc(cfg(feature = "basic-auth")))]
 pub mod basic_auth;
+pub mod body;
 #[cfg(any(
     feature = "compression",
     feature = "compression-gzip",
@@ -176,7 +177,6 @@ pub mod static_files;
 #[cfg(feature = "http2")]
 #[cfg_attr(docsrs, doc(cfg(feature = "http2")))]
 pub mod tls;
-pub mod transport;
 pub(crate) mod virtual_hosts;
 #[cfg(windows)]
 #[cfg_attr(docsrs, doc(cfg(windows)))]

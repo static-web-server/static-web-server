@@ -59,7 +59,7 @@ pub(crate) fn get_real_root<'a, T>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use hyper::{Body, Request, Uri};
+    use hyper::{Request, Uri};
 
     fn create_vhost(host: &str, root: &str) -> VirtualHosts {
         VirtualHosts {
@@ -77,7 +77,7 @@ mod tests {
         let mut req = Request::builder()
             .uri("http://example.com/")
             .header(HOST, "example.com")
-            .body(Body::empty())
+            .body(crate::body::empty())
             .unwrap();
 
         let result = get_real_root(&mut req, Some(&vhosts));
@@ -90,7 +90,7 @@ mod tests {
         let mut req = Request::builder()
             .uri("http://example.com:8080/")
             .header(HOST, "example.com:8080")
-            .body(Body::empty())
+            .body(crate::body::empty())
             .unwrap();
 
         let result = get_real_root(&mut req, Some(&vhosts));
@@ -102,7 +102,7 @@ mod tests {
         let vhosts = [create_vhost("example.com", "/var/www/example")];
         let mut req = Request::builder()
             .uri(Uri::builder().authority("example.com").build().unwrap())
-            .body(Body::empty())
+            .body(crate::body::empty())
             .unwrap();
 
         let result = get_real_root(&mut req, Some(&vhosts));
@@ -115,7 +115,7 @@ mod tests {
         let mut req = Request::builder()
             .uri("http://example2.com/")
             .header(HOST, "example2.com")
-            .body(Body::empty())
+            .body(crate::body::empty())
             .unwrap();
 
         let result = get_real_root(&mut req, Some(&vhosts));
@@ -127,7 +127,7 @@ mod tests {
         let mut req = Request::builder()
             .uri("http://example.com/")
             .header(HOST, "example.com")
-            .body(Body::empty())
+            .body(crate::body::empty())
             .unwrap();
 
         let result = get_real_root(&mut req, None);
@@ -139,7 +139,7 @@ mod tests {
         let mut req = Request::builder()
             .uri("http://example.com/")
             .header(HOST, "example.com")
-            .body(Body::empty())
+            .body(crate::body::empty())
             .unwrap();
 
         let result = get_real_root(&mut req, Some(&[]));

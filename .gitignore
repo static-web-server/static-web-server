@@ -10,7 +10,6 @@
 **/*.zip
 **/*.tar*
 **/*.gz
-**/.DS_Store
 **/*.env
 **/*.data*
 **/*.zst
@@ -32,3 +31,4 @@ docker/devel/static-web-server
 !/docs
 !/tests/fixtures/**/*
 !benchmark/sws_benchmarks*.csv
+**/.DS_Store

@@ -7,10 +7,11 @@
 //!
 
 use headers::{HeaderMapExt, Host};
-use hyper::{Body, Request, Response, StatusCode, header::LOCATION};
+use hyper::{Request, Response, StatusCode, header::LOCATION};
 use std::sync::Arc;
 
 use crate::Result;
+use crate::body::Body;
 
 /// HTTPS redirect options.
 pub struct RedirectOpts {
@@ -46,7 +47,7 @@ pub fn redirect_to_https<T>(
         );
         tracing::debug!("https redirect to {}", url);
 
-        let mut resp = Response::new(Body::empty());
+        let mut resp = Response::new(crate::body::empty());
         *resp.status_mut() = StatusCode::MOVED_PERMANENTLY;
         resp.headers_mut().insert(LOCATION, url.parse().unwrap());
         return Ok(resp);

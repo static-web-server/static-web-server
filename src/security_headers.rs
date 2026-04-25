@@ -9,8 +9,9 @@
 use http::header::{
     CONTENT_SECURITY_POLICY, STRICT_TRANSPORT_SECURITY, X_CONTENT_TYPE_OPTIONS, X_FRAME_OPTIONS,
 };
-use hyper::{Body, Request, Response};
+use hyper::{Request, Response};
 
+use crate::body::Body;
 use crate::{Error, handler::RequestHandlerOpts};
 
 pub(crate) fn init(enabled: bool, handler_opts: &mut RequestHandlerOpts) {

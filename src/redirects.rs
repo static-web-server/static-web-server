@@ -7,9 +7,10 @@
 //!
 
 use headers::HeaderValue;
-use hyper::{Body, Request, Response, StatusCode};
+use hyper::{Request, Response, StatusCode};
 use regex_lite::Regex;
 
+use crate::body::Body;
 use crate::{Error, error_page, handler::RequestHandlerOpts, settings::Redirects};
 
 /// Applies redirect rules to a request if necessary.
@@ -38,7 +39,7 @@ pub(crate) fn pre_process<T>(
 
     match HeaderValue::from_str(&dest) {
         Ok(loc) => {
-            let mut resp = Response::new(Body::empty());
+            let mut resp = Response::new(crate::body::empty());
             resp.headers_mut().insert(hyper::header::LOCATION, loc);
             *resp.status_mut() = matched.kind;
             tracing::trace!(
@@ -141,12 +142,13 @@ pub fn get_redirection<'a>(
 #[cfg(test)]
 mod tests {
     use super::pre_process;
+    use crate::body::Body;
     use crate::{
         Error,
         handler::RequestHandlerOpts,
         settings::{Advanced, Redirects},
     };
-    use hyper::{Body, Request, Response, StatusCode};
+    use hyper::{Request, Response, StatusCode};
     use regex_lite::Regex;
 
     fn make_request(host: &str, uri: &str) -> Request<Body> {
@@ -154,7 +156,11 @@ mod tests {
         if !host.is_empty() {
             builder = builder.header("Host", host);
         }
-        builder.method("GET").uri(uri).body(Body::empty()).unwrap()
+        builder
+            .method("GET")
+            .uri(uri)
+            .body(crate::body::empty())
+            .unwrap()
     }
 
     fn get_redirects() -> Vec<Redirects> {

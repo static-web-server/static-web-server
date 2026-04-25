@@ -6,11 +6,12 @@
 //! Module that provides HTTP header conditionals.
 //!
 
+use crate::body::Body;
 use headers::{
     HeaderMap, HeaderMapExt, HeaderValue, IfModifiedSince, IfRange, IfUnmodifiedSince,
     LastModified, Range,
 };
-use hyper::{Body, Response, StatusCode};
+use hyper::{Response, StatusCode};
 
 #[derive(Debug)]
 pub(crate) struct ConditionalHeaders {
@@ -50,7 +51,7 @@ impl ConditionalHeaders {
                 precondition
             );
             if !precondition {
-                let mut res = Response::new(Body::empty());
+                let mut res = Response::new(crate::body::empty());
                 *res.status_mut() = StatusCode::PRECONDITION_FAILED;
                 return ConditionalBody::NoBody(res);
             }
@@ -67,7 +68,7 @@ impl ConditionalHeaders {
                 // no last_modified means its always modified
                 .unwrap_or(false);
             if unmodified {
-                let mut res = Response::new(Body::empty());
+                let mut res = Response::new(crate::body::empty());
                 *res.status_mut() = StatusCode::NOT_MODIFIED;
                 return ConditionalBody::NoBody(res);
             }

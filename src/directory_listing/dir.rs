@@ -6,13 +6,14 @@
 use chrono::{DateTime, Local};
 use clap::ValueEnum;
 use headers::{ContentLength, ContentType, HeaderMapExt};
-use hyper::Method;
-use hyper::{Body, Response};
+use http::Method;
+use hyper::Response;
 use mime_guess::mime;
 use percent_encoding::{AsciiSet, NON_ALPHANUMERIC, percent_encode};
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 
+use crate::body::Body;
 use crate::directory_listing::autoindex::{html_auto_index, json_auto_index};
 use crate::directory_listing::file::{FileEntry, FileType};
 use crate::{Context, Result};
@@ -208,7 +209,7 @@ pub(crate) fn read_dir_entries(mut opt: DirEntryOpts<'_>) -> Result<Response<Bod
         }
     }
 
-    let mut resp = Response::new(Body::empty());
+    let mut resp = Response::new(crate::body::empty());
 
     // Handle directory listing content format
     let content = match opt.content_format {
@@ -244,7 +245,7 @@ pub(crate) fn read_dir_entries(mut opt: DirEntryOpts<'_>) -> Result<Response<Bod
         return Ok(resp);
     }
 
-    *resp.body_mut() = Body::from(content);
+    *resp.body_mut() = crate::body::full(content);
 
     Ok(resp)
 }

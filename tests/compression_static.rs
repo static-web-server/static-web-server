@@ -13,6 +13,7 @@
 #[cfg(test)]
 mod tests {
     use bytes::Bytes;
+    use http_body_util::BodyExt;
     use hyper::Request;
     use std::net::SocketAddr;
     use std::path::PathBuf;
@@ -42,7 +43,7 @@ mod tests {
         let req_handler_opts = fixture_req_handler_opts(general, opts.advanced);
         let req_handler = fixture_req_handler(req_handler_opts);
 
-        let mut req = Request::default();
+        let mut req = Request::new(());
         *req.method_mut() = hyper::Method::GET;
         *req.uri_mut() = "http://localhost/index.htm".parse().unwrap();
         req.headers_mut().insert(
@@ -52,7 +53,7 @@ mod tests {
 
         let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
         match req_handler.handle(&mut req, remote_addr).await {
-            Ok(mut res) => {
+            Ok(res) => {
                 let headers = res.headers();
 
                 assert_eq!(res.status(), 200);
@@ -66,9 +67,12 @@ mod tests {
                 );
                 assert_eq!(headers["vary"], "accept-encoding");
 
-                let body = hyper::body::to_bytes(res.body_mut())
+                let body = res
+                    .into_body()
+                    .collect()
                     .await
-                    .expect("unexpected bytes error during `body` conversion");
+                    .expect("unexpected bytes error during `body` conversion")
+                    .to_bytes();
 
                 assert_eq!(
                     body, archive_buf,
@@ -94,7 +98,7 @@ mod tests {
         let req_handler_opts = fixture_req_handler_opts(general, opts.advanced);
         let req_handler = fixture_req_handler(req_handler_opts);
 
-        let mut req = Request::default();
+        let mut req = Request::new(());
         *req.method_mut() = hyper::Method::GET;
         *req.uri_mut() = "http://localhost/404.html".parse().unwrap();
         req.headers_mut().insert(
@@ -104,7 +108,7 @@ mod tests {
 
         let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
         match req_handler.handle(&mut req, remote_addr).await {
-            Ok(mut res) => {
+            Ok(res) => {
                 let headers = res.headers();
 
                 assert_eq!(res.status(), 200);
@@ -118,9 +122,12 @@ mod tests {
                 );
                 assert_eq!(headers["vary"], "accept-encoding");
 
-                let body = hyper::body::to_bytes(res.body_mut())
+                let body = res
+                    .into_body()
+                    .collect()
                     .await
-                    .expect("unexpected bytes error during `body` conversion");
+                    .expect("unexpected bytes error during `body` conversion")
+                    .to_bytes();
 
                 assert_eq!(
                     body, archive_buf,
@@ -142,7 +149,7 @@ mod tests {
         let req_handler_opts = fixture_req_handler_opts(general, opts.advanced);
         let req_handler = fixture_req_handler(req_handler_opts);
 
-        let mut req = Request::default();
+        let mut req = Request::new(());
         *req.method_mut() = hyper::Method::GET;
         *req.uri_mut() = "http://localhost/index.htm".parse().unwrap();
         req.headers_mut()
@@ -184,7 +191,7 @@ mod tests {
         let req_handler_opts = fixture_req_handler_opts(general, opts.advanced);
         let req_handler = fixture_req_handler(req_handler_opts);
 
-        let mut req = Request::default();
+        let mut req = Request::new(());
         *req.method_mut() = hyper::Method::GET;
         *req.uri_mut() = "http://localhost".parse().unwrap();
         req.headers_mut()
@@ -225,7 +232,7 @@ mod tests {
         let req_handler_opts = fixture_req_handler_opts(general, opts.advanced);
         let req_handler = fixture_req_handler(req_handler_opts);
 
-        let mut req = Request::default();
+        let mut req = Request::new(());
         *req.method_mut() = hyper::Method::GET;
         *req.uri_mut() = "http://localhost/assets/main.css".parse().unwrap();
         req.headers_mut().insert(
@@ -235,7 +242,7 @@ mod tests {
 
         let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
         match req_handler.handle(&mut req, remote_addr).await {
-            Ok(mut res) => {
+            Ok(res) => {
                 let headers = res.headers();
 
                 assert_eq!(res.status(), 200);
@@ -249,9 +256,12 @@ mod tests {
                 );
                 assert_eq!(headers["vary"], "accept-encoding");
 
-                let body = hyper::body::to_bytes(res.body_mut())
+                let body = res
+                    .into_body()
+                    .collect()
                     .await
-                    .expect("unexpected bytes error during `body` conversion");
+                    .expect("unexpected bytes error during `body` conversion")
+                    .to_bytes();
 
                 assert_eq!(
                     body, archive_buf,

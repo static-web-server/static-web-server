@@ -7,15 +7,17 @@
 //!
 
 use headers::{HeaderMap, HeaderMapExt, HeaderValue};
-use hyper::{Body, Request, Response};
+use hyper::{Request, Response};
 use std::ffi::OsStr;
 use std::fs::Metadata;
 use std::path::{Path, PathBuf};
 
 use crate::Error;
+use crate::body::Body;
 use crate::fs::meta::try_metadata;
 use crate::handler::RequestHandlerOpts;
 use crate::headers_ext::{AcceptEncoding, ContentCoding};
+use crate::http_ext::append_vary_accept_encoding;
 
 /// It defines the pre-compressed file variant metadata of a particular file path.
 pub struct CompressedFileVariant {
@@ -44,16 +46,7 @@ pub(crate) fn post_process<T>(
     }
 
     // Compression content encoding varies so use a `Vary` header
-    let value = resp.headers().get(hyper::header::VARY).map_or(
-        HeaderValue::from_name(hyper::header::ACCEPT_ENCODING),
-        |h| {
-            let mut s = h.to_str().unwrap_or_default().to_owned();
-            s.push(',');
-            s.push_str(hyper::header::ACCEPT_ENCODING.as_str());
-            HeaderValue::from_str(s.as_str()).unwrap()
-        },
-    );
-    resp.headers_mut().insert(hyper::header::VARY, value);
+    append_vary_accept_encoding(&mut resp);
 
     Ok(resp)
 }

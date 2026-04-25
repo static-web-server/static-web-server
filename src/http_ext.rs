@@ -5,7 +5,7 @@
 
 //! HTTP-related extension traits.
 
-use hyper::Method;
+use hyper::{Method, Response, header::HeaderValue};
 
 /// A fixed list of HTTP methods supported by SWS.
 pub const HTTP_SUPPORTED_METHODS: &[Method; 3] = &[Method::OPTIONS, Method::HEAD, Method::GET];
@@ -52,4 +52,24 @@ impl MethodExt for Method {
     fn is_options(&self) -> bool {
         self == Method::OPTIONS
     }
+}
+
+/// Append `accept-encoding` to the response's `Vary` header, creating it if absent.
+/// Skips the update if `accept-encoding` is already listed.
+pub(crate) fn append_vary_accept_encoding<B>(resp: &mut Response<B>) {
+    let accept_enc = hyper::header::ACCEPT_ENCODING.as_str();
+    let value = resp.headers().get(hyper::header::VARY).map_or_else(
+        || HeaderValue::from_name(hyper::header::ACCEPT_ENCODING),
+        |existing| {
+            let mut s = existing.to_str().unwrap_or_default().to_owned();
+            if !s.contains(accept_enc) {
+                if !s.is_empty() {
+                    s.push_str(", ");
+                }
+                s.push_str(accept_enc);
+            }
+            HeaderValue::from_str(&s).unwrap()
+        },
+    );
+    resp.headers_mut().insert(hyper::header::VARY, value);
 }
