@@ -73,3 +73,93 @@ pub(crate) fn append_vary_accept_encoding<B>(resp: &mut Response<B>) {
     );
     resp.headers_mut().insert(hyper::header::VARY, value);
 }
+
+#[cfg(test)]
+mod tests {
+    use hyper::{Method, Response, StatusCode};
+
+    use super::{MethodExt, append_vary_accept_encoding};
+
+    #[test]
+    fn method_get_is_allowed() {
+        assert!(Method::GET.is_allowed());
+        assert!(Method::GET.is_get());
+        assert!(!Method::GET.is_head());
+        assert!(!Method::GET.is_options());
+    }
+
+    #[test]
+    fn method_head_is_allowed() {
+        assert!(Method::HEAD.is_allowed());
+        assert!(Method::HEAD.is_head());
+        assert!(!Method::HEAD.is_get());
+        assert!(!Method::HEAD.is_options());
+    }
+
+    #[test]
+    fn method_options_is_allowed() {
+        assert!(Method::OPTIONS.is_allowed());
+        assert!(Method::OPTIONS.is_options());
+        assert!(!Method::OPTIONS.is_get());
+        assert!(!Method::OPTIONS.is_head());
+    }
+
+    #[test]
+    fn method_post_is_not_allowed() {
+        assert!(!Method::POST.is_allowed());
+        assert!(!Method::POST.is_get());
+        assert!(!Method::POST.is_head());
+        assert!(!Method::POST.is_options());
+    }
+
+    #[test]
+    fn method_put_delete_patch_are_not_allowed() {
+        for method in [Method::PUT, Method::DELETE, Method::PATCH] {
+            assert!(!method.is_allowed(), "{method} should not be allowed");
+        }
+    }
+
+    #[test]
+    fn vary_added_when_absent() {
+        let mut resp = Response::new(crate::body::empty());
+        *resp.status_mut() = StatusCode::OK;
+        append_vary_accept_encoding(&mut resp);
+        let vary = resp.headers().get(hyper::header::VARY).unwrap();
+        assert_eq!(vary.to_str().unwrap(), "accept-encoding");
+    }
+
+    #[test]
+    fn vary_not_duplicated_when_already_present() {
+        let mut resp = Response::new(crate::body::empty());
+        *resp.status_mut() = StatusCode::OK;
+        resp.headers_mut()
+            .insert(hyper::header::VARY, "accept-encoding".parse().unwrap());
+        append_vary_accept_encoding(&mut resp);
+        let vary = resp.headers().get(hyper::header::VARY).unwrap();
+        assert_eq!(vary.to_str().unwrap(), "accept-encoding");
+    }
+
+    #[test]
+    fn vary_appended_to_existing_value() {
+        let mut resp = Response::new(crate::body::empty());
+        *resp.status_mut() = StatusCode::OK;
+        resp.headers_mut()
+            .insert(hyper::header::VARY, "origin".parse().unwrap());
+        append_vary_accept_encoding(&mut resp);
+        let vary = resp.headers().get(hyper::header::VARY).unwrap();
+        assert_eq!(vary.to_str().unwrap(), "origin, accept-encoding");
+    }
+
+    #[test]
+    fn vary_not_duplicated_when_mixed_with_others() {
+        let mut resp = Response::new(crate::body::empty());
+        *resp.status_mut() = StatusCode::OK;
+        resp.headers_mut().insert(
+            hyper::header::VARY,
+            "origin, accept-encoding".parse().unwrap(),
+        );
+        append_vary_accept_encoding(&mut resp);
+        let vary = resp.headers().get(hyper::header::VARY).unwrap();
+        assert_eq!(vary.to_str().unwrap(), "origin, accept-encoding");
+    }
+}

@@ -56,3 +56,62 @@ pub fn append_headers(resp: &mut Response<Body>) {
         "frame-ancestors 'self'".parse().unwrap(),
     );
 }
+
+#[cfg(test)]
+mod tests {
+    use http::header::{
+        CONTENT_SECURITY_POLICY, STRICT_TRANSPORT_SECURITY, X_CONTENT_TYPE_OPTIONS, X_FRAME_OPTIONS,
+    };
+    use hyper::{Response, StatusCode};
+
+    use super::append_headers;
+
+    #[test]
+    fn append_headers_sets_hsts() {
+        let mut resp = Response::new(crate::body::empty());
+        *resp.status_mut() = StatusCode::OK;
+        append_headers(&mut resp);
+        let hsts = resp.headers().get(STRICT_TRANSPORT_SECURITY).unwrap();
+        assert_eq!(
+            hsts.to_str().unwrap(),
+            "max-age=63072000; includeSubDomains; preload"
+        );
+    }
+
+    #[test]
+    fn append_headers_sets_x_frame_options() {
+        let mut resp = Response::new(crate::body::empty());
+        *resp.status_mut() = StatusCode::OK;
+        append_headers(&mut resp);
+        let xfo = resp.headers().get(X_FRAME_OPTIONS).unwrap();
+        assert_eq!(xfo.to_str().unwrap(), "DENY");
+    }
+
+    #[test]
+    fn append_headers_sets_x_content_type_options() {
+        let mut resp = Response::new(crate::body::empty());
+        *resp.status_mut() = StatusCode::OK;
+        append_headers(&mut resp);
+        let xcto = resp.headers().get(X_CONTENT_TYPE_OPTIONS).unwrap();
+        assert_eq!(xcto.to_str().unwrap(), "nosniff");
+    }
+
+    #[test]
+    fn append_headers_sets_csp() {
+        let mut resp = Response::new(crate::body::empty());
+        *resp.status_mut() = StatusCode::OK;
+        append_headers(&mut resp);
+        let csp = resp.headers().get(CONTENT_SECURITY_POLICY).unwrap();
+        assert_eq!(csp.to_str().unwrap(), "frame-ancestors 'self'");
+    }
+
+    #[test]
+    fn append_headers_sets_all_four_headers() {
+        let mut resp = Response::new(crate::body::empty());
+        append_headers(&mut resp);
+        assert!(resp.headers().contains_key(STRICT_TRANSPORT_SECURITY));
+        assert!(resp.headers().contains_key(X_FRAME_OPTIONS));
+        assert!(resp.headers().contains_key(X_CONTENT_TYPE_OPTIONS));
+        assert!(resp.headers().contains_key(CONTENT_SECURITY_POLICY));
+    }
+}

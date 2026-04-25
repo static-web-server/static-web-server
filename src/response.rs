@@ -150,6 +150,7 @@ pub(crate) fn response_body(
     }
 }
 
+#[derive(Debug)]
 pub(crate) struct BadRangeError;
 
 /// It handles the `Range` header returning the corresponding start/end-range bytes
@@ -218,4 +219,70 @@ pub(crate) fn bytes_range(range: Option<Range>, max_len: u64) -> Result<(u64, u6
                 Err(BadRangeError)
             }
         })
+}
+
+#[cfg(test)]
+mod tests {
+    use headers::{HeaderMap, HeaderMapExt, Range};
+
+    use super::bytes_range;
+
+    fn range(s: &str) -> Option<Range> {
+        let mut map = HeaderMap::new();
+        map.insert(http::header::RANGE, format!("bytes={s}").parse().unwrap());
+        map.typed_get::<Range>()
+    }
+
+    #[test]
+    fn no_range_returns_full_file() {
+        assert_eq!(bytes_range(None, 1000).unwrap(), (0, 1000));
+    }
+
+    #[test]
+    fn inclusive_range_within_bounds() {
+        // bytes=0-499 of 1000-byte file → (0, 500)
+        assert_eq!(bytes_range(range("0-499"), 1000).unwrap(), (0, 500));
+    }
+
+    #[test]
+    fn inclusive_range_to_last_byte() {
+        // bytes=500-999 of 1000-byte file → (500, 1000)
+        assert_eq!(bytes_range(range("500-999"), 1000).unwrap(), (500, 1000));
+    }
+
+    #[test]
+    fn suffix_range_within_file() {
+        // bytes=-200 of 1000-byte file → last 200 bytes = (800, 1000)
+        assert_eq!(bytes_range(range("-200"), 1000).unwrap(), (800, 1000));
+    }
+
+    #[test]
+    fn suffix_range_larger_than_file_returns_full() {
+        // bytes=-2000 of 1000-byte file: suffix exceeds file size → return entire file
+        assert_eq!(bytes_range(range("-2000"), 1000).unwrap(), (0, 1000));
+    }
+
+    #[test]
+    fn open_ended_range_from_offset() {
+        // bytes=100- of 1000-byte file → (100, 1000)
+        assert_eq!(bytes_range(range("100-"), 1000).unwrap(), (100, 1000));
+    }
+
+    #[test]
+    fn range_start_equals_end_is_single_byte() {
+        // bytes=5-5 of 1000-byte file → (5, 6)
+        assert_eq!(bytes_range(range("5-5"), 1000).unwrap(), (5, 6));
+    }
+
+    #[test]
+    fn range_start_greater_than_end_is_error() {
+        // bytes=100-50 → invalid
+        assert!(bytes_range(range("100-50"), 1000).is_err());
+    }
+
+    #[test]
+    fn range_start_beyond_file_size_is_error() {
+        // bytes=2000-3000 of 1000-byte file → unsatisfiable
+        assert!(bytes_range(range("2000-3000"), 1000).is_err());
+    }
 }
