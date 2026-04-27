@@ -4,14 +4,14 @@
 
 This feature is disabled by default and can be controlled by the boolean `--https-redirect` option or the equivalent [SERVER_HTTPS_REDIRECT](./../configuration/environment-variables.md#server_https_redirect) env.
 
-!!! info "HTTP/2 required"
+!!! info "TLS required"
 
-    HTTPS redirect requires the [HTTP/2](../features/http2-tls.md) feature to be activated.
+    HTTPS redirect requires the [TLS](../features/tls.md) feature to be enabled.
 
 ## HTTPS redirect
 
 The boolean `--https-redirect` is the main option and controls the whole HTTPS redirect feature. If `true` then will tell SWS to redirect all requests with scheme `http` to `https` for the current server instance with a `301 Moved Permanently` redirect status response code.
-This option depends on [`http2`](../features/http2-tls.md) to be enabled.
+This option depends on [`tls`](../features/tls.md) to be enabled.
 
 ## HTTPS redirect host
 
@@ -37,10 +37,10 @@ Below is an example of the feature.
 
 ```sh
 static-web-server -p 4433 -d public/ -g trace \
-    # HTTP/2 + TLS options
-    --http2=true \
-    --http2-tls-cert=tests/tls/local.dev_cert.ecc.pem \
-    --http2-tls-key=tests/tls/local.dev_key.ecc.pem \
+    # TLS options
+    --tls \
+    --tls-cert=tests/tls/local.dev_cert.pem \
+    --tls-key=tests/tls/local.dev_key.pem \
 \
     # HTTPS redirect options
     --https-redirect=true \
