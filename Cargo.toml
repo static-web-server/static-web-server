@@ -120,6 +120,12 @@ windows-service = "0.8"
 [dev-dependencies]
 bytes = "1.11.1"
 serde_json = "1.0"
+hyper = { version = "1", default-features = false, features = ["http1", "http2", "client"] }
+hyper-util = { version = "0.1", default-features = false, features = ["tokio"] }
+http-body-util = "0.1"
+tokio-rustls = { version = "0.26", default-features = false, features = ["logging", "tls12", "ring"] }
+rustls-pki-types = "1.13"
+rustls-pemfile = "2"
 
 [build-dependencies]
 shadow-rs = "1.4.0"
