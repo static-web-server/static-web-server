@@ -12,13 +12,43 @@ use tokio::sync::watch::Receiver;
 
 use crate::handler::RequestHandler;
 use crate::service::RouterService;
-use crate::{Context, Result, Settings};
+use crate::settings::cli::General;
+use crate::{Context, Error, Result, Settings};
 
 mod http1;
 mod opts;
 
+#[cfg(feature = "tls")]
+mod http1_tls;
 #[cfg(feature = "http2")]
 mod http2;
+#[cfg(feature = "tls")]
+mod redirect;
+
+/// TLS configuration shared by the HTTP/1+TLS and HTTP/2+TLS server modes.
+#[cfg(feature = "tls")]
+pub(crate) struct TlsConfig {
+    /// Path to the TLS certificate file.
+    pub tls_cert: std::path::PathBuf,
+    /// Path to the TLS private key file.
+    pub tls_key: std::path::PathBuf,
+    /// Enable HTTP → HTTPS redirect server.
+    pub https_redirect: bool,
+    /// Target hostname used in HTTPS redirect responses.
+    pub https_redirect_host: String,
+    /// Port the HTTP redirect server binds on.
+    pub https_redirect_from_port: u16,
+    /// Comma-separated list of hosts allowed to be redirected.
+    pub https_redirect_from_hosts: String,
+    /// Server host address (needed to bind the redirect listener).
+    pub host: String,
+    /// HTTPS port (used in redirect target URLs).
+    pub port: u16,
+    /// Resolved 404 error page (used by the redirect server).
+    pub page404: std::path::PathBuf,
+    /// Resolved 50x error page (used by the redirect server).
+    pub page50x: std::path::PathBuf,
+}
 
 /// Shutdown context passed to each server sub-module so they can respond to
 /// both OS signals and optional programmatic cancellation.
@@ -153,30 +183,7 @@ impl Server {
             );
         }
 
-        // Determine TCP listener: inherited file descriptor or bound TCP socket
-        let (tcp_listener, addr_str) = match general.fd {
-            Some(fd) => {
-                let listener = ListenFd::from_env()
-                    .take_tcp_listener(fd)?
-                    .with_context(|| "failed to convert inherited 'fd' into a 'tcp' listener")?;
-                tracing::info!(
-                    "converted inherited file descriptor {} to a 'tcp' listener",
-                    fd
-                );
-                (listener, format!("@FD({fd})"))
-            }
-            None => {
-                let ip = general
-                    .host
-                    .parse::<IpAddr>()
-                    .with_context(|| format!("failed to parse {} address", general.host))?;
-                let addr = SocketAddr::from((ip, general.port));
-                let listener = TcpListener::bind(addr)
-                    .with_context(|| format!("failed to bind to {addr} address"))?;
-                tracing::info!("server bound to tcp socket {}", addr);
-                (listener, addr.to_string())
-            }
-        };
+        let (tcp_listener, addr_str) = create_tcp_listener(&general)?;
 
         tracing::info!("runtime worker threads: {}", self.worker_threads);
         tracing::info!(
@@ -223,33 +230,58 @@ impl Server {
             ctrlc_task,
         };
 
-        // Dispatch to the HTTP/2 + TLS server when enabled
-        #[cfg(feature = "http2")]
-        if general.http2 {
-            return http2::run(
+        // Dispatch to a TLS-enabled server (HTTP/1+TLS or HTTP/2+TLS) when --tls is set
+        #[cfg(feature = "tls")]
+        if general.tls {
+            let tls_cert = general
+                .tls_cert
+                .ok_or_else(|| anyhow!("TLS cert file path is required when --tls is enabled"))?;
+            let tls_key = general
+                .tls_key
+                .ok_or_else(|| anyhow!("TLS key file path is required when --tls is enabled"))?;
+
+            let tls_cfg = TlsConfig {
+                tls_cert,
+                tls_key,
+                https_redirect: general.https_redirect,
+                https_redirect_host: general.https_redirect_host,
+                https_redirect_from_port: general.https_redirect_from_port,
+                https_redirect_from_hosts: general.https_redirect_from_hosts,
+                host: general.host,
+                port: general.port,
+                page404: opts_result.page404,
+                page50x: opts_result.page50x,
+            };
+
+            // If HTTP/2 is also enabled, use the HTTP/2+TLS accept loop
+            #[cfg(feature = "http2")]
+            if general.http2 {
+                return http2::run(
+                    tcp_listener,
+                    router_service,
+                    &addr_str,
+                    self.worker_threads,
+                    tls_cfg,
+                    ctx,
+                    cancel_fn,
+                )
+                .await;
+            }
+
+            // Otherwise serve HTTP/1 over TLS
+            return http1_tls::run(
                 tcp_listener,
                 router_service,
                 &addr_str,
                 self.worker_threads,
-                http2::Http2Config {
-                    tls_cert: general.http2_tls_cert,
-                    tls_key: general.http2_tls_key,
-                    https_redirect: general.https_redirect,
-                    https_redirect_host: general.https_redirect_host,
-                    https_redirect_from_port: general.https_redirect_from_port,
-                    https_redirect_from_hosts: general.https_redirect_from_hosts,
-                    host: general.host,
-                    port: general.port,
-                    page404: opts_result.page404,
-                    page50x: opts_result.page50x,
-                },
+                tls_cfg,
                 ctx,
                 cancel_fn,
             )
             .await;
         }
 
-        // Fall back to the plain HTTP/1 server
+        // Plain HTTP/1 (no TLS by default)
         http1::run(
             tcp_listener,
             router_service,
@@ -260,4 +292,31 @@ impl Server {
         )
         .await
     }
+}
+
+fn create_tcp_listener(general: &General) -> Result<(TcpListener, String), Error> {
+    let (listener, bound_addr) = match general.fd {
+        Some(fd) => {
+            let listener = ListenFd::from_env()
+                .take_tcp_listener(fd)?
+                .with_context(|| "failed to convert inherited 'fd' into a 'tcp' listener")?;
+            tracing::info!(
+                "converted inherited file descriptor {} to a 'tcp' listener",
+                fd
+            );
+            (listener, format!("@FD({fd})"))
+        }
+        None => {
+            let ip = general
+                .host
+                .parse::<IpAddr>()
+                .with_context(|| format!("failed to parse {} address", general.host))?;
+            let addr = SocketAddr::from((ip, general.port));
+            let listener = TcpListener::bind(addr)
+                .with_context(|| format!("failed to bind to {addr} address"))?;
+            tracing::info!("server bound to tcp socket {}", addr);
+            (listener, addr.to_string())
+        }
+    };
+    Ok((listener, bound_addr))
 }

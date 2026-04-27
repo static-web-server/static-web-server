@@ -38,11 +38,13 @@ doc = false
 
 [features]
 # All features enabled by default
-default = ["compression", "http2", "directory-listing", "directory-listing-download", "basic-auth", "fallback-page", "metrics"]
+default = ["compression", "http2", "tls", "directory-listing", "directory-listing-download", "basic-auth", "fallback-page", "metrics"]
 # Include all features (used when building SWS binaries)
 all = ["default", "experimental"]
-# HTTP2
-http2 = ["tokio-rustls", "rustls-pki-types"]
+# TLS support (works with HTTP/1 and HTTP/2)
+tls = ["tokio-rustls", "rustls-pki-types"]
+# HTTP2 (requires TLS)
+http2 = ["tls"]
 # Compression
 compression = ["compression-brotli", "compression-deflate", "compression-gzip", "compression-zstd"]
 compression-brotli = ["async-compression/brotli"]

@@ -3,8 +3,9 @@
 // See https://static-web-server.net/ for more information
 // Copyright (C) 2019-present Jose Quintana <joseluisq.net>
 
-//! HTTP/2 + TLS server accept-loop with optional HTTP to HTTPS redirect.
+//! HTTP/1 + TLS server accept-loop with optional HTTP to HTTPS redirect.
 
+use hyper::server::conn::http1;
 use hyper_util::rt::TokioIo;
 use hyper_util::server::graceful::GracefulShutdown;
 use std::net::TcpListener;
@@ -20,7 +21,7 @@ use crate::signals;
 
 use super::{ShutdownCtx, TlsConfig, redirect};
 
-/// Run the HTTP/2 + TLS accept loop with an optional HTTP → HTTPS redirect server.
+/// Run the HTTP/1 + TLS accept loop with an optional HTTP to HTTPS redirect server.
 pub(super) async fn run<F: FnOnce()>(
     tcp_listener: TcpListener,
     router: RouterService,
@@ -79,13 +80,11 @@ pub(super) async fn run<F: FnOnce()>(
     )?
     .unwrap_or_else(|| tokio::spawn(async { Ok::<_, crate::Error>(()) }));
 
-    // HTTP/2 + TLS accept-loop task
-    let http2_task = tokio::spawn({
+    let http1_task = tokio::spawn({
         let router = router.clone();
         async move {
             let graceful = GracefulShutdown::new();
-            let builder =
-                hyper_util::server::conn::auto::Builder::new(hyper_util::rt::TokioExecutor::new());
+            let http = http1::Builder::new();
 
             #[cfg(unix)]
             let shutdown = signals::wait_for_signals(signals, grace_period, cancel_recv);
@@ -113,21 +112,16 @@ pub(super) async fn run<F: FnOnce()>(
                                 continue;
                             }
                         };
-                        let _ = stream.set_nodelay(true);
+                         if let Err(e) = stream.set_nodelay(true) {
+                            tracing::warn!("failed to enable TCP_NODELAY for {}: {:?}", addr, e);
+                        }
                         let tls_acceptor = tls_acceptor.clone();
                         let svc = router.build(Some(addr));
                         match tls_acceptor.accept(stream).await {
                             Ok(tls_stream) => {
-                                let watcher = graceful.watcher();
-                                let builder_clone = builder.clone();
-                                tokio::spawn(async move {
-                                    let conn = builder_clone
-                                        .serve_connection(TokioIo::new(tls_stream), svc)
-                                        .into_owned();
-                                    if let Err(e) = watcher.watch(conn).await {
-                                        tracing::debug!("TLS connection error: {:?}", e);
-                                    }
-                                });
+                                let conn = http
+                                    .serve_connection(TokioIo::new(tls_stream), svc);
+                                tokio::spawn(graceful.watch(conn));
                             }
                             Err(e) => {
                                 tracing::debug!(
@@ -147,21 +141,21 @@ pub(super) async fn run<F: FnOnce()>(
 
     tracing::info!(
         parent: tracing::info_span!("Server::start_server", ?addr_str, ?threads),
-        "http2 server is listening on https://{}",
+        "http1 tls server is listening on https://{}",
         addr_str
     );
-    tracing::info!("press ctrl+c to shut down the servers");
+    tracing::info!("press ctrl+c to shut down the server");
 
     #[cfg(windows)]
     {
-        let (r0, r1, r2) = tokio::try_join!(ctx.ctrlc_task, http2_task, redirect_task)?;
+        let (r0, r1, r2) = tokio::try_join!(ctx.ctrlc_task, http1_task, redirect_task)?;
         r0?;
         r1?;
         r2?;
     }
     #[cfg(unix)]
     {
-        let (r0, r1) = tokio::try_join!(http2_task, redirect_task)?;
+        let (r0, r1) = tokio::try_join!(http1_task, redirect_task)?;
         r0?;
         r1?;
     }
