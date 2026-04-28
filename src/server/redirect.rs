@@ -32,11 +32,8 @@ pub(super) struct RedirectConfig {
     /// Programmatic cancel receiver shared with the main TLS server.
     pub cancel_recv: Arc<Mutex<Option<Receiver<()>>>>,
     #[cfg(windows)]
-    /// Ctrl+C receiver (used when not running as a Windows service).
+    /// Ctrl+C receiver (used when not running as a Windows service; `None` in service mode).
     pub ctrl_c_recv: Arc<Mutex<Option<Receiver<()>>>>,
-    #[cfg(windows)]
-    /// Whether running as a Windows service.
-    pub windows_service: bool,
 }
 
 /// Spawn the HTTP → HTTPS redirect server task.
@@ -74,14 +71,8 @@ pub(super) fn spawn(
         #[cfg(windows)]
         let ctrl_c_recv = cfg.ctrl_c_recv;
         #[cfg(windows)]
-        let windows_service = cfg.windows_service;
-        #[cfg(windows)]
         let shutdown = async move {
-            if windows_service {
-                signals::wait_for_ctrl_c(cancel_recv, grace_period).await;
-            } else {
-                signals::wait_for_ctrl_c(ctrl_c_recv, grace_period).await;
-            }
+            signals::wait_for_ctrl_c_or_cancel(ctrl_c_recv, cancel_recv, grace_period).await;
         };
         #[cfg(windows)]
         tokio::pin!(shutdown);
@@ -89,7 +80,7 @@ pub(super) fn spawn(
         loop {
             tokio::select! {
                 result = redirect_listener.accept() => {
-                    let (stream, _addr) = match result {
+                    let (stream, addr) = match result {
                         Ok(v) => v,
                         Err(e) => {
                             tracing::error!(
@@ -98,7 +89,9 @@ pub(super) fn spawn(
                             continue;
                         }
                     };
-                    let _ = stream.set_nodelay(true);
+                    if let Err(e) = stream.set_nodelay(true) {
+                        tracing::warn!("failed to enable TCP_NODELAY for {}: {:?}", addr, e);
+                    }
                     let redirect_opts = cfg.opts.clone();
                     let page404 = cfg.page404.clone();
                     let page50x = cfg.page50x.clone();
@@ -142,7 +135,6 @@ pub(super) fn maybe_spawn(
     cfg: &super::TlsConfig,
     cancel_recv: Arc<Mutex<Option<Receiver<()>>>>,
     #[cfg(windows)] ctrl_c_recv: Arc<Mutex<Option<Receiver<()>>>>,
-    #[cfg(windows)] windows_service: bool,
     grace_period: u8,
 ) -> Result<Option<tokio::task::JoinHandle<crate::Result<()>>>> {
     if !cfg.https_redirect {
@@ -186,8 +178,6 @@ pub(super) fn maybe_spawn(
             cancel_recv,
             #[cfg(windows)]
             ctrl_c_recv,
-            #[cfg(windows)]
-            windows_service,
         },
     )?;
 

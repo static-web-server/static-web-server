@@ -53,13 +53,14 @@ pub(super) async fn run<F: FnOnce()>(
 
     #[cfg(windows)]
     let shutdown = {
-        let cancel_recv = if ctx.windows_service {
-            Arc::new(Mutex::new(ctx.cancel_recv))
+        let ctrl_c_recv = Arc::new(Mutex::new(if !ctx.windows_service {
+            Some(ctx.ctrl_c_recv)
         } else {
-            Arc::new(Mutex::new(Some(ctx.ctrl_c_recv)))
-        };
+            None
+        }));
+        let cancel_recv = Arc::new(Mutex::new(ctx.cancel_recv));
         let grace_period = ctx.grace_period;
-        async move { signals::wait_for_ctrl_c(cancel_recv, grace_period).await }
+        async move { signals::wait_for_ctrl_c_or_cancel(ctrl_c_recv, cancel_recv, grace_period).await }
     };
     #[cfg(windows)]
     tokio::pin!(shutdown);

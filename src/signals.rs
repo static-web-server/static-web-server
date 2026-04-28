@@ -90,3 +90,37 @@ pub async fn wait_for_ctrl_c(cancel_recv: Arc<Mutex<Option<Receiver<()>>>>, grac
     delay_graceful_shutdown(grace_period_secs).await;
     tracing::info!("delegating server's graceful shutdown");
 }
+
+#[cfg(windows)]
+#[cfg_attr(docsrs, doc(cfg(windows)))]
+/// Waits for the first of `ctrl_c_recv` (real Ctrl+C) or `cancel_recv`
+/// (programmatic shutdown) to fire.
+///
+/// Pass `None` inside either `Arc<Mutex<Option<…>>>` to disable that source;
+/// the other source then becomes the sole shutdown trigger.
+pub async fn wait_for_ctrl_c_or_cancel(
+    ctrl_c_recv: Arc<Mutex<Option<Receiver<()>>>>,
+    cancel_recv: Arc<Mutex<Option<Receiver<()>>>>,
+    grace_period_secs: u8,
+) {
+    let (tx, mut rx) = tokio::sync::mpsc::channel::<()>(1);
+
+    let tx1 = tx.clone();
+    tokio::spawn(async move {
+        if let Some(recv) = &mut *ctrl_c_recv.lock().await {
+            recv.changed().await.ok();
+            tx1.send(()).await.ok();
+        }
+    });
+
+    tokio::spawn(async move {
+        if let Some(recv) = &mut *cancel_recv.lock().await {
+            recv.changed().await.ok();
+            tx.send(()).await.ok();
+        }
+    });
+
+    rx.recv().await;
+    delay_graceful_shutdown(grace_period_secs).await;
+    tracing::info!("delegating server's graceful shutdown");
+}

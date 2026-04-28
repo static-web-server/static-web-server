@@ -61,11 +61,13 @@ pub(super) async fn run<F: FnOnce()>(
     #[cfg(windows)]
     let redirect_cancel_recv = cancel_recv.clone();
     #[cfg(windows)]
-    let ctrl_c_recv = Arc::new(Mutex::new(Some(ctx.ctrl_c_recv)));
+    let ctrl_c_recv = Arc::new(Mutex::new(if !ctx.windows_service {
+        Some(ctx.ctrl_c_recv)
+    } else {
+        None
+    }));
     #[cfg(windows)]
     let redirect_ctrl_c_recv = ctrl_c_recv.clone();
-    #[cfg(windows)]
-    let windows_service = ctx.windows_service;
 
     // Optional HTTP → HTTPS redirect server
     let redirect_task = redirect::maybe_spawn(
@@ -73,8 +75,6 @@ pub(super) async fn run<F: FnOnce()>(
         redirect_cancel_recv,
         #[cfg(windows)]
         redirect_ctrl_c_recv,
-        #[cfg(windows)]
-        windows_service,
         grace_period,
     )?
     .unwrap_or_else(|| tokio::spawn(async { Ok::<_, crate::Error>(()) }));
@@ -94,11 +94,7 @@ pub(super) async fn run<F: FnOnce()>(
 
             #[cfg(windows)]
             let shutdown = async move {
-                if windows_service {
-                    signals::wait_for_ctrl_c(cancel_recv, grace_period).await;
-                } else {
-                    signals::wait_for_ctrl_c(ctrl_c_recv, grace_period).await;
-                }
+                signals::wait_for_ctrl_c_or_cancel(ctrl_c_recv, cancel_recv, grace_period).await;
             };
             #[cfg(windows)]
             tokio::pin!(shutdown);
@@ -113,7 +109,9 @@ pub(super) async fn run<F: FnOnce()>(
                                 continue;
                             }
                         };
-                        let _ = stream.set_nodelay(true);
+                        if let Err(e) = stream.set_nodelay(true) {
+                            tracing::warn!("failed to enable TCP_NODELAY for {}: {:?}", addr, e);
+                        }
                         let tls_acceptor = tls_acceptor.clone();
                         let svc = router.build(Some(addr));
                         match tls_acceptor.accept(stream).await {
