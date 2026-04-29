@@ -144,10 +144,15 @@ pub(super) async fn run<F: FnOnce()>(
 
     #[cfg(windows)]
     {
-        let (r0, r1, r2) = tokio::try_join!(ctx.ctrlc_task, http1_task, redirect_task)?;
+        let (r0, r1) = tokio::try_join!(http1_task, redirect_task)?;
+        // NOTE: Abort the Ctrl+C listener task since
+        // it could still be blocked on `ctrl_c().await` when
+        // shutdown was triggered programmatically (e.g. via `cancel_recv`).
+        // Aborting is a no-op if it already completed
+        // due to a real Ctrl+C was received.
+        ctx.ctrlc_task.abort();
         r0?;
         r1?;
-        r2?;
     }
     #[cfg(unix)]
     {
