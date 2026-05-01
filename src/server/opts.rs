@@ -45,10 +45,10 @@ pub(super) struct HandlerOptsResult {
     /// Fully initialized request handler options.
     pub handler_opts: RequestHandlerOpts,
     /// Resolved 404 error page path (needed by the HTTPS redirect server).
-    #[cfg(feature = "http2")]
+    #[cfg(feature = "tls")]
     pub page404: std::path::PathBuf,
     /// Resolved 50x error page path (needed by the HTTPS redirect server).
-    #[cfg(feature = "http2")]
+    #[cfg(feature = "tls")]
     pub page50x: std::path::PathBuf,
 }
 
@@ -199,9 +199,9 @@ pub(super) fn init(general: &General, advanced: Option<Advanced>) -> Result<Hand
 
     Ok(HandlerOptsResult {
         handler_opts,
-        #[cfg(feature = "http2")]
+        #[cfg(feature = "tls")]
         page404,
-        #[cfg(feature = "http2")]
+        #[cfg(feature = "tls")]
         page50x,
     })
 }

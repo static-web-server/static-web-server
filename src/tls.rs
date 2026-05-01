@@ -363,4 +363,60 @@ mod tests {
             .build()
             .unwrap();
     }
+
+    #[test]
+    fn missing_cert_path_returns_io_error() {
+        let err = TlsConfigBuilder::new()
+            .cert_path("tests/tls/nonexistent_cert.pem")
+            .key_path("tests/tls/local.dev_key.pkcs8.pem")
+            .build()
+            .unwrap_err();
+        assert!(
+            matches!(err, TlsConfigError::CertParseError | TlsConfigError::Io(_)),
+            "expected Io or CertParseError, got: {err}"
+        );
+    }
+
+    #[test]
+    fn missing_key_path_returns_io_error() {
+        let err = TlsConfigBuilder::new()
+            .cert_path("tests/tls/local.dev_cert.pkcs8.pem")
+            .key_path("tests/tls/nonexistent_key.pem")
+            .build()
+            .unwrap_err();
+        assert!(
+            matches!(err, TlsConfigError::Io(_)),
+            "expected Io error, got: {err}"
+        );
+    }
+
+    #[test]
+    fn empty_key_bytes_returns_empty_key_error() {
+        let cert = include_str!("../tests/tls/local.dev_cert.pkcs8.pem");
+        let err = TlsConfigBuilder::new()
+            .cert(cert.as_bytes())
+            .key(b"")
+            .build()
+            .unwrap_err();
+        assert!(
+            matches!(err, TlsConfigError::EmptyKey),
+            "expected EmptyKey error, got: {err}"
+        );
+    }
+
+    #[test]
+    fn mismatched_cert_key_returns_invalid_key_error() {
+        // Use rsa_pkcs1 cert with ec key — should fail at the ServerConfig builder stage
+        let cert = include_str!("../tests/tls/local.dev_cert.rsa_pkcs1.pem");
+        let key = include_str!("../tests/tls/local.dev_key.sec1_ec.pem");
+        let err = TlsConfigBuilder::new()
+            .cert(cert.as_bytes())
+            .key(key.as_bytes())
+            .build()
+            .unwrap_err();
+        assert!(
+            matches!(err, TlsConfigError::InvalidKey(_)),
+            "expected InvalidKey error for mismatched cert/key, got: {err}"
+        );
+    }
 }

@@ -30,7 +30,7 @@ pub struct General {
     pub port: u16,
 
     #[cfg_attr(
-        feature = "http2",
+        feature = "tls",
         arg(
             long,
             short = 'f',
@@ -39,7 +39,7 @@ pub struct General {
         )
     )]
     #[cfg_attr(
-        not(feature = "http2"),
+        not(feature = "tls"),
         arg(
             long,
             short = 'f',
@@ -173,24 +173,24 @@ pub struct General {
         num_args(0..=1),
         require_equals(false),
         action = clap::ArgAction::Set,
-        env = "SERVER_HTTP2_TLS",
+        env = "SERVER_TLS",
     )]
-    #[cfg(feature = "http2")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "http2")))]
-    /// Enable HTTP/2 with TLS support.
-    pub http2: bool,
+    #[cfg(feature = "tls")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "tls")))]
+    /// Enable TLS/HTTPS support. Requires --tls-cert and --tls-key.
+    pub tls: bool,
 
-    #[arg(long, required_if_eq("http2", "true"), env = "SERVER_HTTP2_TLS_CERT")]
-    #[cfg(feature = "http2")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "http2")))]
-    /// Specify the file path to read the certificate.
-    pub http2_tls_cert: Option<PathBuf>,
+    #[arg(long, required_if_eq("tls", "true"), env = "SERVER_TLS_CERT")]
+    #[cfg(feature = "tls")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "tls")))]
+    /// Specify the file path to the TLS certificate.
+    pub tls_cert: Option<PathBuf>,
 
-    #[arg(long, required_if_eq("http2", "true"), env = "SERVER_HTTP2_TLS_KEY")]
-    #[cfg(feature = "http2")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "http2")))]
-    /// Specify the file path to read the private key.
-    pub http2_tls_key: Option<PathBuf>,
+    #[arg(long, required_if_eq("tls", "true"), env = "SERVER_TLS_KEY")]
+    #[cfg(feature = "tls")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "tls")))]
+    /// Specify the file path to the TLS private key.
+    pub tls_key: Option<PathBuf>,
 
     #[arg(
         long,
@@ -199,44 +199,46 @@ pub struct General {
         num_args(0..=1),
         require_equals(false),
         action = clap::ArgAction::Set,
-        requires_if("true", "http2"),
+        env = "SERVER_HTTP2",
+    )]
+    #[cfg(feature = "http2")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "http2")))]
+    /// Enable HTTP/2 protocol support. Requires TLS to be enabled (--tls).
+    pub http2: bool,
+
+    #[arg(
+        long,
+        default_value = "false",
+        default_missing_value("true"),
+        num_args(0..=1),
+        require_equals(false),
+        action = clap::ArgAction::Set,
         env = "SERVER_HTTPS_REDIRECT"
     )]
-    #[cfg(feature = "http2")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "http2")))]
-    /// Redirect all requests with scheme "http" to "https" for the current server instance. It depends on "http2" to be enabled.
+    #[cfg(feature = "tls")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "tls")))]
+    /// Redirect all requests with scheme "http" to "https" for the current server instance. Requires TLS to be enabled (--tls).
     pub https_redirect: bool,
 
-    #[arg(
-        long,
-        requires_if("true", "https_redirect"),
-        default_value = "localhost",
-        env = "SERVER_HTTPS_REDIRECT_HOST"
-    )]
-    #[cfg(feature = "http2")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "http2")))]
-    /// Canonical host name or IP of the HTTPS (HTTPS/2) server. It depends on "https_redirect" to be enabled.
+    #[arg(long, default_value = "localhost", env = "SERVER_HTTPS_REDIRECT_HOST")]
+    #[cfg(feature = "tls")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "tls")))]
+    /// Canonical host name or IP of the HTTPS server. It depends on "https_redirect" to be enabled.
     pub https_redirect_host: String,
 
-    #[arg(
-        long,
-        requires_if("true", "https_redirect"),
-        default_value = "80",
-        env = "SERVER_HTTPS_REDIRECT_FROM_PORT"
-    )]
-    #[cfg(feature = "http2")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "http2")))]
+    #[arg(long, default_value = "80", env = "SERVER_HTTPS_REDIRECT_FROM_PORT")]
+    #[cfg(feature = "tls")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "tls")))]
     /// HTTP host port where the redirect server will listen for requests to redirect them to HTTPS. It depends on "https_redirect" to be enabled.
     pub https_redirect_from_port: u16,
 
     #[arg(
         long,
-        requires_if("true", "https_redirect"),
         default_value = "localhost",
         env = "SERVER_HTTPS_REDIRECT_FROM_HOSTS"
     )]
-    #[cfg(feature = "http2")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "http2")))]
+    #[cfg(feature = "tls")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "tls")))]
     /// List of host names or IPs allowed to redirect from. HTTP requests must contain the HTTP 'Host' header and match against this list. It depends on "https_redirect" to be enabled.
     pub https_redirect_from_hosts: String,
 
@@ -365,17 +367,32 @@ pub struct General {
     /// Specify list of enabled format(s) for directory download. Format supported: `targz`. Default to empty list (disabled).
     pub directory_listing_download: Vec<DirDownloadFmt>,
 
-    #[arg(
-        long,
-        default_value = "false",
-        default_value_if("http2", "true", Some("true")),
-        default_missing_value("true"),
-        num_args(0..=1),
-        require_equals(false),
-        action = clap::ArgAction::Set,
-        env = "SERVER_SECURITY_HEADERS",
+    #[cfg_attr(
+        feature = "tls",
+        arg(
+            long,
+            default_value = "false",
+            default_missing_value("true"),
+            num_args(0..=1),
+            require_equals(false),
+            action = clap::ArgAction::Set,
+            default_value_if("tls", "true", Some("true")),
+            env = "SERVER_SECURITY_HEADERS",
+        )
     )]
-    /// Enable security headers by default when HTTP/2 feature is activated.
+    #[cfg_attr(
+        not(feature = "tls"),
+        arg(
+            long,
+            default_value = "false",
+            default_missing_value("true"),
+            num_args(0..=1),
+            require_equals(false),
+            action = clap::ArgAction::Set,
+            env = "SERVER_SECURITY_HEADERS",
+        )
+    )]
+    /// Enable security headers by default when TLS feature is activated.
     /// Headers included: "Strict-Transport-Security: max-age=63072000; includeSubDomains; preload" (2 years max-age),
     /// "X-Frame-Options: DENY" and "Content-Security-Policy: frame-ancestors 'self'".
     pub security_headers: bool,

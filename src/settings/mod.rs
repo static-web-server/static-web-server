@@ -152,20 +152,22 @@ impl Settings {
         let mut page404 = opts.page404;
         let mut page50x = opts.page50x;
 
+        #[cfg(feature = "tls")]
+        let mut tls = opts.tls;
+        #[cfg(feature = "tls")]
+        let mut tls_cert = opts.tls_cert;
+        #[cfg(feature = "tls")]
+        let mut tls_key = opts.tls_key;
+        #[cfg(feature = "tls")]
+        let mut https_redirect = opts.https_redirect;
+        #[cfg(feature = "tls")]
+        let mut https_redirect_host = opts.https_redirect_host;
+        #[cfg(feature = "tls")]
+        let mut https_redirect_from_port = opts.https_redirect_from_port;
+        #[cfg(feature = "tls")]
+        let mut https_redirect_from_hosts = opts.https_redirect_from_hosts;
         #[cfg(feature = "http2")]
         let mut http2 = opts.http2;
-        #[cfg(feature = "http2")]
-        let mut http2_tls_cert = opts.http2_tls_cert;
-        #[cfg(feature = "http2")]
-        let mut http2_tls_key = opts.http2_tls_key;
-        #[cfg(feature = "http2")]
-        let mut https_redirect = opts.https_redirect;
-        #[cfg(feature = "http2")]
-        let mut https_redirect_host = opts.https_redirect_host;
-        #[cfg(feature = "http2")]
-        let mut https_redirect_from_port = opts.https_redirect_from_port;
-        #[cfg(feature = "http2")]
-        let mut https_redirect_from_hosts = opts.https_redirect_from_hosts;
 
         let mut security_headers = opts.security_headers;
         let mut cors_allow_origins = opts.cors_allow_origins;
@@ -283,44 +285,48 @@ impl Settings {
                 if let Some(v) = general.page50x {
                     page50x = v
                 }
+                #[cfg(feature = "tls")]
+                if let Some(v) = general.tls {
+                    tls = v
+                }
+                #[cfg(feature = "tls")]
+                if let Some(v) = general.tls_cert {
+                    tls_cert = Some(v)
+                }
+                #[cfg(feature = "tls")]
+                if let Some(v) = general.tls_key {
+                    tls_key = Some(v)
+                }
                 #[cfg(feature = "http2")]
                 if let Some(v) = general.http2 {
                     http2 = v
                 }
-                #[cfg(feature = "http2")]
-                if let Some(v) = general.http2_tls_cert {
-                    http2_tls_cert = Some(v)
-                }
-                #[cfg(feature = "http2")]
-                if let Some(v) = general.http2_tls_key {
-                    http2_tls_key = Some(v)
-                }
-                #[cfg(feature = "http2")]
+                #[cfg(feature = "tls")]
                 if let Some(v) = general.https_redirect {
                     https_redirect = v
                 }
-                #[cfg(feature = "http2")]
+                #[cfg(feature = "tls")]
                 if let Some(v) = general.https_redirect_host {
                     https_redirect_host = v
                 }
-                #[cfg(feature = "http2")]
+                #[cfg(feature = "tls")]
                 if let Some(v) = general.https_redirect_from_port {
                     https_redirect_from_port = v
                 }
-                #[cfg(feature = "http2")]
+                #[cfg(feature = "tls")]
                 if let Some(v) = general.https_redirect_from_hosts {
                     https_redirect_from_hosts = v
                 }
-                #[cfg(feature = "http2")]
+                #[cfg(feature = "tls")]
                 match general.security_headers {
                     Some(v) => security_headers = v,
                     _ => {
-                        if http2 {
+                        if tls {
                             security_headers = true;
                         }
                     }
                 }
-                #[cfg(not(feature = "http2"))]
+                #[cfg(not(feature = "tls"))]
                 if let Some(v) = general.security_headers {
                     security_headers = v
                 }
@@ -608,6 +614,24 @@ impl Settings {
             logger::init(log_level.as_str(), log_with_ansi)?;
         }
 
+        // Runtime validation: HTTP/2 requires TLS
+        #[cfg(all(feature = "http2", feature = "tls"))]
+        if http2 && !tls {
+            bail!("HTTP/2 requires TLS; enable --tls along with --tls-cert and --tls-key");
+        }
+
+        // Runtime validation: HTTPS redirect requires TLS
+        #[cfg(feature = "tls")]
+        if https_redirect && !tls {
+            bail!("--https-redirect requires TLS to be enabled (--tls)");
+        }
+
+        // Auto-enable security headers when TLS is on (applies when no config file is present)
+        #[cfg(feature = "tls")]
+        if tls && !security_headers {
+            security_headers = true;
+        }
+
         Ok(Settings {
             general: General {
                 version,
@@ -639,17 +663,19 @@ impl Settings {
                 page50x,
                 #[cfg(feature = "http2")]
                 http2,
-                #[cfg(feature = "http2")]
-                http2_tls_cert,
-                #[cfg(feature = "http2")]
-                http2_tls_key,
-                #[cfg(feature = "http2")]
+                #[cfg(feature = "tls")]
+                tls,
+                #[cfg(feature = "tls")]
+                tls_cert,
+                #[cfg(feature = "tls")]
+                tls_key,
+                #[cfg(feature = "tls")]
                 https_redirect,
-                #[cfg(feature = "http2")]
+                #[cfg(feature = "tls")]
                 https_redirect_host,
-                #[cfg(feature = "http2")]
+                #[cfg(feature = "tls")]
                 https_redirect_from_port,
-                #[cfg(feature = "http2")]
+                #[cfg(feature = "tls")]
                 https_redirect_from_hosts,
                 security_headers,
                 cors_allow_origins,

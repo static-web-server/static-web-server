@@ -38,11 +38,13 @@ doc = false
 
 [features]
 # All features enabled by default
-default = ["compression", "http2", "directory-listing", "directory-listing-download", "basic-auth", "fallback-page", "metrics"]
+default = ["compression", "http2", "tls", "directory-listing", "directory-listing-download", "basic-auth", "fallback-page", "metrics"]
 # Include all features (used when building SWS binaries)
 all = ["default", "experimental"]
-# HTTP2
-http2 = ["tokio-rustls", "rustls-pki-types"]
+# TLS support (works with HTTP/1 and HTTP/2)
+tls = ["tokio-rustls", "rustls-pki-types"]
+# HTTP2 (requires TLS)
+http2 = ["tls", "hyper-util/http2"]
 # Compression
 compression = ["compression-brotli", "compression-deflate", "compression-gzip", "compression-zstd"]
 compression-brotli = ["async-compression/brotli"]
@@ -118,6 +120,12 @@ windows-service = "0.8"
 [dev-dependencies]
 bytes = "1.11.1"
 serde_json = "1.0"
+hyper = { version = "1", default-features = false, features = ["http1", "http2", "client"] }
+hyper-util = { version = "0.1", default-features = false, features = ["tokio", "http2"] }
+http-body-util = "0.1"
+tokio-rustls = { version = "0.26", default-features = false, features = ["logging", "tls12", "ring"] }
+rustls-pki-types = "1.13"
+rustls-pemfile = "2"
 
 [build-dependencies]
 shadow-rs = "1.4.0"

@@ -264,34 +264,39 @@ pub struct General {
     /// Error 50x pages.
     pub page50x: Option<PathBuf>,
 
-    /// HTTP/2 + TLS.
+    /// TLS support.
+    #[cfg(feature = "tls")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "tls")))]
+    pub tls: Option<bool>,
+    /// TLS certificate file path.
+    #[cfg(feature = "tls")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "tls")))]
+    pub tls_cert: Option<PathBuf>,
+    /// TLS private key file path.
+    #[cfg(feature = "tls")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "tls")))]
+    pub tls_key: Option<PathBuf>,
+
+    /// HTTP/2 protocol support.
     #[cfg(feature = "http2")]
     #[cfg_attr(docsrs, doc(cfg(feature = "http2")))]
     pub http2: Option<bool>,
-    /// Http2 tls certificate feature.
-    #[cfg(feature = "http2")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "http2")))]
-    pub http2_tls_cert: Option<PathBuf>,
-    /// Http2 tls key feature.
-    #[cfg(feature = "http2")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "http2")))]
-    pub http2_tls_key: Option<PathBuf>,
 
     /// Redirect all HTTP requests to HTTPS.
-    #[cfg(feature = "http2")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "http2")))]
+    #[cfg(feature = "tls")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "tls")))]
     pub https_redirect: Option<bool>,
-    /// HTTP host port where the redirect server will listen for requests to redirect them to HTTPS.
-    #[cfg(feature = "http2")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "http2")))]
+    /// Hostname used in HTTPS redirect responses.
+    #[cfg(feature = "tls")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "tls")))]
     pub https_redirect_host: Option<String>,
-    /// Host port for redirecting HTTP requests to HTTPS.
-    #[cfg(feature = "http2")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "http2")))]
+    /// Port the HTTP redirect listener binds to.
+    #[cfg(feature = "tls")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "tls")))]
     pub https_redirect_from_port: Option<u16>,
     /// List of host names or IPs allowed to redirect from.
-    #[cfg(feature = "http2")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "http2")))]
+    #[cfg(feature = "tls")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "tls")))]
     pub https_redirect_from_hosts: Option<String>,
 
     /// Security headers.

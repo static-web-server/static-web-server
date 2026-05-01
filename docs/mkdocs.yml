@@ -138,7 +138,8 @@ nav:
   - 'Features':
     - 'HTTP/1': 'features/http1.md'
     - 'HTTP Methods': 'features/http-methods.md'
-    - 'HTTP/2 and TLS': 'features/http2-tls.md'
+    - 'TLS': 'features/tls.md'
+    - 'HTTP/2': 'features/http2-tls.md'
     - 'HTTP to HTTPS redirect': 'features/http-https-redirect.md'
     - 'Logging': 'features/logging.md'
     - 'Compression': 'features/compression.md'

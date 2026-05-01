@@ -153,8 +153,8 @@ pub(crate) mod fs;
 pub mod handler;
 pub(crate) mod headers_ext;
 pub(crate) mod health;
-#[cfg(feature = "http2")]
-#[cfg_attr(docsrs, doc(cfg(feature = "http2")))]
+#[cfg(feature = "tls")]
+#[cfg_attr(docsrs, doc(cfg(feature = "tls")))]
 pub mod https_redirect;
 pub(crate) mod log_addr;
 pub mod maintenance_mode;
@@ -174,8 +174,8 @@ pub mod settings;
 #[cfg_attr(docsrs, doc(cfg(any(unix, windows))))]
 pub mod signals;
 pub mod static_files;
-#[cfg(feature = "http2")]
-#[cfg_attr(docsrs, doc(cfg(feature = "http2")))]
+#[cfg(feature = "tls")]
+#[cfg_attr(docsrs, doc(cfg(feature = "tls")))]
 pub mod tls;
 pub(crate) mod virtual_hosts;
 #[cfg(windows)]
