@@ -36,7 +36,7 @@ pub(super) async fn run<F: FnOnce()>(
         .with_context(|| "failed to create tokio::net::TcpListener")?;
 
     let graceful = GracefulShutdown::new();
-    let http = http1::Builder::new();
+    let builder = http1::Builder::new();
 
     #[cfg(unix)]
     let signals =
@@ -86,7 +86,7 @@ pub(super) async fn run<F: FnOnce()>(
                     tracing::warn!("failed to enable TCP_NODELAY for {}: {:?}", addr, e);
                 }
                 let svc = router.build(Some(addr));
-                let conn = http.serve_connection(TokioIo::new(stream), svc);
+                let conn = builder.serve_connection(TokioIo::new(stream), svc);
                 tokio::spawn(graceful.watch(conn));
             }
             _ = &mut shutdown => { break; }
@@ -100,8 +100,11 @@ pub(super) async fn run<F: FnOnce()>(
 
     #[cfg(windows)]
     {
-        let (r0,) = tokio::try_join!(ctx.ctrlc_task)?;
-        r0?;
+        // Abort the Ctrl+C listener task since it could still be blocked on
+        // `ctrl_c().await` when shutdown was triggered programmatically (e.g.
+        // via `cancel_recv`). Aborting is a no-op if it already completed due
+        // to a real Ctrl+C being received.
+        ctx.ctrlc_task.abort();
         _cancel_fn();
     }
 

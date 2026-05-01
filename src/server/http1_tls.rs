@@ -31,11 +31,13 @@ pub(super) async fn run<F: FnOnce()>(
     ctx: ShutdownCtx,
     _cancel_fn: F,
 ) -> Result {
-    let tls = TlsConfigBuilder::new()
+    let mut tls = TlsConfigBuilder::new()
         .cert_path(&cfg.tls_cert)
         .key_path(&cfg.tls_key)
         .build()
         .with_context(|| "failed to initialize TLS probably because invalid cert or key file")?;
+    tls.alpn_protocols = vec![b"http/1.1".to_vec()];
+
     let tls_acceptor = TlsAcceptor::new(tls);
 
     tcp_listener
@@ -70,7 +72,7 @@ pub(super) async fn run<F: FnOnce()>(
     #[cfg(windows)]
     let redirect_ctrl_c_recv = ctrl_c_recv.clone();
 
-    // Optional HTTP → HTTPS redirect server
+    // Optional HTTP to HTTPS redirect server
     let redirect_task = redirect::maybe_spawn(
         &cfg,
         redirect_cancel_recv,
@@ -84,7 +86,7 @@ pub(super) async fn run<F: FnOnce()>(
         let router = router.clone();
         async move {
             let graceful = GracefulShutdown::new();
-            let http = http1::Builder::new();
+            let builder = http1::Builder::new();
 
             #[cfg(unix)]
             let shutdown = signals::wait_for_signals(signals, grace_period, cancel_recv);
@@ -115,7 +117,7 @@ pub(super) async fn run<F: FnOnce()>(
                         let svc = router.build(Some(addr));
                         match tls_acceptor.accept(stream).await {
                             Ok(tls_stream) => {
-                                let conn = http
+                                let conn = builder
                                     .serve_connection(TokioIo::new(tls_stream), svc);
                                 tokio::spawn(graceful.watch(conn));
                             }

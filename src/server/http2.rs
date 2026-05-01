@@ -5,7 +5,8 @@
 
 //! HTTP/2 + TLS server accept-loop with optional HTTP to HTTPS redirect.
 
-use hyper_util::rt::TokioIo;
+use hyper::server::conn::http2;
+use hyper_util::rt::{TokioExecutor, TokioIo};
 use hyper_util::server::graceful::GracefulShutdown;
 use std::net::TcpListener;
 use std::sync::Arc;
@@ -20,7 +21,10 @@ use crate::signals;
 
 use super::{ShutdownCtx, TlsConfig, redirect};
 
-/// Run the HTTP/2 + TLS accept loop with an optional HTTP → HTTPS redirect server.
+/// HTTP/2 graceful shutdown drain timeout in seconds.
+const HTTP2_DRAIN_TIMEOUT: u64 = 5;
+
+/// Run the HTTP/2 + TLS accept loop with an optional HTTP to HTTPS redirect server.
 pub(super) async fn run<F: FnOnce()>(
     tcp_listener: TcpListener,
     router: RouterService,
@@ -69,7 +73,7 @@ pub(super) async fn run<F: FnOnce()>(
     #[cfg(windows)]
     let redirect_ctrl_c_recv = ctrl_c_recv.clone();
 
-    // Optional HTTP → HTTPS redirect server
+    // Optional HTTP to HTTPS redirect server
     let redirect_task = redirect::maybe_spawn(
         &cfg,
         redirect_cancel_recv,
@@ -84,8 +88,7 @@ pub(super) async fn run<F: FnOnce()>(
         let router = router.clone();
         async move {
             let graceful = GracefulShutdown::new();
-            let builder =
-                hyper_util::server::conn::auto::Builder::new(hyper_util::rt::TokioExecutor::new());
+            let builder = http2::Builder::new(TokioExecutor::new());
 
             #[cfg(unix)]
             let shutdown = signals::wait_for_signals(signals, grace_period, cancel_recv);
@@ -116,16 +119,8 @@ pub(super) async fn run<F: FnOnce()>(
                         let svc = router.build(Some(addr));
                         match tls_acceptor.accept(stream).await {
                             Ok(tls_stream) => {
-                                let watcher = graceful.watcher();
-                                let builder_clone = builder.clone();
-                                tokio::spawn(async move {
-                                    let conn = builder_clone
-                                        .serve_connection(TokioIo::new(tls_stream), svc)
-                                        .into_owned();
-                                    if let Err(e) = watcher.watch(conn).await {
-                                        tracing::debug!("TLS connection error: {:?}", e);
-                                    }
-                                });
+                                let conn = builder.serve_connection(TokioIo::new(tls_stream), svc);
+                                tokio::spawn(graceful.watch(conn));
                             }
                             Err(e) => {
                                 tracing::debug!(
@@ -138,7 +133,23 @@ pub(super) async fn run<F: FnOnce()>(
                 }
             }
 
-            graceful.shutdown().await;
+            // HTTP/2 connections are persistent and clients may not close them
+            // promptly after receiving `GOAWAY`. Apply a fixed drain timeout so
+            // the server doesn't hang indefinitely waiting for idle connections.
+            // Specially on Windows due to its signal propagation as it sends
+            // a CTRL_C_EVENT only to processes attached to the same console.
+            if tokio::time::timeout(
+                std::time::Duration::from_secs(HTTP2_DRAIN_TIMEOUT),
+                graceful.shutdown(),
+            )
+            .await
+            .is_err()
+            {
+                tracing::warn!(
+                    "graceful shutdown drain timed out after {}s, forcing connection close",
+                    HTTP2_DRAIN_TIMEOUT
+                );
+            }
             Ok::<_, crate::Error>(())
         }
     });

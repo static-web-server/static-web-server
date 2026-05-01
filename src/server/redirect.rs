@@ -19,7 +19,7 @@ use crate::{Context, Result, error_page, https_redirect};
 #[cfg(any(unix, windows))]
 use crate::signals;
 
-/// Configuration for the HTTP → HTTPS redirect server.
+/// Configuration for the HTTP to HTTPS redirect server.
 pub(super) struct RedirectConfig {
     /// Resolved redirect options (hostname, port, allowed hosts).
     pub opts: Arc<https_redirect::RedirectOpts>,
@@ -36,7 +36,7 @@ pub(super) struct RedirectConfig {
     pub ctrl_c_recv: Arc<Mutex<Option<Receiver<()>>>>,
 }
 
-/// Spawn the HTTP → HTTPS redirect server task.
+/// Spawn the HTTP to HTTPS redirect server task.
 ///
 /// Returns a [`JoinHandle`] that resolves once the server shuts down. The
 /// caller should `tokio::try_join!` it together with the main TLS server task.

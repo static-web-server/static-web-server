@@ -32,7 +32,7 @@ pub(crate) struct TlsConfig {
     pub tls_cert: std::path::PathBuf,
     /// Path to the TLS private key file.
     pub tls_key: std::path::PathBuf,
-    /// Enable HTTP → HTTPS redirect server.
+    /// Enable HTTP to HTTPS redirect server.
     pub https_redirect: bool,
     /// Target hostname used in HTTPS redirect responses.
     pub https_redirect_host: String,
