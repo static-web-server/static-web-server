@@ -21,7 +21,7 @@ use std::io::{Read, Seek, SeekFrom};
 use std::path::Path;
 use std::sync::{Arc, OnceLock};
 use std::time::Duration;
-use tokio::sync::Semaphore;
+use tokio::sync::{Semaphore, SemaphorePermit};
 
 use crate::Result;
 use crate::body::Body;
@@ -97,6 +97,18 @@ pub(crate) fn init(handler_opts: &mut RequestHandlerOpts) -> Result {
     Ok(())
 }
 
+/// Result of a cache lookup via `get_or_acquire`.
+pub(crate) enum CacheResult<'a> {
+    /// Cache hit — return the response directly.
+    Hit(Result<Response<Body>, StatusCode>),
+    /// Cache miss — caller should read the file. The semaphore permit is held
+    /// so that concurrent misses are serialized (single-flight). Drop the permit
+    /// after inserting into the cache store.
+    Miss(SemaphorePermit<'a>),
+    /// An error occurred acquiring the semaphore.
+    Error(StatusCode),
+}
+
 /// Try to get the file in a form of a response from the cache store by a path or
 /// acquires a permit to ensure to hold until the file is read first (once).
 ///
@@ -107,7 +119,7 @@ pub(crate) fn init(handler_opts: &mut RequestHandlerOpts) -> Result {
 pub(crate) async fn get_or_acquire(
     file_path: &Path,
     headers_opt: &HeaderMap,
-) -> Option<Result<Response<Body>, StatusCode>> {
+) -> Option<CacheResult<'static>> {
     let file_path_str = file_path.to_str().or(None)?;
 
     let store = CACHE_STORE.get().unwrap();
@@ -117,7 +129,7 @@ pub(crate) async fn get_or_acquire(
                 "file `{}` found in the in-memory cache store, returning it directly",
                 file_path_str
             );
-            Some(mem_file.response_body(headers_opt))
+            Some(CacheResult::Hit(mem_file.response_body(headers_opt)))
         }
         _ => {
             tracing::debug!(
@@ -125,12 +137,22 @@ pub(crate) async fn get_or_acquire(
                 file_path_str
             );
             // If a file is not found in the store then continue
-            // with the normal flow and wait on first file read
-            if let Err(err) = CACHE_PERMIT.acquire().await {
-                tracing::error!("error trying to acquire permit on first read: {:?}", err);
-                return Some(Err(StatusCode::INTERNAL_SERVER_ERROR));
+            // with the normal flow and wait on first file read.
+            // Hold the permit so concurrent misses are serialized.
+            match CACHE_PERMIT.acquire().await {
+                Ok(permit) => {
+                    // Re-check after acquiring — another request may have populated
+                    // the cache while we were waiting for the permit.
+                    if let Some(mem_file) = store.get::<CompactString>(&file_path_str.into()) {
+                        return Some(CacheResult::Hit(mem_file.response_body(headers_opt)));
+                    }
+                    Some(CacheResult::Miss(permit))
+                }
+                Err(err) => {
+                    tracing::error!("error trying to acquire permit on first read: {:?}", err);
+                    Some(CacheResult::Error(StatusCode::INTERNAL_SERVER_ERROR))
+                }
             }
-            None
         }
     }
 }
@@ -210,7 +232,7 @@ impl MemFile {
                         let sub_len = end - start;
                         let reader = reader.take(sub_len);
 
-                        let body = crate::body::stream(FileStream { reader, buf_size });
+                        let body = crate::body::stream(FileStream::new(reader, buf_size));
                         let mut resp = Response::new(body);
 
                         if sub_len != len {

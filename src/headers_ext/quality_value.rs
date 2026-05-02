@@ -25,41 +25,29 @@ pub(crate) struct QualityValue {
     value: HeaderValue,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 struct QualityMeta<'a> {
     pub data: &'a str,
     pub quality: u16,
-}
-
-impl Ord for QualityMeta<'_> {
-    fn cmp(&self, other: &Self) -> Ordering {
-        other.quality.cmp(&self.quality)
-    }
-}
-
-impl PartialOrd for QualityMeta<'_> {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
 }
 
 impl<'a> TryFrom<&'a str> for QualityMeta<'a> {
     type Error = Error;
 
     fn try_from(val: &'a str) -> Result<Self, Error> {
-        let parts: Vec<_> = val.split(';').collect();
-        let data = parts.first().ok_or(Error::invalid())?.trim();
+        let data = val.split(';').next().ok_or(Error::invalid())?.trim();
 
         // Default quality value is 1
         let mut quality = 1000u16;
-        for part in parts {
-            let part = part.trim_start();
-            if let Some(value) = part.strip_prefix("q=") {
-                let parsed: f32 = match value.trim().parse() {
-                    Ok(parsed) => parsed,
-                    Err(_) => continue,
-                };
-                quality = (parsed * 1000_f32) as u16;
+        // Only scan for q= after the first semicolon
+        if let Some(rest) = val.split_once(';').map(|(_, r)| r) {
+            for part in rest.split(';') {
+                let part = part.trim_start();
+                if let Some(value) = part.strip_prefix("q=")
+                    && let Ok(parsed) = value.trim().parse::<f32>()
+                {
+                    quality = (parsed * 1000_f32) as u16;
+                }
             }
         }
 
@@ -68,7 +56,7 @@ impl<'a> TryFrom<&'a str> for QualityMeta<'a> {
 }
 
 impl QualityValue {
-    pub(crate) fn iter(&self) -> impl Iterator<Item = &str> {
+    pub(crate) fn iter(&self) -> impl Iterator<Item = &str> + use<'_> {
         let mut items: Vec<_> = self
             .value
             .to_str()
@@ -77,10 +65,9 @@ impl QualityValue {
             .flat_map(|value_str| value_str.split(','))
             .filter_map(|v| QualityMeta::try_from(v).ok())
             .collect();
-        items.sort_by(|a, b| {
+        items.sort_unstable_by(|a, b| {
             let quality_cmp = b.quality.cmp(&a.quality);
-            if quality_cmp == std::cmp::Ordering::Equal {
-                // If the quality is the same, order by priority of encodings
+            if quality_cmp == Ordering::Equal {
                 let priority_a = ContentCoding::from(a.data).priority();
                 let priority_b = ContentCoding::from(b.data).priority();
                 priority_b.cmp(&priority_a)
@@ -108,7 +95,7 @@ impl QualityValue {
 
         let mut buf = BytesMut::from(first.as_bytes());
         for value in values {
-            buf.extend_from_slice(", ".as_bytes());
+            buf.extend_from_slice(b", ");
             buf.extend_from_slice(value.as_bytes());
         }
 

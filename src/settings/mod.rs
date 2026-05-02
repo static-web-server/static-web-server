@@ -6,6 +6,7 @@
 //! Module that provides all settings of SWS.
 //!
 
+use aho_corasick::AhoCorasick;
 use clap::Parser;
 use globset::{Glob, GlobBuilder, GlobMatcher};
 use headers::HeaderMap;
@@ -54,6 +55,8 @@ pub struct Rewrites {
     pub destination: String,
     /// Optional redirect type either 301 (Moved Permanently) or 302 (Found).
     pub redirect: Option<RedirectsKind>,
+    /// Pre-compiled Aho-Corasick automaton for placeholder replacement.
+    pub replacer: AhoCorasick,
 }
 
 /// The `Redirects` file options.
@@ -66,6 +69,8 @@ pub struct Redirects {
     pub destination: String,
     /// Redirection type either 301 (Moved Permanently) or 302 (Found)
     pub kind: StatusCode,
+    /// Pre-compiled Aho-Corasick automaton for placeholder replacement.
+    pub replacer: AhoCorasick,
 }
 
 /// The `VirtualHosts` file options.
@@ -90,6 +95,13 @@ pub struct Advanced {
     #[cfg(feature = "experimental")]
     /// In-memory cache feature (experimental).
     pub memory_cache: Option<MemoryCache>,
+}
+
+/// Build an `AhoCorasick` automaton for the placeholder patterns `$0`, `$1`, ..., `$N`
+/// based on the number of capture groups in the given regex.
+pub fn build_placeholder_replacer(regex: &Regex) -> AhoCorasick {
+    let patterns: Vec<String> = (0..regex.captures_len()).map(|i| format!("${i}")).collect();
+    AhoCorasick::new(&patterns).expect("failed to build Aho-Corasick automaton for placeholders")
 }
 
 /// The full server CLI and File options.
@@ -509,10 +521,12 @@ impl Settings {
                                     )
                                 })?;
 
+                            let replacer = build_placeholder_replacer(&source);
                             rewrites_vec.push(Rewrites {
                                 source,
                                 destination: rewrites_entry.destination.to_owned(),
                                 redirect: rewrites_entry.redirect.to_owned(),
+                                replacer,
                             });
                         }
                         Some(rewrites_vec)
@@ -560,6 +574,7 @@ impl Settings {
                                 })?;
 
                             let status_code = redirects_entry.kind.to_owned() as u16;
+                            let replacer = build_placeholder_replacer(&source);
                             redirects_vec.push(Redirects {
                                 host: redirects_entry.host.to_owned(),
                                 source,
@@ -567,6 +582,7 @@ impl Settings {
                                 kind: StatusCode::from_u16(status_code).with_context(|| {
                                     format!("invalid redirect status code: {status_code}")
                                 })?,
+                                replacer,
                             });
                         }
                         Some(redirects_vec)

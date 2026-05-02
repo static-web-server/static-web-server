@@ -32,7 +32,12 @@ pub(crate) fn pre_process<T>(
         uri_host.push_str(&format!(":{uri_port}"));
     }
     let matched = get_redirection(&uri_host, uri_path, Some(redirects))?;
-    let dest = match replace_placeholders(uri_path, &matched.source, &matched.destination) {
+    let dest = match replace_placeholders(
+        uri_path,
+        &matched.source,
+        &matched.destination,
+        &matched.replacer,
+    ) {
         Ok(dest) => dest,
         Err(err) => return handle_error(err, opts, req),
     };
@@ -61,6 +66,7 @@ pub(crate) fn replace_placeholders(
     orig_uri: &str,
     regex: &Regex,
     dest_uri: &str,
+    ac: &aho_corasick::AhoCorasick,
 ) -> Result<String, Error> {
     let regex_caps = if let Some(regex_caps) = regex.captures(orig_uri) {
         regex_caps
@@ -68,27 +74,18 @@ pub(crate) fn replace_placeholders(
         return Err(Error::msg("regex didn't match, extracting captures failed"));
     };
 
-    let caps_range = 0..regex_caps.len();
-    let caps = caps_range
-        .clone()
+    let caps: Vec<&str> = (0..regex_caps.len())
         .map(|i| regex_caps.get(i).map(|s| s.as_str()).unwrap_or(""))
-        .collect::<Vec<&str>>();
+        .collect();
 
-    let patterns = caps_range.map(|i| format!("${i}")).collect::<Vec<String>>();
-
-    tracing::debug!("url redirects/rewrites glob pattern: {patterns:?}");
     tracing::debug!("url redirects/rewrites regex equivalent: {regex}");
     tracing::debug!("url redirects/rewrites glob pattern captures: {caps:?}");
     tracing::debug!("url redirects/rewrites glob pattern destination: {dest_uri:?}");
 
-    let ac = match aho_corasick::AhoCorasick::new(patterns) {
-        Ok(ac) => ac,
-        Err(err) => return Err(Error::new(err).context("failed creating Aho-Corasick matcher")),
-    };
     match ac.try_replace_all(dest_uri, &caps) {
         Ok(dest) => {
             tracing::debug!("url redirects/rewrites glob pattern destination replaced: {dest:?}");
-            Ok(dest.to_string())
+            Ok(dest)
         }
         Err(err) => Err(Error::new(err).context("failed replacing captures")),
     }
@@ -146,7 +143,7 @@ mod tests {
     use crate::{
         Error,
         handler::RequestHandlerOpts,
-        settings::{Advanced, Redirects},
+        settings::{Advanced, Redirects, build_placeholder_replacer},
     };
     use hyper::{Request, Response, StatusCode};
     use regex_lite::Regex;
@@ -164,24 +161,33 @@ mod tests {
     }
 
     fn get_redirects() -> Vec<Redirects> {
+        let s1 = Regex::new(r"/source1$").unwrap();
+        let r1 = build_placeholder_replacer(&s1);
+        let s2 = Regex::new(r"/source2$").unwrap();
+        let r2 = build_placeholder_replacer(&s2);
+        let s3 = Regex::new(r"/(prefix/)?(source3)/(.*)").unwrap();
+        let r3 = build_placeholder_replacer(&s3);
         vec![
             Redirects {
                 host: None,
-                source: Regex::new(r"/source1$").unwrap(),
+                source: s1,
                 destination: "/destination1".into(),
                 kind: StatusCode::FOUND,
+                replacer: r1,
             },
             Redirects {
                 host: Some("example.com".into()),
-                source: Regex::new(r"/source2$").unwrap(),
+                source: s2,
                 destination: "/destination2".into(),
                 kind: StatusCode::MOVED_PERMANENTLY,
+                replacer: r2,
             },
             Redirects {
                 host: Some("example.info".into()),
-                source: Regex::new(r"/(prefix/)?(source3)/(.*)").unwrap(),
+                source: s3,
                 destination: "/destination3/$2/$3".into(),
                 kind: StatusCode::MOVED_PERMANENTLY,
+                replacer: r3,
             },
         ]
     }

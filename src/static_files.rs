@@ -116,11 +116,22 @@ pub async fn handle(opts: &HandleOpts<'_>) -> Result<StaticFileResponse, StatusC
         }
 
         if let Some(result) = cache::get_or_acquire(file_path.as_path(), headers_opt).await {
-            return Ok(StaticFileResponse {
-                resp: result?,
-                // file_path: resp_file_path,
-                file_path,
-            });
+            match result {
+                cache::CacheResult::Hit(result) => {
+                    return Ok(StaticFileResponse {
+                        resp: result?,
+                        file_path,
+                    });
+                }
+                cache::CacheResult::Error(status) => {
+                    return Err(status);
+                }
+                cache::CacheResult::Miss(_permit) => {
+                    // Permit is held while we proceed to read the file below.
+                    // It will be dropped at the end of this scope, after the
+                    // MemCacheFileStream inserts the data into the cache store.
+                }
+            }
         }
     }
 
