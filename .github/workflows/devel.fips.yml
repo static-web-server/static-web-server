@@ -17,7 +17,7 @@ jobs:
     name: FIPS build check
     runs-on: ubuntu-22.04
     env:
-      CARGO_FEATURES: "--no-default-features --features http2-fips,compression,directory-listing,directory-listing-download,basic-auth,fallback-page,metrics,experimental"
+      CARGO_FEATURES: "--no-default-features --features all-fips"
       RUSTFLAGS: "--cfg tokio_unstable"
     steps:
     - name: Checkout repository
@@ -62,7 +62,7 @@ jobs:
     name: FIPS rustdoc check
     runs-on: ubuntu-22.04
     env:
-      CARGO_FEATURES: "--no-default-features --features http2-fips,compression,directory-listing,directory-listing-download,basic-auth,fallback-page,metrics,experimental"
+      CARGO_FEATURES: "--no-default-features --features all-fips"
       RUSTFLAGS: "--cfg tokio_unstable"
     steps:
     - name: Checkout repository

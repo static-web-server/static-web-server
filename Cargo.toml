@@ -41,6 +41,10 @@ doc = false
 default = ["compression", "http2-ring", "directory-listing", "directory-listing-download", "basic-auth", "fallback-page", "metrics"]
 # Include all features (used when building SWS binaries)
 all = ["default", "experimental"]
+# Default feature set with the FIPS crypto provider in place of ring.
+default-fips = ["compression", "http2-fips", "directory-listing", "directory-listing-download", "basic-auth", "fallback-page", "metrics"]
+# All features with the FIPS crypto provider (used when building FIPS SWS binaries).
+all-fips = ["default-fips", "experimental"]
 # HTTP2 base TLS plumbing -- gates all TLS code via cfg(feature = "http2").
 # Does not select a crypto provider on its own.
 http2 = ["tokio-rustls", "rustls-pki-types", "tokio-rustls/logging", "tokio-rustls/tls12"]
