@@ -30,7 +30,7 @@ jobs:
         components: clippy
 
     - name: Install FIPS build dependencies
-      run: sudo apt-get update && sudo apt-get install -y cmake golang
+      run: sudo apt-get update && sudo apt-get install -y cmake golang libclang-dev
 
     # http2-ring and http2-fips are mutually exclusive providers, so
     # devel.yml's clippy job (which uses `--features all`, the ring
@@ -74,7 +74,7 @@ jobs:
         toolchain: nightly
 
     - name: Install FIPS build dependencies
-      run: sudo apt-get update && sudo apt-get install -y cmake golang
+      run: sudo apt-get update && sudo apt-get install -y cmake golang libclang-dev
 
     # Same provider-mutual-exclusion reasoning as the clippy step above:
     # devel.yml's rustdoc job exercises the ring provider via `--features
