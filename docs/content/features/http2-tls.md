@@ -41,7 +41,7 @@ The "Safe TLS defaults" listed above describe the `http2-ring` provider. The `ht
 
 !!! info "Build requirements"
 
-    - FIPS builds require `cmake` and `go` at build time. The compiled output is still a single statically-linked binary.
+    - FIPS builds require `cmake`, `go`, and `libclang` (used by `bindgen` when compiling the FIPS module) at build time. The compiled output is still a single statically-linked binary.
     - Static linking is supported only on Linux x86_64 and aarch64, both `gnu` and `musl` toolchains.
     - The FIPS feature does not change command-line flags, configuration, or the wire protocol; it only swaps the cryptographic backend.
 
