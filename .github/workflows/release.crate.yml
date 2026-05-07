@@ -36,4 +36,4 @@ jobs:
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_TOKEN }}
           RUSTDOCFLAGS: '--cfg=docsrs --deny=warnings'
-        run: cargo publish --all-features --package static-web-server
+        run: cargo publish --features all --package static-web-server

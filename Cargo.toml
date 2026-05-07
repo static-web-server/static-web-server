@@ -136,7 +136,7 @@ rpath = false
 strip = true
 
 [package.metadata.docs.rs]
-all-features = true
+features = ["all"]
 rustdoc-args = ["--cfg", "docsrs", "--cfg", "tokio_unstable"]
 rustc-args = ["--cfg", "tokio_unstable"]
 
