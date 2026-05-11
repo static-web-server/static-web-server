@@ -42,7 +42,7 @@ This new `v2.42.0` brings bug fixes, new features and improvements. Fix a memory
 
 **Docs**
 
-- [0a8c8ca][0a8c8ca] Metrics feature documenation page. PR [#633][633] by [@chrissnell][chrissnell] See [docs](https://static-web-server.net/features/metrics)
+- [0a8c8ca][0a8c8ca] Metrics feature documentation page. PR [#633][633] by [@chrissnell][chrissnell] See [docs](https://static-web-server.net/features/metrics)
 - [b6856ea][b6856ea] Local-time support for logs. PR [#638][638] by [@joseluisq][joseluisq]
 
 [0a8c8ca]: https://github.com/static-web-server/static-web-server/commit/0a8c8ca
