@@ -49,7 +49,7 @@ pub mod tests {
                 assert_eq!(res.status(), 200);
                 assert_eq!(
                     res.headers().get("content-type"),
-                    Some(&HeaderValue::from_static("text/html"))
+                    Some(&HeaderValue::from_static("text/html; charset=utf-8"))
                 );
                 assert_eq!(
                     res.headers().get("vary"),

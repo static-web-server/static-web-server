@@ -1,0 +1,8 @@
+[general]
+root = "tests/fixtures/markdown"
+
+[advanced]
+
+[[advanced.headers]]
+source = "**/*.html"
+headers = { Content-Type = "text/html; charset=ascii" }

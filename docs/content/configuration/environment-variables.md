@@ -177,6 +177,10 @@ Activate the health endpoint.
 
 Enable markdown content negotiation. When a client sends `Accept: text/markdown` header, the server will serve markdown files (`.md` or `.html.md`) if available. See [Markdown Content Negotiation](../features/markdown-content-negotiation.md) for details. Default `false`.
 
+### SERVER_TEXT_CHARSET
+
+Declare a default `charset` parameter on `text/*` responses that don't already carry one. See [Default Charset for Text Responses](../features/text-charset.md) for details. Default `utf-8`; set to an empty value to disable.
+
 ### SERVER_INDEX_FILES
 
 List of files that will be used as an index for requests ending with the slash character (‘/’). Files are checked in the specified order. Default `index.html`.

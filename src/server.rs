@@ -267,6 +267,13 @@ impl Server {
         let disable_symlinks = general.disable_symlinks;
         tracing::info!("disable symlinks: enabled={}", disable_symlinks);
 
+        // Default charset for text/* responses
+        if general.text_charset.is_empty() {
+            tracing::info!("text charset: disabled");
+        } else {
+            tracing::info!("text charset: {}", general.text_charset);
+        }
+
         // Grace period option
         let grace_period = general.grace_period;
         tracing::info!("grace period before graceful shutdown: {}s", grace_period);
@@ -295,6 +302,7 @@ impl Server {
             ignore_hidden_files,
             disable_symlinks,
             accept_markdown: general.accept_markdown,
+            text_charset: general.text_charset,
             index_files,
             advanced_opts,
             ..Default::default()

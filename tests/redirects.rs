@@ -25,7 +25,7 @@ pub mod tests {
         match req_handler.handle(&mut req, remote_addr).await {
             Ok(res) => {
                 assert_eq!(res.status(), 200);
-                assert_eq!(res.headers()["content-type"], "text/html");
+                assert_eq!(res.headers()["content-type"], "text/html; charset=utf-8");
             }
             Err(err) => {
                 panic!("unexpected error: {err}")
