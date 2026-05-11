@@ -7,15 +7,15 @@
 //! for incoming requests based on a set of file types.
 //!
 
-use hyper::{Request, Response};
+use hyper::{Request, Response, header::HeaderValue};
 
 use crate::body::Body;
 use crate::{Error, handler::RequestHandlerOpts};
 
-// Cache-Control `max-age` variants
-const MAX_AGE_ONE_HOUR: u64 = 60 * 60;
-const MAX_AGE_ONE_DAY: u64 = 60 * 60 * 24;
-const MAX_AGE_ONE_YEAR: u64 = 60 * 60 * 24 * 365;
+// Pre-computed static Cache-Control header values
+static CACHE_CONTROL_ONE_HOUR: HeaderValue = HeaderValue::from_static("max-age=3600");
+static CACHE_CONTROL_ONE_DAY: HeaderValue = HeaderValue::from_static("max-age=86400");
+static CACHE_CONTROL_ONE_YEAR: HeaderValue = HeaderValue::from_static("max-age=31536000");
 
 // `Cache-Control` list of extensions
 const CACHE_EXT_ONE_HOUR: [&str; 4] = ["atom", "json", "rss", "xml"];
@@ -44,17 +44,9 @@ pub(crate) fn post_process<T>(
 
 /// It appends a `Cache-Control` header to a response if that one is part of a set of file types.
 pub fn append_headers(uri: &str, resp: &mut Response<Body>) {
-    let max_age = get_max_age(uri);
-    resp.headers_mut().insert(
-        "cache-control",
-        format!(
-            "max-age={}",
-            // It caps value in seconds at ~136 years
-            std::cmp::min(max_age, u32::MAX as u64)
-        )
-        .parse()
-        .unwrap(),
-    );
+    let header_value = get_cache_control_header(uri);
+    resp.headers_mut()
+        .insert("cache-control", header_value.clone());
 }
 
 /// Gets the file extension for a URI.
@@ -65,29 +57,24 @@ fn get_file_extension(uri: &str) -> Option<&str> {
     uri.rsplit_once('.').map(|(_, rest)| rest)
 }
 
+/// Returns the pre-computed static Cache-Control header value for the given URI.
 #[inline(always)]
-fn get_max_age(uri: &str) -> u64 {
-    // Default max-age value in seconds (one day)
-    let mut max_age = MAX_AGE_ONE_DAY;
-
+fn get_cache_control_header(uri: &str) -> &'static HeaderValue {
     if let Some(extension) = get_file_extension(uri) {
         if CACHE_EXT_ONE_HOUR.binary_search(&extension).is_ok() {
-            max_age = MAX_AGE_ONE_HOUR;
+            return &CACHE_CONTROL_ONE_HOUR;
         } else if CACHE_EXT_ONE_YEAR.binary_search(&extension).is_ok() {
-            max_age = MAX_AGE_ONE_YEAR;
+            return &CACHE_CONTROL_ONE_YEAR;
         }
     }
-    max_age
+    &CACHE_CONTROL_ONE_DAY
 }
 
 #[cfg(test)]
 mod tests {
     use hyper::{Response, StatusCode};
 
-    use super::{
-        CACHE_EXT_ONE_HOUR, CACHE_EXT_ONE_YEAR, MAX_AGE_ONE_DAY, MAX_AGE_ONE_HOUR,
-        MAX_AGE_ONE_YEAR, append_headers, get_file_extension,
-    };
+    use super::{CACHE_EXT_ONE_HOUR, CACHE_EXT_ONE_YEAR, append_headers, get_file_extension};
 
     #[test]
     fn headers_one_hour() {
@@ -99,10 +86,7 @@ mod tests {
 
             let cache_control = resp.headers().get(http::header::CACHE_CONTROL).unwrap();
             assert_eq!(resp.status(), StatusCode::OK);
-            assert_eq!(
-                cache_control.to_str().unwrap(),
-                format!("max-age={MAX_AGE_ONE_HOUR}")
-            );
+            assert_eq!(cache_control.to_str().unwrap(), "max-age=3600");
         }
     }
 
@@ -115,10 +99,7 @@ mod tests {
 
         let cache_control = resp.headers().get(http::header::CACHE_CONTROL).unwrap();
         assert_eq!(resp.status(), StatusCode::OK);
-        assert_eq!(
-            cache_control.to_str().unwrap(),
-            format!("max-age={MAX_AGE_ONE_DAY}")
-        );
+        assert_eq!(cache_control.to_str().unwrap(), "max-age=86400");
     }
 
     #[test]
@@ -131,10 +112,7 @@ mod tests {
 
             let cache_control = resp.headers().get(http::header::CACHE_CONTROL).unwrap();
             assert_eq!(resp.status(), StatusCode::OK);
-            assert_eq!(
-                cache_control.to_str().unwrap(),
-                format!("max-age={MAX_AGE_ONE_YEAR}")
-            );
+            assert_eq!(cache_control.to_str().unwrap(), "max-age=31536000");
         }
     }
 

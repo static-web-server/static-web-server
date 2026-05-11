@@ -91,21 +91,18 @@ pub(crate) fn response_body(
                                         "preparing `{}` to be inserted in-memory cache store",
                                         path_str,
                                     );
-                                    crate::body::stream(MemCacheFileStream {
-                                        reader,
-                                        buf_size,
-                                        mem_opts,
-                                        mem_buf,
-                                    })
+                                    crate::body::stream(MemCacheFileStream::new(
+                                        reader, buf_size, mem_opts, mem_buf,
+                                    ))
                                 }
-                                _ => crate::body::stream(FileStream { reader, buf_size }),
+                                _ => crate::body::stream(FileStream::new(reader, buf_size)),
                             }
                         }
-                        _ => crate::body::stream(FileStream { reader, buf_size }),
+                        _ => crate::body::stream(FileStream::new(reader, buf_size)),
                     };
 
                     #[cfg(not(feature = "experimental"))]
-                    let body = crate::body::stream(FileStream { reader, buf_size });
+                    let body = crate::body::stream(FileStream::new(reader, buf_size));
 
                     let mut resp = Response::new(body);
 

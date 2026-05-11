@@ -54,24 +54,35 @@ impl MethodExt for Method {
     }
 }
 
+/// Pre-computed static Vary header value for accept-encoding.
+static VARY_ACCEPT_ENCODING: HeaderValue = HeaderValue::from_static("accept-encoding");
+
 /// Append `accept-encoding` to the response's `Vary` header, creating it if absent.
 /// Skips the update if `accept-encoding` is already listed.
 pub(crate) fn append_vary_accept_encoding<B>(resp: &mut Response<B>) {
     let accept_enc = hyper::header::ACCEPT_ENCODING.as_str();
-    let value = resp.headers().get(hyper::header::VARY).map_or_else(
-        || HeaderValue::from_name(hyper::header::ACCEPT_ENCODING),
-        |existing| {
-            let mut s = existing.to_str().unwrap_or_default().to_owned();
-            if !s.contains(accept_enc) {
-                if !s.is_empty() {
-                    s.push_str(", ");
-                }
-                s.push_str(accept_enc);
+    match resp.headers().get(hyper::header::VARY) {
+        None => {
+            resp.headers_mut()
+                .insert(hyper::header::VARY, VARY_ACCEPT_ENCODING.clone());
+        }
+        Some(existing) => {
+            let s = existing.to_str().unwrap_or_default();
+            if s.contains(accept_enc) {
+                return;
             }
-            HeaderValue::from_str(&s).unwrap()
-        },
-    );
-    resp.headers_mut().insert(hyper::header::VARY, value);
+            // Append to existing value
+            let mut new_val = String::with_capacity(s.len() + 2 + accept_enc.len());
+            new_val.push_str(s);
+            if !s.is_empty() {
+                new_val.push_str(", ");
+            }
+            new_val.push_str(accept_enc);
+            if let Ok(val) = HeaderValue::from_str(&new_val) {
+                resp.headers_mut().insert(hyper::header::VARY, val);
+            }
+        }
+    }
 }
 
 #[cfg(test)]
