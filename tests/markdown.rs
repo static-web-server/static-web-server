@@ -34,7 +34,7 @@ pub mod tests {
                 // Should return HTML because markdown is disabled
                 assert_eq!(
                     res.headers().get("content-type"),
-                    Some(&HeaderValue::from_static("text/html"))
+                    Some(&HeaderValue::from_static("text/html; charset=utf-8"))
                 );
 
                 let body_bytes = hyper::body::to_bytes(res.into_body()).await.unwrap();
@@ -131,7 +131,7 @@ pub mod tests {
                 assert_eq!(res.status(), 200);
                 assert_eq!(
                     res.headers().get("content-type"),
-                    Some(&HeaderValue::from_static("text/html"))
+                    Some(&HeaderValue::from_static("text/html; charset=utf-8"))
                 );
 
                 let body_bytes = hyper::body::to_bytes(res.into_body()).await.unwrap();
@@ -163,7 +163,7 @@ pub mod tests {
                 // Wildcard should NOT trigger markdown negotiation
                 assert_eq!(
                     res.headers().get("content-type"),
-                    Some(&HeaderValue::from_static("text/html"))
+                    Some(&HeaderValue::from_static("text/html; charset=utf-8"))
                 );
 
                 let body_bytes = hyper::body::to_bytes(res.into_body()).await.unwrap();
@@ -290,7 +290,7 @@ pub mod tests {
                 // Should return HTML content-type since no markdown variant exists
                 assert_eq!(
                     res.headers().get("content-type"),
-                    Some(&HeaderValue::from_static("text/html"))
+                    Some(&HeaderValue::from_static("text/html; charset=utf-8"))
                 );
 
                 let body_bytes = hyper::body::to_bytes(res.into_body()).await.unwrap();
@@ -324,7 +324,7 @@ pub mod tests {
                 // Should return HTML content-type since no markdown variant exists
                 assert_eq!(
                     res.headers().get("content-type"),
-                    Some(&HeaderValue::from_static("text/html"))
+                    Some(&HeaderValue::from_static("text/html; charset=utf-8"))
                 );
                 // Should have Content-Length header
                 assert!(res.headers().get("content-length").is_some());
@@ -352,7 +352,7 @@ pub mod tests {
                 assert_eq!(res.status(), 200);
                 assert_eq!(
                     res.headers().get("content-type"),
-                    Some(&HeaderValue::from_static("text/html"))
+                    Some(&HeaderValue::from_static("text/html; charset=utf-8"))
                 );
 
                 let body_bytes = hyper::body::to_bytes(res.into_body()).await.unwrap();
@@ -382,7 +382,7 @@ pub mod tests {
                 assert_eq!(res.status(), 200);
                 assert_eq!(
                     res.headers().get("content-type"),
-                    Some(&HeaderValue::from_static("text/html"))
+                    Some(&HeaderValue::from_static("text/html; charset=utf-8"))
                 );
                 // Should have Content-Length header
                 assert!(res.headers().get("content-length").is_some());

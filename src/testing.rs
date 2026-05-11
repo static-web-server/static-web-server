@@ -109,6 +109,7 @@ pub mod fixtures {
             ignore_hidden_files: general.ignore_hidden_files,
             disable_symlinks: general.disable_symlinks,
             accept_markdown: general.accept_markdown,
+            text_charset: general.text_charset,
             index_files: general
                 .index_files
                 .split(',')

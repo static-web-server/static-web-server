@@ -97,6 +97,9 @@ health = false
 #### Markdown content negotiation
 accept-markdown = false
 
+#### Default charset for text/* responses (empty to disable)
+text-charset = "utf-8"
+
 #### List of index files
 # index-files = "index.html, index.htm"
 #### Maintenance Mode

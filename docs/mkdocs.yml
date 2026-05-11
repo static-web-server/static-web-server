@@ -169,6 +169,7 @@ nav:
     - 'WebAssembly': 'features/webassembly.md'
     - 'Man Pages and Shell Completions': 'features/man-pages-completions.md'
     - 'Markdown Content Negotiation': 'features/markdown-content-negotiation.md'
+    - 'Default Charset for Text Responses': 'features/text-charset.md'
   - 'Platforms & Architectures': 'platforms-architectures.md'
   - 'Migrating from v1 to v2': 'migration.md'
   - 'Changelog v2 (stable)': 'https://github.com/static-web-server/static-web-server/blob/master/CHANGELOG.md'

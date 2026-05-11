@@ -512,6 +512,10 @@ pub struct General {
     /// Enable markdown content negotiation. When a client sends Accept: text/markdown, serve .md or .html.md files if available.
     pub accept_markdown: bool,
 
+    #[arg(long, default_value = "utf-8", env = "SERVER_TEXT_CHARSET")]
+    /// Declare a default `charset` parameter on `text/*` responses that don't already have one. Set to empty to disable.
+    pub text_charset: String,
+
     #[arg(
         long,
         default_value = "false",

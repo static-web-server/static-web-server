@@ -374,6 +374,9 @@ pub struct General {
     /// Accept markdown content negotiation feature.
     pub accept_markdown: Option<bool>,
 
+    /// Default `charset` parameter for `text/*` responses (empty disables).
+    pub text_charset: Option<String>,
+
     #[cfg(feature = "metrics")]
     /// Metrics endpoint feature.
     pub metrics: Option<bool>,

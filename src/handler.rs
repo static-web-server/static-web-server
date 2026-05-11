@@ -43,7 +43,7 @@ use crate::{
     log_addr, maintenance_mode, redirects, rewrites, security_headers,
     settings::Advanced,
     static_files::{self, HandleOpts},
-    virtual_hosts,
+    text_charset, virtual_hosts,
 };
 
 #[cfg(feature = "directory-listing")]
@@ -125,6 +125,9 @@ pub struct RequestHandlerOpts {
     pub disable_symlinks: bool,
     /// Accept markdown content negotiation feature.
     pub accept_markdown: bool,
+    /// Default `charset` parameter applied to `text/*` responses without one.
+    /// Empty disables the feature.
+    pub text_charset: String,
     /// Health endpoint feature.
     pub health: bool,
     /// Metrics endpoint feature.
@@ -183,6 +186,7 @@ impl Default for RequestHandlerOpts {
             ignore_hidden_files: false,
             disable_symlinks: false,
             accept_markdown: false,
+            text_charset: String::from("utf-8"),
             health: false,
             #[cfg(feature = "metrics")]
             metrics_enabled: false,
@@ -353,6 +357,9 @@ impl RequestHandler {
 
                 // Set Content-Type for markdown files
                 let resp = crate::markdown::post_process(uri_path_md.is_some(), &self.opts, resp)?;
+
+                // Declare a default charset for `text/*` responses
+                let resp = text_charset::post_process(&self.opts, resp)?;
 
                 // Add a `Vary` header if static compression is used
                 let resp = compression_static::post_process(&self.opts, req, resp)?;

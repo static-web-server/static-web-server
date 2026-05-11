@@ -26,7 +26,7 @@ pub mod tests {
         match req_handler.handle(&mut req, remote_addr).await {
             Ok(res) => {
                 assert_eq!(res.status(), 200);
-                assert_eq!(res.headers()["content-type"], "text/html");
+                assert_eq!(res.headers()["content-type"], "text/html; charset=utf-8");
             }
             Err(err) => {
                 panic!("unexpected error: {err}")
@@ -47,7 +47,7 @@ pub mod tests {
         match req_handler.handle(&mut req, remote_addr).await {
             Ok(mut res) => {
                 assert_eq!(res.status(), 200);
-                assert_eq!(res.headers()["content-type"], "text/html");
+                assert_eq!(res.headers()["content-type"], "text/html; charset=utf-8");
 
                 let body = hyper::body::to_bytes(res.body_mut())
                     .await
@@ -74,7 +74,7 @@ pub mod tests {
         match req_handler.handle(&mut req, remote_addr).await {
             Ok(mut res) => {
                 assert_eq!(res.status(), 200);
-                assert_eq!(res.headers()["content-type"], "text/html");
+                assert_eq!(res.headers()["content-type"], "text/html; charset=utf-8");
 
                 let body = hyper::body::to_bytes(res.body_mut())
                     .await
@@ -101,7 +101,7 @@ pub mod tests {
         match req_handler.handle(&mut req, remote_addr).await {
             Ok(mut res) => {
                 assert_eq!(res.status(), 200);
-                assert_eq!(res.headers()["content-type"], "text/html");
+                assert_eq!(res.headers()["content-type"], "text/html; charset=utf-8");
 
                 let body = hyper::body::to_bytes(res.body_mut())
                     .await
@@ -128,7 +128,10 @@ pub mod tests {
         match req_handler.handle(&mut req, remote_addr).await {
             Ok(mut res) => {
                 assert_eq!(res.status(), 200);
-                assert_eq!(res.headers()["content-type"], "text/javascript");
+                assert_eq!(
+                    res.headers()["content-type"],
+                    "text/javascript; charset=utf-8"
+                );
 
                 let body = hyper::body::to_bytes(res.body_mut())
                     .await
