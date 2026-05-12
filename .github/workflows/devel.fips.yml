@@ -3,14 +3,22 @@ name: devel-fips
 on:
   pull_request:
     paths:
-      - "**.rs"
-      - "Cargo.toml"
-      - "Cargo.lock"
+      - Cargo.lock
+      - Cargo.toml
+      - src/**
+      - tests/**
       - "Cross.fips.toml"
       - ".github/workflows/devel.fips.yml"
   push:
     branches:
       - master
+    paths:
+      - Cargo.lock
+      - Cargo.toml
+      - src/**
+      - tests/**
+      - "Cross.fips.toml"
+      - ".github/workflows/devel.fips.yml"
 
 jobs:
   test:
