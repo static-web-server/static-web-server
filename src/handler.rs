@@ -125,9 +125,8 @@ pub struct RequestHandlerOpts {
     pub disable_symlinks: bool,
     /// Accept markdown content negotiation feature.
     pub accept_markdown: bool,
-    /// Default `charset` parameter applied to `text/*` responses without one.
-    /// Empty disables the feature.
-    pub text_charset: String,
+    /// Default `charset=utf-8` parameter applied to certain `text` responses without one.
+    pub text_charset: bool,
     /// Health endpoint feature.
     pub health: bool,
     /// Metrics endpoint feature.
@@ -186,7 +185,7 @@ impl Default for RequestHandlerOpts {
             ignore_hidden_files: false,
             disable_symlinks: false,
             accept_markdown: false,
-            text_charset: String::from("utf-8"),
+            text_charset: true,
             health: false,
             #[cfg(feature = "metrics")]
             metrics_enabled: false,

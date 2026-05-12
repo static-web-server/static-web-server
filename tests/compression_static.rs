@@ -244,7 +244,7 @@ mod tests {
                 assert_eq!(headers["accept-ranges"], "bytes");
                 assert!(!headers["last-modified"].is_empty());
                 assert_eq!(
-                    &headers["content-type"], "text/css; charset=utf-8",
+                    &headers["content-type"], "text/css",
                     "content-type is not css"
                 );
                 assert_eq!(headers["vary"], "accept-encoding");

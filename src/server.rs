@@ -268,11 +268,8 @@ impl Server {
         tracing::info!("disable symlinks: enabled={}", disable_symlinks);
 
         // Default charset for text/* responses
-        if general.text_charset.is_empty() {
-            tracing::info!("text charset: disabled");
-        } else {
-            tracing::info!("text charset: {}", general.text_charset);
-        }
+        let default_text_charset = general.text_charset;
+        tracing::info!("text charset: enabled={default_text_charset}");
 
         // Grace period option
         let grace_period = general.grace_period;

@@ -13,7 +13,7 @@ use hyper::StatusCode;
 use regex_lite::Regex;
 use std::path::{Path, PathBuf};
 
-use crate::{Context, Result, helpers, logger, text_charset};
+use crate::{Context, Result, helpers, logger};
 
 pub mod cli;
 #[doc(hidden)]
@@ -201,7 +201,7 @@ impl Settings {
         let mut ignore_hidden_files = opts.ignore_hidden_files;
         let mut disable_symlinks = opts.disable_symlinks;
         let mut accept_markdown = opts.accept_markdown;
-        let mut text_charset = opts.text_charset;
+        let mut default_text_charset = opts.text_charset;
         let mut index_files = opts.index_files;
         let mut health = opts.health;
 
@@ -398,7 +398,7 @@ impl Settings {
                     accept_markdown = v
                 }
                 if let Some(v) = general.text_charset {
-                    text_charset = v
+                    default_text_charset = v
                 }
                 #[cfg(feature = "metrics")]
                 if let Some(v) = general.metrics {
@@ -612,10 +612,6 @@ impl Settings {
             logger::init(log_level.as_str(), log_with_ansi)?;
         }
 
-        if !text_charset.is_empty() && !text_charset::is_valid_charset(&text_charset) {
-            bail!("invalid text-charset value: {text_charset:?}");
-        }
-
         Ok(Settings {
             general: General {
                 version,
@@ -687,7 +683,7 @@ impl Settings {
                 ignore_hidden_files,
                 disable_symlinks,
                 accept_markdown,
-                text_charset,
+                text_charset: default_text_charset,
                 index_files,
                 health,
                 #[cfg(feature = "metrics")]

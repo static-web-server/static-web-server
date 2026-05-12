@@ -11,73 +11,53 @@ use hyper::{
     Body, Response,
     header::{CONTENT_TYPE, HeaderValue},
 };
+use mime_guess::{Mime, mime};
 
+use crate::mime_ext::MimeExt;
 use crate::{Error, handler::RequestHandlerOpts};
 
-/// Validates a charset value against the RFC 7230 `token` grammar.
-pub(crate) fn is_valid_charset(value: &str) -> bool {
-    !value.is_empty()
-        && value.bytes().all(|b| {
-            b.is_ascii_alphanumeric()
-                || matches!(
-                    b,
-                    b'!' | b'#'
-                        | b'$'
-                        | b'%'
-                        | b'&'
-                        | b'\''
-                        | b'*'
-                        | b'+'
-                        | b'-'
-                        | b'.'
-                        | b'^'
-                        | b'_'
-                        | b'`'
-                        | b'|'
-                        | b'~'
-                )
-        })
-}
+/// MIME types requiring an explicit `; charset=utf-8` header.
+///
+/// These mime types contain human-readable text but do not default to UTF-8.
+/// Forcing UTF-8 prevents broken symbols and accents on the client side.
+/// It also overrides obsolete fallbacks like US-ASCII or ISO-8859-1.
+const TEXT_ONLY_TYPES: [&str; 8] = [
+    "application/atom+xml",
+    "application/rss+xml",
+    "text/calendar",
+    "text/csv",
+    "text/html",
+    "text/markdown",
+    "text/plain",
+    "text/xml",
+];
 
-/// Adds `; charset=<value>` to the `Content-Type` header when the response
-/// type is `text/*` and no `charset` parameter is already present. A no-op
-/// when the option is disabled (empty value).
+/// Adds `; charset=utf-8` to the `Content-Type` header when the response
+/// type matches the  predefined list of `text` mime types and
+/// no `charset` parameter is already present.
 pub(crate) fn post_process(
     opts: &RequestHandlerOpts,
     mut resp: Response<Body>,
 ) -> Result<Response<Body>, Error> {
-    if opts.text_charset.is_empty() {
+    if !opts.text_charset {
         return Ok(resp);
     }
 
-    let ct = match resp
+    let new_header = resp
         .headers()
         .get(CONTENT_TYPE)
-        .and_then(|v| v.to_str().ok())
-    {
-        Some(v) if is_text(v) && !has_charset_param(v) => v,
-        _ => return Ok(resp),
-    };
+        .and_then(|h| h.to_str().ok())
+        .and_then(|s| s.parse::<Mime>().ok().map(|m| (s, m)))
+        .filter(|(_, m)| {
+            m.contains_text_only(&TEXT_ONLY_TYPES) && m.get_param(mime::CHARSET).is_none()
+        })
+        .map(|(s, _)| format!("{}; charset=utf-8", s.trim_end().trim_end_matches(';')))
+        .and_then(|s| HeaderValue::from_str(&s).ok());
 
-    if let Ok(value) = HeaderValue::from_str(&format!("{ct}; charset={}", opts.text_charset)) {
+    if let Some(value) = new_header {
         resp.headers_mut().insert(CONTENT_TYPE, value);
     }
     Ok(resp)
-}
-
-fn is_text(content_type: &str) -> bool {
-    content_type
-        .get(..5)
-        .is_some_and(|p| p.eq_ignore_ascii_case("text/"))
-}
-
-fn has_charset_param(content_type: &str) -> bool {
-    content_type.split(';').skip(1).any(|param| {
-        param
-            .trim_start()
-            .get(..8)
-            .is_some_and(|p| p.eq_ignore_ascii_case("charset="))
-    })
 }
 
 #[cfg(test)]
@@ -85,9 +65,9 @@ mod tests {
     use super::*;
     use hyper::Body;
 
-    fn opts(charset: &str) -> RequestHandlerOpts {
+    fn opts(text_charset: bool) -> RequestHandlerOpts {
         RequestHandlerOpts {
-            text_charset: charset.to_owned(),
+            text_charset,
             ..Default::default()
         }
     }
@@ -105,32 +85,32 @@ mod tests {
 
     #[test]
     fn annotates_bare_text_type() {
-        let r = post_process(&opts("utf-8"), resp_with("text/plain")).unwrap();
+        let r = post_process(&opts(true), resp_with("text/plain")).unwrap();
         assert_eq!(ct(&r), "text/plain; charset=utf-8");
     }
 
     #[test]
     fn annotates_text_markdown() {
-        let r = post_process(&opts("utf-8"), resp_with("text/markdown")).unwrap();
+        let r = post_process(&opts(true), resp_with("text/markdown")).unwrap();
         assert_eq!(ct(&r), "text/markdown; charset=utf-8");
     }
 
     #[test]
     fn preserves_existing_charset() {
-        let r = post_process(&opts("utf-8"), resp_with("text/html; charset=iso-8859-1")).unwrap();
+        let r = post_process(&opts(true), resp_with("text/html; charset=iso-8859-1")).unwrap();
         assert_eq!(ct(&r), "text/html; charset=iso-8859-1");
     }
 
     #[test]
     fn preserves_charset_with_unusual_casing_and_spacing() {
-        let r = post_process(&opts("utf-8"), resp_with("text/html;CHARSET=utf-8")).unwrap();
+        let r = post_process(&opts(true), resp_with("text/html;CHARSET=utf-8")).unwrap();
         assert_eq!(ct(&r), "text/html;CHARSET=utf-8");
     }
 
     #[test]
     fn preserves_charset_when_not_first_param() {
         let r = post_process(
-            &opts("utf-8"),
+            &opts(true),
             resp_with("text/plain; foo=bar; charset=latin1"),
         )
         .unwrap();
@@ -139,35 +119,25 @@ mod tests {
 
     #[test]
     fn ignores_non_text_type() {
-        let r = post_process(&opts("utf-8"), resp_with("application/json")).unwrap();
+        let r = post_process(&opts(true), resp_with("application/json")).unwrap();
         assert_eq!(ct(&r), "application/json");
     }
 
     #[test]
     fn ignores_when_disabled() {
-        let r = post_process(&opts(""), resp_with("text/plain")).unwrap();
+        let r = post_process(&opts(false), resp_with("text/plain")).unwrap();
         assert_eq!(ct(&r), "text/plain");
     }
 
     #[test]
     fn ignores_when_content_type_missing() {
-        let r = post_process(&opts("utf-8"), Response::new(Body::empty())).unwrap();
+        let r = post_process(&opts(true), Response::new(Body::empty())).unwrap();
         assert!(r.headers().get(CONTENT_TYPE).is_none());
     }
 
     #[test]
     fn appends_when_unrelated_param_present() {
-        let r = post_process(&opts("utf-8"), resp_with("text/plain; boundary=x")).unwrap();
+        let r = post_process(&opts(true), resp_with("text/plain; boundary=x")).unwrap();
         assert_eq!(ct(&r), "text/plain; boundary=x; charset=utf-8");
-    }
-
-    #[test]
-    fn validates_charset_tokens() {
-        assert!(is_valid_charset("utf-8"));
-        assert!(is_valid_charset("ISO-8859-1"));
-        assert!(is_valid_charset("windows-1252"));
-        assert!(!is_valid_charset(""));
-        assert!(!is_valid_charset("utf 8"));
-        assert!(!is_valid_charset("utf\"8"));
     }
 }

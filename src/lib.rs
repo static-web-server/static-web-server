@@ -185,6 +185,9 @@ pub mod winservice;
 #[macro_use]
 pub mod error;
 
+#[allow(dead_code)]
+pub(crate) mod mime_ext;
+
 // Private modules
 #[doc(hidden)]
 mod helpers;
