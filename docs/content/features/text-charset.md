@@ -26,7 +26,7 @@ The option is enabled by default and can be controlled by boolean `--text-charse
 
 !!! info "Custom HTTP Headers Take Precedence"
 
-    Users can turn off the default UTF-8 charset if wanted or use a [Custom HTTP Headers](./custom-http-headers.md) with glob patterns to selectively apply charset to specific files.
+    Users can turn off the default UTF-8 charset if wanted or use [Custom HTTP Headers](./custom-http-headers.md) with glob patterns to selectively apply charset to specific files.
 
 ## Usage examples
 
