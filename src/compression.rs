@@ -24,7 +24,7 @@ use hyper::{
     Body, Method, Request, Response, StatusCode,
     header::{CONTENT_ENCODING, CONTENT_LENGTH},
 };
-use mime_guess::{Mime, mime};
+use mime_guess::Mime;
 use pin_project::pin_project;
 use std::pin::Pin;
 use std::task::{Context, Poll};
@@ -35,20 +35,9 @@ use crate::{
     handler::RequestHandlerOpts,
     headers_ext::{AcceptEncoding, ContentCoding},
     http_ext::MethodExt,
+    mime_ext::MimeExt,
     settings::CompressionLevel,
 };
-
-/// Contains a fixed list of common text-based MIME types that aren't recognizable in a generic way.
-const TEXT_MIME_TYPES: [&str; 8] = [
-    "application/rtf",
-    "application/javascript",
-    "application/json",
-    "application/xml",
-    "font/ttf",
-    "application/font-sfnt",
-    "application/vnd.ms-fontobject",
-    "application/wasm",
-];
 
 /// List of encodings that can be handled given enabled features.
 const AVAILABLE_ENCODINGS: &[ContentCoding] = &[
@@ -154,7 +143,7 @@ pub fn auto(
 
         // Skip compression for non-text-based MIME types
         if let Some(content_type) = resp.headers().typed_get::<ContentType>()
-            && !is_text(Mime::from(content_type))
+            && !Mime::from(content_type).is_compressible()
         {
             return Ok(resp);
         }
@@ -189,15 +178,6 @@ pub fn auto(
     }
 
     Ok(resp)
-}
-
-/// Checks whether the MIME type corresponds to any of the known text types.
-fn is_text(mime: Mime) -> bool {
-    mime.type_() == mime::TEXT
-        || mime
-            .suffix()
-            .is_some_and(|suffix| suffix == mime::XML || suffix == mime::JSON)
-        || TEXT_MIME_TYPES.contains(&mime.essence_str())
 }
 
 /// Create a wrapping handler that compresses the Body of a [`Response`].

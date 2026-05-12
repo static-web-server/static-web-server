@@ -35,13 +35,13 @@ Options:
       --page404 <PAGE404>
           HTML file path for 404 errors. If the path is not specified or simply doesn't exist then the server will use a generic HTML error message. If a relative path is used then it will be resolved under the root directory [env: SERVER_ERROR_PAGE_404=] [default: ./404.html]
       --page-fallback <PAGE_FALLBACK>
-          A HTML file path (not relative to the root) used for GET requests when the requested path doesn't exist. The fallback page is served with a 200 status code, useful when using client routers. If the path doesn't exist then the feature is not activated [env: SERVER_FALLBACK_PAGE=] [default: ]
+          A HTML file path (not relative to the root) used for GET requests when the requested path doesn't exist. The fallback page is served with a 200 status code, useful when using client routers. If the path doesn't exist then the feature is not activated [env: SERVER_FALLBACK_PAGE=] [default: ""]
   -g, --log-level <LOG_LEVEL>
           Specify a logging level in lower case. Values: error, warn, info, debug or trace [env: SERVER_LOG_LEVEL=] [default: error]
       --log-with-ansi [<LOG_WITH_ANSI>]
           Enable or disable ANSI escape codes for colors and other text formatting of the log output [env: SERVER_LOG_WITH_ANSI=] [default: false] [possible values: true, false]
   -c, --cors-allow-origins <CORS_ALLOW_ORIGINS>
-          Specify an optional CORS list of allowed origin hosts separated by commas. Host ports or protocols aren't being checked. Use an asterisk (*) to allow any host [env: SERVER_CORS_ALLOW_ORIGINS=] [default: ]
+          Specify an optional CORS list of allowed origin hosts separated by commas. Host ports or protocols aren't being checked. Use an asterisk (*) to allow any host [env: SERVER_CORS_ALLOW_ORIGINS=] [default: ""]
   -j, --cors-allow-headers <CORS_ALLOW_HEADERS>
           Specify an optional CORS list of allowed headers separated by commas. Default "origin, content-type". It requires `--cors-allow-origins` to be used along with [env: SERVER_CORS_ALLOW_HEADERS=] [default: "origin, content-type, authorization"]
       --cors-expose-headers <CORS_EXPOSE_HEADERS>
@@ -81,7 +81,7 @@ Options:
   -e, --cache-control-headers [<CACHE_CONTROL_HEADERS>]
           Enable cache control headers for incoming requests based on a set of file types. The file type list can be found on `src/control_headers.rs` file [env: SERVER_CACHE_CONTROL_HEADERS=] [default: true] [possible values: true, false]
       --basic-auth <BASIC_AUTH>
-          It provides The "Basic" HTTP Authentication scheme using credentials as "user-id:password" pairs. Password must be encoded using the "BCrypt" password-hashing function [env: SERVER_BASIC_AUTH=] [default: ]
+          It provides The "Basic" HTTP Authentication scheme using credentials as "user-id:password" pairs. Password must be encoded using the "BCrypt" password-hashing function [env: SERVER_BASIC_AUTH=] [default: ""]
   -q, --grace-period <GRACE_PERIOD>
           Defines a grace period in seconds after a `SIGTERM` signal is caught which will delay the server before to shut it down gracefully. The maximum value is 255 seconds [env: SERVER_GRACE_PERIOD=] [default: 0]
   -w, --config-file <CONFIG_FILE>
@@ -97,21 +97,23 @@ Options:
       --redirect-trailing-slash [<REDIRECT_TRAILING_SLASH>]
           Check for a trailing slash in the requested directory URI and redirect permanently (308) to the same path with a trailing slash suffix if it is missing [env: SERVER_REDIRECT_TRAILING_SLASH=] [default: true] [possible values: true, false]
       --ignore-hidden-files [<IGNORE_HIDDEN_FILES>]
-          Ignore hidden files/directories (dotfiles), preventing them to be served and being included in auto HTML index pages (directory listing) [env: SERVER_IGNORE_HIDDEN_FILES=] [default: false] [possible values: true, false]
+          Ignore hidden files/directories (dotfiles), preventing them to be served and being included in auto HTML index pages (directory listing) [env: SERVER_IGNORE_HIDDEN_FILES=] [default: true] [possible values: true, false]
       --disable-symlinks [<DISABLE_SYMLINKS>]
-          Prevent following files or directories if any path name component is a symbolic link [env: SERVER_DISABLE_SYMLINKS=] [default: false] [possible values: true, false]
+          Prevent following files or directories if any path name component is a symbolic link [env: SERVER_DISABLE_SYMLINKS=] [default: true] [possible values: true, false]
+      --accept-markdown [<ACCEPT_MARKDOWN>]
+          Enable markdown content negotiation. When a client sends Accept: text/markdown, serve .md or .html.md files if available [env: SERVER_ACCEPT_MARKDOWN=] [default: false] [possible values: true, false]
+      --text-charset [<TEXT_CHARSET>]
+          Set a default `charset=utf-8` parameter on limited set of `text` responses that don't already have one [env: SERVER_TEXT_CHARSET=] [default: true] [possible values: true, false]
       --health [<HEALTH>]
           Add a /health endpoint that doesn't generate any log entry and returns a 200 status code. This is especially useful with Kubernetes liveness and readiness probes [env: SERVER_HEALTH=] [default: false] [possible values: true, false]
-      --accept-markdown [<ACCEPT_MARKDOWN>]
-          Enable markdown content negotiation. When a client sends Accept: text/markdown header, the server will serve markdown files (.md or .html.md) if available [env: SERVER_ACCEPT_MARKDOWN=] [default: false] [possible values: true, false]
-      --text-charset <TEXT_CHARSET>
-          Declare a default `charset` parameter on `text/*` responses that don't already have one. Set to empty to disable [env: SERVER_TEXT_CHARSET=] [default: utf-8]
+      --metrics [<METRICS>]
+          Enable the /metrics endpoint that exposes Prometheus metrics for HTTP requests, connections, and latency [env: SERVER_METRICS=] [default: false] [possible values: true, false]
       --maintenance-mode [<MAINTENANCE_MODE>]
           Enable the server's maintenance mode functionality [env: SERVER_MAINTENANCE_MODE=] [default: false] [possible values: true, false]
       --maintenance-mode-status <MAINTENANCE_MODE_STATUS>
           Provide a custom HTTP status code when entering into maintenance mode. Default 503 [env: SERVER_MAINTENANCE_MODE_STATUS=] [default: 503]
       --maintenance-mode-file <MAINTENANCE_MODE_FILE>
-          Provide a custom maintenance mode HTML file. If not provided then a generic message will be displayed [env: SERVER_MAINTENANCE_MODE_FILE=] [default: ]
+          Provide a custom maintenance mode HTML file. If not provided then a generic message will be displayed [env: SERVER_MAINTENANCE_MODE_FILE=] [default: ""]
   -V, --version
           Print version info and exit
   -h, --help

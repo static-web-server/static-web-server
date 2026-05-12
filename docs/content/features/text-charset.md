@@ -1,17 +1,32 @@
-# Default Charset for Text Responses
+# Default UTF-8 Charset for Text-Based Responses
 
-**`SWS`** can declare a default `charset` parameter on every `text/*` response that doesn't already carry one, mirroring Apache's `AddDefaultCharset` and nginx's `charset` directives.
+**SWS** automatically appends a `charset=utf-8` parameter to the `Content-Type` header for a predefined list of text-based MIME types.
 
-Without this option, files like `robots.txt`, `llms.txt`, plain READMEs or any other `text/*` resource are served without a charset parameter, and browsers fall back to a locale-specific guess (typically Windows-1252) that mojibake-corrupts any non-ASCII byte.
+## Included MIME Types
 
-The option is enabled by default with `utf-8` and can be controlled by the string `--text-charset` option or the equivalent [SERVER_TEXT_CHARSET](./../configuration/environment-variables.md#server_text_charset) env. Pass an empty value to disable it.
+The `charset=utf-8` parameter will be added to responses with the following MIME types:
 
-## Behaviour
+- `application/atom+xml`
+- `application/rss+xml`
+- `text/calendar`
+- `text/csv`
+- `text/html`
+- `text/markdown`
+- `text/plain`
+- `text/xml`
 
-- Applies to every response whose `Content-Type` starts with `text/`.
-- Skipped when the response already carries a `charset` parameter (e.g. markdown content negotiation, error pages).
-- Non-text responses (`application/json`, `application/javascript`, images, archives) are never touched.
-- Custom headers configured under `[[advanced.headers]]` still win over this option, because they are applied after.
+For example, a `robots.txt` file will be served with the header: `Content-Type: text/plain; charset=utf-8`.
+
+## Rationale
+
+Without this default behavior, files like `robots.txt`, `llms.txt`, plain READMEs and other text-based resources are served without an explicit character encoding. When the charset is missing, browsers and HTTP clients fall back to outdated, locale-specific guesses (such as Windows-1252 or US-ASCII). This default guessing often results in mojibake—corrupting international symbols, accents, and non-ASCII characters.
+Forcing UTF-8 ensures reliable, cross-platform text rendering.
+
+The option is enabled by default and can be controlled by boolean `--text-charset` option or the equivalent [SERVER_TEXT_CHARSET](./../configuration/environment-variables.md#server_text_charset) env.
+
+!!! info "Custom HTTP Headers Take Precedence"
+
+    Users can turn off the default UTF-8 charset if wanted or use a [Custom HTTP Headers](./custom-http-headers.md) with glob patterns to selectively apply charset to specific files.
 
 ## Usage examples
 
@@ -22,16 +37,10 @@ static-web-server --root ./public
 # robots.txt is served as: Content-Type: text/plain; charset=utf-8
 ```
 
-Set a different charset:
-
-```sh
-static-web-server --root ./public --text-charset iso-8859-1
-```
-
 Disable the feature entirely:
 
 ```sh
-static-web-server --root ./public --text-charset ""
+static-web-server --root ./public --text-charset=false
 ```
 
 Equivalent configuration file:
@@ -39,12 +48,12 @@ Equivalent configuration file:
 ```toml
 [general]
 root = "./public"
-text-charset = "utf-8"
+text-charset = false
 ```
 
 Equivalent environment variable:
 
 ```sh
-export SERVER_TEXT_CHARSET=utf-8
+export SERVER_TEXT_CHARSET=false
 static-web-server --root ./public
 ```

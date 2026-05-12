@@ -8,7 +8,6 @@ mod tests {
     use hyper::Request;
     use std::net::SocketAddr;
 
-    use static_web_server::Settings;
     use static_web_server::testing::fixtures::{
         REMOTE_ADDR, fixture_req_handler, fixture_req_handler_opts, fixture_settings,
     };
@@ -50,14 +49,6 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn custom_charset_is_applied() {
-        assert_eq!(
-            content_type("toml/text_charset_custom.toml", "http://localhost/doc.md").await,
-            "text/markdown; charset=iso-8859-1"
-        );
-    }
-
-    #[tokio::test]
     async fn advanced_headers_override_wins() {
         // [[advanced.headers]] runs after text_charset and is meant to win.
         assert_eq!(
@@ -67,19 +58,6 @@ mod tests {
             )
             .await,
             "text/html; charset=ascii"
-        );
-    }
-
-    #[test]
-    fn invalid_charset_value_is_rejected() {
-        let result = Settings::get_unparsed(
-            false,
-            &["static-web-server", "--text-charset", "utf 8 invalid"],
-        );
-        let err = result.err().expect("expected invalid charset to fail");
-        assert!(
-            err.to_string().contains("invalid text-charset"),
-            "unexpected error: {err}"
         );
     }
 }
