@@ -6,6 +6,15 @@
 //! The module handles requests over TLS via [Rustls](tokio_rustls::rustls).
 //!
 
+// Ensure exactly one TLS crypto provider is enabled.
+#[cfg(all(feature = "http2-ring", feature = "http2-fips"))]
+compile_error!(
+    "Only one TLS crypto provider may be enabled. Choose one of: http2-ring, http2-fips"
+);
+
+#[cfg(not(any(feature = "http2-ring", feature = "http2-fips")))]
+compile_error!("http2 requires a crypto provider: enable http2-ring or http2-fips");
+
 // Most of the file is borrowed from https://github.com/seanmonstar/warp/blob/master/src/tls.rs
 
 use futures_util::ready;
@@ -383,5 +392,12 @@ mod tests {
             .cert(cert.as_bytes())
             .build()
             .unwrap();
+    }
+
+    #[cfg(feature = "http2-fips")]
+    #[test]
+    fn fips_mode_is_active() {
+        aws_lc_rs::try_fips_mode()
+            .expect("FIPS mode should be active when http2-fips feature is enabled");
     }
 }

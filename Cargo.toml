@@ -38,11 +38,20 @@ doc = false
 
 [features]
 # All features enabled by default
-default = ["compression", "http2", "directory-listing", "directory-listing-download", "basic-auth", "fallback-page", "metrics"]
+default = ["compression", "http2-ring", "directory-listing", "directory-listing-download", "basic-auth", "fallback-page", "metrics"]
 # Include all features (used when building SWS binaries)
 all = ["default", "experimental"]
-# HTTP2
-http2 = ["tokio-rustls", "rustls-pki-types"]
+# Default feature set with the FIPS crypto provider in place of ring.
+default-fips = ["compression", "http2-fips", "directory-listing", "directory-listing-download", "basic-auth", "fallback-page", "metrics"]
+# All features with the FIPS crypto provider (used when building FIPS SWS binaries).
+all-fips = ["default-fips", "experimental"]
+# HTTP2 base TLS plumbing -- gates all TLS code via cfg(feature = "http2").
+# Does not select a crypto provider on its own.
+http2 = ["tokio-rustls", "rustls-pki-types", "tokio-rustls/logging", "tokio-rustls/tls12"]
+# HTTP2 with ring crypto provider (default)
+http2-ring = ["http2", "tokio-rustls/ring"]
+# HTTP2 with FIPS-validated crypto via aws-lc-rs
+http2-fips = ["http2", "tokio-rustls/fips", "aws-lc-rs"]
 # Compression
 compression = ["compression-brotli", "compression-deflate", "compression-gzip", "compression-zstd"]
 compression-brotli = ["async-compression/brotli"]
@@ -65,6 +74,7 @@ experimental = ["metrics", "tokio-metrics-collector", "compact_str", "mini-moka"
 [dependencies]
 aho-corasick = "1.1.4"
 anyhow = "1.0"
+aws-lc-rs = { version = "1", optional = true, default-features = false }
 async-compression = { version = "0.4", default-features = false, optional = true, features = ["brotli", "deflate", "gzip", "zstd", "tokio"] }
 async-tar = { version = "0.5.1", optional = true }
 bcrypt = { version = "0.18.0", optional = true }
@@ -95,7 +105,7 @@ serde_json = "1.0"
 serde_repr = "0.1"
 shadow-rs = "1.4.0"
 tokio = { version = "1", default-features = false, features = ["rt-multi-thread", "macros", "fs", "io-util", "signal"] }
-tokio-rustls = { version = "0.26", optional = true, default-features = false, features = ["logging", "tls12", "ring"] }
+tokio-rustls = { version = "0.26", optional = true, default-features = false }
 tokio-util = { version = "0.7", default-features = false, features = ["compat", "io"] }
 toml = "0.9"
 tracing = { version = "0.1", default-features = false, features = ["std"] }
@@ -130,7 +140,7 @@ rpath = false
 strip = true
 
 [package.metadata.docs.rs]
-all-features = true
+features = ["all"]
 rustdoc-args = ["--cfg", "docsrs", "--cfg", "tokio_unstable"]
 rustc-args = ["--cfg", "tokio_unstable"]
 
