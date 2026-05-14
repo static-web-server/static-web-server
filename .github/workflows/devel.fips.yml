@@ -56,6 +56,9 @@ jobs:
     - name: Build release binary
       run: cargo build --bin static-web-server --release ${{ env.CARGO_FEATURES }}
 
+    - name: Verify binary has FIPS mode enabled
+      run: target/release/static-web-server -V | grep -i "fips"
+
     - name: Verify binary is statically linked (no aws-lc shared objects)
       run: |
         echo "Checking linked libraries..."

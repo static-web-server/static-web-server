@@ -31,7 +31,7 @@ SWS comes with safe TLS defaults for underlying cryptography.
 
 These defaults are safe and useful for most use cases. See [Rustls safe defaults](https://docs.rs/rustls/0.21.1/rustls/struct.ConfigBuilder.html#method.with_safe_defaults) for more details.
 
-## FIPS-validated cryptography
+## FIPS-validated Cryptography
 
 For deployments that require FIPS 140-validated cryptography (US federal, regulated industries), SWS can be built with [`aws-lc-rs`](https://github.com/aws/aws-lc-rs) in FIPS mode as the TLS crypto provider, replacing the default [`ring`](https://github.com/briansmith/ring) backend. The underlying cryptographic module is [AWS-LC-FIPS](https://github.com/aws/aws-lc/tree/fips-2024-09-27).
 
@@ -48,8 +48,24 @@ The "Safe TLS defaults" listed above describe the `http2-ring` provider. The `ht
 To build from source with FIPS:
 
 ```sh
-cargo build --release --no-default-features \
-    --features http2-fips,compression,directory-listing,directory-listing-download,basic-auth,fallback-page,metrics
+cargo build -v --release --no-default-features \
+    --features="http2-fips,compression,directory-listing,directory-listing-download,basic-auth,fallback-page,metrics"
+```
+
+Alternatively, in case of build errors with GCC >= 14, try Clang as the C/C++ compiler:
+
+```sh
+env CC=clang CXX=clang++ cargo build -v --release --no-default-features \
+        --features="http2-fips,compression,directory-listing,directory-listing-download,basic-auth,fallback-page,metrics"
+```
+
+Finally, verify that the binary has been compiled with FIPS mode enabled:
+
+```sh
+$ static-web-server -V | grep -i "fips"
+# FIPS Mode:
+#   Module Version:   AWS-LC-FIPS 3.0.x
+#   Crypto Provider:  aws-lc-rs (via aws-lc-fips-sys)
 ```
 
 See the [Cargo features section](../building-from-source.md#cargo-features) for the full list of feature flags.
