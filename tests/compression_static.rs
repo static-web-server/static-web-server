@@ -62,7 +62,7 @@ mod tests {
                 assert_eq!(headers["accept-ranges"], "bytes");
                 assert!(!headers["last-modified"].is_empty());
                 assert_eq!(
-                    &headers["content-type"], "text/html",
+                    &headers["content-type"], "text/html; charset=utf-8",
                     "content-type is not html"
                 );
                 assert_eq!(headers["vary"], "accept-encoding");
@@ -117,7 +117,7 @@ mod tests {
                 assert_eq!(headers["accept-ranges"], "bytes");
                 assert!(!headers["last-modified"].is_empty());
                 assert_eq!(
-                    &headers["content-type"], "text/html",
+                    &headers["content-type"], "text/html; charset=utf-8",
                     "content-type is not html"
                 );
                 assert_eq!(headers["vary"], "accept-encoding");
@@ -165,7 +165,7 @@ mod tests {
                 assert_eq!(headers["content-encoding"], "br");
                 assert!(!headers["last-modified"].is_empty());
                 assert_eq!(
-                    &headers["content-type"], "text/html",
+                    &headers["content-type"], "text/html; charset=utf-8",
                     "content-type is not html"
                 );
                 assert_eq!(headers["vary"], "accept-encoding");
@@ -207,7 +207,7 @@ mod tests {
                 assert_eq!(headers["content-encoding"], "br");
                 assert!(!headers["last-modified"].is_empty());
                 assert_eq!(
-                    &headers["content-type"], "text/html",
+                    &headers["content-type"], "text/html; charset=utf-8",
                     "content-type is not html"
                 );
                 assert_eq!(headers["vary"], "accept-encoding");

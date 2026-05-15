@@ -531,6 +531,18 @@ pub struct General {
 
     #[arg(
         long,
+        default_value = "true",
+        default_missing_value("true"),
+        num_args(0..=1),
+        require_equals(false),
+        action = clap::ArgAction::Set,
+        env = "SERVER_TEXT_CHARSET",
+    )]
+    /// Set a default `charset=utf-8` parameter on limited set of `text` responses that don't already have one.
+    pub text_charset: bool,
+
+    #[arg(
+        long,
         default_value = "false",
         default_missing_value("true"),
         num_args(0..=1),

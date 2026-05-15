@@ -45,13 +45,18 @@ jobs:
       run: |
         cargo fmt --all -- --check tests/*.rs
 
+    # The `all` feature alias selects exactly one TLS crypto provider
+    # (tls-ring, the default). Using `--all-features` would enable both
+    # tls-ring and tls-fips simultaneously, which is rejected by a
+    # compile_error in src/tls.rs because the two providers are mutually
+    # exclusive. The FIPS provider is checked separately by devel-fips.
     - name: Check via Clippy
       run: |
-        cargo clippy --all-features -- -D warnings
+        cargo clippy --features all -- -D warnings
 
     - name: Check via Clippy (tests)
       run: |
-        cargo clippy --all-features --tests -- -D warnings
+        cargo clippy --features all --tests -- -D warnings
 
   test:
     name: Test
@@ -345,7 +350,7 @@ jobs:
 
     - name: Rustdoc build
       run: |
-        cargo +nightly rustdoc --lib -Zrustdoc-map --all-features \
+        cargo +nightly rustdoc --lib -Zrustdoc-map --features all \
             --config "build.rustflags=[\"--cfg\", \"tokio_unstable\"]" \
             -Zhost-config -Ztarget-applies-to-host \
             --config "host.rustflags=[\"--cfg\", \"tokio_unstable\"]" \

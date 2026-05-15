@@ -24,21 +24,25 @@ SWS honors the qualities specified by the client to choose the algorithm. In cas
 
 ## MIME types compressed
 
-Compression is only applied to files with the MIME types listed below, indicating text and similarly well compressing formats. The asterisk `*` is a placeholder indicating an arbitrary MIME type part.
+Compression is only applied to files with the MIME types listed below, indicating text and similarly well compressing formats.
 
-```txt
-text/*
-*+xml
-*+json
-application/rtf
-application/javascript
-application/json
-application/xml
-font/ttf
-application/font-sfnt
-application/vnd.ms-fontobject
-application/wasm
-```
+- `text/*`
+- Application types that are essentially text/structured data.
+    - `application/csv`
+    - `application/graphql`
+    - `application/javascript`
+    - `application/json`
+    - `application/rtf`
+    - `application/sql`
+    - `application/x-yaml`
+    - `application/xml`
+    - `application/yaml`
+- Binary types that are not text but considered compressible.
+    - `application/wasm`
+    - `application/font-sfnt`
+    - `application/vnd.ms-fontobject`
+    - `image/x-icon`
+    - `image/vnd.microsoft.icon`
 
 ## Compression level
 

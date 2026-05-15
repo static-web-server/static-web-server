@@ -6,6 +6,13 @@
 //! The module handles requests over TLS via [Rustls](tokio_rustls::rustls).
 //!
 
+// Ensure exactly one TLS crypto provider is enabled.
+#[cfg(all(feature = "tls-ring", feature = "tls-fips"))]
+compile_error!("Only one TLS crypto provider may be enabled. Choose one of: tls-ring, tls-fips");
+
+#[cfg(not(any(feature = "tls-ring", feature = "tls-fips")))]
+compile_error!("tls requires a crypto provider: enable tls-ring or tls-fips");
+
 // Most of the file is borrowed from https://github.com/seanmonstar/warp/blob/master/src/tls.rs
 
 use futures_util::ready;
@@ -418,5 +425,12 @@ mod tests {
             matches!(err, TlsConfigError::InvalidKey(_)),
             "expected InvalidKey error for mismatched cert/key, got: {err}"
         );
+    }
+
+    #[cfg(feature = "tls-fips")]
+    #[test]
+    fn fips_mode_is_active() {
+        aws_lc_rs::try_fips_mode()
+            .expect("FIPS mode should be active when tls-fips feature is enabled");
     }
 }

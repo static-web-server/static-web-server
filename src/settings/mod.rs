@@ -215,6 +215,7 @@ impl Settings {
         let mut ignore_hidden_files = opts.ignore_hidden_files;
         let mut disable_symlinks = opts.disable_symlinks;
         let mut accept_markdown = opts.accept_markdown;
+        let mut text_charset = opts.text_charset;
         let mut index_files = opts.index_files;
         let mut health = opts.health;
 
@@ -413,6 +414,9 @@ impl Settings {
                 }
                 if let Some(v) = general.accept_markdown {
                     accept_markdown = v
+                }
+                if let Some(v) = general.text_charset {
+                    text_charset = v
                 }
                 #[cfg(feature = "metrics")]
                 if let Some(v) = general.metrics {
@@ -721,6 +725,7 @@ impl Settings {
                 ignore_hidden_files,
                 disable_symlinks,
                 accept_markdown,
+                text_charset,
                 index_files,
                 health,
                 #[cfg(feature = "metrics")]

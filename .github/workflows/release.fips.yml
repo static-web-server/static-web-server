@@ -1,0 +1,90 @@
+name: release-fips
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag (e.g. v2.42.0)"
+        required: true
+        type: string
+
+jobs:
+  build:
+    name: Build FIPS ${{ matrix.build }}
+    runs-on: ubuntu-22.04
+    env:
+      CARGO_FEATURES: "--no-default-features --features all-fips"
+      RUSTFLAGS: "--cfg tokio_unstable"
+      CROSS_CONFIG: "Cross.fips.toml"
+    strategy:
+      matrix:
+        build:
+          - linux-gnu-fips
+          - linux-gnu-arm64-fips
+          - linux-musl-fips
+          - linux-musl-arm64-fips
+        include:
+        - build: linux-gnu-fips
+          target: x86_64-unknown-linux-gnu
+        - build: linux-gnu-arm64-fips
+          target: aarch64-unknown-linux-gnu
+        - build: linux-musl-fips
+          target: x86_64-unknown-linux-musl
+        - build: linux-musl-arm64-fips
+          target: aarch64-unknown-linux-musl
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        targets: ${{ matrix.target }}
+
+    - name: Install cross
+      run: |
+        curl -sSL \
+          "https://github.com/cross-rs/cross/releases/download/v0.2.5/cross-x86_64-unknown-linux-musl.tar.gz" \
+          | sudo tar zxf - -C /usr/local/bin/ cross cross-util
+        cross -V
+
+    - name: Determine version
+      id: version
+      run: |
+        if [ "${{ github.event_name }}" = "release" ]; then
+          echo "version=${{ github.event.release.tag_name }}" >> $GITHUB_OUTPUT
+        else
+          echo "version=${{ inputs.tag }}" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Build release binary
+      run: |
+        cross build --bin static-web-server -vv --release \
+          ${{ env.CARGO_FEATURES }} \
+          --target=${{ matrix.target }}
+
+    - name: Build archive
+      run: |
+        staging="static-web-server-${{ steps.version.outputs.version }}-${{ matrix.target }}-fips"
+        mkdir -p "$staging/"
+        cp {README.md,LICENSE-APACHE,LICENSE-MIT} "$staging/"
+        cp "target/${{ matrix.target }}/release/static-web-server" "$staging/"
+        tar czf "$staging.tar.gz" "$staging"
+        echo "ASSET=$staging.tar.gz" >> $GITHUB_ENV
+
+    - name: Upload release archive
+      if: github.event_name == 'release'
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        gh release upload ${{ steps.version.outputs.version }} ${{ env.ASSET }}
+
+    - name: Upload artifact
+      if: github.event_name == 'workflow_dispatch'
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ matrix.build }}
+        path: ${{ env.ASSET }}

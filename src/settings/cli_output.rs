@@ -18,6 +18,14 @@ pub fn display_version() -> Result {
     println!("Built:        {}", build::COMMIT_DATE);
     println!("Git commit:   {}", build::COMMIT_HASH);
     println!("Build target: {}", build::BUILD_TARGET);
+    #[cfg(feature = "tls-fips")]
+    {
+        if aws_lc_rs::try_fips_mode().is_ok() {
+            println!("FIPS Mode:");
+            println!("  Module Version:   AWS-LC-FIPS 3.0.x");
+            println!("  Crypto Provider:  aws-lc-rs (via aws-lc-fips-sys)");
+        }
+    }
     println!("Rust version: {}", build::RUST_VERSION);
     println!("License:      {}", env!("CARGO_PKG_LICENSE"));
     println!("Homepage:     {}", env!("CARGO_PKG_HOMEPAGE"));
