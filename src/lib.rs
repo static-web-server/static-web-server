@@ -163,6 +163,8 @@ pub(crate) mod markdown;
 pub(crate) mod mem_cache;
 #[cfg(feature = "metrics")]
 pub(crate) mod metrics;
+#[allow(dead_code)]
+pub(crate) mod mime_ext;
 pub mod redirects;
 pub(crate) mod response;
 pub mod rewrites;
@@ -174,6 +176,7 @@ pub mod settings;
 #[cfg_attr(docsrs, doc(cfg(any(unix, windows))))]
 pub mod signals;
 pub mod static_files;
+pub(crate) mod text_charset;
 #[cfg(feature = "tls")]
 #[cfg_attr(docsrs, doc(cfg(feature = "tls")))]
 pub mod tls;

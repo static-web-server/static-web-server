@@ -95,6 +95,10 @@ pub(super) fn init(general: &General, advanced: Option<Advanced>) -> Result<Hand
     );
     tracing::info!("disable symlinks: enabled={}", general.disable_symlinks);
 
+    // Default charset for text/* responses
+    let default_text_charset = general.text_charset;
+    tracing::info!("text charset: enabled={default_text_charset}");
+
     // Parse comma-separated index file list
     let index_files = general
         .index_files
@@ -118,6 +122,7 @@ pub(super) fn init(general: &General, advanced: Option<Advanced>) -> Result<Hand
         ignore_hidden_files: general.ignore_hidden_files,
         disable_symlinks: general.disable_symlinks,
         accept_markdown: general.accept_markdown,
+        text_charset: general.text_charset,
         index_files,
         advanced_opts: advanced,
         ..Default::default()

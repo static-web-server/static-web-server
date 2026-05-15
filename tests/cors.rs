@@ -225,7 +225,7 @@ mod tests {
                         assert_eq!(resp.status(), 200);
                         assert_eq!(
                             resp.headers().get("content-type"),
-                            Some(&HeaderValue::from_static("text/html"))
+                            Some(&HeaderValue::from_static("text/html; charset=utf-8"))
                         );
                         assert_eq!(
                             resp.headers().get("server"),
