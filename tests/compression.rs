@@ -61,7 +61,7 @@ pub mod tests {
                 );
                 assert_eq!(
                     res.headers().get("cache-control"),
-                    Some(&HeaderValue::from_static("max-age=86400"))
+                    Some(&HeaderValue::from_static("no-cache"))
                 );
                 assert_eq!(
                     res.headers().get("server"),

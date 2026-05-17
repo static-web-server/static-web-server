@@ -25,7 +25,7 @@ pub struct General {
     /// Host address (E.g 127.0.0.1 or ::1)
     pub host: String,
 
-    #[arg(long, short = 'p', default_value = "80", env = "SERVER_PORT")]
+    #[arg(long, short = 'p', default_value = "8787", env = "SERVER_PORT")]
     /// Host port
     pub port: u16,
 
@@ -300,7 +300,7 @@ pub struct General {
 
     #[arg(
         long,
-        default_value = "false",
+        default_value = "true",
         default_missing_value("true"),
         num_args(0..=1),
         require_equals(false),
@@ -371,7 +371,7 @@ pub struct General {
         feature = "tls",
         arg(
             long,
-            default_value = "false",
+            default_value = "true",
             default_missing_value("true"),
             num_args(0..=1),
             require_equals(false),

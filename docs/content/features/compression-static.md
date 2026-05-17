@@ -4,7 +4,7 @@
 
 SWS can look up existing pre-compressed file variants (`.gz`, `.br` or `.zst`) on disk and serve them directly.
 
-The feature is disabled by default and can be controlled by the boolean `--compression-static` option or the equivalent [SERVER_COMPRESSION_STATIC](./../configuration/environment-variables.md#server_compression_static) env.
+The feature is enabled by default and can be controlled by the boolean `--compression-static` option or the equivalent [SERVER_COMPRESSION_STATIC](./../configuration/environment-variables.md#server_compression_static) env.
 
 When the `compression-static` option is enabled and the pre-compressed file is found on the file system then it's served directly.
 Otherwise, if the pre-compressed file is not found then SWS just continues the normal workflow (trying to serve the original file requested instead). Additionally, if for example the [compression](../features/compression.md) option was also enabled then the requested file can be compressed on the fly right after.

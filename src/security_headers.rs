@@ -20,6 +20,7 @@ static HSTS_VALUE: HeaderValue =
 static XFO_VALUE: HeaderValue = HeaderValue::from_static("DENY");
 static XCTO_VALUE: HeaderValue = HeaderValue::from_static("nosniff");
 static CSP_VALUE: HeaderValue = HeaderValue::from_static("frame-ancestors 'self'");
+static RP_VALUE: HeaderValue = HeaderValue::from_static("strict-origin-when-cross-origin");
 
 pub(crate) fn init(enabled: bool, handler_opts: &mut RequestHandlerOpts) {
     handler_opts.security_headers = enabled;
@@ -56,6 +57,10 @@ pub fn append_headers(resp: &mut Response<Body>) {
     // Content Security Policy (CSP)
     resp.headers_mut()
         .insert(CONTENT_SECURITY_POLICY, CSP_VALUE.clone());
+
+    // Referrer-Policy (RP)
+    resp.headers_mut()
+        .insert("referrer-policy", RP_VALUE.clone());
 }
 
 #[cfg(test)]
@@ -114,5 +119,14 @@ mod tests {
         assert!(resp.headers().contains_key(X_FRAME_OPTIONS));
         assert!(resp.headers().contains_key(X_CONTENT_TYPE_OPTIONS));
         assert!(resp.headers().contains_key(CONTENT_SECURITY_POLICY));
+    }
+
+    #[test]
+    fn append_headers_sets_referrer_policy() {
+        let mut resp = Response::new(crate::body::empty());
+        *resp.status_mut() = StatusCode::OK;
+        append_headers(&mut resp);
+        let rp = resp.headers().get("referrer-policy").unwrap();
+        assert_eq!(rp.to_str().unwrap(), "strict-origin-when-cross-origin");
     }
 }

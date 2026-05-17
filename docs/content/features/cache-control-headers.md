@@ -8,24 +8,24 @@ This feature is enabled by default and can be controlled by the boolean `-e, --c
 
     If you want to customize HTTP headers on demand then have a look at the [Custom HTTP Headers](custom-http-headers.md) section.
 
-## Cache-Control Max-Age
+## Cache-Control
 
-Control headers are applied only to the following file types with the corresponding `max-age` values.
+Control headers are applied only to the following file types with the corresponding `max-age` values or `no-cache` directive (default).
 
-### One day
+### `no-cache` (default)
 
-A `max-age` of *one day* duration is used by default.
+A `no-cache` directive is used by default.
 
 !!! info "Note"
 
-    One-day `max-age` for example includes `html` and other file types.
+    `no-cache` applies to for example `HTML`, `JSON` and other file types.
 
 ### One hour
 
 A `max-age` of *one hour* is applied only to the following file types.
 
 ```txt
-atom, json, rss, xml
+atom, rss
 ```
 
 ### One year
