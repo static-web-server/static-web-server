@@ -3,13 +3,6 @@
 #![deny(rust_2018_idioms)]
 #![deny(dead_code)]
 
-#[cfg(any(
-    feature = "compression",
-    feature = "compression-deflate",
-    feature = "compression-gzip",
-    feature = "compression-brotli",
-    feature = "compression-zstd"
-))]
 #[cfg(test)]
 mod tests {
     use bytes::Bytes;
