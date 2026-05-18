@@ -1,8 +1,12 @@
-# Compression
+# On-the-fly Compression
 
-**`SWS`** provides [`Gzip`](https://datatracker.ietf.org/doc/html/rfc1952), [`Deflate`](https://datatracker.ietf.org/doc/html/rfc1951#section-Abstract), [`Brotli`](https://www.ietf.org/rfc/rfc7932.txt) and [`Zstandard` (zstd)](https://datatracker.ietf.org/doc/html/rfc8878) compression of HTTP responses.
+**`SWS`** provides [`Gzip`](https://datatracker.ietf.org/doc/html/rfc1952), [`Deflate`](https://datatracker.ietf.org/doc/html/rfc1951#section-Abstract), [`Brotli`](https://www.ietf.org/rfc/rfc7932.txt) and [`Zstandard` (zstd)](https://datatracker.ietf.org/doc/html/rfc8878) compression of HTTP responses on the fly (dynamically).
 
 This feature is enabled by default and can be controlled by the boolean `-x, --compression` option or the equivalent [SERVER_COMPRESSION](../configuration/environment-variables.md#server_compression) env.
+
+!!! tip "Independent from static compression"
+
+    Dynamic (on-the-fly) compression operates **independently** from [pre-compressed files serving](compression-static.md). Both features can be enabled individually or combined: static compression is tried first (zero CPU cost), and if no pre-compressed variant is found, dynamic compression kicks in automatically.
 
 ```sh
 static-web-server \

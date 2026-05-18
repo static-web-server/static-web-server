@@ -3,13 +3,6 @@
 #![deny(rust_2018_idioms)]
 #![deny(dead_code)]
 
-#[cfg(any(
-    feature = "compression",
-    feature = "compression-deflate",
-    feature = "compression-gzip",
-    feature = "compression-brotli",
-    feature = "compression-zstd"
-))]
 #[cfg(test)]
 mod tests {
     use bytes::Bytes;
@@ -142,6 +135,13 @@ mod tests {
     async fn compression_static_file_does_not_exist() {
         let opts = fixture_settings("toml/handler_fixtures.toml");
         let general = General {
+            #[cfg(any(
+                feature = "compression",
+                feature = "compression-gzip",
+                feature = "compression-brotli",
+                feature = "compression-zstd",
+                feature = "compression-deflate"
+            ))]
             compression: false,
             compression_static: true,
             ..opts.general
@@ -179,6 +179,13 @@ mod tests {
     async fn compression_static_index_file() {
         let opts = fixture_settings("toml/handler_fixtures.toml");
         let general = General {
+            #[cfg(any(
+                feature = "compression",
+                feature = "compression-gzip",
+                feature = "compression-brotli",
+                feature = "compression-zstd",
+                feature = "compression-deflate"
+            ))]
             compression: false,
             compression_static: true,
             directory_listing: true,
@@ -225,6 +232,13 @@ mod tests {
 
         let opts = fixture_settings("toml/handler_fixtures.toml");
         let general = General {
+            #[cfg(any(
+                feature = "compression",
+                feature = "compression-gzip",
+                feature = "compression-brotli",
+                feature = "compression-zstd",
+                feature = "compression-deflate"
+            ))]
             compression: false,
             compression_static: true,
             ..opts.general

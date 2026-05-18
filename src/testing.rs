@@ -45,14 +45,6 @@ pub mod fixtures {
             feature = "compression-deflate"
         )))]
         let compression = false;
-        #[cfg(not(any(
-            feature = "compression",
-            feature = "compression-gzip",
-            feature = "compression-brotli",
-            feature = "compression-zstd",
-            feature = "compression-deflate"
-        )))]
-        let compression_static = false;
         #[cfg(any(
             feature = "compression",
             feature = "compression-gzip",
@@ -61,13 +53,6 @@ pub mod fixtures {
             feature = "compression-deflate"
         ))]
         let compression = general.compression;
-        #[cfg(any(
-            feature = "compression",
-            feature = "compression-gzip",
-            feature = "compression-brotli",
-            feature = "compression-zstd",
-            feature = "compression-deflate"
-        ))]
         let compression_static = general.compression_static;
 
         RequestHandlerOpts {
