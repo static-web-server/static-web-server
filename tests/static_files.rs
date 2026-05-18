@@ -32,6 +32,13 @@ mod tests {
 
     /// Root directory for dynamic-compression test fixtures
     /// (files larger than the minimum compression threshold of 200 bytes).
+    #[cfg(any(
+        feature = "compression",
+        feature = "compression-deflate",
+        feature = "compression-gzip",
+        feature = "compression-brotli",
+        feature = "compression-zstd"
+    ))]
     fn comp_root_dir() -> PathBuf {
         PathBuf::from("tests/fixtures/compression/")
     }
