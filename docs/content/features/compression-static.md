@@ -7,6 +7,7 @@ SWS can look up existing pre-compressed file variants (`.gz`, `.br` or `.zst`) o
 This feature can be controlled by the boolean `--compression-static` option or the equivalent [SERVER_COMPRESSION_STATIC](./../configuration/environment-variables.md#server_compression_static) env. It is **disabled by default**.
 
 !!! tip "Independent from dynamic compression"
+
     Static compression operates **independently** from [on-the-fly compression](compression.md). You can enable one without the other, or combine both for maximum efficiency: pre-compressed variants are tried first, and dynamic compression falls through automatically if no variant exists.
 
 When the `compression-static` option is enabled and a pre-compressed file is found on the file system then it's served directly.

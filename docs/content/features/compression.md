@@ -5,6 +5,7 @@
 This feature is enabled by default and can be controlled by the boolean `-x, --compression` option or the equivalent [SERVER_COMPRESSION](../configuration/environment-variables.md#server_compression) env.
 
 !!! tip "Independent from static compression"
+
     Dynamic (on-the-fly) compression operates **independently** from [pre-compressed files serving](compression-static.md). Both features can be enabled individually or combined: static compression is tried first (zero CPU cost), and if no pre-compressed variant is found, dynamic compression kicks in automatically.
 
 ```sh
