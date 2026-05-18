@@ -35,6 +35,9 @@ use crate::mime_ext::MimeExt;
 use crate::settings::CompressionLevel;
 use crate::{Error, Result};
 
+/// Minimum response body size in bytes below which dynamic compression is skipped.
+const MIN_COMPRESS_SIZE: usize = 200;
+
 /// List of encodings that can be handled given enabled features.
 const AVAILABLE_ENCODINGS: &[ContentCoding] = &[
     #[cfg(any(feature = "compression", feature = "compression-deflate"))]
@@ -128,6 +131,22 @@ pub fn auto(
         if let Some(content_type) = resp.headers().typed_get::<ContentType>()
             && !Mime::from(content_type).is_compressible()
         {
+            return Ok(resp);
+        }
+
+        // Skip compression for responses below the minimum size threshold.
+        // Tiny payloads gain no benefit and the compression overhead can
+        // make them larger than the original.
+        if let Some(content_length) = resp
+            .headers()
+            .get(CONTENT_LENGTH)
+            .and_then(|v| v.to_str().ok())
+            .and_then(|v| v.parse::<usize>().ok())
+            && content_length < MIN_COMPRESS_SIZE
+        {
+            tracing::trace!(
+                "skipping compression: content-length ({content_length}) below minimum ({MIN_COMPRESS_SIZE})",
+            );
             return Ok(resp);
         }
 
@@ -313,4 +332,118 @@ pub fn get_encodings(headers: &HeaderMap<HeaderValue>) -> Vec<ContentCoding> {
             .collect::<Vec<_>>();
     }
     vec![]
+}
+
+#[cfg(test)]
+#[cfg(any(feature = "compression", feature = "compression-gzip"))]
+mod tests {
+    use super::*;
+    use crate::body;
+    use crate::settings::CompressionLevel;
+    use http::header::{ACCEPT_ENCODING, CONTENT_TYPE};
+    use hyper::{Method, Response};
+
+    /// Build a `Response<Body>` with a text content-type header,
+    /// a content-length header, and a body of `size` bytes.
+    fn text_response_with_size(size: usize) -> Response<Body> {
+        let body = body::full(vec![b'x'; size]);
+        let mut resp = Response::new(body);
+        resp.headers_mut()
+            .insert(CONTENT_TYPE, "text/html".parse().unwrap());
+        resp.headers_mut()
+            .insert(CONTENT_LENGTH, size.to_string().parse().unwrap());
+        resp
+    }
+
+    /// Build a `Response<Body>` without any `Content-Length` header.
+    fn text_response_without_length() -> Response<Body> {
+        let body = body::full(b"hello world".as_slice());
+        let mut resp = Response::new(body);
+        resp.headers_mut()
+            .insert(CONTENT_TYPE, "text/html".parse().unwrap());
+        resp
+    }
+
+    /// Build a simple GET `HeaderMap` with an Accept-Encoding: gzip header.
+    fn accept_gzip_headers() -> HeaderMap<HeaderValue> {
+        let mut h = HeaderMap::new();
+        h.insert(ACCEPT_ENCODING, "gzip".parse().unwrap());
+        h
+    }
+
+    // Minimum-size threshold tests
+
+    #[test]
+    fn small_response_below_threshold_is_not_compressed() {
+        let resp = text_response_with_size(MIN_COMPRESS_SIZE - 1);
+        let headers = accept_gzip_headers();
+        let result = auto(&Method::GET, &headers, CompressionLevel::Default, resp).unwrap();
+        // no content-encoding should be set
+        assert!(
+            result.headers().get(CONTENT_ENCODING).is_none(),
+            "responses below {MIN_COMPRESS_SIZE} bytes must not be compressed"
+        );
+    }
+
+    #[test]
+    fn response_at_threshold_is_compressed() {
+        let resp = text_response_with_size(MIN_COMPRESS_SIZE);
+        let headers = accept_gzip_headers();
+        let result = auto(&Method::GET, &headers, CompressionLevel::Default, resp).unwrap();
+        assert!(
+            result.headers().get(CONTENT_ENCODING).is_some(),
+            "responses at exactly {MIN_COMPRESS_SIZE} bytes must be compressed"
+        );
+    }
+
+    #[test]
+    fn response_above_threshold_is_compressed() {
+        let resp = text_response_with_size(MIN_COMPRESS_SIZE + 1);
+        let headers = accept_gzip_headers();
+        let result = auto(&Method::GET, &headers, CompressionLevel::Default, resp).unwrap();
+        assert!(
+            result.headers().get(CONTENT_ENCODING).is_some(),
+            "responses above {MIN_COMPRESS_SIZE} bytes must be compressed"
+        );
+    }
+
+    #[test]
+    fn response_without_content_length_is_compressed() {
+        let resp = text_response_without_length();
+        let headers = accept_gzip_headers();
+        let result = auto(&Method::GET, &headers, CompressionLevel::Default, resp).unwrap();
+        assert!(
+            result.headers().get(CONTENT_ENCODING).is_some(),
+            "responses without Content-Length must still be compressed (safe default)"
+        );
+    }
+
+    #[test]
+    fn small_response_head_method_is_not_compressed() {
+        let resp = text_response_with_size(MIN_COMPRESS_SIZE - 1);
+        let headers = accept_gzip_headers();
+        let result = auto(&Method::HEAD, &headers, CompressionLevel::Default, resp).unwrap();
+        assert!(
+            result.headers().get(CONTENT_ENCODING).is_none(),
+            "HEAD requests are never compressed regardless of size"
+        );
+    }
+
+    #[test]
+    fn non_compressible_content_type_is_not_compressed() {
+        let body = body::full(vec![b'x'; MIN_COMPRESS_SIZE + 100]);
+        let mut resp = Response::new(body);
+        resp.headers_mut()
+            .insert(CONTENT_TYPE, "image/png".parse().unwrap());
+        resp.headers_mut().insert(
+            CONTENT_LENGTH,
+            (MIN_COMPRESS_SIZE + 100).to_string().parse().unwrap(),
+        );
+        let headers = accept_gzip_headers();
+        let result = auto(&Method::GET, &headers, CompressionLevel::Default, resp).unwrap();
+        assert!(
+            result.headers().get(CONTENT_ENCODING).is_none(),
+            "non-compressible content-types are never compressed"
+        );
+    }
 }
