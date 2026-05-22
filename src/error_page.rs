@@ -13,7 +13,7 @@ use mime_guess::mime;
 use std::path::Path;
 
 use crate::body::Body;
-use crate::{Result, helpers, http_ext::MethodExt};
+use crate::{Result, exts::http::MethodExt, helpers};
 
 /// Build an `text/html` response with the correct `Content-Length` and
 /// `Accept-Ranges` headers.

@@ -146,12 +146,12 @@ pub mod directory_listing;
 #[cfg_attr(docsrs, doc(cfg(feature = "directory-listing-download")))]
 pub mod directory_listing_download;
 pub mod error_page;
+pub mod exts;
 #[cfg(feature = "fallback-page")]
 #[cfg_attr(docsrs, doc(cfg(feature = "fallback-page")))]
 pub mod fallback_page;
 pub(crate) mod fs;
 pub mod handler;
-pub(crate) mod headers_ext;
 pub(crate) mod health;
 #[cfg(feature = "tls")]
 #[cfg_attr(docsrs, doc(cfg(feature = "tls")))]
@@ -163,8 +163,6 @@ pub(crate) mod markdown;
 pub(crate) mod mem_cache;
 #[cfg(feature = "metrics")]
 pub(crate) mod metrics;
-#[allow(dead_code)]
-pub(crate) mod mime_ext;
 pub mod redirects;
 pub(crate) mod response;
 pub mod rewrites;
@@ -190,8 +188,6 @@ pub mod error;
 // Private modules
 #[doc(hidden)]
 mod helpers;
-#[doc(hidden)]
-pub mod http_ext;
 #[doc(hidden)]
 pub mod testing;
 

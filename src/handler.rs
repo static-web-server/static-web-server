@@ -40,9 +40,9 @@ use crate::metrics;
 use crate::mem_cache::cache::MemCacheOpts;
 
 use crate::{
-    Error, Result, control_headers, cors, custom_headers, error_page, health,
-    http_ext::MethodExt,
-    log_addr, maintenance_mode, redirects, rewrites, security_headers,
+    Error, Result, control_headers, cors, custom_headers, error_page,
+    exts::http::MethodExt,
+    health, log_addr, maintenance_mode, redirects, rewrites, security_headers,
     settings::Advanced,
     static_files::{self, HandleOpts},
     text_charset, virtual_hosts,

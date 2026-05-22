@@ -14,10 +14,10 @@ use std::path::{Path, PathBuf};
 
 use crate::Error;
 use crate::body::Body;
+use crate::exts::headers::{AcceptEncoding, ContentCoding};
+use crate::exts::http::append_vary_accept_encoding;
 use crate::fs::meta::try_metadata;
 use crate::handler::RequestHandlerOpts;
-use crate::headers_ext::{AcceptEncoding, ContentCoding};
-use crate::http_ext::append_vary_accept_encoding;
 
 /// It defines the pre-compressed file variant metadata of a particular file path.
 pub struct CompressedFileVariant {

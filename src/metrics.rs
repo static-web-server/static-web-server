@@ -16,7 +16,7 @@ use prometheus::{
 };
 
 use crate::body::Body;
-use crate::{Error, handler::RequestHandlerOpts, http_ext::MethodExt};
+use crate::{Error, exts::http::MethodExt, handler::RequestHandlerOpts};
 
 // Histogram buckets tuned for static file serving (50µs to 10s).
 // Sub-millisecond range captures cache hits and small in-memory responses.

@@ -10,7 +10,7 @@ mod tests {
     use std::net::SocketAddr;
 
     use static_web_server::cors;
-    use static_web_server::http_ext::MethodExt;
+    use static_web_server::exts::http::MethodExt;
     use static_web_server::testing::fixtures::{
         REMOTE_ADDR, fixture_req_handler, fixture_req_handler_opts, fixture_settings,
     };

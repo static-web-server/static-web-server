@@ -14,7 +14,7 @@ use std::path::Path;
 
 use crate::body::Body;
 use crate::{
-    Error, fs::meta::try_markdown_variant, handler::RequestHandlerOpts, headers_ext::Accept,
+    Error, exts::headers::Accept, fs::meta::try_markdown_variant, handler::RequestHandlerOpts,
 };
 
 /// Pre-process a request to check if a markdown variant URI should be used.

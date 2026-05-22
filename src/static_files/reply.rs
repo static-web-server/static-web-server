@@ -19,8 +19,8 @@ use std::path::{Path, PathBuf};
 
 use crate::body::Body;
 use crate::conditional_headers::ConditionalHeaders;
-use crate::headers_ext::ContentCoding;
-use crate::http_ext::HTTP_SUPPORTED_METHODS;
+use crate::exts::headers::ContentCoding;
+use crate::exts::http::HTTP_SUPPORTED_METHODS;
 use crate::response::response_body;
 
 use super::opts::HandleOpts;
