@@ -23,8 +23,8 @@ use tokio_util::io::ReaderStream;
 
 use crate::Result;
 use crate::body::Body;
+use crate::exts::http::MethodExt;
 use crate::handler::RequestHandlerOpts;
-use crate::http_ext::MethodExt;
 
 /// query parameter key to download directory as tar.gz
 pub const DOWNLOAD_PARAM_KEY: &str = "download";

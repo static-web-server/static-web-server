@@ -15,7 +15,7 @@ use std::io;
 use crate::Result;
 use crate::body::Body;
 use crate::directory_listing::dir::{DirEntryOpts, DirListOpts, read_dir_entries};
-use crate::http_ext::MethodExt;
+use crate::exts::http::MethodExt;
 
 /// Provides directory listing support for the current request.
 /// Note that this function highly depends on `static_files::composed_file_metadata()` function

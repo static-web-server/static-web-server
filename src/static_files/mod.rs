@@ -36,9 +36,9 @@ pub use opts::{HandleOpts, StaticFileResponse};
 use hyper::StatusCode;
 
 use crate::Result;
+use crate::exts::http::MethodExt;
 use crate::fs::meta::FileMetadata;
 use crate::fs::path::sanitize_path;
-use crate::http_ext::MethodExt;
 
 #[cfg(feature = "experimental")]
 use crate::mem_cache::cache;

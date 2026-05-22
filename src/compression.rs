@@ -28,10 +28,10 @@ use tokio_util::io::{ReaderStream, StreamReader};
 
 use crate::body::Body;
 use crate::error_page;
+use crate::exts::headers::{AcceptEncoding, ContentCoding};
+use crate::exts::http::{MethodExt, append_vary_accept_encoding};
+use crate::exts::mime::MimeExt;
 use crate::handler::RequestHandlerOpts;
-use crate::headers_ext::{AcceptEncoding, ContentCoding};
-use crate::http_ext::{MethodExt, append_vary_accept_encoding};
-use crate::mime_ext::MimeExt;
 use crate::settings::CompressionLevel;
 use crate::{Error, Result};
 

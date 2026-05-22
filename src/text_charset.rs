@@ -14,7 +14,7 @@ use hyper::{
 use mime_guess::{Mime, mime};
 
 use crate::body::Body;
-use crate::mime_ext::MimeExt;
+use crate::exts::mime::MimeExt;
 use crate::{Error, handler::RequestHandlerOpts};
 
 /// MIME types requiring an explicit `; charset=utf-8` header.

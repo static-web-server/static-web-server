@@ -12,8 +12,8 @@ use hyper::{Request, Response, StatusCode, header::WWW_AUTHENTICATE};
 
 use crate::Error;
 use crate::error_page;
+use crate::exts::http::MethodExt;
 use crate::handler::RequestHandlerOpts;
-use crate::http_ext::MethodExt;
 
 /// Initializes `Basic` HTTP Authorization handling
 pub(crate) fn init(credentials: &str, handler_opts: &mut RequestHandlerOpts) {

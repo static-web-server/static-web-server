@@ -11,7 +11,7 @@ use std::path::Path;
 
 use crate::body::Body;
 use crate::error_page::build_html_response;
-use crate::{Error, handler::RequestHandlerOpts, helpers, http_ext::MethodExt};
+use crate::{Error, exts::http::MethodExt, handler::RequestHandlerOpts, helpers};
 
 /// Initializes fallback page processing
 pub(crate) fn init(file_path: &Path, handler_opts: &mut RequestHandlerOpts) {

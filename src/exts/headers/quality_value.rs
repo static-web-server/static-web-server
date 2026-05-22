@@ -7,7 +7,7 @@ use headers::Error;
 use hyper::header::HeaderValue;
 use std::cmp::Ordering;
 
-use crate::headers_ext::ContentCoding;
+use super::ContentCoding;
 
 /// A CSV list that respects the Quality Values syntax defined in
 /// [RFC7321](https://tools.ietf.org/html/rfc7231#section-5.3.1)

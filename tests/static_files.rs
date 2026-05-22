@@ -9,7 +9,7 @@ mod tests {
     use headers::HeaderMap;
     use http::{Method, StatusCode};
     use http_body_util::BodyExt;
-    use static_web_server::http_ext::MethodExt;
+    use static_web_server::exts::http::MethodExt;
     use std::fs;
     use std::path::PathBuf;
 
