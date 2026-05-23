@@ -36,14 +36,15 @@ max-file-size = 8192
 
 ### Fields
 
-| Field            | Type  | Default | Maximum    | Unit      | Description                                                    |
-|------------------|-------|---------|------------|-----------|----------------------------------------------------------------|
-| `capacity`       | `u64` | 100     | 100 000    | entries   | Maximum number of cached file entries.                         |
-| `ttl`            | `u64` | 1800    | 86 400     | seconds   | Time-to-Live: maximum age of a cached entry before eviction.   |
-| `tti`            | `u64` | 300     | 3 600      | seconds   | Time-to-Idle: maximum idle time before an entry is evicted.    |
-| `max-file-size`  | `u64` | 8192    | 32 768     | KiB       | Maximum file size allowed into the cache. Files exceeding this limit are served from disk. |
+| Field | Type | Default | Maximum | Unit | Description |
+| -- | -- | -- | -- | -- | -- |
+| `capacity` | `u64` | 100 | 100 000 | entries | Maximum number of cached file entries. |
+| `ttl` | `u64` | 1800 | 86 400 | seconds | Time-to-Live: maximum age of a cached entry before eviction. |
+| `tti` | `u64` | 300 | 3 600 | seconds | Time-to-Idle: maximum idle time before an entry is evicted. |
+| `max-file-size` | `u64` | 8192 | 32 768 | KiB | Maximum file size allowed into the cache. Files exceeding this limit are served from disk. |
 
 !!! warning "Defaults & Limits"
+
     Values exceeding the maximum limits are clamped silently. For example, setting `capacity = 200000` results in `100000`.
 
 ## How it works
@@ -54,9 +55,11 @@ max-file-size = 8192
 4. **Eviction**: Entries that exceed TTL, idle beyond TTI, or are displaced by the LFU/LRU policies are evicted automatically.
 
 !!! tip "Pair with static compression"
+
     The in-memory cache stores **uncompressed** file data. It is safe to combine with [on-the-fly compression](compression.md) and [pre-compressed file serving](compression-static.md) — the cache lookup happens before compression in the request pipeline.
 
 !!! note "Partial content (range requests)"
+
     Byte-range requests (`Range` header) are supported. The cache stores the whole file; partial responses are sliced from the cached bytes on every request.
 
 ## X-Cache response header
