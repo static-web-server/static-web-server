@@ -159,7 +159,7 @@ strip = true
 #   samply record target/release-profiling/static-web-server -p 8787 -d docker/public/
 [profile.release-profiling]
 inherits = "release"
-debug = "line-tables-only"
+debug = 2
 strip = false
 
 [package.metadata.docs.rs]

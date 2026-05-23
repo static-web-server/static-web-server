@@ -12,9 +12,7 @@
 
 use bytes::Bytes;
 use compact_str::CompactString;
-use headers::{
-    AcceptRanges, ContentLength, ContentRange, ContentType, HeaderMap, HeaderMapExt, LastModified,
-};
+use headers::{AcceptRanges, ContentLength, ContentRange, HeaderMap, HeaderMapExt, LastModified};
 use hyper::header::{CONTENT_TYPE, HeaderName, HeaderValue};
 use hyper::{Response, StatusCode};
 use mini_moka::sync::Cache;
@@ -146,14 +144,17 @@ pub(crate) fn lookup(
 #[derive(Debug, Clone)]
 pub(crate) struct MemFileTempOpts {
     pub(crate) file_path: String,
-    pub(crate) content_type: ContentType,
+    /// Pre-built `Content-Type` `HeaderValue`. Reusing a `HeaderValue`
+    /// (instead of [`ContentType`]) avoids re-encoding the mime string
+    /// when the entry is eventually inserted into the cache.
+    pub(crate) content_type: HeaderValue,
     pub(crate) last_modified: Option<LastModified>,
 }
 
 impl MemFileTempOpts {
     pub(crate) fn new(
         file_path: String,
-        content_type: ContentType,
+        content_type: HeaderValue,
         last_modified: Option<LastModified>,
     ) -> Self {
         Self {
@@ -185,16 +186,9 @@ impl MemFile {
     #[inline]
     pub(crate) fn new(
         data: Bytes,
-        content_type: ContentType,
+        content_type: HeaderValue,
         last_modified: Option<LastModified>,
     ) -> Self {
-        // Pre-format the `Content-Type` once at insert time so the hot read
-        // path does not need to stringify `mime::Mime` or call `typed_insert`.
-        let mut hm = HeaderMap::with_capacity(1);
-        hm.typed_insert(content_type);
-        let content_type = hm
-            .remove(CONTENT_TYPE)
-            .unwrap_or_else(|| HeaderValue::from_static("application/octet-stream"));
         Self {
             data,
             content_type,

@@ -65,7 +65,7 @@ pub(super) fn options_reply() -> Response<Body> {
 /// variant on disk when one was located by [`super::resolve`].
 pub(super) fn file_or_precompressed(
     opts: &HandleOpts<'_>,
-    file_path: &PathBuf,
+    file_path: &Path,
     metadata: &Metadata,
     precompressed_variant: Option<(PathBuf, ContentCoding)>,
 ) -> Result<Response<Body>, StatusCode> {
@@ -80,7 +80,7 @@ pub(super) fn file_or_precompressed(
 /// removed, `Content-Encoding` set) accordingly.
 fn precompressed_reply(
     opts: &HandleOpts<'_>,
-    file_path: &PathBuf,
+    file_path: &Path,
     metadata: &Metadata,
     precomp_path: PathBuf,
     precomp_encoding: ContentCoding,
@@ -104,12 +104,12 @@ fn precompressed_reply(
 /// conditional headers, and produces a streaming response body.
 fn file_reply(
     opts: &HandleOpts<'_>,
-    path: &PathBuf,
+    path: &Path,
     meta: &Metadata,
     path_precompressed: Option<PathBuf>,
 ) -> Result<Response<Body>, StatusCode> {
     let conditionals = ConditionalHeaders::new(opts.headers);
-    let open_path: &Path = path_precompressed.as_deref().unwrap_or(path.as_path());
+    let open_path: &Path = path_precompressed.as_deref().unwrap_or(path);
 
     match File::open(open_path) {
         Ok(file) => {
