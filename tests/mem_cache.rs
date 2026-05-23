@@ -131,20 +131,6 @@ mod tests {
         use static_web_server::handler::RequestHandlerOpts;
         use static_web_server::settings::Advanced;
 
-        // let mut handler_opts = RequestHandlerOpts::default();
-        // handler_opts.advanced_opts = Some(Advanced {
-        //     headers: None,
-        //     rewrites: None,
-        //     redirects: None,
-        //     virtual_hosts: None,
-        //     memory_cache: Some(MemoryCache {
-        //         capacity: Some(10),
-        //         ttl: Some(60),
-        //         tti: Some(30),
-        //         max_file_size: Some(1024),
-        //     }),
-        // });
-
         let memory_cache = Some(MemoryCache {
             capacity: Some(10),
             ttl: Some(60),
@@ -269,13 +255,11 @@ mod tests {
         assert_eq!(body1, body2);
     }
 
-    // -------------------------------------------------------------------------
     // Runtime gating via TOML config file.
     //
     // The in-memory cache must only activate when `[advanced.memory-cache]` is
     // present in the configuration file. Otherwise the server must behave as
     // if the feature were not compiled in (no allocation, no global state).
-    // -------------------------------------------------------------------------
 
     #[test]
     fn toml_fixture_enables_memory_cache() {
@@ -307,6 +291,58 @@ mod tests {
         assert!(
             mc.is_none(),
             "memory_cache should be None when `[advanced.memory-cache]` is absent"
+        );
+    }
+
+    // X-Cache response header.
+    //
+    // Responses served from the in-memory cache must include `X-Cache: HIT`.
+    // Responses from disk (cache miss or cache disabled) must NOT include the
+    // header.
+
+    #[tokio::test]
+    async fn x_cache_hit_header_present_on_cache_hit() {
+        let mem_opts = MemCacheOpts::new(DEFAULT_MAX_FILE_SIZE);
+
+        // First request: populates the cache (miss, no X-Cache header expected).
+        let opts1 = handle_opts(Some(&mem_opts));
+        let result1 = static_files::handle(&opts1).await;
+        assert!(result1.is_ok());
+
+        // First request is a miss: served from disk, so no X-Cache header.
+        let resp1 = result1.unwrap().resp;
+        assert!(
+            resp1.headers().get("x-cache").is_none(),
+            "X-Cache should not be set on a cache miss (first request)"
+        );
+
+        // Consume the body so the streaming pipeline finishes and populates the cache.
+        let _body1 = resp1.into_body().collect().await.unwrap().to_bytes();
+
+        // Second request: should be served from cache (hit).
+        let opts2 = handle_opts(Some(&mem_opts));
+        let result2 = static_files::handle(&opts2).await;
+        assert!(result2.is_ok());
+
+        let resp2 = result2.unwrap().resp;
+        let x_cache = resp2
+            .headers()
+            .get("x-cache")
+            .expect("X-Cache header must be present on a cache hit");
+        assert_eq!(x_cache, "HIT");
+    }
+
+    #[tokio::test]
+    async fn x_cache_header_absent_when_cache_disabled() {
+        // With memory_cache = None, no X-Cache header should ever appear.
+        let opts = handle_opts(None);
+        let result = static_files::handle(&opts).await;
+        assert!(result.is_ok());
+
+        let resp = result.unwrap().resp;
+        assert!(
+            resp.headers().get("x-cache").is_none(),
+            "X-Cache should never appear when the in-memory cache is disabled"
         );
     }
 }

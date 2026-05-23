@@ -41,7 +41,7 @@ max-file-size = 8192
 | `capacity`       | `u64` | 100     | 100 000    | entries   | Maximum number of cached file entries.                         |
 | `ttl`            | `u64` | 1800    | 86 400     | seconds   | Time-to-Live: maximum age of a cached entry before eviction.   |
 | `tti`            | `u64` | 300     | 3 600      | seconds   | Time-to-Idle: maximum idle time before an entry is evicted.    |
-| `max-file-size`  | `u64` | 8192    | 262 144    | KiB       | Maximum file size allowed into the cache. Files exceeding this limit are served from disk. |
+| `max-file-size`  | `u64` | 8192    | 32 768     | KiB       | Maximum file size allowed into the cache. Files exceeding this limit are served from disk. |
 
 !!! warning "Defaults & Limits"
     Values exceeding the maximum limits are clamped silently. For example, setting `capacity = 200000` results in `100000`.
@@ -50,7 +50,7 @@ max-file-size = 8192
 
 1. **First request**: SWS reads the file from disk, streams the response to the client, and simultaneously populates the cache store.
 2. **Subsequent requests** (within TTL/TTI): SWS serves the response directly from memory — zero disk I/O.
-3. **Concurrent misses**: A single-flight semaphore serializes concurrent cache misses, ensuring the file is read from disk only once per key.
+3. **Concurrent misses**: The underlying cache store is fully concurrent and thread-safe. Brief duplicate reads under contention are benign and resolve themselves once the entry is populated.
 4. **Eviction**: Entries that exceed TTL, idle beyond TTI, or are displaced by the LFU/LRU policies are evicted automatically.
 
 !!! tip "Pair with static compression"
@@ -59,8 +59,29 @@ max-file-size = 8192
 !!! note "Partial content (range requests)"
     Byte-range requests (`Range` header) are supported. The cache stores the whole file; partial responses are sliced from the cached bytes on every request.
 
+## X-Cache response header
+
+When a response is served from the in-memory cache, SWS includes the standard **`X-Cache: HIT`** header. This is the same header used by nginx, Apache, Varnish, and most CDNs to indicate cache status.
+
+- **Cache hit** — the response includes `X-Cache: HIT`.
+- **Cache miss** (first request, or cache disabled) — the `X-Cache` header is **not present**.
+
+You can use this header to verify cache behaviour via `curl`:
+
+```sh
+# First request (miss — no X-Cache header):
+curl -sI http://localhost:8787/index.html | grep -i x-cache
+# (no output)
+
+# Second request (hit — X-Cache: HIT):
+curl -sI http://localhost:8787/index.html | grep -i x-cache
+# x-cache: HIT
+```
+
+Or inspect it in browser developer tools under the **Network → Response Headers** tab.
+
 ## Performance considerations
 
 - For **small, frequently accessed files** (favicons, CSS, JS, HTML), enable the cache with a moderate `max-file-size` (e.g., 8192 KiB) and a long TTL (e.g., 3600s).
 - For **large files** (video, archives), keep `max-file-size` low or disable the cache entirely — serving large files from memory can increase RSS significantly.
-- The single-flight mechanism prevents **thundering herd** problems on cache misses, making the cache safe for high-concurrency workloads.
+- The cache store is lock-free for reads and uses fine-grained internal sharding for writes, so it scales well under high concurrency without blocking other requests.

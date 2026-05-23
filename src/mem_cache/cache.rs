@@ -15,6 +15,7 @@ use compact_str::CompactString;
 use headers::{
     AcceptRanges, ContentLength, ContentRange, ContentType, HeaderMap, HeaderMapExt, LastModified,
 };
+use hyper::header::{HeaderName, HeaderValue};
 use hyper::{Response, StatusCode};
 use mini_moka::sync::Cache;
 use std::io::{Read, Seek, SeekFrom};
@@ -32,6 +33,11 @@ use crate::response::{BadRangeError, bytes_range};
 /// Global cache that stores all files in memory.
 /// It provides expiration policies like Time to live (TTL) and Time to idle (TTI) support.
 pub(crate) static CACHE_STORE: OnceLock<Cache<CompactString, Arc<MemFile>>> = OnceLock::new();
+
+/// Standard `X-Cache` header to indicate whether a response was served from cache.
+pub(crate) static X_CACHE: HeaderName = HeaderName::from_static("x-cache");
+/// Value for the `X-Cache` header when the response is a cache hit.
+pub(crate) static X_CACHE_HIT: HeaderValue = HeaderValue::from_static("HIT");
 
 /// It defines the in-memory files cache options.
 pub struct MemCacheOpts {
@@ -54,8 +60,8 @@ const MAX_CAPACITY: u64 = 100_000;
 const MAX_TTL: u64 = 86_400;
 /// Maximum allowed TTI in seconds (1 hour).
 const MAX_TTI: u64 = 3_600;
-/// Maximum allowed file size in KiB (256 MiB = 262144 KiB).
-const MAX_FILE_SIZE: u64 = 262_144;
+/// Maximum allowed file size in KiB (32 MiB = 32768 KiB).
+const MAX_FILE_SIZE: u64 = 32_768;
 
 impl MemCacheOpts {
     /// Creates a new instance of `MemCacheOpts`.
@@ -130,7 +136,13 @@ pub(crate) fn lookup(
     let key = CompactString::from(file_path_str);
     let mem_file = store.get(&key)?;
     tracing::debug!("file `{file_path_str}` served from the in-memory cache store");
-    Some(mem_file.response_body(headers_opt))
+    // Tag the response with `X-Cache: HIT` so clients and tooling can
+    // identify that it was served from the in-memory cache.
+    Some(mem_file.response_body(headers_opt).map(|mut resp| {
+        resp.headers_mut()
+            .insert(X_CACHE.clone(), X_CACHE_HIT.clone());
+        resp
+    }))
 }
 
 #[derive(Debug, Clone)]
@@ -292,7 +304,7 @@ mod tests {
         const {
             assert!(MAX_TTI >= DEFAULT_TTI);
         }
-        // File size capped at 256 MiB (in KiB)
+        // File size capped at 32 MiB (in KiB)
         const {
             assert!(MAX_FILE_SIZE >= DEFAULT_MAX_FILE_SIZE);
         }
@@ -379,5 +391,11 @@ mod tests {
         if CACHE_STORE.get().is_none() {
             assert!(lookup(path, &headers).is_none());
         }
+    }
+
+    #[test]
+    fn x_cache_header_constants_are_valid() {
+        assert_eq!(X_CACHE.as_str(), "x-cache");
+        assert_eq!(X_CACHE_HIT.to_str().unwrap(), "HIT");
     }
 }

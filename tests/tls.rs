@@ -152,9 +152,7 @@ mod settings_tests {
     }
 }
 
-// ---------------------------------------------------------------------------
 // Live server integration tests
-// ---------------------------------------------------------------------------
 //
 // Each test spawns a real SWS server in a dedicated thread (with its own tokio
 // runtime) and connects to it using a TLS client. To avoid flakiness:
