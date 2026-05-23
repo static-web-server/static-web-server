@@ -43,43 +43,61 @@ pub struct MemCacheOpts {
     pub max_file_size: u64,
 }
 
+/// Default capacity (number of entries).
+pub const DEFAULT_CAPACITY: u64 = 100;
+/// Default time-to-live in seconds (30 minutes).
+pub const DEFAULT_TTL: u64 = 1800;
+/// Default time-to-idle in seconds (5 minutes).
+pub const DEFAULT_TTI: u64 = 300;
+/// Default maximum file size in KiB (8 MiB = 8192 KiB).
+pub const DEFAULT_MAX_FILE_SIZE: u64 = 8192;
+
+/// Maximum allowed capacity (entries).
+const MAX_CAPACITY: u64 = 100_000;
+/// Maximum allowed TTL in seconds (24 hours).
+const MAX_TTL: u64 = 86_400;
+/// Maximum allowed TTI in seconds (1 hour).
+const MAX_TTI: u64 = 3_600;
+/// Maximum allowed file size in KiB (256 MiB = 262144 KiB).
+const MAX_FILE_SIZE: u64 = 262_144;
+
 impl MemCacheOpts {
     /// Creates a new instance of `MemCacheOpts`.
+    /// `max_file_size` is in KiB and gets converted to bytes internally.
     #[inline]
     pub fn new(max_file_size: u64) -> Self {
         Self {
-            max_file_size: 1024 * 1024 * max_file_size,
+            max_file_size: max_file_size * 1024,
         }
     }
 }
 
-/// Make sure to initialize the in-memory cache store.
-pub(crate) fn init(handler_opts: &mut RequestHandlerOpts) -> Result {
+/// Initialize the in-memory cache store from handler options.
+///
+/// If `[advanced.memory-cache]` is present in the configuration, a cache store
+/// is created with the specified (or default) parameters. Values exceeding
+/// their allowed maximums are clamped silently.
+pub fn init(handler_opts: &mut RequestHandlerOpts) -> Result {
     if let Some(advanced_opts) = handler_opts.advanced_opts.as_ref()
         && let Some(opts) = advanced_opts.memory_cache.as_ref()
     {
-        // TODO: define maximum values
-
-        // Default 256 entries
-        let capacity = opts.capacity.unwrap_or(256);
-        // Default 1h
-        let ttl = opts.ttl.unwrap_or(3600);
-        // Default 5min
-        let tti = opts.tti.unwrap_or(300);
-        // Default 8mb
-        let max_file_size = opts.max_file_size.unwrap_or(8192);
+        let capacity = opts.capacity.unwrap_or(DEFAULT_CAPACITY).min(MAX_CAPACITY);
+        let ttl = opts.ttl.unwrap_or(DEFAULT_TTL).min(MAX_TTL);
+        let tti = opts.tti.unwrap_or(DEFAULT_TTI).min(MAX_TTI);
+        let max_file_size = opts
+            .max_file_size
+            .unwrap_or(DEFAULT_MAX_FILE_SIZE)
+            .min(MAX_FILE_SIZE);
 
         tracing::info!(
-            "in-memory cache (experimental): enabled=true, capacity={capacity}, ttl={ttl}, tti={tti}, max_file_size={max_file_size}"
+            "in-memory cache: enabled=true, capacity={capacity}, ttl={ttl}s, tti={tti}s, max_file_size={max_file_size}KiB"
         );
 
         let mem_opts = MemCacheOpts::new(max_file_size);
 
         let cache = Cache::builder()
             .max_capacity(capacity)
-            // Time to live (TTL): 30 minutes
             .time_to_live(Duration::from_secs(ttl))
-            // Time to idle (TTI):  5 minutes
             .time_to_idle(Duration::from_secs(tti))
             .build();
 
@@ -92,7 +110,7 @@ pub(crate) fn init(handler_opts: &mut RequestHandlerOpts) -> Result {
         return Ok(());
     }
 
-    tracing::info!("in-memory cache (experimental): enabled=false");
+    tracing::info!("in-memory cache: enabled=false");
 
     Ok(())
 }
@@ -122,7 +140,7 @@ pub(crate) async fn get_or_acquire(
 ) -> Option<CacheResult<'static>> {
     let file_path_str = file_path.to_str().or(None)?;
 
-    let store = CACHE_STORE.get().unwrap();
+    let store = CACHE_STORE.get()?;
     match store.get::<CompactString>(&file_path_str.into()) {
         Some(mem_file) => {
             tracing::debug!(
@@ -274,5 +292,118 @@ impl MemFile {
                     })
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn mem_cache_opts_converts_kib_to_bytes() {
+        let opts = MemCacheOpts::new(8192);
+        // 8192 KiB = 8 MiB = 8_388_608 bytes
+        assert_eq!(opts.max_file_size, 8192 * 1024);
+    }
+
+    #[test]
+    fn mem_cache_opts_zero_size() {
+        let opts = MemCacheOpts::new(0);
+        assert_eq!(opts.max_file_size, 0);
+    }
+
+    #[test]
+    fn default_constants_are_sane() {
+        assert_eq!(DEFAULT_CAPACITY, 100);
+        assert_eq!(DEFAULT_TTL, 1800);
+        assert_eq!(DEFAULT_TTI, 300);
+        assert_eq!(DEFAULT_MAX_FILE_SIZE, 8192);
+    }
+
+    #[test]
+    fn max_constants_enforce_upper_bounds() {
+        // Capacity capped at 100k
+        const {
+            assert!(MAX_CAPACITY >= DEFAULT_CAPACITY);
+        }
+        // TTL capped at 24h
+        const {
+            assert!(MAX_TTL >= DEFAULT_TTL);
+        }
+        // TTI capped at 1h
+        const {
+            assert!(MAX_TTI >= DEFAULT_TTI);
+        }
+        // File size capped at 256 MiB (in KiB)
+        const {
+            assert!(MAX_FILE_SIZE >= DEFAULT_MAX_FILE_SIZE);
+        }
+    }
+
+    #[test]
+    fn init_returns_ok_without_advanced_opts() {
+        let mut handler_opts = crate::handler::RequestHandlerOpts::default();
+        let result = init(&mut handler_opts);
+        assert!(result.is_ok());
+        assert!(handler_opts.memory_cache.is_none());
+    }
+
+    #[test]
+    fn init_returns_ok_without_memory_cache_section() {
+        let mut handler_opts = RequestHandlerOpts {
+            advanced_opts: Some(crate::settings::Advanced {
+                headers: None,
+                rewrites: None,
+                redirects: None,
+                virtual_hosts: None,
+                memory_cache: None,
+            }),
+            ..Default::default()
+        };
+        let result = init(&mut handler_opts);
+        assert!(result.is_ok());
+        assert!(handler_opts.memory_cache.is_none());
+    }
+
+    #[test]
+    fn init_with_defaults_creates_cache() {
+        let mut handler_opts = RequestHandlerOpts {
+            advanced_opts: Some(crate::settings::Advanced {
+                headers: None,
+                rewrites: None,
+                redirects: None,
+                virtual_hosts: None,
+                memory_cache: Some(crate::settings::file::MemoryCache {
+                    capacity: None,
+                    ttl: None,
+                    tti: None,
+                    max_file_size: None,
+                }),
+            }),
+            ..Default::default()
+        };
+        let result = init(&mut handler_opts);
+        assert!(result.is_ok());
+        assert!(handler_opts.memory_cache.is_some());
+        let opts = handler_opts.memory_cache.unwrap();
+        assert_eq!(opts.max_file_size, DEFAULT_MAX_FILE_SIZE * 1024);
+    }
+
+    #[test]
+    fn init_clamps_values_to_max() {
+        // We can't call init() twice due to OnceLock, so test the clamping
+        // logic directly via the min() expressions.
+        let capacity = 999_999u64.min(MAX_CAPACITY);
+        let ttl = 999_999u64.min(MAX_TTL);
+        let tti = 999_999u64.min(MAX_TTI);
+        let max_file_size = 999_999u64.min(MAX_FILE_SIZE);
+
+        assert_eq!(capacity, MAX_CAPACITY);
+        assert_eq!(ttl, MAX_TTL);
+        assert_eq!(tti, MAX_TTI);
+        assert_eq!(max_file_size, MAX_FILE_SIZE);
+
+        let opts = MemCacheOpts::new(max_file_size);
+        assert_eq!(opts.max_file_size, MAX_FILE_SIZE * 1024);
     }
 }

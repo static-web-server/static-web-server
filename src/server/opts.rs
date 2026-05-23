@@ -28,7 +28,7 @@ use crate::metrics;
 #[cfg(feature = "basic-auth")]
 use crate::basic_auth;
 
-#[cfg(feature = "experimental")]
+#[cfg(feature = "mem-cache")]
 use crate::mem_cache;
 
 #[cfg(any(
@@ -198,8 +198,8 @@ pub(super) fn init(general: &General, advanced: Option<Advanced>) -> Result<Hand
     // Security headers
     security_headers::init(general.security_headers, &mut handler_opts);
 
-    // In-memory cache (experimental)
-    #[cfg(feature = "experimental")]
+    // In-memory cache
+    #[cfg(feature = "mem-cache")]
     mem_cache::cache::init(&mut handler_opts)?;
 
     Ok(HandlerOptsResult {

@@ -38,11 +38,11 @@ doc = false
 
 [features]
 # All features enabled by default
-default = ["compression", "http2", "tls-ring", "directory-listing", "directory-listing-download", "basic-auth", "fallback-page", "metrics"]
+default = ["compression", "http2", "tls-ring", "directory-listing", "directory-listing-download", "basic-auth", "fallback-page", "metrics", "mem-cache"]
 # Include all features (used when building SWS binaries)
 all = ["default", "experimental"]
 # Default feature set with the FIPS crypto provider in place of ring.
-default-fips = ["compression", "http2", "tls-fips", "directory-listing", "directory-listing-download", "basic-auth", "fallback-page", "metrics"]
+default-fips = ["compression", "http2", "tls-fips", "directory-listing", "directory-listing-download", "basic-auth", "fallback-page", "metrics", "mem-cache"]
 # All features with the FIPS crypto provider (used when building FIPS SWS binaries).
 all-fips = ["default-fips", "experimental"]
 # TLS base plumbing -- gates all TLS code via cfg(feature = "tls").
@@ -70,8 +70,10 @@ basic-auth = ["bcrypt"]
 fallback-page = []
 # Metrics endpoint with Prometheus integration
 metrics = ["prometheus"]
+# In-memory file cache with LFU admission and LRU eviction
+mem-cache = ["compact_str", "mini-moka"]
 # Experimental features (requires: `RUSTFLAGS="--cfg tokio_unstable"`)
-experimental = ["metrics", "tokio-metrics-collector", "compact_str", "mini-moka"]
+experimental = ["metrics", "tokio-metrics-collector"]
 
 [dependencies]
 aho-corasick = "1.1.4"

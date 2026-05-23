@@ -164,10 +164,9 @@ pub struct VirtualHosts {
     pub root: Option<PathBuf>,
 }
 
-#[cfg(feature = "experimental")]
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "kebab-case")]
-/// Represents the in-memory file cache feature.
+/// Represents the in-memory file cache configuration.
 pub struct MemoryCache {
     /// Maximum capacity entries of the memory cache store.
     pub capacity: Option<u64>,
@@ -175,7 +174,7 @@ pub struct MemoryCache {
     pub ttl: Option<u64>,
     /// Time to idle in seconds of a cached file entry.
     pub tti: Option<u64>,
-    /// Maximum size in bytes for a file entry to be cached.
+    /// Maximum file size in KiB for a file entry to be cached.
     pub max_file_size: Option<u64>,
 }
 
@@ -191,8 +190,7 @@ pub struct Advanced {
     pub redirects: Option<Vec<Redirects>>,
     /// Name-based virtual hosting
     pub virtual_hosts: Option<Vec<VirtualHosts>>,
-    #[cfg(feature = "experimental")]
-    /// In-memory cache feature (experimental).
+    /// In-memory cache feature.
     pub memory_cache: Option<MemoryCache>,
 }
 
@@ -394,10 +392,6 @@ pub struct General {
 
     /// Custom maintenance mode HTML file.
     pub maintenance_mode_file: Option<PathBuf>,
-
-    #[cfg(feature = "experimental")]
-    /// In-memory files cache feature.
-    pub memory_cache: Option<bool>,
 
     #[cfg(windows)]
     /// windows service feature.

@@ -36,7 +36,7 @@ use crate::fallback_page;
 #[cfg(feature = "metrics")]
 use crate::metrics;
 
-#[cfg(feature = "experimental")]
+#[cfg(feature = "mem-cache")]
 use crate::mem_cache::cache::MemCacheOpts;
 
 use crate::{
@@ -59,8 +59,8 @@ pub struct RequestHandlerOpts {
     // General options
     /// Root directory of static files.
     pub root_dir: PathBuf,
-    #[cfg(feature = "experimental")]
-    /// In-memory cache feature (experimental).
+    #[cfg(feature = "mem-cache")]
+    /// In-memory cache feature.
     pub memory_cache: Option<MemCacheOpts>,
     /// Compression feature.
     pub compression: bool,
@@ -168,7 +168,7 @@ impl Default for RequestHandlerOpts {
             #[cfg(feature = "directory-listing-download")]
             dir_listing_download: Vec::new(),
             cors: None,
-            #[cfg(feature = "experimental")]
+            #[cfg(feature = "mem-cache")]
             memory_cache: None,
             security_headers: false,
             cache_control_headers: true,
@@ -229,7 +229,7 @@ impl RequestHandler {
         let ignore_hidden_files = self.opts.ignore_hidden_files;
         let disable_symlinks = self.opts.disable_symlinks;
         let index_files: Vec<&str> = self.opts.index_files.iter().map(|s| s.as_str()).collect();
-        #[cfg(feature = "experimental")]
+        #[cfg(feature = "mem-cache")]
         let memory_cache = self.opts.memory_cache.as_ref();
 
         log_addr::pre_process(&self.opts, req, remote_addr);
@@ -318,7 +318,7 @@ impl RequestHandler {
                 let (resp, file_path) = match static_files::handle(&HandleOpts {
                     method: req.method(),
                     headers: req.headers(),
-                    #[cfg(feature = "experimental")]
+                    #[cfg(feature = "mem-cache")]
                     memory_cache,
                     base_path,
                     uri_path,

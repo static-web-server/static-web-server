@@ -131,7 +131,7 @@ mod tests {
                 base_path: &base_path,
                 uri_path: "/",
                 uri_query: Some(DOWNLOAD_PARAM_KEY),
-                #[cfg(feature = "experimental")]
+                #[cfg(feature = "mem-cache")]
                 memory_cache: None,
                 dir_listing: true,
                 dir_listing_order: 1,
@@ -206,7 +206,7 @@ mod tests {
                 base_path: &base_path,
                 uri_path: "/",
                 uri_query: Some(DOWNLOAD_PARAM_KEY),
-                #[cfg(feature = "experimental")]
+                #[cfg(feature = "mem-cache")]
                 memory_cache: None,
                 dir_listing: true,
                 dir_listing_order: 1,
@@ -270,7 +270,7 @@ mod tests {
                 base_path: &base_path,
                 uri_path: "/",
                 uri_query: Some(DOWNLOAD_PARAM_KEY),
-                #[cfg(feature = "experimental")]
+                #[cfg(feature = "mem-cache")]
                 memory_cache: None,
                 dir_listing: true,
                 dir_listing_order: 1,
@@ -344,7 +344,7 @@ mod tests {
                 base_path: &root_dir("tests/fixtures/public"),
                 uri_path: "/",
                 uri_query: Some(DOWNLOAD_PARAM_KEY),
-                #[cfg(feature = "experimental")]
+                #[cfg(feature = "mem-cache")]
                 memory_cache: None,
                 dir_listing: true,
                 dir_listing_order: 1,

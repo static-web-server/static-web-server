@@ -25,7 +25,6 @@ pub use cli::Commands;
 
 use cli::General;
 
-#[cfg(feature = "experimental")]
 use self::file::MemoryCache;
 
 use self::file::{RedirectsKind, Settings as FileSettings};
@@ -92,8 +91,7 @@ pub struct Advanced {
     pub redirects: Option<Vec<Redirects>>,
     /// Name-based virtual hosting
     pub virtual_hosts: Option<Vec<VirtualHosts>>,
-    #[cfg(feature = "experimental")]
-    /// In-memory cache feature (experimental).
+    /// In-memory cache configuration.
     pub memory_cache: Option<MemoryCache>,
 }
 
@@ -625,7 +623,6 @@ impl Settings {
                     rewrites: rewrites_entries,
                     redirects: redirects_entries,
                     virtual_hosts: vhosts_entries,
-                    #[cfg(feature = "experimental")]
                     memory_cache: advanced.memory_cache,
                 });
             }

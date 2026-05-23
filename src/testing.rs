@@ -106,7 +106,7 @@ pub mod fixtures {
             maintenance_mode: general.maintenance_mode,
             maintenance_mode_status: general.maintenance_mode_status,
             maintenance_mode_file: general.maintenance_mode_file,
-            #[cfg(feature = "experimental")]
+            #[cfg(feature = "mem-cache")]
             memory_cache: None,
             advanced_opts: advanced,
         }

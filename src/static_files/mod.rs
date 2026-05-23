@@ -10,7 +10,7 @@
 //!
 //! 1. **Method check** — `GET`, `HEAD` and `OPTIONS` only.
 //! 2. **Path sanitization** — strip traversal components from the URI path.
-//! 3. **In-memory cache lookup** — short-circuit hot files (experimental).
+//! 3. **In-memory cache lookup** — short-circuit hot files.
 //! 4. **File resolution** — directory → index, `.html` fallback,
 //!    pre-compressed variant detection (see [`resolve`]).
 //! 5. **Security checks** — containment, symlink and hidden-file policy
@@ -40,7 +40,7 @@ use crate::exts::http::MethodExt;
 use crate::fs::meta::FileMetadata;
 use crate::fs::path::sanitize_path;
 
-#[cfg(feature = "experimental")]
+#[cfg(feature = "mem-cache")]
 use crate::mem_cache::cache;
 
 /// The server entry point to handle incoming requests which map to specific files
@@ -52,10 +52,10 @@ pub async fn handle(opts: &HandleOpts<'_>) -> Result<StaticFileResponse, StatusC
 
     let mut file_path = sanitize_path(opts.base_path, opts.uri_path)?;
 
-    // In-memory file cache lookup (experimental). A hit short-circuits the
+    // In-memory file cache lookup. A hit short-circuits the
     // pipeline; a miss returns a permit that lives until the file stream
     // finishes populating the cache.
-    #[cfg(feature = "experimental")]
+    #[cfg(feature = "mem-cache")]
     let _cache_permit = match try_memory_cache(opts, &mut file_path).await? {
         MemCacheOutcome::Hit(resp) => return Ok(resp),
         MemCacheOutcome::Miss(permit) => permit,
@@ -97,8 +97,8 @@ pub async fn handle(opts: &HandleOpts<'_>) -> Result<StaticFileResponse, StatusC
     Ok(StaticFileResponse::new(resp, resp_file_path))
 }
 
-/// Outcome of the experimental in-memory cache lookup.
-#[cfg(feature = "experimental")]
+/// Outcome of the in-memory cache lookup.
+#[cfg(feature = "mem-cache")]
 enum MemCacheOutcome {
     /// The response is fully resolved from cache.
     Hit(StaticFileResponse),
@@ -113,7 +113,7 @@ enum MemCacheOutcome {
 /// with trailing-slash redirect on, the cache key is the implicit
 /// `<dir>/index.html`. The function may push that segment onto
 /// `file_path` before performing the lookup.
-#[cfg(feature = "experimental")]
+#[cfg(feature = "mem-cache")]
 async fn try_memory_cache(
     opts: &HandleOpts<'_>,
     file_path: &mut std::path::PathBuf,

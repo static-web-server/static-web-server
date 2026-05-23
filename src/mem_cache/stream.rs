@@ -68,10 +68,9 @@ impl<T: Read + Unpin> Stream for MemCacheFileStream<T> {
                             file_path
                         );
 
-                        CACHE_STORE
-                            .get()
-                            .unwrap()
-                            .insert(file_path.into(), mem_file);
+                        if let Some(store) = CACHE_STORE.get() {
+                            store.insert(file_path.into(), mem_file);
+                        }
                     }
                 }
 
