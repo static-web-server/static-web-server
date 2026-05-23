@@ -21,7 +21,6 @@ use std::io::{Read, Seek, SeekFrom};
 use std::path::Path;
 use std::sync::{Arc, OnceLock};
 use std::time::Duration;
-use tokio::sync::{Semaphore, SemaphorePermit};
 
 use crate::Result;
 use crate::body::Body;
@@ -33,9 +32,6 @@ use crate::response::{BadRangeError, bytes_range};
 /// Global cache that stores all files in memory.
 /// It provides expiration policies like Time to live (TTL) and Time to idle (TTI) support.
 pub(crate) static CACHE_STORE: OnceLock<Cache<CompactString, Arc<MemFile>>> = OnceLock::new();
-
-/// A single cache permit to allow reading a file once.
-static CACHE_PERMIT: Semaphore = Semaphore::const_new(1);
 
 /// It defines the in-memory files cache options.
 pub struct MemCacheOpts {
@@ -115,64 +111,26 @@ pub fn init(handler_opts: &mut RequestHandlerOpts) -> Result {
     Ok(())
 }
 
-/// Result of a cache lookup via `get_or_acquire`.
-pub(crate) enum CacheResult<'a> {
-    /// Cache hit — return the response directly.
-    Hit(Result<Response<Body>, StatusCode>),
-    /// Cache miss — caller should read the file. The semaphore permit is held
-    /// so that concurrent misses are serialized (single-flight). Drop the permit
-    /// after inserting into the cache store.
-    Miss(SemaphorePermit<'a>),
-    /// An error occurred acquiring the semaphore.
-    Error(StatusCode),
-}
-
-/// Try to get the file in a form of a response from the cache store by a path or
-/// acquires a permit to ensure to hold until the file is read first (once).
+/// Try to get a cached response for the given file path.
 ///
-/// If the file is not found in the cache store then
-/// a cache permit is acquired internally (one at a time)
-/// to allow the caller to read the file first.
-/// Once the file is read on caller's side then the permit is dropped.
-pub(crate) async fn get_or_acquire(
+/// Returns `Some(result)` on a cache hit (the result itself may be an error
+/// status, e.g. for a malformed `Range` header) or `None` when the cache is
+/// disabled, the path is non-UTF-8, or there is no entry yet (cache miss).
+///
+/// The caller is responsible for reading the file from disk on a miss and
+/// inserting it into the cache via the streaming pipeline. There is no
+/// single-flight serialization: mini-moka's `Cache` is concurrency-safe and
+/// duplicate inserts under contention are benign and rare in practice.
+pub(crate) fn lookup(
     file_path: &Path,
     headers_opt: &HeaderMap,
-) -> Option<CacheResult<'static>> {
-    let file_path_str = file_path.to_str().or(None)?;
-
+) -> Option<Result<Response<Body>, StatusCode>> {
+    let file_path_str = file_path.to_str()?;
     let store = CACHE_STORE.get()?;
-    match store.get::<CompactString>(&file_path_str.into()) {
-        Some(mem_file) => {
-            tracing::debug!(
-                "file `{}` found in the in-memory cache store, returning it directly",
-                file_path_str
-            );
-            Some(CacheResult::Hit(mem_file.response_body(headers_opt)))
-        }
-        _ => {
-            tracing::debug!(
-                "file `{}` was not found in the in-memory cache store, continuing",
-                file_path_str
-            );
-            // If a file is not found in the store then continue
-            // with the normal flow and wait on first file read.
-            // Hold the permit so concurrent misses are serialized.
-            match CACHE_PERMIT.acquire().await {
-                Ok(permit) => {
-                    // Re-check after acquiring — another request may have populated
-                    // the cache while we were waiting for the permit.
-                    if let Some(mem_file) = store.get::<CompactString>(&file_path_str.into()) {
-                        return Some(CacheResult::Hit(mem_file.response_body(headers_opt)));
-                    }
-                    Some(CacheResult::Miss(permit))
-                }
-                Err(err) => {
-                    tracing::error!("error trying to acquire permit on first read: {:?}", err);
-                    Some(CacheResult::Error(StatusCode::INTERNAL_SERVER_ERROR))
-                }
-            }
-        }
-    }
+    let key = CompactString::from(file_path_str);
+    let mem_file = store.get(&key)?;
+    tracing::debug!("file `{file_path_str}` served from the in-memory cache store");
+    Some(mem_file.response_body(headers_opt))
 }
 
 #[derive(Debug, Clone)]
@@ -405,5 +363,21 @@ mod tests {
 
         let opts = MemCacheOpts::new(max_file_size);
         assert_eq!(opts.max_file_size, MAX_FILE_SIZE * 1024);
+    }
+
+    #[test]
+    fn lookup_returns_none_when_store_uninitialized() {
+        // When the global `CACHE_STORE` is not initialized (because `init` was
+        // never called with a `[advanced.memory-cache]` section in TOML), the
+        // lookup must short-circuit to `None` so that the regular file pipeline
+        // serves the request without paying any cache overhead.
+        let headers = HeaderMap::new();
+        let path = std::path::Path::new("/nonexistent/path.txt");
+        // Note: this test relies on the cache not being initialized in unit
+        // tests context. If another test in this module ever initializes the
+        // global store, this assertion becomes a hit/miss check instead.
+        if CACHE_STORE.get().is_none() {
+            assert!(lookup(path, &headers).is_none());
+        }
     }
 }

@@ -268,4 +268,45 @@ mod tests {
 
         assert_eq!(body1, body2);
     }
+
+    // -------------------------------------------------------------------------
+    // Runtime gating via TOML config file.
+    //
+    // The in-memory cache must only activate when `[advanced.memory-cache]` is
+    // present in the configuration file. Otherwise the server must behave as
+    // if the feature were not compiled in (no allocation, no global state).
+    // -------------------------------------------------------------------------
+
+    #[test]
+    fn toml_fixture_enables_memory_cache() {
+        use static_web_server::settings::file::Settings;
+        use std::path::Path;
+
+        let config_path = Path::new("tests/toml/memory_cache.toml");
+        let settings = Settings::read(config_path).unwrap();
+        let advanced = settings.advanced.expect("`[advanced]` section missing");
+        let mc = advanced
+            .memory_cache
+            .expect("`[advanced.memory-cache]` section missing");
+
+        assert_eq!(mc.capacity, Some(50));
+        assert_eq!(mc.ttl, Some(600));
+        assert_eq!(mc.tti, Some(120));
+        assert_eq!(mc.max_file_size, Some(4));
+    }
+
+    #[test]
+    fn toml_fixture_without_memory_cache_section_disables_feature() {
+        use static_web_server::settings::file::Settings;
+        use std::path::Path;
+
+        let config_path = Path::new("tests/fixtures/toml/handler.toml");
+        let settings = Settings::read(config_path).unwrap();
+        // The `[advanced]` table may exist but `memory-cache` must be absent.
+        let mc = settings.advanced.and_then(|a| a.memory_cache);
+        assert!(
+            mc.is_none(),
+            "memory_cache should be None when `[advanced.memory-cache]` is absent"
+        );
+    }
 }
