@@ -68,8 +68,15 @@ pub(super) fn enforce(
     Ok(())
 }
 
-/// Canonicalizes both paths and ensures the resolved file lives inside
-/// the resolved base directory.
+/// Canonicalizes the requested file path and ensures it lives inside
+/// the base directory.
+///
+/// **Performance note:** Callers should pass an already-canonical
+/// `base_path` whenever possible. SWS canonicalizes the configured root
+/// directory once at startup (see `server::opts::init`) and the same
+/// for each virtual-host root (see `settings`), so the fast path below
+/// avoids a `canonicalize` syscall on every request.
+/// The function falls back to canonicalizing it, preserving the previous behavior.
 fn enforce_containment(probe: &Path, base_path: &Path) -> Result<(), StatusCode> {
     let file_path_resolved = probe.canonicalize().map_err(|err| {
         tracing::error!(
@@ -80,6 +87,14 @@ fn enforce_containment(probe: &Path, base_path: &Path) -> Result<(), StatusCode>
         StatusCode::NOT_FOUND
     })?;
 
+    // a. Fast path: when `base_path` is already canonical (the production case),
+    // the resolved file path will share its prefix and we avoid a per-request syscall.
+    if file_path_resolved.starts_with(base_path) {
+        return Ok(());
+    }
+
+    // b. Fallback: canonicalize the base and retry the check.
+    // Keeps the function correct for callers that pass non-canonical paths.
     let base_path_resolved = base_path.canonicalize().map_err(|err| {
         tracing::error!(
             "unable to resolve '{}' base path: {}",

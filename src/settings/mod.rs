@@ -602,6 +602,10 @@ impl Settings {
                                 // Make sure path is valid
                                 let root_dir = helpers::get_valid_dirpath(&root)
                                     .with_context(|| "root directory for virtual host was not found or inaccessible")?;
+                                // Canonicalize once so the per-request
+                                // containment check can skip a `canonicalize`
+                                // syscall (see `static_files::security`).
+                                let root_dir = root_dir.canonicalize().unwrap_or(root_dir);
                                 tracing::debug!(
                                     "added virtual host: {} -> {}",
                                     vhosts_entry.host,
