@@ -20,12 +20,9 @@ use crate::conditional_headers::{ConditionalBody, ConditionalHeaders};
 use crate::fs::stream::{FileStream, optimal_buf_size};
 
 #[cfg(feature = "mem-cache")]
-use {
-    crate::mem_cache::{
-        cache::{MemCacheOpts, MemFileTempOpts},
-        stream::MemCacheFileStream,
-    },
-    bytes::BytesMut,
+use crate::mem_cache::{
+    cache::{MemCacheOpts, MemFileTempOpts},
+    stream::MemCacheFileStream,
 };
 
 /// It converts a file object into a corresponding HTTP response or
@@ -67,38 +64,41 @@ pub(crate) fn response_body(
                     let mime = mime_guess::from_path(path).first_or_octet_stream();
                     let content_type = ContentType::from(mime);
 
-                    // Add the file to the in-memory cache only under these conditions:
-                    // - if the feature is enabled and
-                    // - if the file size does not exceed the maximum permitted and
-                    // - if the file is not found in the cache store
-                    // TODO: make this a feature
+                    // Select the response body. The in-memory cache pipeline
+                    // (`MemCacheFileStream`) is only used for **full-file**
+                    // responses (no `Range` header) that fit within the
+                    // configured size limit and when the path is valid UTF-8.
+                    // Range requests and all other cases use the plain
+                    // `FileStream` to avoid wasted allocations and to keep
+                    // partial content out of the cache.
                     #[cfg(feature = "mem-cache")]
-                    let body = match memory_cache {
-                        // Cache the file only if does not exceed the max size
-                        Some(mem_cache_opts) if len <= mem_cache_opts.max_file_size => {
-                            match path.to_str() {
-                                Some(path_str) => {
-                                    let content_type = content_type.clone();
-                                    let file_path = path_str.to_owned();
-
-                                    let mem_buf = Some(BytesMut::with_capacity(len as usize));
-                                    let mem_opts = Some(MemFileTempOpts::new(
-                                        file_path,
-                                        content_type,
-                                        modified,
-                                    ));
-                                    tracing::debug!(
-                                        "preparing `{}` to be inserted in-memory cache store",
-                                        path_str,
-                                    );
-                                    crate::body::stream(MemCacheFileStream::new(
-                                        reader, buf_size, mem_opts, mem_buf,
-                                    ))
-                                }
-                                _ => crate::body::stream(FileStream::new(reader, buf_size)),
+                    let body = {
+                        let is_full_response = sub_len == len;
+                        let mem_opts = match (is_full_response, memory_cache, path.to_str()) {
+                            (true, Some(opts), Some(path_str)) if len <= opts.max_file_size => {
+                                Some(MemFileTempOpts::new(
+                                    path_str.to_owned(),
+                                    content_type.clone(),
+                                    modified,
+                                ))
                             }
+                            _ => None,
+                        };
+                        match mem_opts {
+                            Some(mem_opts) => {
+                                tracing::debug!(
+                                    "preparing `{}` to be inserted in-memory cache store",
+                                    mem_opts.file_path.as_str(),
+                                );
+                                crate::body::stream(MemCacheFileStream::new(
+                                    reader,
+                                    buf_size,
+                                    mem_opts,
+                                    len as usize,
+                                ))
+                            }
+                            None => crate::body::stream(FileStream::new(reader, buf_size)),
                         }
-                        _ => crate::body::stream(FileStream::new(reader, buf_size)),
                     };
 
                     #[cfg(not(feature = "mem-cache"))]

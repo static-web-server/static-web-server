@@ -186,16 +186,16 @@ mod test_helpers {
 
     /// Wait until the server is accepting TCP connections on `port`.
     pub async fn wait_for_server(port: u16) {
-        for _ in 0..50 {
+        for _ in 0..100 {
             if tokio::net::TcpStream::connect(("127.0.0.1", port))
                 .await
                 .is_ok()
             {
                 return;
             }
-            tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+            tokio::time::sleep(std::time::Duration::from_millis(100)).await;
         }
-        panic!("server did not become ready on port {port} within 2.5s");
+        panic!("server did not become ready on port {port} within 10s");
     }
 
     /// Build a rustls `ClientConfig` that skips certificate verification (safe

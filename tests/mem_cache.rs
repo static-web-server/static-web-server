@@ -304,13 +304,36 @@ mod tests {
     async fn x_cache_hit_header_present_on_cache_hit() {
         let mem_opts = MemCacheOpts::new(DEFAULT_MAX_FILE_SIZE);
 
-        // First request: populates the cache (miss, no X-Cache header expected).
-        let opts1 = handle_opts(Some(&mem_opts));
-        let result1 = static_files::handle(&opts1).await;
-        assert!(result1.is_ok());
+        // Use a file that no other test in this binary touches, so we
+        // guarantee a true cache miss regardless of test execution order
+        // (the CACHE_STORE is a process-global OnceLock).
+        let make_opts = || HandleOpts {
+            method: &Method::GET,
+            headers: Box::leak(Box::new(HeaderMap::new())),
+            base_path: Box::leak(Box::new(root_dir())),
+            uri_path: "50x.html",
+            uri_query: None,
+            memory_cache: Some(Box::leak(Box::new(MemCacheOpts::new(
+                mem_opts.max_file_size / 1024,
+            )))),
+            #[cfg(feature = "directory-listing")]
+            dir_listing: false,
+            #[cfg(feature = "directory-listing")]
+            dir_listing_order: 6,
+            #[cfg(feature = "directory-listing")]
+            dir_listing_format: Box::leak(Box::new(DirListFmt::Html)),
+            #[cfg(feature = "directory-listing-download")]
+            dir_listing_download: &[],
+            redirect_trailing_slash: true,
+            compression_static: false,
+            ignore_hidden_files: false,
+            disable_symlinks: false,
+            index_files: &[],
+        };
 
-        // First request is a miss: served from disk, so no X-Cache header.
-        let resp1 = result1.unwrap().resp;
+        // First request — cache miss (file not yet in store).
+        let result1 = static_files::handle(&make_opts()).await;
+        let resp1 = result1.expect("first request should succeed").resp;
         assert!(
             resp1.headers().get("x-cache").is_none(),
             "X-Cache should not be set on a cache miss (first request)"
@@ -319,11 +342,9 @@ mod tests {
         // Consume the body so the streaming pipeline finishes and populates the cache.
         let _body1 = resp1.into_body().collect().await.unwrap().to_bytes();
 
-        // Second request: should be served from cache (hit).
-        let opts2 = handle_opts(Some(&mem_opts));
-        let result2 = static_files::handle(&opts2).await;
+        // Second request — should be served from cache (hit).
+        let result2 = static_files::handle(&make_opts()).await;
         assert!(result2.is_ok());
-
         let resp2 = result2.unwrap().resp;
         let x_cache = resp2
             .headers()
