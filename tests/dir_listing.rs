@@ -47,7 +47,7 @@ mod tests {
                 base_path: &root_dir("tests/fixtures/public"),
                 uri_path: "/symlink",
                 uri_query: None,
-                #[cfg(feature = "experimental")]
+                #[cfg(feature = "mem-cache")]
                 memory_cache: None,
                 dir_listing: true,
                 dir_listing_order: 6,
@@ -84,7 +84,7 @@ mod tests {
                 base_path: &root_dir("docs/"),
                 uri_path: "/content/",
                 uri_query: None,
-                #[cfg(feature = "experimental")]
+                #[cfg(feature = "mem-cache")]
                 memory_cache: None,
                 dir_listing: true,
                 dir_listing_order: 6,
@@ -134,7 +134,7 @@ mod tests {
                 base_path: &root_dir("docs/"),
                 uri_path: "/content",
                 uri_query: None,
-                #[cfg(feature = "experimental")]
+                #[cfg(feature = "mem-cache")]
                 memory_cache: None,
                 dir_listing: true,
                 dir_listing_order: 6,
@@ -184,7 +184,7 @@ mod tests {
                 base_path: &root_dir("docs/"),
                 uri_path: "/README.md",
                 uri_query: None,
-                #[cfg(feature = "experimental")]
+                #[cfg(feature = "mem-cache")]
                 memory_cache: None,
                 dir_listing: true,
                 dir_listing_order: 6,
@@ -221,7 +221,7 @@ mod tests {
                 base_path: &root_dir("tests/fixtures/public/"),
                 uri_path: "/",
                 uri_query: None,
-                #[cfg(feature = "experimental")]
+                #[cfg(feature = "mem-cache")]
                 memory_cache: None,
                 dir_listing: true,
                 dir_listing_order: 6,
@@ -282,7 +282,7 @@ mod tests {
                 base_path: &root_dir("tests/fixtures/public/"),
                 uri_path: "/",
                 uri_query: None,
-                #[cfg(feature = "experimental")]
+                #[cfg(feature = "mem-cache")]
                 memory_cache: None,
                 dir_listing: true,
                 dir_listing_order: 1,
@@ -361,7 +361,7 @@ mod tests {
                 base_path: &root_dir(&empty_dir),
                 uri_path: "/",
                 uri_query: None,
-                #[cfg(feature = "experimental")]
+                #[cfg(feature = "mem-cache")]
                 memory_cache: None,
                 dir_listing: true,
                 dir_listing_order: 1,
@@ -413,7 +413,7 @@ mod tests {
                 base_path: &root_dir("tests/fixtures/public"),
                 uri_path: "/",
                 uri_query: None,
-                #[cfg(feature = "experimental")]
+                #[cfg(feature = "mem-cache")]
                 memory_cache: None,
                 dir_listing: true,
                 dir_listing_order: 1,
@@ -465,7 +465,7 @@ mod tests {
                 base_path: &root_dir("tests/fixtures/public"),
                 uri_path: "/",
                 uri_query: None,
-                #[cfg(feature = "experimental")]
+                #[cfg(feature = "mem-cache")]
                 memory_cache: None,
                 dir_listing: true,
                 dir_listing_order: 1,
@@ -516,7 +516,7 @@ mod tests {
                 base_path: &root_dir("tests/fixtures/public"),
                 uri_path: "/",
                 uri_query: None,
-                #[cfg(feature = "experimental")]
+                #[cfg(feature = "mem-cache")]
                 memory_cache: None,
                 dir_listing: true,
                 dir_listing_order: 1,

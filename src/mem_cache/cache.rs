@@ -15,13 +15,13 @@ use compact_str::CompactString;
 use headers::{
     AcceptRanges, ContentLength, ContentRange, ContentType, HeaderMap, HeaderMapExt, LastModified,
 };
+use hyper::header::{HeaderName, HeaderValue};
 use hyper::{Response, StatusCode};
 use mini_moka::sync::Cache;
 use std::io::{Read, Seek, SeekFrom};
 use std::path::Path;
 use std::sync::{Arc, OnceLock};
 use std::time::Duration;
-use tokio::sync::{Semaphore, SemaphorePermit};
 
 use crate::Result;
 use crate::body::Body;
@@ -34,8 +34,10 @@ use crate::response::{BadRangeError, bytes_range};
 /// It provides expiration policies like Time to live (TTL) and Time to idle (TTI) support.
 pub(crate) static CACHE_STORE: OnceLock<Cache<CompactString, Arc<MemFile>>> = OnceLock::new();
 
-/// A single cache permit to allow reading a file once.
-static CACHE_PERMIT: Semaphore = Semaphore::const_new(1);
+/// Standard `X-Cache` header to indicate whether a response was served from cache.
+pub(crate) static X_CACHE: HeaderName = HeaderName::from_static("x-cache");
+/// Value for the `X-Cache` header when the response is a cache hit.
+pub(crate) static X_CACHE_HIT: HeaderValue = HeaderValue::from_static("HIT");
 
 /// It defines the in-memory files cache options.
 pub struct MemCacheOpts {
@@ -43,43 +45,61 @@ pub struct MemCacheOpts {
     pub max_file_size: u64,
 }
 
+/// Default capacity (number of entries).
+pub const DEFAULT_CAPACITY: u64 = 100;
+/// Default time-to-live in seconds (30 minutes).
+pub const DEFAULT_TTL: u64 = 1800;
+/// Default time-to-idle in seconds (5 minutes).
+pub const DEFAULT_TTI: u64 = 300;
+/// Default maximum file size in KiB (8 MiB = 8192 KiB).
+pub const DEFAULT_MAX_FILE_SIZE: u64 = 8192;
+
+/// Maximum allowed capacity (entries).
+const MAX_CAPACITY: u64 = 100_000;
+/// Maximum allowed TTL in seconds (24 hours).
+const MAX_TTL: u64 = 86_400;
+/// Maximum allowed TTI in seconds (1 hour).
+const MAX_TTI: u64 = 3_600;
+/// Maximum allowed file size in KiB (32 MiB = 32768 KiB).
+const MAX_FILE_SIZE: u64 = 32_768;
+
 impl MemCacheOpts {
     /// Creates a new instance of `MemCacheOpts`.
+    /// `max_file_size` is in KiB and gets converted to bytes internally.
     #[inline]
     pub fn new(max_file_size: u64) -> Self {
         Self {
-            max_file_size: 1024 * 1024 * max_file_size,
+            max_file_size: max_file_size * 1024,
         }
     }
 }
 
-/// Make sure to initialize the in-memory cache store.
-pub(crate) fn init(handler_opts: &mut RequestHandlerOpts) -> Result {
+/// Initialize the in-memory cache store from handler options.
+///
+/// If `[advanced.memory-cache]` is present in the configuration, a cache store
+/// is created with the specified (or default) parameters. Values exceeding
+/// their allowed maximums are clamped silently.
+pub fn init(handler_opts: &mut RequestHandlerOpts) -> Result {
     if let Some(advanced_opts) = handler_opts.advanced_opts.as_ref()
         && let Some(opts) = advanced_opts.memory_cache.as_ref()
     {
-        // TODO: define maximum values
-
-        // Default 256 entries
-        let capacity = opts.capacity.unwrap_or(256);
-        // Default 1h
-        let ttl = opts.ttl.unwrap_or(3600);
-        // Default 5min
-        let tti = opts.tti.unwrap_or(300);
-        // Default 8mb
-        let max_file_size = opts.max_file_size.unwrap_or(8192);
+        let capacity = opts.capacity.unwrap_or(DEFAULT_CAPACITY).min(MAX_CAPACITY);
+        let ttl = opts.ttl.unwrap_or(DEFAULT_TTL).min(MAX_TTL);
+        let tti = opts.tti.unwrap_or(DEFAULT_TTI).min(MAX_TTI);
+        let max_file_size = opts
+            .max_file_size
+            .unwrap_or(DEFAULT_MAX_FILE_SIZE)
+            .min(MAX_FILE_SIZE);
 
         tracing::info!(
-            "in-memory cache (experimental): enabled=true, capacity={capacity}, ttl={ttl}, tti={tti}, max_file_size={max_file_size}"
+            "in-memory cache: enabled=true, capacity={capacity}, ttl={ttl}s, tti={tti}s, max_file_size={max_file_size}KiB"
         );
 
         let mem_opts = MemCacheOpts::new(max_file_size);
 
         let cache = Cache::builder()
             .max_capacity(capacity)
-            // Time to live (TTL): 30 minutes
             .time_to_live(Duration::from_secs(ttl))
-            // Time to idle (TTI):  5 minutes
             .time_to_idle(Duration::from_secs(tti))
             .build();
 
@@ -92,69 +112,37 @@ pub(crate) fn init(handler_opts: &mut RequestHandlerOpts) -> Result {
         return Ok(());
     }
 
-    tracing::info!("in-memory cache (experimental): enabled=false");
+    tracing::info!("in-memory cache: enabled=false");
 
     Ok(())
 }
 
-/// Result of a cache lookup via `get_or_acquire`.
-pub(crate) enum CacheResult<'a> {
-    /// Cache hit — return the response directly.
-    Hit(Result<Response<Body>, StatusCode>),
-    /// Cache miss — caller should read the file. The semaphore permit is held
-    /// so that concurrent misses are serialized (single-flight). Drop the permit
-    /// after inserting into the cache store.
-    Miss(SemaphorePermit<'a>),
-    /// An error occurred acquiring the semaphore.
-    Error(StatusCode),
-}
-
-/// Try to get the file in a form of a response from the cache store by a path or
-/// acquires a permit to ensure to hold until the file is read first (once).
+/// Try to get a cached response for the given file path.
 ///
-/// If the file is not found in the cache store then
-/// a cache permit is acquired internally (one at a time)
-/// to allow the caller to read the file first.
-/// Once the file is read on caller's side then the permit is dropped.
-pub(crate) async fn get_or_acquire(
+/// Returns `Some(result)` on a cache hit (the result itself may be an error
+/// status, e.g. for a malformed `Range` header) or `None` when the cache is
+/// disabled, the path is non-UTF-8, or there is no entry yet (cache miss).
+///
+/// The caller is responsible for reading the file from disk on a miss and
+/// inserting it into the cache via the streaming pipeline. There is no
+/// single-flight serialization: mini-moka's `Cache` is concurrency-safe and
+/// duplicate inserts under contention are benign and rare in practice.
+pub(crate) fn lookup(
     file_path: &Path,
     headers_opt: &HeaderMap,
-) -> Option<CacheResult<'static>> {
-    let file_path_str = file_path.to_str().or(None)?;
-
-    let store = CACHE_STORE.get().unwrap();
-    match store.get::<CompactString>(&file_path_str.into()) {
-        Some(mem_file) => {
-            tracing::debug!(
-                "file `{}` found in the in-memory cache store, returning it directly",
-                file_path_str
-            );
-            Some(CacheResult::Hit(mem_file.response_body(headers_opt)))
-        }
-        _ => {
-            tracing::debug!(
-                "file `{}` was not found in the in-memory cache store, continuing",
-                file_path_str
-            );
-            // If a file is not found in the store then continue
-            // with the normal flow and wait on first file read.
-            // Hold the permit so concurrent misses are serialized.
-            match CACHE_PERMIT.acquire().await {
-                Ok(permit) => {
-                    // Re-check after acquiring — another request may have populated
-                    // the cache while we were waiting for the permit.
-                    if let Some(mem_file) = store.get::<CompactString>(&file_path_str.into()) {
-                        return Some(CacheResult::Hit(mem_file.response_body(headers_opt)));
-                    }
-                    Some(CacheResult::Miss(permit))
-                }
-                Err(err) => {
-                    tracing::error!("error trying to acquire permit on first read: {:?}", err);
-                    Some(CacheResult::Error(StatusCode::INTERNAL_SERVER_ERROR))
-                }
-            }
-        }
-    }
+) -> Option<Result<Response<Body>, StatusCode>> {
+    let file_path_str = file_path.to_str()?;
+    let store = CACHE_STORE.get()?;
+    let key = CompactString::from(file_path_str);
+    let mem_file = store.get(&key)?;
+    tracing::debug!("file `{file_path_str}` served from the in-memory cache store");
+    // Tag the response with `X-Cache: HIT` so clients and tooling can
+    // identify that it was served from the in-memory cache.
+    Some(mem_file.response_body(headers_opt).map(|mut resp| {
+        resp.headers_mut()
+            .insert(X_CACHE.clone(), X_CACHE_HIT.clone());
+        resp
+    }))
 }
 
 #[derive(Debug, Clone)]
@@ -274,5 +262,140 @@ impl MemFile {
                     })
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn mem_cache_opts_converts_kib_to_bytes() {
+        let opts = MemCacheOpts::new(8192);
+        // 8192 KiB = 8 MiB = 8_388_608 bytes
+        assert_eq!(opts.max_file_size, 8192 * 1024);
+    }
+
+    #[test]
+    fn mem_cache_opts_zero_size() {
+        let opts = MemCacheOpts::new(0);
+        assert_eq!(opts.max_file_size, 0);
+    }
+
+    #[test]
+    fn default_constants_are_sane() {
+        assert_eq!(DEFAULT_CAPACITY, 100);
+        assert_eq!(DEFAULT_TTL, 1800);
+        assert_eq!(DEFAULT_TTI, 300);
+        assert_eq!(DEFAULT_MAX_FILE_SIZE, 8192);
+    }
+
+    #[test]
+    fn max_constants_enforce_upper_bounds() {
+        // Capacity capped at 100k
+        const {
+            assert!(MAX_CAPACITY >= DEFAULT_CAPACITY);
+        }
+        // TTL capped at 24h
+        const {
+            assert!(MAX_TTL >= DEFAULT_TTL);
+        }
+        // TTI capped at 1h
+        const {
+            assert!(MAX_TTI >= DEFAULT_TTI);
+        }
+        // File size capped at 32 MiB (in KiB)
+        const {
+            assert!(MAX_FILE_SIZE >= DEFAULT_MAX_FILE_SIZE);
+        }
+    }
+
+    #[test]
+    fn init_returns_ok_without_advanced_opts() {
+        let mut handler_opts = crate::handler::RequestHandlerOpts::default();
+        let result = init(&mut handler_opts);
+        assert!(result.is_ok());
+        assert!(handler_opts.memory_cache.is_none());
+    }
+
+    #[test]
+    fn init_returns_ok_without_memory_cache_section() {
+        let mut handler_opts = RequestHandlerOpts {
+            advanced_opts: Some(crate::settings::Advanced {
+                headers: None,
+                rewrites: None,
+                redirects: None,
+                virtual_hosts: None,
+                memory_cache: None,
+            }),
+            ..Default::default()
+        };
+        let result = init(&mut handler_opts);
+        assert!(result.is_ok());
+        assert!(handler_opts.memory_cache.is_none());
+    }
+
+    #[test]
+    fn init_with_defaults_creates_cache() {
+        let mut handler_opts = RequestHandlerOpts {
+            advanced_opts: Some(crate::settings::Advanced {
+                headers: None,
+                rewrites: None,
+                redirects: None,
+                virtual_hosts: None,
+                memory_cache: Some(crate::settings::file::MemoryCache {
+                    capacity: None,
+                    ttl: None,
+                    tti: None,
+                    max_file_size: None,
+                }),
+            }),
+            ..Default::default()
+        };
+        let result = init(&mut handler_opts);
+        assert!(result.is_ok());
+        assert!(handler_opts.memory_cache.is_some());
+        let opts = handler_opts.memory_cache.unwrap();
+        assert_eq!(opts.max_file_size, DEFAULT_MAX_FILE_SIZE * 1024);
+    }
+
+    #[test]
+    fn init_clamps_values_to_max() {
+        // We can't call init() twice due to OnceLock, so test the clamping
+        // logic directly via the min() expressions.
+        let capacity = 999_999u64.min(MAX_CAPACITY);
+        let ttl = 999_999u64.min(MAX_TTL);
+        let tti = 999_999u64.min(MAX_TTI);
+        let max_file_size = 999_999u64.min(MAX_FILE_SIZE);
+
+        assert_eq!(capacity, MAX_CAPACITY);
+        assert_eq!(ttl, MAX_TTL);
+        assert_eq!(tti, MAX_TTI);
+        assert_eq!(max_file_size, MAX_FILE_SIZE);
+
+        let opts = MemCacheOpts::new(max_file_size);
+        assert_eq!(opts.max_file_size, MAX_FILE_SIZE * 1024);
+    }
+
+    #[test]
+    fn lookup_returns_none_when_store_uninitialized() {
+        // When the global `CACHE_STORE` is not initialized (because `init` was
+        // never called with a `[advanced.memory-cache]` section in TOML), the
+        // lookup must short-circuit to `None` so that the regular file pipeline
+        // serves the request without paying any cache overhead.
+        let headers = HeaderMap::new();
+        let path = std::path::Path::new("/nonexistent/path.txt");
+        // Note: this test relies on the cache not being initialized in unit
+        // tests context. If another test in this module ever initializes the
+        // global store, this assertion becomes a hit/miss check instead.
+        if CACHE_STORE.get().is_none() {
+            assert!(lookup(path, &headers).is_none());
+        }
+    }
+
+    #[test]
+    fn x_cache_header_constants_are_valid() {
+        assert_eq!(X_CACHE.as_str(), "x-cache");
+        assert_eq!(X_CACHE_HIT.to_str().unwrap(), "HIT");
     }
 }

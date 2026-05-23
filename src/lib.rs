@@ -77,7 +77,7 @@
 //! **Default** |
 //! `default` | Activates the default features.
 //! `all` | Activates all features including the default and experimental ones. E.g. this feature is used when building the SWS binaries.
-//! `experimental` | Activates all unstable features.
+//! `experimental` | Activates all unstable features (tokio runtime metrics).
 //! [**HTTP2/TLS**](https://static-web-server.net/features/http2-tls/) |
 //! `http2` | Activates the HTTP2 and TLS feature.
 //! [**Compression**](https://static-web-server.net/features/compression/) |
@@ -94,6 +94,8 @@
 //! `fallback-page` | Activates the Fallback Page feature.
 //! **Metrics** |
 //! `metrics` | Activates the Prometheus metrics endpoint (`/metrics`). Enabled by default but requires the `--metrics` flag at runtime. Tokio runtime metrics are additionally available via the `experimental` feature.
+//! **In-Memory Cache** |
+//! `mem-cache` | Activates the in-memory file cache with LFU admission and LRU eviction policies. Enabled by default and configured via TOML `[advanced.memory-cache]`.
 //!
 
 #![deny(missing_docs)]
@@ -159,8 +161,9 @@ pub mod https_redirect;
 pub(crate) mod log_addr;
 pub mod maintenance_mode;
 pub(crate) mod markdown;
-#[cfg(feature = "experimental")]
-pub(crate) mod mem_cache;
+#[cfg(feature = "mem-cache")]
+#[cfg_attr(docsrs, doc(cfg(feature = "mem-cache")))]
+pub mod mem_cache;
 #[cfg(feature = "metrics")]
 pub(crate) mod metrics;
 pub mod redirects;

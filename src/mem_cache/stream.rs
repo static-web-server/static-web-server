@@ -7,27 +7,41 @@ use std::task::{Context, Poll};
 
 use crate::mem_cache::cache::{CACHE_STORE, MemFile, MemFileTempOpts};
 
+/// A streaming file reader that, on successful completion, inserts the
+/// fully-read bytes into the global in-memory cache store.
+///
+/// Only use this stream for **full-file** responses (no `Range` header).
+/// Range requests must use the plain [`crate::fs::stream::FileStream`] to
+/// avoid wasted allocations and to keep partial content out of the cache.
 #[derive(Debug)]
 pub(crate) struct MemCacheFileStream<T> {
-    pub(crate) reader: T,
-    pub(crate) buf_size: usize,
-    pub(crate) mem_opts: Option<MemFileTempOpts>,
-    pub(crate) mem_buf: Option<BytesMut>,
-    pub(crate) buf: BytesMut,
+    reader: T,
+    buf_size: usize,
+    /// Expected total byte length of the file. The cache is populated only
+    /// when the accumulated buffer length matches this value, which guards
+    /// against truncated reads (e.g. the file being modified mid-stream).
+    file_size: usize,
+    /// Metadata to attach to the cache entry. Taken on completion.
+    mem_opts: Option<MemFileTempOpts>,
+    /// Accumulator for the full file body. Taken on completion.
+    mem_buf: Option<BytesMut>,
+    /// Scratch read buffer reused on every poll.
+    buf: BytesMut,
 }
 
 impl<T> MemCacheFileStream<T> {
     pub(crate) fn new(
         reader: T,
         buf_size: usize,
-        mem_opts: Option<MemFileTempOpts>,
-        mem_buf: Option<BytesMut>,
+        mem_opts: MemFileTempOpts,
+        file_size: usize,
     ) -> Self {
         Self {
             reader,
             buf_size,
-            mem_opts,
-            mem_buf,
+            file_size,
+            mem_opts: Some(mem_opts),
+            mem_buf: Some(BytesMut::with_capacity(file_size)),
             buf: BytesMut::with_capacity(buf_size),
         }
     }
@@ -41,40 +55,33 @@ impl<T: Read + Unpin> Stream for MemCacheFileStream<T> {
         this.buf.resize(this.buf_size, 0);
 
         match this.reader.read(&mut this.buf[..]) {
-            Ok(0) => Poll::Ready(None),
-            Ok(n) => {
-                let buf = this.buf.split_to(n).freeze();
-
-                // Handle in-memory cache if enabled
-                if let (Some(mem_opts), Some(buf_data_mut)) =
-                    (this.mem_opts.as_ref(), this.mem_buf.as_mut())
+            Ok(0) => {
+                // Stream complete. Insert into the cache store only if we
+                // accumulated exactly `file_size` bytes; a smaller buffer
+                // indicates a truncated read (e.g. the file was modified or
+                // unlinked mid-stream) and must not be cached.
+                if let (Some(mem_opts), Some(mem_buf)) = (this.mem_opts.take(), this.mem_buf.take())
+                    && mem_buf.len() == this.file_size
                 {
-                    buf_data_mut.extend_from_slice(&buf);
-
-                    // If file size is reached then proceed cache it
-                    if buf_data_mut.len() == buf_data_mut.capacity() {
-                        let buf_data = this.mem_buf.take().unwrap().freeze();
-
-                        let mem_file = Arc::new(MemFile::new(
-                            buf_data,
-                            this.buf_size,
-                            mem_opts.content_type.to_owned(),
-                            mem_opts.last_modified,
-                        ));
-
-                        let file_path = mem_opts.file_path.as_str();
-                        tracing::debug!(
-                            "file `{}` is inserted to the in-memory cache store",
-                            file_path
-                        );
-
-                        CACHE_STORE
-                            .get()
-                            .unwrap()
-                            .insert(file_path.into(), mem_file);
+                    let file_path = mem_opts.file_path.as_str();
+                    tracing::debug!("file `{file_path}` inserted into in-memory cache store");
+                    let mem_file = Arc::new(MemFile::new(
+                        mem_buf.freeze(),
+                        this.buf_size,
+                        mem_opts.content_type,
+                        mem_opts.last_modified,
+                    ));
+                    if let Some(store) = CACHE_STORE.get() {
+                        store.insert(file_path.into(), mem_file);
                     }
                 }
-
+                Poll::Ready(None)
+            }
+            Ok(n) => {
+                let buf = this.buf.split_to(n).freeze();
+                if let Some(mem_buf) = this.mem_buf.as_mut() {
+                    mem_buf.extend_from_slice(&buf);
+                }
                 Poll::Ready(Some(Ok(buf)))
             }
             Err(err) => Poll::Ready(Some(Err(err))),

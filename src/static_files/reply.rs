@@ -113,12 +113,12 @@ fn file_reply(
 
     match File::open(open_path) {
         Ok(file) => {
-            #[cfg(feature = "experimental")]
+            #[cfg(feature = "mem-cache")]
             {
                 response_body(file, path, meta, conditionals, opts.memory_cache)
             }
 
-            #[cfg(not(feature = "experimental"))]
+            #[cfg(not(feature = "mem-cache"))]
             {
                 let _ = opts;
                 response_body(file, path, meta, conditionals)

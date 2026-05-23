@@ -10,7 +10,7 @@
 //!
 //! 1. **Method check** — `GET`, `HEAD` and `OPTIONS` only.
 //! 2. **Path sanitization** — strip traversal components from the URI path.
-//! 3. **In-memory cache lookup** — short-circuit hot files (experimental).
+//! 3. **In-memory cache lookup** — short-circuit hot files.
 //! 4. **File resolution** — directory → index, `.html` fallback,
 //!    pre-compressed variant detection (see [`resolve`]).
 //! 5. **Security checks** — containment, symlink and hidden-file policy
@@ -40,7 +40,7 @@ use crate::exts::http::MethodExt;
 use crate::fs::meta::FileMetadata;
 use crate::fs::path::sanitize_path;
 
-#[cfg(feature = "experimental")]
+#[cfg(feature = "mem-cache")]
 use crate::mem_cache::cache;
 
 /// The server entry point to handle incoming requests which map to specific files
@@ -52,14 +52,13 @@ pub async fn handle(opts: &HandleOpts<'_>) -> Result<StaticFileResponse, StatusC
 
     let mut file_path = sanitize_path(opts.base_path, opts.uri_path)?;
 
-    // In-memory file cache lookup (experimental). A hit short-circuits the
-    // pipeline; a miss returns a permit that lives until the file stream
-    // finishes populating the cache.
-    #[cfg(feature = "experimental")]
-    let _cache_permit = match try_memory_cache(opts, &mut file_path).await? {
-        MemCacheOutcome::Hit(resp) => return Ok(resp),
-        MemCacheOutcome::Miss(permit) => permit,
-    };
+    // In-memory file cache lookup. A hit short-circuits the pipeline.
+    // On miss, the file is read from disk and the streaming pipeline
+    // populates the cache opportunistically (see `mem_cache::stream`).
+    #[cfg(feature = "mem-cache")]
+    if let Some(resp) = try_memory_cache(opts, &mut file_path) {
+        return Ok(resp);
+    }
 
     let FileMetadata {
         file_path,
@@ -97,30 +96,23 @@ pub async fn handle(opts: &HandleOpts<'_>) -> Result<StaticFileResponse, StatusC
     Ok(StaticFileResponse::new(resp, resp_file_path))
 }
 
-/// Outcome of the experimental in-memory cache lookup.
-#[cfg(feature = "experimental")]
-enum MemCacheOutcome {
-    /// The response is fully resolved from cache.
-    Hit(StaticFileResponse),
-    /// Cache miss. The held permit must be kept alive until the
-    /// downstream file stream finishes inserting the file into the cache.
-    Miss(Option<tokio::sync::SemaphorePermit<'static>>),
-}
-
 /// Tries to satisfy the request from the in-memory cache.
+///
+/// Returns `Some(response)` on a cache hit, `None` otherwise (cache disabled
+/// in the runtime config, no entry yet, or a non-UTF-8 path).
 ///
 /// When a memory cache is configured and the request targets a directory
 /// with trailing-slash redirect on, the cache key is the implicit
 /// `<dir>/index.html`. The function may push that segment onto
 /// `file_path` before performing the lookup.
-#[cfg(feature = "experimental")]
-async fn try_memory_cache(
+#[cfg(feature = "mem-cache")]
+fn try_memory_cache(
     opts: &HandleOpts<'_>,
     file_path: &mut std::path::PathBuf,
-) -> Result<MemCacheOutcome, StatusCode> {
-    if opts.memory_cache.is_none() {
-        return Ok(MemCacheOutcome::Miss(None));
-    }
+) -> Option<StaticFileResponse> {
+    // Runtime gate: if `[advanced.memory-cache]` is not configured in TOML,
+    // `opts.memory_cache` is `None` and we skip the lookup entirely.
+    opts.memory_cache.as_ref()?;
 
     // NOTE: only the default auto-index is supported for directory
     // requests inside the memory-cache context.
@@ -128,16 +120,11 @@ async fn try_memory_cache(
         file_path.push("index.html");
     }
 
-    let Some(result) = cache::get_or_acquire(file_path.as_path(), opts.headers).await else {
-        return Ok(MemCacheOutcome::Miss(None));
-    };
-
+    let result = cache::lookup(file_path.as_path(), opts.headers)?;
     match result {
-        cache::CacheResult::Hit(result) => Ok(MemCacheOutcome::Hit(StaticFileResponse::new(
-            result?,
-            file_path.clone(),
-        ))),
-        cache::CacheResult::Error(status) => Err(status),
-        cache::CacheResult::Miss(permit) => Ok(MemCacheOutcome::Miss(Some(permit))),
+        Ok(resp) => Some(StaticFileResponse::new(resp, file_path.clone())),
+        // Hit, but the cached entry returned an error status (e.g. malformed Range).
+        // Fall through to the regular pipeline so the error path is consistent.
+        Err(_) => None,
     }
 }

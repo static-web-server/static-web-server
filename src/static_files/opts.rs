@@ -11,7 +11,7 @@ use std::path::PathBuf;
 
 use crate::body::Body;
 
-#[cfg(feature = "experimental")]
+#[cfg(feature = "mem-cache")]
 use crate::mem_cache::cache::MemCacheOpts;
 
 #[cfg(feature = "directory-listing")]
@@ -27,8 +27,8 @@ pub(super) const DEFAULT_INDEX_FILES: &[&str; 1] = &["index.html"];
 pub struct HandleOpts<'a> {
     /// Request method.
     pub method: &'a Method,
-    /// In-memory files cache feature (experimental).
-    #[cfg(feature = "experimental")]
+    /// In-memory files cache feature.
+    #[cfg(feature = "mem-cache")]
     pub memory_cache: Option<&'a MemCacheOpts>,
     /// Request headers.
     pub headers: &'a HeaderMap<HeaderValue>,

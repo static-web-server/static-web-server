@@ -62,7 +62,7 @@ mod tests {
             base_path: &root_dir(),
             uri_path: "index.htm",
             uri_query: None,
-            #[cfg(feature = "experimental")]
+            #[cfg(feature = "mem-cache")]
             memory_cache: None,
             #[cfg(feature = "directory-listing")]
             dir_listing: false,
@@ -113,7 +113,7 @@ mod tests {
             base_path: &root_dir(),
             uri_path: "index.htm",
             uri_query: None,
-            #[cfg(feature = "experimental")]
+            #[cfg(feature = "mem-cache")]
             memory_cache: None,
             #[cfg(feature = "directory-listing")]
             dir_listing: false,
@@ -165,7 +165,7 @@ mod tests {
                 base_path: &root_dir(),
                 uri_path: "xyz.html",
                 uri_query: None,
-                #[cfg(feature = "experimental")]
+                #[cfg(feature = "mem-cache")]
                 memory_cache: None,
                 #[cfg(feature = "directory-listing")]
                 dir_listing: false,
@@ -201,7 +201,7 @@ mod tests {
             base_path: &root_dir(),
             uri_path: "assets",
             uri_query: None,
-            #[cfg(feature = "experimental")]
+            #[cfg(feature = "mem-cache")]
             memory_cache: None,
             #[cfg(feature = "directory-listing")]
             dir_listing: false,
@@ -242,7 +242,7 @@ mod tests {
             base_path: &root_dir(),
             uri_path: "assets",
             uri_query: None,
-            #[cfg(feature = "experimental")]
+            #[cfg(feature = "mem-cache")]
             memory_cache: None,
             #[cfg(feature = "directory-listing")]
             dir_listing: false,
@@ -279,7 +279,7 @@ mod tests {
             base_path: &root_dir(),
             uri_path: "assets",
             uri_query: None,
-            #[cfg(feature = "experimental")]
+            #[cfg(feature = "mem-cache")]
             memory_cache: None,
             #[cfg(feature = "directory-listing")]
             dir_listing: false,
@@ -321,7 +321,7 @@ mod tests {
                     base_path: &root_dir(),
                     uri_path: uri,
                     uri_query: None,
-                    #[cfg(feature = "experimental")]
+                    #[cfg(feature = "mem-cache")]
                     memory_cache: None,
                     #[cfg(feature = "directory-listing")]
                     dir_listing: false,
@@ -381,7 +381,7 @@ mod tests {
                 base_path: &root_dir(),
                 uri_path: "/assets/index%2ehtml",
                 uri_query: None,
-                #[cfg(feature = "experimental")]
+                #[cfg(feature = "mem-cache")]
                 memory_cache: None,
                 #[cfg(feature = "directory-listing")]
                 dir_listing: false,
@@ -420,7 +420,7 @@ mod tests {
                 base_path: &root_dir(),
                 uri_path: "/%2E%2e.html",
                 uri_query: None,
-                #[cfg(feature = "experimental")]
+                #[cfg(feature = "mem-cache")]
                 memory_cache: None,
                 #[cfg(feature = "directory-listing")]
                 dir_listing: false,
@@ -461,7 +461,7 @@ mod tests {
                 base_path: &root_dir(),
                 uri_path: "index.htm",
                 uri_query: None,
-                #[cfg(feature = "experimental")]
+                #[cfg(feature = "mem-cache")]
                 memory_cache: None,
                 #[cfg(feature = "directory-listing")]
                 dir_listing: false,
@@ -503,7 +503,7 @@ mod tests {
                 base_path: &root_dir(),
                 uri_path: "index.htm",
                 uri_query: None,
-                #[cfg(feature = "experimental")]
+                #[cfg(feature = "mem-cache")]
                 memory_cache: None,
                 #[cfg(feature = "directory-listing")]
                 dir_listing: false,
@@ -551,7 +551,7 @@ mod tests {
                 base_path: &root_dir(),
                 uri_path: "index.htm",
                 uri_query: None,
-                #[cfg(feature = "experimental")]
+                #[cfg(feature = "mem-cache")]
                 memory_cache: None,
                 #[cfg(feature = "directory-listing")]
                 dir_listing: false,
@@ -597,7 +597,7 @@ mod tests {
                 base_path: &root_dir(),
                 uri_path: "index.htm",
                 uri_query: None,
-                #[cfg(feature = "experimental")]
+                #[cfg(feature = "mem-cache")]
                 memory_cache: None,
                 #[cfg(feature = "directory-listing")]
                 dir_listing: false,
@@ -638,7 +638,7 @@ mod tests {
                 base_path: &root_dir(),
                 uri_path: "index.htm",
                 uri_query: None,
-                #[cfg(feature = "experimental")]
+                #[cfg(feature = "mem-cache")]
                 memory_cache: None,
                 #[cfg(feature = "directory-listing")]
                 dir_listing: false,
@@ -678,7 +678,7 @@ mod tests {
                 base_path: &root_dir(),
                 uri_path: "index.htm",
                 uri_query: None,
-                #[cfg(feature = "experimental")]
+                #[cfg(feature = "mem-cache")]
                 memory_cache: None,
                 #[cfg(feature = "directory-listing")]
                 dir_listing: false,
@@ -725,7 +725,7 @@ mod tests {
                 base_path: &root_dir(),
                 uri_path: "index.htm",
                 uri_query: None,
-                #[cfg(feature = "experimental")]
+                #[cfg(feature = "mem-cache")]
                 memory_cache: None,
                 #[cfg(feature = "directory-listing")]
                 dir_listing: false,
@@ -815,7 +815,7 @@ mod tests {
                 base_path: &comp_root_dir(),
                 uri_path: "large-test.html",
                 uri_query: None,
-                #[cfg(feature = "experimental")]
+                #[cfg(feature = "mem-cache")]
                 memory_cache: None,
                 #[cfg(feature = "directory-listing")]
                 dir_listing: false,
@@ -890,7 +890,7 @@ mod tests {
                 base_path: &root_dir(),
                 uri_path: "index.htm",
                 uri_query: None,
-                #[cfg(feature = "experimental")]
+                #[cfg(feature = "mem-cache")]
                 memory_cache: None,
                 #[cfg(feature = "directory-listing")]
                 dir_listing: false,
@@ -947,7 +947,7 @@ mod tests {
                 base_path: &root_dir(),
                 uri_path: "assets/index.html",
                 uri_query: None,
-                #[cfg(feature = "experimental")]
+                #[cfg(feature = "mem-cache")]
                 memory_cache: None,
                 #[cfg(feature = "directory-listing")]
                 dir_listing: false,
@@ -1004,7 +1004,7 @@ mod tests {
                 base_path: &root_dir(),
                 uri_path: "assets/index.html",
                 uri_query: None,
-                #[cfg(feature = "experimental")]
+                #[cfg(feature = "mem-cache")]
                 memory_cache: None,
                 #[cfg(feature = "directory-listing")]
                 dir_listing: false,
@@ -1062,7 +1062,7 @@ mod tests {
                 base_path: &root_dir(),
                 uri_path: "index.htm",
                 uri_query: None,
-                #[cfg(feature = "experimental")]
+                #[cfg(feature = "mem-cache")]
                 memory_cache: None,
                 #[cfg(feature = "directory-listing")]
                 dir_listing: false,
@@ -1109,7 +1109,7 @@ mod tests {
                 base_path: &root_dir(),
                 uri_path: "assets/index.html",
                 uri_query: None,
-                #[cfg(feature = "experimental")]
+                #[cfg(feature = "mem-cache")]
                 memory_cache: None,
                 #[cfg(feature = "directory-listing")]
                 dir_listing: false,
@@ -1169,7 +1169,7 @@ mod tests {
                 base_path: &root_dir(),
                 uri_path: "assets/index.html",
                 uri_query: None,
-                #[cfg(feature = "experimental")]
+                #[cfg(feature = "mem-cache")]
                 memory_cache: None,
                 #[cfg(feature = "directory-listing")]
                 dir_listing: false,
@@ -1226,7 +1226,7 @@ mod tests {
                 base_path: &root_dir(),
                 uri_path: "index.htm",
                 uri_query: None,
-                #[cfg(feature = "experimental")]
+                #[cfg(feature = "mem-cache")]
                 memory_cache: None,
                 #[cfg(feature = "directory-listing")]
                 dir_listing: false,
@@ -1283,7 +1283,7 @@ mod tests {
                 base_path: &root_dir(),
                 uri_path: "index.htm",
                 uri_query: None,
-                #[cfg(feature = "experimental")]
+                #[cfg(feature = "mem-cache")]
                 memory_cache: None,
                 #[cfg(feature = "directory-listing")]
                 dir_listing: false,
@@ -1343,7 +1343,7 @@ mod tests {
                 base_path: &root_dir(),
                 uri_path: "assets/index.html",
                 uri_query: None,
-                #[cfg(feature = "experimental")]
+                #[cfg(feature = "mem-cache")]
                 memory_cache: None,
                 #[cfg(feature = "directory-listing")]
                 dir_listing: false,
@@ -1393,7 +1393,7 @@ mod tests {
                 base_path: &root_dir(),
                 uri_path: "index.htm",
                 uri_query: None,
-                #[cfg(feature = "experimental")]
+                #[cfg(feature = "mem-cache")]
                 memory_cache: None,
                 #[cfg(feature = "directory-listing")]
                 dir_listing: false,
@@ -1439,7 +1439,7 @@ mod tests {
                 base_path: &root_dir(),
                 uri_path: "assets/index.html",
                 uri_query: None,
-                #[cfg(feature = "experimental")]
+                #[cfg(feature = "mem-cache")]
                 memory_cache: None,
                 #[cfg(feature = "directory-listing")]
                 dir_listing: false,
@@ -1503,7 +1503,7 @@ mod tests {
                 base_path: &root_dir(),
                 uri_path: "assets/index.html",
                 uri_query: None,
-                #[cfg(feature = "experimental")]
+                #[cfg(feature = "mem-cache")]
                 memory_cache: None,
                 #[cfg(feature = "directory-listing")]
                 dir_listing: false,
@@ -1559,7 +1559,7 @@ mod tests {
                 base_path: &root_dir,
                 uri_path: ".dotfile",
                 uri_query: None,
-                #[cfg(feature = "experimental")]
+                #[cfg(feature = "mem-cache")]
                 memory_cache: None,
                 #[cfg(feature = "directory-listing")]
                 dir_listing: false,
@@ -1599,7 +1599,7 @@ mod tests {
                 base_path: &root_dir,
                 uri_path: "foo.html",
                 uri_query: None,
-                #[cfg(feature = "experimental")]
+                #[cfg(feature = "mem-cache")]
                 memory_cache: None,
                 #[cfg(feature = "directory-listing")]
                 dir_listing: false,
@@ -1655,7 +1655,7 @@ mod tests {
                 base_path: &root_dir,
                 uri_path: ".hidden-file.txt",
                 uri_query: None,
-                #[cfg(feature = "experimental")]
+                #[cfg(feature = "mem-cache")]
                 memory_cache: None,
                 #[cfg(feature = "directory-listing")]
                 dir_listing: false,
@@ -1699,7 +1699,7 @@ mod tests {
                 base_path: &root_dir,
                 uri_path: "/",
                 uri_query: None,
-                #[cfg(feature = "experimental")]
+                #[cfg(feature = "mem-cache")]
                 memory_cache: None,
                 #[cfg(feature = "directory-listing")]
                 dir_listing: false,
@@ -1748,7 +1748,7 @@ mod tests {
                 base_path: &root_dir,
                 uri_path: "/symlink",
                 uri_query: None,
-                #[cfg(feature = "experimental")]
+                #[cfg(feature = "mem-cache")]
                 memory_cache: None,
                 #[cfg(feature = "directory-listing")]
                 dir_listing: false,
@@ -1784,7 +1784,7 @@ mod tests {
                 base_path: &root_dir,
                 uri_path: "/symlink/spécial file.txt~",
                 uri_query: None,
-                #[cfg(feature = "experimental")]
+                #[cfg(feature = "mem-cache")]
                 memory_cache: None,
                 #[cfg(feature = "directory-listing")]
                 dir_listing: false,
@@ -1830,7 +1830,7 @@ mod tests {
                     base_path: &root_dir,
                     uri_path: "/readme.md",
                     uri_query: None,
-                    #[cfg(feature = "experimental")]
+                    #[cfg(feature = "mem-cache")]
                     memory_cache: None,
                     #[cfg(feature = "directory-listing")]
                     dir_listing: false,
@@ -1877,7 +1877,7 @@ mod tests {
                     base_path: &root_dir,
                     uri_path: "/unknown.md",
                     uri_query: None,
-                    #[cfg(feature = "experimental")]
+                    #[cfg(feature = "mem-cache")]
                     memory_cache: None,
                     #[cfg(feature = "directory-listing")]
                     dir_listing: false,
