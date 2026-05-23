@@ -30,7 +30,6 @@ However, you can disable just the ones you don't need from the lists below.
 | **Default** |  |
 | `default` | Activates the default features by omission. |
 | `all` | Activates all available features including the `experimental` feature. This is the default feature used when building SWS binaries. |
-| `experimental` | Activates all SWS experimental features. Make sure to also provide the required `RUSTFLAGS` if the feature requires so. |
 | [**HTTP2/TLS**](./features/http2-tls.md) |  |
 | `tls` | Activates the TLS feature. Requires exactly one of `tls-ring` or `tls-fips` to select a TLS crypto provider. |
 | `tls-ring` | Activates the TLS feature with [`ring`](https://github.com/briansmith/ring) as the TLS crypto provider. Included by default. |
@@ -48,6 +47,12 @@ However, you can disable just the ones you don't need from the lists below.
 | `basic-auth` | Activates the Basic HTTP Authorization Schema feature. |
 | [**Fallback Page**](./features/error-pages.md#fallback-page-for-use-with-client-routers) |  |
 | `fallback-page` | Activates the Fallback Page feature. |
+| [**Metrics**](./features/metrics.md) |  |
+| `metrics` | Activates the Prometheus metrics endpoint (`/metrics`). Enabled by default but requires the `--metrics` flag at runtime. |
+| [**In-Memory Cache**](./features/memory-cache.md) |  |
+| `mem-cache` | Activates the in-memory file cache with LFU admission and LRU eviction. Enabled by default. Configured via `[advanced.memory-cache]` in the TOML file. |
+| **Experimental** |  |
+| `experimental` | Activates all SWS experimental features (Tokio runtime metrics). Requires `RUSTFLAGS="--cfg tokio_unstable"`. |
 
 ### Disable all default features
 
