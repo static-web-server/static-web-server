@@ -65,6 +65,7 @@ pub async fn handle(opts: &HandleOpts<'_>) -> Result<StaticFileResponse, StatusC
         metadata,
         is_dir,
         precompressed_variant,
+        file,
     } = resolve::file_metadata(
         &mut file_path,
         opts.headers,
@@ -92,7 +93,8 @@ pub async fn handle(opts: &HandleOpts<'_>) -> Result<StaticFileResponse, StatusC
         return Ok(StaticFileResponse::new(resp, resp_file_path));
     }
 
-    let resp = reply::file_or_precompressed(opts, file_path, &metadata, precompressed_variant)?;
+    let resp =
+        reply::file_or_precompressed(opts, file_path, &metadata, precompressed_variant, file)?;
     Ok(StaticFileResponse::new(resp, resp_file_path))
 }
 
