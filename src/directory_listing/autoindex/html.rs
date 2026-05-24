@@ -10,7 +10,7 @@ use crate::directory_listing::sort::sort_file_entries;
 use crate::directory_listing::style::STYLES_MIN;
 
 #[cfg(feature = "directory-listing-download")]
-use crate::directory_listing_download::{DOWNLOAD_PARAM_KEY, DirDownloadFmt};
+use crate::directory_listing::download::{DOWNLOAD_PARAM_KEY, DirDownloadFmt};
 
 /// Create an auto index in HTML format.
 pub(crate) fn html_auto_index<'a>(

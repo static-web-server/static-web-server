@@ -12,6 +12,10 @@ mod file;
 mod sort;
 mod style;
 
+#[cfg(feature = "directory-listing-download")]
+#[cfg_attr(docsrs, doc(cfg(feature = "directory-listing-download")))]
+pub mod download;
+
 pub(crate) use autoindex::*;
 pub use dir::*;
 

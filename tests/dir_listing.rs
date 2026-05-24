@@ -18,7 +18,7 @@ mod tests {
     };
 
     #[cfg(feature = "directory-listing-download")]
-    use static_web_server::directory_listing_download::DirDownloadFmt;
+    use static_web_server::directory_listing::download::DirDownloadFmt;
 
     const METHODS: [Method; 8] = [
         Method::CONNECT,

@@ -22,11 +22,11 @@ mod tests {
 
     use static_web_server::{
         directory_listing::DirListFmt,
-        directory_listing_download::DirDownloadOpts,
+        directory_listing::download::DirDownloadOpts,
         static_files::{self, HandleOpts},
     };
 
-    use static_web_server::directory_listing_download::{DOWNLOAD_PARAM_KEY, DirDownloadFmt};
+    use static_web_server::directory_listing::download::{DOWNLOAD_PARAM_KEY, DirDownloadFmt};
 
     const METHODS: [Method; 8] = [
         Method::CONNECT,
