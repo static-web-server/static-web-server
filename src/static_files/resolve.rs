@@ -16,7 +16,7 @@ use std::path::PathBuf;
 
 use crate::Result;
 use crate::compression_static;
-use crate::fs::meta::{FileMetadata, try_metadata, try_metadata_with_html_suffix};
+use crate::fs::meta::{FileMetadata, try_file_open, try_metadata, try_metadata_with_html_suffix};
 
 use super::opts::DEFAULT_INDEX_FILES;
 
@@ -34,6 +34,11 @@ pub(super) fn file_metadata<'a>(
 
     match try_metadata(file_path) {
         Ok((mut metadata, is_dir)) => {
+            // The optional pre-opened file for `file_path`. When `Some`, the
+            // response pipeline reuses this handle instead of issuing an
+            // extra `open(2)` syscall. We only populate it when the index
+            // file is resolved via `try_file_open` below.
+            let mut opened_file = None;
             if is_dir {
                 if index_files.is_empty() {
                     index_files = DEFAULT_INDEX_FILES;
@@ -53,13 +58,19 @@ pub(super) fn file_metadata<'a>(
                             metadata: p.metadata,
                             is_dir: false,
                             precompressed_variant: Some((p.file_path, p.encoding)),
+                            file: None,
                         });
                     }
 
                     // Fallback to finding the appended index file and overwrite the
                     // current metadata. Still considered a directory request.
-                    if let Ok(meta_res) = try_metadata(file_path) {
-                        (metadata, _) = meta_res;
+                    // We open the file directly here: `try_file_open` performs
+                    // a single `open(2)` + `fstat(2)` instead of a `stat(2)`
+                    // followed by an `open(2)` later in `file_reply`,
+                    // saving one path-resolving syscall on the hot path.
+                    if let Ok((file, meta)) = try_file_open(file_path) {
+                        metadata = meta;
+                        opened_file = Some(file);
                         index_found = true;
                         break;
                     }
@@ -88,11 +99,19 @@ pub(super) fn file_metadata<'a>(
                 .flatten()
                 .map(|p| (p.file_path, p.encoding));
 
+            // If we are going to serve a precompressed variant, the
+            // pre-opened file points to the *original* file which won't be
+            // streamed; drop it so `file_reply` opens the precomp file.
+            if precompressed_variant.is_some() {
+                opened_file = None;
+            }
+
             Ok(FileMetadata {
                 file_path,
                 metadata,
                 is_dir,
                 precompressed_variant,
+                file: opened_file,
             })
         }
         Err(err) => {
@@ -105,6 +124,7 @@ pub(super) fn file_metadata<'a>(
                     metadata: p.metadata,
                     is_dir: false,
                     precompressed_variant: Some((p.file_path, p.encoding)),
+                    file: None,
                 });
             }
 
@@ -127,6 +147,7 @@ pub(super) fn file_metadata<'a>(
                         metadata: new_meta,
                         is_dir: false,
                         precompressed_variant: None,
+                        file: None,
                     });
                 }
                 _ => {
@@ -140,6 +161,7 @@ pub(super) fn file_metadata<'a>(
                             metadata: p.metadata,
                             is_dir: false,
                             precompressed_variant: Some((p.file_path, p.encoding)),
+                            file: None,
                         });
                     }
                 }
@@ -151,6 +173,7 @@ pub(super) fn file_metadata<'a>(
                     metadata: new_meta,
                     is_dir: false,
                     precompressed_variant: None,
+                    file: None,
                 });
             }
 

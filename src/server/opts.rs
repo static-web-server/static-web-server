@@ -61,6 +61,12 @@ pub(super) fn init(general: &General, advanced: Option<Advanced>) -> Result<Hand
     let root_dir = helpers::get_valid_dirpath(&general.root)
         .with_context(|| "root directory was not found or inaccessible")?;
 
+    // Canonicalize the root directory once at startup
+    // so further checks can compare against a precomputed canonical base
+    // without paying a `canonicalize` syscall on every request.
+    // Falls back to the validated path if canonicalization fails.
+    let root_dir = root_dir.canonicalize().unwrap_or(root_dir);
+
     // Resolve the 404 error page path relative to root when needed
     let mut page404 = general.page404.clone();
     if page404.is_relative() && !page404.starts_with(&root_dir) {

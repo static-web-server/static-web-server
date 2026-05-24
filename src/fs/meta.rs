@@ -7,7 +7,7 @@
 //!
 
 use http::StatusCode;
-use std::fs::Metadata;
+use std::fs::{File, Metadata};
 use std::path::{Path, PathBuf};
 
 use crate::Result;
@@ -26,6 +26,12 @@ pub(crate) struct FileMetadata<'a> {
     pub is_dir: bool,
     // The precompressed file variant for the current `file_path`.
     pub precompressed_variant: Option<(PathBuf, ContentCoding)>,
+    /// An optional pre-opened `File` handle for `file_path`. When `Some`,
+    /// the response pipeline can reuse it instead of issuing another
+    /// `open(2)` syscall (the metadata was already obtained from the FD).
+    /// `None` for directory responses or when the file has not been opened
+    /// yet (e.g. precompressed-only matches, html-suffix fallback).
+    pub file: Option<File>,
 }
 
 /// Try to find the file system metadata for the given file path or return a `Not Found` error.
@@ -36,6 +42,31 @@ pub(crate) fn try_metadata(file_path: &Path) -> Result<(Metadata, bool), StatusC
             tracing::trace!("file found: {:?}; is_dir: {is_dir}", file_path);
             Ok((meta, is_dir))
         }
+        Err(err) => {
+            tracing::debug!("file not found: {:?} {:?}", file_path, err);
+            Err(StatusCode::NOT_FOUND)
+        }
+    }
+}
+
+/// Try to open the file at `file_path` and return both the opened `File`
+/// and its `Metadata` (obtained via `fstat(2)` on the already-open FD).
+///
+/// Combining open + fstat in this helper lets callers avoid a redundant
+/// `stat(2)` syscall on the resolution path. Returns `NOT_FOUND` on any
+/// open failure (callers further classify errors when needed).
+pub(crate) fn try_file_open(file_path: &Path) -> Result<(File, Metadata), StatusCode> {
+    match File::open(file_path) {
+        Ok(file) => match file.metadata() {
+            Ok(meta) => {
+                tracing::trace!("file opened: {:?}", file_path);
+                Ok((file, meta))
+            }
+            Err(err) => {
+                tracing::debug!("file fstat failed: {:?} {:?}", file_path, err);
+                Err(StatusCode::NOT_FOUND)
+            }
+        },
         Err(err) => {
             tracing::debug!("file not found: {:?} {:?}", file_path, err);
             Err(StatusCode::NOT_FOUND)

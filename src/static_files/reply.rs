@@ -63,29 +63,38 @@ pub(super) fn options_reply() -> Response<Body> {
 
 /// Serves the resolved file, transparently picking the pre-compressed
 /// variant on disk when one was located by [`super::resolve`].
+///
+/// `pre_opened` is an optional, already-open `File` handle for `file_path`
+/// that was opened by the resolver to avoid a redundant `open(2)` syscall
+/// on the hot path. It is ignored when a precompressed variant is being
+/// served (the precomp file is opened on demand).
 pub(super) fn file_or_precompressed(
     opts: &HandleOpts<'_>,
-    file_path: &PathBuf,
+    file_path: &Path,
     metadata: &Metadata,
     precompressed_variant: Option<(PathBuf, ContentCoding)>,
+    pre_opened: Option<File>,
 ) -> Result<Response<Body>, StatusCode> {
     if let Some((precomp_path, precomp_encoding)) = precompressed_variant {
+        // Pre-opened handle (if any) refers to the original file we are
+        // about to replace with the precompressed variant; just drop it.
+        drop(pre_opened);
         return precompressed_reply(opts, file_path, metadata, precomp_path, precomp_encoding);
     }
 
-    file_reply(opts, file_path, metadata, None)
+    file_reply(opts, file_path, metadata, None, pre_opened)
 }
 
 /// Serves a pre-compressed variant and adjusts headers (`Content-Length`
 /// removed, `Content-Encoding` set) accordingly.
 fn precompressed_reply(
     opts: &HandleOpts<'_>,
-    file_path: &PathBuf,
+    file_path: &Path,
     metadata: &Metadata,
     precomp_path: PathBuf,
     precomp_encoding: ContentCoding,
 ) -> Result<Response<Body>, StatusCode> {
-    let mut resp = file_reply(opts, file_path, metadata, Some(precomp_path))?;
+    let mut resp = file_reply(opts, file_path, metadata, Some(precomp_path), None)?;
 
     resp.headers_mut().remove(CONTENT_LENGTH);
     let encoding = HeaderValue::from_str(precomp_encoding.as_str()).map_err(|err| {
@@ -102,25 +111,40 @@ fn precompressed_reply(
 
 /// Opens `file_path` (or `path_precompressed` when present), wires up
 /// conditional headers, and produces a streaming response body.
+///
+/// When `pre_opened` is `Some(file)` and no precompressed variant is being
+/// served, the existing handle is reused instead of re-opening the file.
 fn file_reply(
     opts: &HandleOpts<'_>,
-    path: &PathBuf,
+    path: &Path,
     meta: &Metadata,
     path_precompressed: Option<PathBuf>,
+    pre_opened: Option<File>,
 ) -> Result<Response<Body>, StatusCode> {
     let conditionals = ConditionalHeaders::new(opts.headers);
-    let open_path: &Path = path_precompressed.as_deref().unwrap_or(path.as_path());
 
-    match File::open(open_path) {
+    // Reuse the pre-opened handle when serving the original file. For
+    // precompressed variants the open target differs, so the helper opens
+    // the precomp file itself (and the caller dropped `pre_opened`).
+    let file_result = match (path_precompressed.as_deref(), pre_opened) {
+        (None, Some(file)) => Ok(file),
+        (Some(precomp_path), _) => File::open(precomp_path),
+        (None, None) => File::open(path),
+    };
+    let open_path: &Path = path_precompressed.as_deref().unwrap_or(path);
+
+    match file_result {
         Ok(file) => {
             #[cfg(feature = "mem-cache")]
             {
+                let _ = open_path;
                 response_body(file, path, meta, conditionals, opts.memory_cache)
             }
 
             #[cfg(not(feature = "mem-cache"))]
             {
                 let _ = opts;
+                let _ = open_path;
                 response_body(file, path, meta, conditionals)
             }
         }
