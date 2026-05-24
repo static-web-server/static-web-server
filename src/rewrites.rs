@@ -5,6 +5,10 @@
 
 //! Module that allows to rewrite request URLs with pattern matching support.
 //!
+//! See [`crate::redirects`] for the ReDoS / pattern-complexity notes that
+//! also apply to rewrites: patterns are admin-supplied, evaluated by the
+//! non-backtracking `regex_lite` engine, and URIs longer than
+//! [`crate::redirects::MAX_URI_LEN_FOR_REGEX`] are skipped.
 
 use headers::HeaderValue;
 use hyper::{Request, Response, StatusCode, Uri, header::HOST};
@@ -24,6 +28,15 @@ pub(crate) fn pre_process<T>(
 ) -> Option<Result<Response<Body>, Error>> {
     let rewrites = opts.advanced_opts.as_ref()?.rewrites.as_deref()?;
     let uri_path = req.uri().path();
+    // SECURITY (ReDoS bound): mirror redirects' cap on regex input size.
+    if uri_path.len() > crate::redirects::MAX_URI_LEN_FOR_REGEX {
+        tracing::debug!(
+            "rewrites: skipping match, uri path length {} exceeds cap {}",
+            uri_path.len(),
+            crate::redirects::MAX_URI_LEN_FOR_REGEX
+        );
+        return None;
+    }
 
     let matched = rewrite_uri_path(uri_path, Some(rewrites))?;
     let dest = match replace_placeholders(

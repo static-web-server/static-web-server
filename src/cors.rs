@@ -47,6 +47,14 @@ pub fn new(
                     s.split(',').map(|s| s.trim()).collect::<Vec<_>>()
                 }
             });
+        // SECURITY/ROBUSTNESS: Reject malformed admin-supplied tokens with
+        // a structured `tracing::error!` instead of letting the builder
+        // panic at startup. This keeps SWS aligned with the rest of the
+        // codebase's error model and avoids an attacker-controlled abort
+        // surface if origin/header lists ever get fed from a less-trusted
+        // configuration source.
+        let allow_headers_vec = validate_header_names("cors.allow_headers", &allow_headers_vec);
+        let expose_headers_vec = validate_header_names("cors.expose_headers", &expose_headers_vec);
         let [allow_headers_str, expose_headers_str] =
             [&allow_headers_vec, &expose_headers_vec].map(|v| v.join(","));
 
@@ -58,8 +66,15 @@ pub fn new(
                     .allow_methods(vec!["GET", "HEAD", "OPTIONS"]),
             )
         } else {
-            let hosts = origins_str.split(',').map(|s| s.trim()).collect::<Vec<_>>();
+            let hosts = origins_str
+                .split(',')
+                .map(|s| s.trim())
+                .filter(|s| validate_origin_str("cors.allow_origins", s))
+                .collect::<Vec<_>>();
             if hosts.is_empty() {
+                tracing::error!(
+                    "cors: no valid origins found in `{origins_str}`; CORS will be disabled"
+                );
                 None
             } else {
                 Some(
@@ -83,6 +98,49 @@ pub fn new(
     };
 
     Cors::build(cors)
+}
+
+/// Filter out entries that would cause `Cors::allow_headers` /
+/// `expose_headers` to panic, logging each rejected value. Returns the
+/// surviving entries.
+fn validate_header_names<'a>(field: &str, names: &[&'a str]) -> Vec<&'a str> {
+    names
+        .iter()
+        .copied()
+        .filter(|h| {
+            if HeaderName::try_from(*h).is_ok() {
+                true
+            } else {
+                tracing::error!("{field}: ignoring invalid HTTP header name `{h}`");
+                false
+            }
+        })
+        .collect()
+}
+
+/// Verifies that an origin string looks like `scheme://authority` so
+/// `IntoOrigin::into_origin` will not panic on it.
+#[doc(hidden)]
+pub fn validate_origin_str(field: &str, origin: &str) -> bool {
+    let mut parts = origin.splitn(2, "://");
+    let scheme = parts.next();
+    let rest = parts.next();
+    match (scheme, rest) {
+        (Some(s), Some(r)) if !s.is_empty() && !r.is_empty() => {
+            if Origin::try_from_parts(s, r, None).is_ok() {
+                true
+            } else {
+                tracing::error!("{field}: ignoring invalid origin `{origin}`");
+                false
+            }
+        }
+        _ => {
+            tracing::error!(
+                "{field}: ignoring origin `{origin}` (expected `scheme://host[:port]`)"
+            );
+            false
+        }
+    }
 }
 
 impl Cors {
@@ -368,9 +426,15 @@ pub trait IntoOrigin {
 
 impl IntoOrigin for &str {
     fn into_origin(self) -> Origin {
+        // NOTE: This function is documented to panic on malformed input.
+        // SWS itself only calls it after `validate_origin_str` has filtered
+        // the input, so the panic branches are unreachable in production.
+        // We keep the API contract for downstream embedders.
         let mut parts = self.splitn(2, "://");
         let scheme = parts.next().expect("cors::into_origin: missing url scheme");
-        let rest = parts.next().expect("cors::into_origin: missing url scheme");
+        let rest = parts
+            .next()
+            .expect("cors::into_origin: missing url authority");
 
         Origin::try_from_parts(scheme, rest, None).expect("cors::into_origin: invalid Origin")
     }

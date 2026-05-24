@@ -164,10 +164,20 @@ where
         // since this satisfies the required format: `*/*`, it should not fail
         Mime::from_str("application/gzip").unwrap(),
     ));
-    let hvals = format!(
-        "attachment; filename=\"{}\"",
-        archive_name.to_string_lossy()
-    );
+    // SECURITY: Build a safe `Content-Disposition` value that combines an
+    // ASCII-safe quoted-string `filename=...` (for legacy user agents) and
+    // an RFC 5987 `filename*=UTF-8''<percent-encoded>` (for modern UAs).
+    //
+    // The previous implementation interpolated the directory name into the
+    // quoted-string without escaping `"` or `\`, producing a malformed
+    // header for any directory name containing those characters. While
+    // `HeaderValue::from_str` blocks CRLF, malformed Content-Disposition
+    // can still confuse downstream proxies and browsers.
+    let archive_name_str = archive_name.to_string_lossy();
+    let ascii_safe = sanitize_filename_for_quoted_string(&archive_name_str);
+    let percent_encoded = rfc5987_encode_filename(&archive_name_str);
+    let hvals =
+        format!("attachment; filename=\"{ascii_safe}\"; filename*=UTF-8''{percent_encoded}");
     match HeaderValue::from_str(hvals.as_str()) {
         Ok(hval) => {
             resp.headers_mut()
@@ -197,4 +207,118 @@ where
     *resp.body_mut() = body;
 
     resp
+}
+
+/// Sanitize a filename for use inside an HTTP `Content-Disposition`
+/// `filename="..."` quoted-string. Strips characters that would break the
+/// quoted-string framing (`"`, `\`) or HTTP header parsing (`\r`, `\n`, NUL,
+/// and other ASCII control bytes), and replaces any non-ASCII byte with
+/// `_`. The lossy ASCII filename is paired with an RFC 5987 `filename*=`
+/// variant carrying the full UTF-8 name (see `rfc5987_encode_filename`).
+#[doc(hidden)]
+pub fn sanitize_filename_for_quoted_string(name: &str) -> String {
+    let mut out = String::with_capacity(name.len());
+    for ch in name.chars() {
+        match ch {
+            '"' | '\\' => out.push('_'),
+            c if (c as u32) < 0x20 || c == '\x7f' => out.push('_'),
+            c if c.is_ascii() => out.push(c),
+            _ => out.push('_'),
+        }
+    }
+    if out.is_empty() {
+        out.push_str("download");
+    }
+    out
+}
+
+/// Percent-encode a filename per RFC 5987 (the `attr-char` production
+/// from RFC 8187). Used as the `filename*=UTF-8''<value>` parameter so
+/// non-ASCII filenames survive transit to modern user agents.
+#[doc(hidden)]
+pub fn rfc5987_encode_filename(name: &str) -> String {
+    // RFC 8187 `attr-char` allows: ALPHA / DIGIT and `! # $ & + - . ^ _ ` | ~`
+    // Everything else (including `"`, `\`, space, control bytes, and any
+    // non-ASCII byte) is percent-encoded as `%HH`.
+    fn is_attr_char(b: u8) -> bool {
+        b.is_ascii_alphanumeric()
+            || matches!(
+                b,
+                b'!' | b'#' | b'$' | b'&' | b'+' | b'-' | b'.' | b'^' | b'_' | b'`' | b'|' | b'~'
+            )
+    }
+    let mut out = String::with_capacity(name.len());
+    for &b in name.as_bytes() {
+        if is_attr_char(b) {
+            out.push(b as char);
+        } else {
+            use std::fmt::Write;
+            let _ = write!(out, "%{b:02X}");
+        }
+    }
+    out
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{rfc5987_encode_filename, sanitize_filename_for_quoted_string};
+
+    /// SECURITY: A directory name containing `"` or `\` must NOT break out
+    /// of the `Content-Disposition` quoted-string framing.
+    #[test]
+    fn sanitize_strips_quote_and_backslash() {
+        let out = sanitize_filename_for_quoted_string("evil\".tar.gz");
+        assert!(!out.contains('"'));
+        let out2 = sanitize_filename_for_quoted_string("a\\b.tar.gz");
+        assert!(!out2.contains('\\'));
+    }
+
+    /// SECURITY: Control bytes (CR/LF/NUL) must not survive into a header
+    /// value \u2014 they could be reflected if a downstream proxy mishandles
+    /// `Content-Disposition`.
+    #[test]
+    fn sanitize_strips_control_bytes() {
+        let out = sanitize_filename_for_quoted_string("a\r\nb\tc\x00d");
+        for ch in out.chars() {
+            assert!(
+                ch as u32 >= 0x20 && ch != '\x7f',
+                "control byte leaked: {:?}",
+                ch
+            );
+        }
+    }
+
+    /// Non-ASCII characters are dropped from the quoted-string variant
+    /// (browsers fall back to the `filename*=UTF-8''...` parameter for
+    /// these).
+    #[test]
+    fn sanitize_replaces_non_ascii() {
+        let out = sanitize_filename_for_quoted_string("rep\u{00f6}rt.tar.gz");
+        assert!(out.is_ascii());
+        assert!(out.starts_with("rep_rt") || out.starts_with("rep__rt"));
+    }
+
+    #[test]
+    fn sanitize_never_empty() {
+        assert_eq!(sanitize_filename_for_quoted_string(""), "download");
+    }
+
+    /// RFC 5987 / RFC 8187 attr-char alphabet must round-trip unchanged.
+    #[test]
+    fn rfc5987_preserves_attr_char_alphabet() {
+        let input = "abcXYZ0189!#$&+-.^_`|~";
+        assert_eq!(rfc5987_encode_filename(input), input);
+    }
+
+    /// Everything outside attr-char must be percent-encoded \u2014 in
+    /// particular, `"`, `\`, space, CR, LF, and any non-ASCII byte.
+    #[test]
+    fn rfc5987_encodes_unsafe_bytes() {
+        assert_eq!(rfc5987_encode_filename("a b"), "a%20b");
+        assert_eq!(rfc5987_encode_filename("a\"b"), "a%22b");
+        assert_eq!(rfc5987_encode_filename("a\\b"), "a%5Cb");
+        assert_eq!(rfc5987_encode_filename("a\r\nb"), "a%0D%0Ab");
+        // UTF-8 `\u{00f6}` = 0xC3 0xB6
+        assert_eq!(rfc5987_encode_filename("\u{00f6}"), "%C3%B6");
+    }
 }

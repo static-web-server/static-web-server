@@ -22,6 +22,7 @@ use hyper::StatusCode;
 use std::cell::RefCell;
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
+use std::time::{Duration, Instant};
 
 use crate::fs::path::PathExt;
 
@@ -33,6 +34,19 @@ use super::opts::HandleOpts;
 /// cache is dropped wholesale; the next requests pay the
 /// `canonicalize` syscall again.
 const CONTAINMENT_CACHE_CAP: usize = 1024;
+
+/// Maximum age of a cached containment decision before it is evicted.
+///
+/// SECURITY: The containment cache stores positive ("safe") decisions
+/// based on a `canonicalize` performed at insertion time. If an admin
+/// replaces a previously-safe directory with a symlink at runtime, the
+/// pre-existing cache entry would otherwise let the now-unsafe path
+/// through. Periodic wholesale eviction caps that exposure window to
+/// at most `CONTAINMENT_CACHE_TTL` seconds without measurable hot-path
+/// cost (one `Instant::elapsed()` per insertion). The eviction is
+/// deliberately coarse \u2014 finer-grained stat-based invalidation would
+/// add a syscall to the fast path, defeating the cache's purpose.
+const CONTAINMENT_CACHE_TTL: Duration = Duration::from_secs(60);
 
 thread_local! {
     /// Per-thread set of `probe` paths that have previously been proven
@@ -47,13 +61,50 @@ thread_local! {
     /// `PathBuf` so the lookup is a single hash + byte compare.
     ///
     /// Cache validity: an entry is added only after the slow path has
-    /// proven the probe is contained within `base_path`. The cache is
-    /// not invalidated on filesystem changes. This is acceptable for
-    /// a static-file server: the worst case is a stale "OK" decision
-    /// after an admin renames a directory to a symlink, which is a
-    /// transient state requiring filesystem changes outside SWS.
-    static CONTAINMENT_CACHE: RefCell<HashSet<PathBuf>> =
-        RefCell::new(HashSet::with_capacity(64));
+    /// proven the probe is contained within `base_path`. The entire
+    /// cache is dropped every `CONTAINMENT_CACHE_TTL` to bound the
+    /// window in which a runtime filesystem mutation (e.g. an admin
+    /// replacing a directory with a symlink) could yield a stale "OK".
+    static CONTAINMENT_CACHE: RefCell<ContainmentCache> =
+        RefCell::new(ContainmentCache::new());
+}
+
+/// Per-thread containment cache with TTL-based wholesale eviction.
+struct ContainmentCache {
+    entries: HashSet<PathBuf>,
+    last_clear: Instant,
+}
+
+impl ContainmentCache {
+    fn new() -> Self {
+        Self {
+            entries: HashSet::with_capacity(64),
+            last_clear: Instant::now(),
+        }
+    }
+
+    /// Returns `true` if `probe` is in the cache AND the cache has not
+    /// expired. A stale cache returns `false` here and is cleared on
+    /// the next insertion so we never serve a containment decision
+    /// older than `CONTAINMENT_CACHE_TTL`.
+    fn contains(&self, probe: &Path) -> bool {
+        if self.last_clear.elapsed() > CONTAINMENT_CACHE_TTL {
+            return false;
+        }
+        self.entries.contains(probe)
+    }
+
+    fn insert(&mut self, probe: PathBuf) {
+        // Wholesale eviction on TTL expiry or capacity overflow. Both
+        // paths reset `last_clear` so the cache starts a fresh window.
+        if self.last_clear.elapsed() > CONTAINMENT_CACHE_TTL
+            || self.entries.len() >= CONTAINMENT_CACHE_CAP
+        {
+            self.entries.clear();
+            self.last_clear = Instant::now();
+        }
+        self.entries.insert(probe);
+    }
 }
 
 /// Verifies that `file_path` is safe to serve under the current `opts`.
@@ -156,17 +207,14 @@ fn enforce_containment(probe: &Path, base_path: &Path) -> Result<(), StatusCode>
 }
 
 /// Records `probe` as previously-verified-safe in the per-thread
-/// containment cache. When the cache fills, the entire set is dropped
-/// rather than performing per-entry LRU bookkeeping, since the working
-/// set is expected to fit well within `CONTAINMENT_CACHE_CAP`.
+/// containment cache. When the cache fills or its TTL expires the entire
+/// set is dropped rather than performing per-entry LRU/expiry bookkeeping,
+/// since the working set is expected to fit well within
+/// `CONTAINMENT_CACHE_CAP` and the eviction is amortized.
 #[inline]
 fn cache_safe_probe(probe: &Path) {
     CONTAINMENT_CACHE.with(|c| {
-        let mut set = c.borrow_mut();
-        if set.len() >= CONTAINMENT_CACHE_CAP {
-            set.clear();
-        }
-        set.insert(probe.to_path_buf());
+        c.borrow_mut().insert(probe.to_path_buf());
     });
 }
 

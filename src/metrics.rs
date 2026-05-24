@@ -78,9 +78,24 @@ static HTTP_CONNECTIONS_ACTIVE: LazyLock<IntGauge> = LazyLock::new(|| {
 /// Initializes the metrics endpoint and registers HTTP-level collectors.
 /// Tokio runtime metrics are additionally registered when the `experimental`
 /// feature is enabled and built with `RUSTFLAGS="--cfg tokio_unstable"`.
+///
+/// # Security
+///
+/// The `/metrics` endpoint is exposed **without any built-in access
+/// control** \u2014 it is intentionally unauthenticated so that a sidecar
+/// Prometheus scraper can reach it cheaply. Operators MUST place SWS
+/// behind a reverse proxy or network policy that restricts `/metrics`
+/// to trusted scrapers; otherwise an unauthenticated client could
+/// enumerate vhost names, request volumes, and latency distributions
+/// (information disclosure).
 pub fn init(enabled: bool, handler_opts: &mut RequestHandlerOpts) {
     handler_opts.metrics_enabled = enabled;
     tracing::info!("metrics endpoint: enabled={enabled}");
+    if enabled {
+        tracing::warn!(
+            "metrics endpoint `/metrics` is unauthenticated; restrict access via reverse proxy or network policy"
+        );
+    }
 
     if enabled {
         let registry = default_registry();

@@ -33,12 +33,16 @@ mod listing;
 
 pub use opts::{HandleOpts, StaticFileResponse};
 
+// Re-export for benches/fuzzers/external integration tests that exercise
+// the path-sanitisation invariant directly.
+#[doc(hidden)]
+pub use crate::fs::path::sanitize_path;
+
 use hyper::StatusCode;
 
 use crate::Result;
 use crate::exts::http::MethodExt;
 use crate::fs::meta::FileMetadata;
-use crate::fs::path::sanitize_path;
 
 #[cfg(feature = "mem-cache")]
 use crate::mem_cache::cache;

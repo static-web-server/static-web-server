@@ -43,7 +43,12 @@ pub(crate) fn get_real_root<'a, T>(
 
     for vhost in vhosts {
         if vhost.host == request_host_str {
-            tracing::info!(
+            // PERF/LOGGING: This fires on every matched request (one per
+            // HTTP exchange that targets a configured vhost), so it must
+            // not run at `info` level \u2014 it would amplify access-log
+            // volume by an order of magnitude and risk leaking request
+            // URIs into operator-facing logs. Use `debug` instead.
+            tracing::debug!(
                 "virtual host matched: vhost={} vhost_root={} method={} uri={}",
                 vhost.host,
                 vhost.root.display(),

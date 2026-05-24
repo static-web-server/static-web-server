@@ -5,6 +5,18 @@
 
 //! Redirection module to handle config redirect URLs with pattern matching support.
 //!
+//! # Security: ReDoS / pattern complexity
+//!
+//! Redirect/rewrite source patterns are admin-supplied at startup. SWS
+//! uses [`regex_lite`], which has **no backtracking** (linear-time NFA
+//! engine), so the classic catastrophic-backtracking ReDoS class does
+//! not apply. However:
+//!
+//! - Per-request work is still proportional to `pattern_size * uri_len`.
+//!   To bound it, requests with URIs longer than [`MAX_URI_LEN_FOR_REGEX`]
+//!   bytes are skipped (no regex evaluation, no redirect).
+//! - Operators should treat redirect patterns as trusted configuration
+//!   and avoid loading them from untrusted sources.
 
 use headers::HeaderValue;
 use hyper::{Request, Response, StatusCode};
@@ -12,6 +24,14 @@ use regex_lite::Regex;
 
 use crate::body::Body;
 use crate::{Error, error_page, handler::RequestHandlerOpts, settings::Redirects};
+
+/// Maximum URI length (bytes) that will be fed to the redirect regex
+/// engine. Requests above this size skip redirect matching entirely.
+///
+/// 8 KiB matches the common HTTP-server URI cap and is more than the
+/// largest realistic redirect source while still bounding per-request
+/// regex work to a small constant.
+pub(crate) const MAX_URI_LEN_FOR_REGEX: usize = 8 * 1024;
 
 /// Applies redirect rules to a request if necessary.
 pub(crate) fn pre_process<T>(
@@ -22,6 +42,16 @@ pub(crate) fn pre_process<T>(
 
     let uri = req.uri();
     let uri_path = uri.path();
+    // SECURITY (ReDoS bound): refuse to run any regex against
+    // unreasonably long URIs. See module-level docs.
+    if uri_path.len() > MAX_URI_LEN_FOR_REGEX {
+        tracing::debug!(
+            "redirects: skipping match, uri path length {} exceeds cap {}",
+            uri_path.len(),
+            MAX_URI_LEN_FOR_REGEX
+        );
+        return None;
+    }
     let host = req
         .headers()
         .get(http::header::HOST)
@@ -62,7 +92,8 @@ pub(crate) fn pre_process<T>(
 }
 
 /// Replaces placeholders in the destination URI by matching capture groups from the original URI.
-pub(crate) fn replace_placeholders(
+#[doc(hidden)]
+pub fn replace_placeholders(
     orig_uri: &str,
     regex: &Regex,
     dest_uri: &str,

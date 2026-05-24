@@ -556,4 +556,76 @@ mod tests {
             }
         }
     }
+
+    /// SECURITY (XSS): regression test ensuring that filenames containing
+    /// HTML metacharacters are escaped, not reflected, in the autoindex
+    /// HTML output.
+    ///
+    /// We materialise a temp directory with a file whose name embeds a
+    /// `<script>` payload, render the listing, and assert that the
+    /// payload appears only in its escaped form. Disabled on Windows
+    /// because NTFS forbids `<` and `>` in filenames.
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn dir_listing_escapes_html_in_filenames() {
+        use std::fs;
+
+        let tmp = std::env::temp_dir().join(format!(
+            "sws-xss-{}",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        fs::create_dir_all(&tmp).unwrap();
+        // NOTE: filename intentionally avoids `/` (path separator) but
+        // contains other HTML metacharacters that must be escaped.
+        let evil_name = "<script>alert(1)<_script>.txt";
+        let evil = tmp.join(evil_name);
+        fs::write(&evil, b"x").unwrap();
+
+        let result = static_files::handle(&HandleOpts {
+            method: &Method::GET,
+            headers: &HeaderMap::new(),
+            base_path: &tmp,
+            uri_path: "/",
+            uri_query: None,
+            #[cfg(feature = "mem-cache")]
+            memory_cache: None,
+            dir_listing: true,
+            dir_listing_order: 6,
+            dir_listing_format: &DirListFmt::Html,
+            redirect_trailing_slash: true,
+            compression_static: false,
+            ignore_hidden_files: false,
+            disable_symlinks: false,
+            index_files: &[],
+            #[cfg(feature = "directory-listing-download")]
+            dir_listing_download: &[],
+        })
+        .await
+        .expect("handle should succeed for GET on a readable directory");
+
+        let body = result
+            .resp
+            .into_body()
+            .collect()
+            .await
+            .expect("body collect")
+            .to_bytes();
+        let body_str = std::str::from_utf8(&body).unwrap();
+
+        assert!(
+            !body_str.contains("<script>alert(1)<_script>"),
+            "raw <script> payload leaked into directory listing"
+        );
+        assert!(
+            body_str.contains("&lt;script&gt;alert(1)&lt;_script&gt;"),
+            "expected HTML-escaped filename in listing; body was: {body_str}"
+        );
+
+        // Cleanup
+        let _ = fs::remove_file(&evil);
+        let _ = fs::remove_dir(&tmp);
+    }
 }
