@@ -48,9 +48,9 @@ pub struct DirDownloadOpts<'a> {
     /// Request method.
     pub method: &'a Method,
     /// Prevent following symlinks for files and directories.
-    pub disable_symlinks: bool,
+    pub follow_symlinks: bool,
     /// Ignore hidden files (dotfiles).
-    pub ignore_hidden_files: bool,
+    pub include_hidden: bool,
 }
 
 /// Initializes directory listing download
@@ -200,8 +200,8 @@ where
         path.as_ref().into(),
         src_path.as_ref().into(),
         ChannelBuffer { writer: write_half },
-        !opts.disable_symlinks,
-        opts.ignore_hidden_files,
+        opts.follow_symlinks,
+        !opts.include_hidden,
     ));
     *resp.body_mut() = body;
 

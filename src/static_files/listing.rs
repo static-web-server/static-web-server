@@ -50,8 +50,8 @@ pub(super) fn try_listing(
         filepath: file_path,
         dir_listing_order: opts.dir_listing_order,
         dir_listing_format: opts.dir_listing_format,
-        ignore_hidden_files: opts.ignore_hidden_files,
-        disable_symlinks: opts.disable_symlinks,
+        include_hidden: opts.include_hidden,
+        follow_symlinks: opts.follow_symlinks,
         #[cfg(feature = "directory-listing-download")]
         dir_listing_download: opts.dir_listing_download,
     })?;
@@ -91,8 +91,8 @@ fn try_archive_download(
         &dir_path,
         DirDownloadOpts {
             method: opts.method,
-            disable_symlinks: opts.disable_symlinks,
-            ignore_hidden_files: opts.ignore_hidden_files,
+            follow_symlinks: opts.follow_symlinks,
+            include_hidden: opts.include_hidden,
         },
     );
     Ok(Some(resp))

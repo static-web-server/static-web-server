@@ -49,8 +49,8 @@ mod tests {
             dir_listing_download: &[],
             redirect_trailing_slash: true,
             compression_static: false,
-            ignore_hidden_files: false,
-            disable_symlinks: false,
+            include_hidden: true,
+            follow_symlinks: true,
             index_files: &["index.htm"],
         }
     }
@@ -204,8 +204,8 @@ mod tests {
             dir_listing_download: &[],
             redirect_trailing_slash: true,
             compression_static: false,
-            ignore_hidden_files: false,
-            disable_symlinks: false,
+            include_hidden: true,
+            follow_symlinks: true,
             index_files: &["index.htm"],
         };
 
@@ -238,8 +238,8 @@ mod tests {
             dir_listing_download: &[],
             redirect_trailing_slash: true,
             compression_static: false,
-            ignore_hidden_files: false,
-            disable_symlinks: false,
+            include_hidden: true,
+            follow_symlinks: true,
             index_files: &["index.htm"],
         };
 
@@ -342,8 +342,8 @@ mod tests {
             dir_listing_download: &[],
             redirect_trailing_slash: true,
             compression_static: false,
-            ignore_hidden_files: false,
-            disable_symlinks: false,
+            include_hidden: true,
+            follow_symlinks: true,
             index_files: &[],
         };
 

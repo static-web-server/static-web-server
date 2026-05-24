@@ -161,13 +161,13 @@ It provides [The "Basic" HTTP Authentication Scheme](https://datatracker.ietf.or
 
 Check for a trailing slash in the requested directory URI and redirect permanent (308) to the same path with a trailing slash suffix if it is missing. Default `true` (enabled).
 
-### SERVER_IGNORE_HIDDEN_FILES
+### SERVER_INCLUDE_HIDDEN
 
-Ignore hidden files/directories (dotfiles), preventing them from being served and being included in auto HTML index pages (directory listing).
+Include hidden files/directories (dotfiles), allowing them to be served and listed in auto HTML index pages (directory listing). Disabled by default; hidden files return `404 Not Found`.
 
-### SERVER_DISABLE_SYMLINKS
+### SERVER_FOLLOW_SYMLINKS
 
-Prevent following files or directories if any path name component is a symbolic link.
+Follow symbolic links when serving files or directories. Disabled by default; requests whose path contains any symlink component return `403 Forbidden`.
 
 ### SERVER_HEALTH
 

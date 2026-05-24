@@ -190,8 +190,8 @@ mod tests {
             compression_static: true,
             directory_listing: true,
             directory_listing_format: DirListFmt::Html,
-            ignore_hidden_files: false,
-            disable_symlinks: false,
+            include_hidden: true,
+            follow_symlinks: true,
             index_files: "index.htm, index.html".to_owned(),
             ..opts.general
         };

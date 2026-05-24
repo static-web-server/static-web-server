@@ -95,11 +95,8 @@ pub(super) fn init(general: &General, advanced: Option<Advanced>) -> Result<Hand
         "redirect trailing slash: enabled={}",
         general.redirect_trailing_slash
     );
-    tracing::info!(
-        "ignore hidden files: enabled={}",
-        general.ignore_hidden_files
-    );
-    tracing::info!("disable symlinks: enabled={}", general.disable_symlinks);
+    tracing::info!("include hidden files: enabled={}", general.include_hidden);
+    tracing::info!("follow symlinks: enabled={}", general.follow_symlinks);
 
     // Default charset for text/* responses
     let default_text_charset = general.text_charset;
@@ -125,8 +122,8 @@ pub(super) fn init(general: &General, advanced: Option<Advanced>) -> Result<Hand
         log_forwarded_for: general.log_forwarded_for,
         trusted_proxies: general.trusted_proxies.clone(),
         redirect_trailing_slash: general.redirect_trailing_slash,
-        ignore_hidden_files: general.ignore_hidden_files,
-        disable_symlinks: general.disable_symlinks,
+        include_hidden: general.include_hidden,
+        follow_symlinks: general.follow_symlinks,
         accept_markdown: general.accept_markdown,
         text_charset: general.text_charset,
         index_files,

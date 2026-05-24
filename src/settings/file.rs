@@ -365,11 +365,11 @@ pub struct General {
     /// Redirect trailing slash feature.
     pub redirect_trailing_slash: Option<bool>,
 
-    /// Ignore hidden files feature.
-    pub ignore_hidden_files: Option<bool>,
+    /// Include hidden files (dotfiles) feature.
+    pub include_hidden: Option<bool>,
 
-    /// Prevent following symbolic links of files or directories.
-    pub disable_symlinks: Option<bool>,
+    /// Follow symbolic links when serving files or directories.
+    pub follow_symlinks: Option<bool>,
 
     /// Health endpoint feature.
     pub health: Option<bool>,

@@ -94,8 +94,8 @@ pub mod fixtures {
             log_forwarded_for: general.log_forwarded_for,
             trusted_proxies: general.trusted_proxies,
             redirect_trailing_slash: general.redirect_trailing_slash,
-            ignore_hidden_files: general.ignore_hidden_files,
-            disable_symlinks: general.disable_symlinks,
+            include_hidden: general.include_hidden,
+            follow_symlinks: general.follow_symlinks,
             accept_markdown: general.accept_markdown,
             text_charset: general.text_charset,
             index_files: general
