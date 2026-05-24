@@ -241,4 +241,63 @@ mod tests {
         assert_eq!(values.next(), Some("*"));
         assert_eq!(values.next(), None);
     }
+
+    // Property-based regression tests for the RFC 7231 q-value parser.
+    //
+    // Inputs to `QualityValue::iter` come straight from a client
+    // `Accept-Encoding` (or similar) header, so the parser MUST be
+    // total: no panic, no infinite loop, and ordering must respect the
+    // documented monotonicity in `quality` then `ContentCoding::priority`.
+    use proptest::prelude::*;
+
+    /// Restrict to bytes the `HeaderValue` constructor accepts so we
+    /// can exercise the parser path rather than rejecting input at the
+    /// `HeaderValue` boundary.
+    const HEADER_VALUE_REGEX: &str = "[A-Za-z0-9 ,;=\\.\\*/+\\-_]{0,256}";
+
+    proptest! {
+        #![proptest_config(ProptestConfig {
+            cases: 256, ..ProptestConfig::default()
+        })]
+
+        /// Iteration must be total: any header-value-safe input must
+        /// drain `iter()` to completion without panicking.
+        #[test]
+        fn prop_iter_never_panics(s in HEADER_VALUE_REGEX) {
+            let Ok(val) = HeaderValue::from_str(&s) else { return Ok(()); };
+            let qual = QualityValue::from(val);
+            // Drain the iterator fully.
+            let _items: Vec<&str> = qual.iter().collect();
+        }
+
+        /// Iteration order respects q-value: a parsed q-value of 1.0
+        /// must never appear after a parsed q-value of 0.5 for the
+        /// same content.
+        #[test]
+        fn prop_iter_orders_q_values_descending(
+            a in "[a-z]{1,8}",
+            b in "[a-z]{1,8}",
+            qa in 0u16..=1000,
+            qb in 0u16..=1000,
+        ) {
+            prop_assume!(a != b);
+            let s = format!("{a};q={:.3}, {b};q={:.3}", qa as f32 / 1000.0, qb as f32 / 1000.0);
+            let Ok(val) = HeaderValue::from_str(&s) else { return Ok(()); };
+            let qual = QualityValue::from(val);
+            let items: Vec<&str> = qual.iter().collect();
+            // Items are sorted descending by quality. Find positions
+            // and verify their relative order matches the q-values.
+            let pos_a = items.iter().position(|x| *x == a);
+            let pos_b = items.iter().position(|x| *x == b);
+            if let (Some(pa), Some(pb)) = (pos_a, pos_b) {
+                match qa.cmp(&qb) {
+                    std::cmp::Ordering::Greater => prop_assert!(pa < pb,
+                        "expected `{a}` (q={qa}) before `{b}` (q={qb}) in {items:?}"),
+                    std::cmp::Ordering::Less => prop_assert!(pa > pb,
+                        "expected `{a}` (q={qa}) after `{b}` (q={qb}) in {items:?}"),
+                    std::cmp::Ordering::Equal => {} // tie-broken by ContentCoding::priority
+                }
+            }
+        }
+    }
 }

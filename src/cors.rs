@@ -645,4 +645,65 @@ mod tests {
 
         Ok(())
     }
+
+    // Property-based regression tests for the CORS configuration
+    // validators. These functions exist precisely to keep panicking
+    // builder methods (`Cors::allow_origins` / `allow_headers`) away
+    // from arbitrary admin-supplied tokens, so the property to enforce
+    // is "never panic, and when we return `true` the builder must
+    // accept the value".
+    use super::{validate_header_names, validate_origin_str};
+    use headers::{HeaderName, Origin};
+    use proptest::prelude::*;
+
+    proptest! {
+        #![proptest_config(ProptestConfig {
+            cases: 256, ..ProptestConfig::default()
+        })]
+
+        /// `validate_origin_str` MUST be total: it must never panic for
+        /// any UTF-8 input. Additionally, when it returns `true`, the
+        /// downstream `Origin::try_from_parts(scheme, rest, None)` call
+        /// performed by `IntoOrigin for &str` MUST succeed.
+        #[test]
+        fn prop_validate_origin_str_never_panics(origin in "\\PC{0,128}") {
+            let ok = validate_origin_str("cors.allow_origins", &origin);
+            if ok {
+                let (scheme, rest) = origin.split_once("://").unwrap();
+                prop_assert!(
+                    Origin::try_from_parts(scheme, rest, None).is_ok(),
+                    "validator accepted `{origin}` but `Origin::try_from_parts` rejects it"
+                );
+            }
+        }
+
+        /// `validate_origin_str` rejects any string that does not match
+        /// the `scheme://rest` shape, regardless of payload.
+        #[test]
+        fn prop_validate_origin_str_rejects_missing_scheme(s in "[^/:\\s]{0,32}") {
+            prop_assert!(
+                !validate_origin_str("cors.allow_origins", &s),
+                "validator accepted `{s}` which has no `scheme://` separator"
+            );
+        }
+
+        /// `validate_header_names` MUST be total and may only retain
+        /// entries that `HeaderName::try_from` actually accepts.
+        #[test]
+        fn prop_validate_header_names_retains_only_valid(
+            names in proptest::collection::vec("\\PC{0,32}", 0..16),
+        ) {
+            let slice: Vec<&str> = names.iter().map(|s| s.as_str()).collect();
+            let kept = validate_header_names("cors.allow_headers", &slice);
+            for h in &kept {
+                prop_assert!(
+                    HeaderName::try_from(*h).is_ok(),
+                    "validator kept invalid header name `{h}`"
+                );
+            }
+            // Filtering must be order-preserving and idempotent.
+            let kept2 = validate_header_names("cors.allow_headers", &kept);
+            prop_assert_eq!(kept, kept2);
+        }
+    }
 }

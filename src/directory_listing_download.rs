@@ -321,4 +321,98 @@ mod tests {
         // UTF-8 `\u{00f6}` = 0xC3 0xB6
         assert_eq!(rfc5987_encode_filename("\u{00f6}"), "%C3%B6");
     }
+
+    // Property-based regression tests for Content-Disposition helpers.
+    //
+    // These encode the security invariants that protect the
+    // `Content-Disposition` header against quoted-string framing breaks,
+    // header smuggling via control bytes, and ambiguous user-agent
+    // parsing of non-ASCII filenames.
+    use proptest::prelude::*;
+
+    fn is_attr_char(b: u8) -> bool {
+        b.is_ascii_alphanumeric()
+            || matches!(
+                b,
+                b'!' | b'#' | b'$' | b'&' | b'+' | b'-' | b'.' | b'^' | b'_' | b'`' | b'|' | b'~'
+            )
+    }
+
+    proptest! {
+        #![proptest_config(ProptestConfig {
+            cases: 256, ..ProptestConfig::default()
+        })]
+
+        /// `sanitize_filename_for_quoted_string` MUST always yield a
+        /// non-empty ASCII string with no quoted-string-breaking or
+        /// control bytes, for any UTF-8 input.
+        #[test]
+        fn prop_sanitize_filename_invariants(name in "\\PC{0,256}") {
+            let out = sanitize_filename_for_quoted_string(&name);
+            prop_assert!(!out.is_empty(), "output must never be empty");
+            prop_assert!(out.is_ascii(), "output must be pure ASCII");
+            for ch in out.chars() {
+                prop_assert!(
+                    ch != '"' && ch != '\\',
+                    "quoted-string break byte leaked: {:?}",
+                    ch
+                );
+                let code = ch as u32;
+                prop_assert!(
+                    code >= 0x20 && code != 0x7f,
+                    "control byte leaked: {:?}",
+                    ch
+                );
+            }
+        }
+
+        /// Sanitization is idempotent: a single pass already produces a
+        /// fixed point of the transform.
+        #[test]
+        fn prop_sanitize_filename_is_idempotent(name in "\\PC{0,256}") {
+            let once = sanitize_filename_for_quoted_string(&name);
+            let twice = sanitize_filename_for_quoted_string(&once);
+            prop_assert_eq!(once, twice);
+        }
+
+        /// `rfc5987_encode_filename` MUST emit only attr-char bytes or
+        /// well-formed `%HH` percent-escapes, for any UTF-8 input.
+        #[test]
+        fn prop_rfc5987_encode_only_safe_alphabet(name in "\\PC{0,256}") {
+            let out = rfc5987_encode_filename(&name);
+            let bytes = out.as_bytes();
+            let mut i = 0;
+            while i < bytes.len() {
+                let b = bytes[i];
+                if b == b'%' {
+                    // Must be followed by exactly two uppercase hex digits.
+                    prop_assert!(i + 2 < bytes.len(), "truncated percent-escape at {i}");
+                    let h1 = bytes[i + 1];
+                    let h2 = bytes[i + 2];
+                    let is_hex_upper = |c: u8| c.is_ascii_digit() || (b'A'..=b'F').contains(&c);
+                    prop_assert!(
+                        is_hex_upper(h1) && is_hex_upper(h2),
+                        "non-uppercase-hex percent-escape: %{}{}",
+                        h1 as char,
+                        h2 as char
+                    );
+                    i += 3;
+                } else {
+                    prop_assert!(
+                        is_attr_char(b),
+                        "non-attr-char byte leaked: 0x{:02X}",
+                        b
+                    );
+                    i += 1;
+                }
+            }
+        }
+
+        /// Inputs already drawn from the attr-char alphabet must
+        /// round-trip unchanged.
+        #[test]
+        fn prop_rfc5987_attr_char_inputs_roundtrip(s in "[A-Za-z0-9!#\\$&+\\-\\.\\^_`|~]{0,128}") {
+            prop_assert_eq!(rfc5987_encode_filename(&s).clone(), s);
+        }
+    }
 }

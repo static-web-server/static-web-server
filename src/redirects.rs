@@ -338,4 +338,77 @@ mod tests {
             ))
         );
     }
+
+    // Property-based regression tests for `replace_placeholders` and the
+    // upstream URI length guard.
+    //
+    // The guard exists so adversarial inputs cannot pin the CPU on
+    // regex matching; the property is "calls never panic and respect
+    // the cap". `replace_placeholders` itself must also be total over
+    // any byte-length input bounded by `MAX_URI_LEN_FOR_REGEX`.
+    use super::{MAX_URI_LEN_FOR_REGEX, replace_placeholders};
+    use proptest::prelude::*;
+
+    proptest! {
+        #![proptest_config(ProptestConfig {
+            cases: 128, ..ProptestConfig::default()
+        })]
+
+        /// `replace_placeholders` must never panic on arbitrary input
+        /// pairs (orig URI, destination template) within the URI cap,
+        /// regardless of whether the regex matches.
+        #[test]
+        fn prop_replace_placeholders_never_panics(
+            orig in "\\PC{0,512}",
+            dest in "\\PC{0,512}",
+        ) {
+            // A representative source pattern with 5 capture groups
+            // \u2014 mirrors realistic redirect rules.
+            let re = Regex::new(r"^/(.*)/(.*)/(.*)/(.*)/(.*)$").unwrap();
+            let ac = build_placeholder_replacer(&re);
+            let _ = replace_placeholders(&orig, &re, &dest, &ac);
+        }
+
+        /// When the regex does NOT match, `replace_placeholders` MUST
+        /// return an `Err` (no silent fallthrough).
+        #[test]
+        fn prop_replace_placeholders_no_match_returns_err(
+            // A leading char that prevents the regex from anchoring.
+            tail in "[a-zA-Z0-9_.-]{0,64}",
+            dest in "\\PC{0,64}",
+        ) {
+            let orig = format!("no-leading-slash-{tail}");
+            let re = Regex::new(r"^/(.*)/(.*)/(.*)/(.*)/(.*)$").unwrap();
+            let ac = build_placeholder_replacer(&re);
+            prop_assert!(replace_placeholders(&orig, &re, &dest, &ac).is_err());
+        }
+
+        /// On a successful match, the produced destination MUST contain
+        /// only the captured substrings (or original literals) — i.e.
+        /// no `$N` placeholders survive for `N < captures_len()`.
+        #[test]
+        fn prop_replace_placeholders_substitutes_all_indices(
+            a in "[a-zA-Z0-9]{1,16}",
+            b in "[a-zA-Z0-9]{1,16}",
+            c in "[a-zA-Z0-9]{1,16}",
+            d in "[a-zA-Z0-9]{1,16}",
+            e in "[a-zA-Z0-9]{1,16}",
+        ) {
+            let orig = format!("/{a}/{b}/{c}/{d}/{e}");
+            let re = Regex::new(r"^/(.*)/(.*)/(.*)/(.*)/(.*)$").unwrap();
+            let ac = build_placeholder_replacer(&re);
+            let dest = "/$0|$1|$2|$3|$4|$5".to_string();
+            let out = replace_placeholders(&orig, &re, &dest, &ac).unwrap();
+            // $0 = whole match (orig), then capture groups 1..=5.
+            let expected = format!("/{orig}|{a}|{b}|{c}|{d}|{e}");
+            prop_assert_eq!(out, expected);
+        }
+    }
+
+    /// `MAX_URI_LEN_FOR_REGEX` is a security/perf invariant; this test
+    /// keeps it as a tripwire if anyone ever lowers it accidentally.
+    #[test]
+    fn max_uri_len_for_regex_is_at_least_8kib() {
+        const { assert!(MAX_URI_LEN_FOR_REGEX >= 8 * 1024) };
+    }
 }
