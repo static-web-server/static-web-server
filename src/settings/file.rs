@@ -412,8 +412,7 @@ impl Settings {
     /// Read and deserialize the server TOML configuration file by path.
     pub fn read(config_file: &Path) -> Result<Settings> {
         // Validate TOML file extension
-        let ext = config_file.extension();
-        if ext.is_none() || ext.unwrap().is_empty() || ext.unwrap().ne("toml") {
+        if !matches!(config_file.extension(), Some(ext) if !ext.is_empty() && ext == "toml") {
             bail!("configuration file should be in toml format. E.g `sws.toml`");
         }
 

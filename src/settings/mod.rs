@@ -246,9 +246,7 @@ impl Settings {
 
             // File-based "general" options
             let has_general_settings = settings.general.is_some();
-            if has_general_settings {
-                let general = settings.general.unwrap();
-
+            if let Some(general) = settings.general {
                 if let Some(v) = general.host {
                     host = v
                 }

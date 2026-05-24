@@ -15,9 +15,11 @@ mod tests {
     use static_web_server::directory_listing::DirListFmt;
     use static_web_server::static_files::{self, HandleOpts};
 
+    use static_web_server::handler::RequestHandlerOpts;
     use static_web_server::mem_cache::cache::{
         self, DEFAULT_CAPACITY, DEFAULT_MAX_FILE_SIZE, DEFAULT_TTI, DEFAULT_TTL, MemCacheOpts,
     };
+    use static_web_server::settings::Advanced;
     use static_web_server::settings::file::MemoryCache;
 
     fn root_dir() -> PathBuf {
@@ -302,6 +304,20 @@ mod tests {
 
     #[tokio::test]
     async fn x_cache_hit_header_present_on_cache_hit() {
+        let mut handler_opts = RequestHandlerOpts {
+            advanced_opts: Some(Advanced {
+                memory_cache: Some(MemoryCache {
+                    capacity: Some(DEFAULT_CAPACITY),
+                    ttl: Some(DEFAULT_TTL),
+                    tti: Some(DEFAULT_TTI),
+                    max_file_size: Some(DEFAULT_MAX_FILE_SIZE),
+                }),
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+        let _ = cache::init(&mut handler_opts);
+
         let mem_opts = MemCacheOpts::new(DEFAULT_MAX_FILE_SIZE);
 
         // Use a file that no other test in this binary touches, so we

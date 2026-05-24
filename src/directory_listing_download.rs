@@ -161,8 +161,7 @@ where
     let mut resp = Response::new(crate::body::empty());
 
     resp.headers_mut().typed_insert(ContentType::from(
-        // since this satisfies the required format: `*/*`, it should not fail
-        Mime::from_str("application/gzip").unwrap(),
+        Mime::from_str("application/gzip").unwrap_or(mime_guess::mime::APPLICATION_OCTET_STREAM),
     ));
     // SECURITY: Build a safe `Content-Disposition` value that combines an
     // ASCII-safe quoted-string `filename=...` (for legacy user agents) and

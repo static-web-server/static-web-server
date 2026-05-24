@@ -93,7 +93,7 @@ fn run_service() -> Result {
                 tracing::debug!("windows service: handled 'ServiceControl::Stop' event");
                 if let Some(sender) = shutdown_tx.take() {
                     tracing::debug!("windows service: delegated 'ServiceControl::Stop' event");
-                    sender.send(()).unwrap();
+                    let _ = sender.send(());
                 }
                 ServiceControlHandlerResult::NoError
             }
@@ -162,9 +162,14 @@ fn run_service() -> Result {
 /// Run web server as Windows Server
 pub fn run_server_as_service() -> Result {
     // Set current directory to the same as the executable
-    let mut path = env::current_exe().unwrap();
+    let mut path = env::current_exe().with_context(|| "error getting current executable path")?;
     path.pop();
-    env::set_current_dir(&path).unwrap();
+    env::set_current_dir(&path).with_context(|| {
+        format!(
+            "error setting current directory to executable directory `{}`",
+            path.display()
+        )
+    })?;
 
     // Register generated `ffi_service_main` with the system and start the
     // service, blocking this thread until the service is stopped
@@ -179,7 +184,9 @@ pub fn install_service(config_file: &Path) -> Result {
     let service_manager = ServiceManager::local_computer(None::<&str>, manager_access)?;
 
     // Set the executable path to point the current binary
-    let service_binary_path = std::env::current_exe().unwrap().with_file_name(SERVICE_EXE);
+    let service_binary_path = std::env::current_exe()
+        .with_context(|| "error getting current executable path")?
+        .with_file_name(SERVICE_EXE);
 
     // Set service binary default arguments
     let mut service_binary_arguments = vec![OsString::from("--windows-service=true")];

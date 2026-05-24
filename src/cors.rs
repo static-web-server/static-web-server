@@ -59,12 +59,18 @@ pub fn new(
             [&allow_headers_vec, &expose_headers_vec].map(|v| v.join(","));
 
         let cors_res = if origins_str == "*" {
-            Some(
-                cors.allow_any_origin()
-                    .allow_headers(allow_headers_vec)
-                    .expose_headers(expose_headers_vec)
-                    .allow_methods(vec!["GET", "HEAD", "OPTIONS"]),
-            )
+            match cors
+                .allow_any_origin()
+                .allow_headers(allow_headers_vec)
+                .and_then(|cors| cors.expose_headers(expose_headers_vec))
+                .and_then(|cors| cors.allow_methods(["GET", "HEAD", "OPTIONS"]))
+            {
+                Ok(cors) => Some(cors),
+                Err(err) => {
+                    tracing::error!("cors: failed to build configuration: {err:?}");
+                    None
+                }
+            }
         } else {
             let hosts = origins_str
                 .split(',')
@@ -77,12 +83,18 @@ pub fn new(
                 );
                 None
             } else {
-                Some(
-                    cors.allow_origins(hosts)
-                        .allow_headers(allow_headers_vec)
-                        .expose_headers(expose_headers_vec)
-                        .allow_methods(vec!["GET", "HEAD", "OPTIONS"]),
-                )
+                match cors
+                    .allow_origins(hosts)
+                    .and_then(|cors| cors.allow_headers(allow_headers_vec))
+                    .and_then(|cors| cors.expose_headers(expose_headers_vec))
+                    .and_then(|cors| cors.allow_methods(["GET", "HEAD", "OPTIONS"]))
+                {
+                    Ok(cors) => Some(cors),
+                    Err(err) => {
+                        tracing::error!("cors: failed to build configuration: {err:?}");
+                        None
+                    }
+                }
             }
         };
 
@@ -156,21 +168,17 @@ impl Cors {
     }
 
     /// Adds multiple methods to the existing list of allowed request methods.
-    ///
-    /// # Panics
-    ///
-    /// Panics if the provided argument is not a valid `http::Method`.
-    pub fn allow_methods<I>(mut self, methods: I) -> Self
+    pub fn allow_methods<I>(mut self, methods: I) -> Result<Self, Error>
     where
         I: IntoIterator,
         http::Method: TryFrom<I::Item>,
     {
-        let iter = methods.into_iter().map(|m| match TryFrom::try_from(m) {
-            Ok(m) => m,
-            Err(_) => panic!("cors: illegal method"),
-        });
-        self.allowed_methods.extend(iter);
-        self
+        for method in methods {
+            let method =
+                http::Method::try_from(method).map_err(|_| Error::msg("cors: illegal method"))?;
+            self.allowed_methods.insert(method);
+        }
+        Ok(self)
     }
 
     /// Sets that *any* `Origin` header is allowed.
@@ -185,67 +193,53 @@ impl Cors {
     }
 
     /// Add multiple origins to the existing list of allowed `Origin`s.
-    ///
-    /// # Panics
-    ///
-    /// Panics if the provided argument is not a valid `Origin`.
-    pub fn allow_origins<I>(mut self, origins: I) -> Self
+    pub fn allow_origins<I>(mut self, origins: I) -> Result<Self, Error>
     where
         I: IntoIterator,
         I::Item: IntoOrigin,
     {
-        let iter = origins
-            .into_iter()
-            .map(IntoOrigin::into_origin)
-            .map(|origin| {
-                origin
-                    .to_string()
-                    .parse()
-                    .expect("cors: Origin is always a valid HeaderValue")
-            });
-
-        self.origins.get_or_insert_with(HashSet::new).extend(iter);
-        self
+        let allowed = self.origins.get_or_insert_with(HashSet::new);
+        for origin in origins {
+            let origin = origin.into_origin()?;
+            let value = HeaderValue::from_str(&origin.to_string())
+                .map_err(|err| Error::msg(format!("cors: invalid origin header value: {err}")))?;
+            allowed.insert(value);
+        }
+        Ok(self)
     }
 
     /// Adds multiple headers to the list of allowed request headers.
     ///
     /// **Note**: These should match the values the browser sends via `Access-Control-Request-Headers`, e.g.`content-type`.
     ///
-    /// # Panics
-    ///
-    /// Panics if any of the headers are not a valid `http::header::HeaderName`.
-    pub fn allow_headers<I>(mut self, headers: I) -> Self
+    pub fn allow_headers<I>(mut self, headers: I) -> Result<Self, Error>
     where
         I: IntoIterator,
         HeaderName: TryFrom<I::Item>,
     {
-        let iter = headers.into_iter().map(|h| match TryFrom::try_from(h) {
-            Ok(h) => h,
-            Err(_) => panic!("cors: illegal Header"),
-        });
-        self.allowed_headers.extend(iter);
-        self
+        for header in headers {
+            let header = HeaderName::try_from(header)
+                .map_err(|_| Error::msg("cors: illegal allow header"))?;
+            self.allowed_headers.insert(header);
+        }
+        Ok(self)
     }
 
     /// Adds multiple headers to the list of exposed request headers.
     ///
     /// **Note**: These should match the values the browser sends via `Access-Control-Request-Headers`, e.g.`content-type`.
     ///
-    /// # Panics
-    ///
-    /// Panics if any of the headers are not a valid `http::header::HeaderName`.
-    pub fn expose_headers<I>(mut self, headers: I) -> Self
+    pub fn expose_headers<I>(mut self, headers: I) -> Result<Self, Error>
     where
         I: IntoIterator,
         HeaderName: TryFrom<I::Item>,
     {
-        let iter = headers.into_iter().map(|h| match TryFrom::try_from(h) {
-            Ok(h) => h,
-            Err(_) => panic!("cors: illegal Header"),
-        });
-        self.exposed_headers.extend(iter);
-        self
+        for header in headers {
+            let header = HeaderName::try_from(header)
+                .map_err(|_| Error::msg("cors: illegal expose header"))?;
+            self.exposed_headers.insert(header);
+        }
+        Ok(self)
     }
 
     /// Builds the `Cors` wrapper from the configured settings.
@@ -421,22 +415,16 @@ impl Configured {
 /// Cast values into the origin header.
 pub trait IntoOrigin {
     /// Cast actual value into an origin header.
-    fn into_origin(self) -> Origin;
+    fn into_origin(self) -> Result<Origin, Error>;
 }
 
 impl IntoOrigin for &str {
-    fn into_origin(self) -> Origin {
-        // NOTE: This function is documented to panic on malformed input.
-        // SWS itself only calls it after `validate_origin_str` has filtered
-        // the input, so the panic branches are unreachable in production.
-        // We keep the API contract for downstream embedders.
-        let mut parts = self.splitn(2, "://");
-        let scheme = parts.next().expect("cors::into_origin: missing url scheme");
-        let rest = parts
-            .next()
-            .expect("cors::into_origin: missing url authority");
-
-        Origin::try_from_parts(scheme, rest, None).expect("cors::into_origin: invalid Origin")
+    fn into_origin(self) -> Result<Origin, Error> {
+        let (scheme, rest) = self
+            .split_once("://")
+            .ok_or_else(|| Error::msg("cors::into_origin: expected `scheme://host[:port]`"))?;
+        Origin::try_from_parts(scheme, rest, None)
+            .map_err(|_| Error::msg("cors::into_origin: invalid Origin"))
     }
 }
 
@@ -532,12 +520,14 @@ mod tests {
     }
 
     fn make_cors_config() -> Option<Configured> {
-        Cors::build(Some(
-            Cors::new()
-                .allow_origins(vec!["https://example.com/"])
-                .allow_headers(vec!["X-Allowed"])
-                .allow_methods(vec!["GET", "HEAD"]),
-        ))
+        let cors = Cors::new()
+            .allow_origins(vec!["https://example.com/"])
+            .unwrap()
+            .allow_headers(vec!["X-Allowed"])
+            .unwrap()
+            .allow_methods(vec!["GET", "HEAD"])
+            .unwrap();
+        Cors::build(Some(cors))
     }
 
     fn get_allowed_origin(resp: Response<Body>) -> Option<String> {

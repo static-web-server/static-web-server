@@ -7,7 +7,10 @@
 //!
 
 use headers::{HeaderMapExt, Host};
-use hyper::{Request, Response, StatusCode, header::LOCATION};
+use hyper::{
+    Request, Response, StatusCode,
+    header::{HeaderValue, LOCATION},
+};
 use std::sync::Arc;
 
 use crate::Result;
@@ -47,9 +50,17 @@ pub fn redirect_to_https<T>(
         );
         tracing::debug!("https redirect to {}", url);
 
+        let location = match HeaderValue::from_str(&url) {
+            Ok(location) => location,
+            Err(err) => {
+                tracing::error!("invalid https redirect location `{url}`: {err:?}");
+                return Err(StatusCode::BAD_REQUEST);
+            }
+        };
+
         let mut resp = Response::new(crate::body::empty());
         *resp.status_mut() = StatusCode::MOVED_PERMANENTLY;
-        resp.headers_mut().insert(LOCATION, url.parse().unwrap());
+        resp.headers_mut().insert(LOCATION, location);
         return Ok(resp);
     }
 

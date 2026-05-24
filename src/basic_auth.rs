@@ -52,9 +52,9 @@ pub(crate) fn pre_process<T>(
         if let Ok(ref mut resp) = result {
             resp.headers_mut().insert(
                 WWW_AUTHENTICATE,
-                "Basic realm=\"Static Web Server\", charset=\"UTF-8\""
-                    .parse()
-                    .unwrap(),
+                hyper::header::HeaderValue::from_static(
+                    "Basic realm=\"Static Web Server\", charset=\"UTF-8\"",
+                ),
             );
         }
         Some(result)
