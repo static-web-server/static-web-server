@@ -78,9 +78,24 @@ static HTTP_CONNECTIONS_ACTIVE: LazyLock<IntGauge> = LazyLock::new(|| {
 /// Initializes the metrics endpoint and registers HTTP-level collectors.
 /// Tokio runtime metrics are additionally registered when the `experimental`
 /// feature is enabled and built with `RUSTFLAGS="--cfg tokio_unstable"`.
+///
+/// # Security
+///
+/// The `/metrics` endpoint is exposed **without any built-in access
+/// control** \u2014 it is intentionally unauthenticated so that a sidecar
+/// Prometheus scraper can reach it cheaply. Operators MUST place SWS
+/// behind a reverse proxy or network policy that restricts `/metrics`
+/// to trusted scrapers; otherwise an unauthenticated client could
+/// enumerate vhost names, request volumes, and latency distributions
+/// (information disclosure).
 pub fn init(enabled: bool, handler_opts: &mut RequestHandlerOpts) {
     handler_opts.metrics_enabled = enabled;
     tracing::info!("metrics endpoint: enabled={enabled}");
+    if enabled {
+        tracing::warn!(
+            "metrics endpoint `/metrics` is unauthenticated; restrict access via reverse proxy or network policy"
+        );
+    }
 
     if enabled {
         let registry = default_registry();
@@ -88,30 +103,30 @@ pub fn init(enabled: bool, handler_opts: &mut RequestHandlerOpts) {
         // Tokio runtime metrics (experimental, unix-only, requires tokio_unstable)
         #[cfg(all(unix, feature = "experimental"))]
         {
-            registry
-                .register(Box::new(
-                    tokio_metrics_collector::default_runtime_collector(),
-                ))
-                .unwrap();
+            if let Err(err) = registry.register(Box::new(
+                tokio_metrics_collector::default_runtime_collector(),
+            )) {
+                tracing::debug!("tokio runtime metrics collector registration skipped: {err:?}");
+            }
             tracing::info!("tokio runtime metrics: enabled");
         }
 
         // HTTP-level metrics
-        registry
-            .register(Box::new(HTTP_REQUESTS_TOTAL.clone()))
-            .unwrap();
-        registry
-            .register(Box::new(HTTP_REQUEST_DURATION_SECONDS.clone()))
-            .unwrap();
-        registry
-            .register(Box::new(HTTP_RESPONSE_BYTES_TOTAL.clone()))
-            .unwrap();
-        registry
-            .register(Box::new(HTTP_REQUESTS_INFLIGHT.clone()))
-            .unwrap();
-        registry
-            .register(Box::new(HTTP_CONNECTIONS_ACTIVE.clone()))
-            .unwrap();
+        if let Err(err) = registry.register(Box::new(HTTP_REQUESTS_TOTAL.clone())) {
+            tracing::debug!("metrics collector registration skipped: {err:?}");
+        }
+        if let Err(err) = registry.register(Box::new(HTTP_REQUEST_DURATION_SECONDS.clone())) {
+            tracing::debug!("metrics collector registration skipped: {err:?}");
+        }
+        if let Err(err) = registry.register(Box::new(HTTP_RESPONSE_BYTES_TOTAL.clone())) {
+            tracing::debug!("metrics collector registration skipped: {err:?}");
+        }
+        if let Err(err) = registry.register(Box::new(HTTP_REQUESTS_INFLIGHT.clone())) {
+            tracing::debug!("metrics collector registration skipped: {err:?}");
+        }
+        if let Err(err) = registry.register(Box::new(HTTP_CONNECTIONS_ACTIVE.clone())) {
+            tracing::debug!("metrics collector registration skipped: {err:?}");
+        }
     }
 }
 
@@ -137,10 +152,19 @@ pub fn pre_process<T>(
     let body = if method.is_get() {
         let encoder = TextEncoder::new();
         let mut buffer = Vec::new();
-        encoder
-            .encode(&default_registry().gather(), &mut buffer)
-            .unwrap();
-        let data = String::from_utf8(buffer).unwrap();
+        if let Err(err) = encoder.encode(&default_registry().gather(), &mut buffer) {
+            return Some(Err(
+                Error::new(err).context("failed to encode metrics output")
+            ));
+        }
+        let data = match String::from_utf8(buffer) {
+            Ok(data) => data,
+            Err(err) => {
+                return Some(Err(
+                    Error::new(err).context("metrics output was not valid UTF-8")
+                ));
+            }
+        };
         crate::body::full(data)
     } else {
         crate::body::empty()

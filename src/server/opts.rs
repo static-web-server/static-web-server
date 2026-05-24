@@ -151,6 +151,11 @@ pub(super) fn init(general: &General, advanced: Option<Advanced>) -> Result<Hand
     #[cfg(feature = "fallback-page")]
     fallback_page::init(&general.page_fallback, &mut handler_opts);
 
+    // Pre-cache custom 404/50x bodies so error responses never touch disk
+    // on the async hot path. See `error_page::PAGE_CACHE`.
+    crate::error_page::cache_page(&handler_opts.page404);
+    crate::error_page::cache_page(&handler_opts.page50x);
+
     // Health endpoint
     health::init(general.health, &mut handler_opts);
 

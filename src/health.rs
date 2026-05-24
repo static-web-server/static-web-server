@@ -38,7 +38,12 @@ pub fn pre_process<T>(
     };
 
     let mut resp = Response::new(body);
-    resp.headers_mut().typed_insert(ContentType::html());
+    // SECURITY: The body is a literal `OK` ASCII string, so advertise it
+    // as `text/plain` instead of `text/html`. This eliminates any chance
+    // of a downstream proxy / reverse-CDN rendering this endpoint as
+    // HTML and prevents a future contributor from accidentally
+    // introducing markup into a probe response.
+    resp.headers_mut().typed_insert(ContentType::text_utf8());
     Some(Ok(resp))
 }
 

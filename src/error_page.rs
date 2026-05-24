@@ -10,10 +10,51 @@ use headers::{AcceptRanges, ContentLength, ContentType, HeaderMapExt};
 use hyper::{Method, Response, StatusCode, Uri};
 use maud::{DOCTYPE, html};
 use mime_guess::mime;
-use std::path::Path;
+use std::collections::HashMap;
+use std::path::{Path, PathBuf};
+use std::sync::{Arc, OnceLock, RwLock};
 
 use crate::body::Body;
 use crate::{Result, exts::http::MethodExt, helpers};
+
+/// Process-wide cache of pre-loaded error/maintenance page bodies, keyed by
+/// the configured filesystem path. Populated at startup by [`cache_page`];
+/// callers (`error_response`, `maintenance_mode::get_response`) look up by
+/// path to avoid touching disk on every error response.
+///
+/// SECURITY: Reading the page body on every error/maintenance response was
+/// a slowloris-style amplifier \u2014 a stream of 404s could pin runtime worker
+/// threads on blocking I/O. Pre-loading at startup eliminates that hot-path
+/// disk I/O entirely.
+static PAGE_CACHE: OnceLock<RwLock<HashMap<PathBuf, Arc<String>>>> = OnceLock::new();
+
+fn page_cache() -> &'static RwLock<HashMap<PathBuf, Arc<String>>> {
+    PAGE_CACHE.get_or_init(|| RwLock::new(HashMap::new()))
+}
+
+/// Pre-load the given page file into the in-memory cache. Missing files are
+/// silently skipped (the default HTML body will be served).
+pub fn cache_page(path: &Path) {
+    if path.as_os_str().is_empty() {
+        return;
+    }
+    if !path.is_file() {
+        tracing::debug!(
+            "error page path not found or not a regular file: {}",
+            path.display()
+        );
+        return;
+    }
+    let body = helpers::read_text_default(path);
+    if let Ok(mut guard) = page_cache().write() {
+        guard.insert(path.to_path_buf(), Arc::new(body));
+    }
+}
+
+/// Returns the cached body for `path`, or `None` if no entry exists.
+pub fn cached_page(path: &Path) -> Option<Arc<String>> {
+    page_cache().read().ok()?.get(path).cloned()
+}
 
 /// Build an `text/html` response with the correct `Content-Length` and
 /// `Accept-Ranges` headers.
@@ -81,7 +122,11 @@ pub fn error_response(
         | &StatusCode::EXPECTATION_FAILED => {
             // Extra check for 404 status code and its HTML content
             if status_code == &StatusCode::NOT_FOUND {
-                if page404.is_file() {
+                if let Some(cached) = cached_page(page404) {
+                    page_content = cached.as_str().to_owned();
+                } else if page404.is_file() {
+                    // Cache miss \u2014 read disk once and remember.
+                    cache_page(page404);
                     helpers::read_text_default(page404).clone_into(&mut page_content);
                 } else {
                     tracing::debug!(
@@ -103,7 +148,10 @@ pub fn error_response(
         | &StatusCode::INSUFFICIENT_STORAGE
         | &StatusCode::LOOP_DETECTED => {
             // HTML content check for status codes 50x
-            if page50x.is_file() {
+            if let Some(cached) = cached_page(page50x) {
+                page_content = cached.as_str().to_owned();
+            } else if page50x.is_file() {
+                cache_page(page50x);
                 helpers::read_text_default(page50x).clone_into(&mut page_content);
             } else {
                 tracing::debug!(
@@ -247,5 +295,45 @@ mod tests {
             cl.0 > 0,
             "Content-Length should reflect body size even for HEAD"
         );
+    }
+
+    /// PERF/SECURITY: `cache_page` must populate `PAGE_CACHE` so that
+    /// subsequent `error_response` calls never touch disk again.
+    #[test]
+    fn cache_page_round_trip() {
+        use std::io::Write;
+        // Unique temp file to avoid colliding with other tests.
+        let pid = std::process::id();
+        let nanos = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_nanos())
+            .unwrap_or(0);
+        let path = std::env::temp_dir().join(format!("sws-error-page-cache-{pid}-{nanos}.html"));
+        let mut f = std::fs::File::create(&path).unwrap();
+        write!(f, "<html>cached</html>").unwrap();
+        drop(f);
+
+        super::cache_page(&path);
+        let cached = super::cached_page(&path).expect("page must be cached");
+        assert!(cached.contains("cached"));
+
+        // Delete the file: a cached lookup must still succeed (proves we
+        // are not touching disk).
+        std::fs::remove_file(&path).unwrap();
+        let still_cached = super::cached_page(&path).expect("cache survives file deletion");
+        assert!(still_cached.contains("cached"));
+    }
+
+    #[test]
+    fn cache_page_skips_missing_file() {
+        let path = Path::new("/this/does/not/exist/sws-test-404.html");
+        super::cache_page(path);
+        assert!(super::cached_page(path).is_none());
+    }
+
+    #[test]
+    fn cache_page_skips_empty_path() {
+        super::cache_page(Path::new(""));
+        assert!(super::cached_page(Path::new("")).is_none());
     }
 }

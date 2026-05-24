@@ -37,6 +37,9 @@ pub(crate) fn init(
         "maintenance mode file: \"{}\"",
         handler_opts.maintenance_mode_file.display()
     );
+    // SECURITY/PERF: Pre-cache the maintenance body so we never touch disk
+    // from inside the async request hot path. See `error_page::PAGE_CACHE`.
+    crate::error_page::cache_page(&handler_opts.maintenance_mode_file);
 }
 
 /// Produces maintenance mode response if necessary
@@ -64,7 +67,11 @@ pub fn get_response(
     tracing::debug!("server has entered into maintenance mode");
     tracing::debug!("maintenance mode file path to use: {}", file_path.display());
 
-    let body_content = if file_path.is_file() {
+    let body_content = if let Some(cached) = crate::error_page::cached_page(file_path) {
+        cached.as_str().to_owned()
+    } else if file_path.is_file() {
+        // Cache miss (e.g. called directly without going through `init`).
+        crate::error_page::cache_page(file_path);
         helpers::read_text_default(file_path)
     } else {
         tracing::debug!(

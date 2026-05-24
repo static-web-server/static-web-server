@@ -5,9 +5,13 @@ publish = false
 edition = "2021"
 
 [dependencies]
-static-web-server = { version = "2", path = "../", features = ["default"] }
+static-web-server = { version = "2", path = "../", features = ["default", "basic-auth"] }
 criterion = "0.5"
-hyper = { version = "0.14", features = ["stream", "http1", "http2", "tcp", "server"] }
+hyper = { version = "1", default-features = false, features = ["http1", "http2", "server", "client"] }
+headers = "0.4"
+http = "1"
+regex-lite = "0.1"
+aho-corasick = "1.1"
 
 [[bench]]
 name = "control_headers"
@@ -22,4 +26,19 @@ harness = false
 [[bench]]
 name = "http_ext"
 path = "http_ext.rs"
+harness = false
+
+[[bench]]
+name = "security_sanitize_path"
+path = "security_sanitize_path.rs"
+harness = false
+
+[[bench]]
+name = "security_redirects"
+path = "security_redirects.rs"
+harness = false
+
+[[bench]]
+name = "security_basic_auth"
+path = "security_basic_auth.rs"
 harness = false
