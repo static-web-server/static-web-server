@@ -7,7 +7,7 @@ use percent_encoding::percent_decode_str;
 
 use crate::directory_listing::file::{DATETIME_FORMAT_LOCAL, FileEntry};
 use crate::directory_listing::sort::sort_file_entries;
-use crate::directory_listing::style::STYLES;
+use crate::directory_listing::style::STYLES_MIN;
 
 #[cfg(feature = "directory-listing-download")]
 use crate::directory_listing_download::{DOWNLOAD_PARAM_KEY, DirDownloadFmt};
@@ -38,7 +38,7 @@ pub(crate) fn html_auto_index<'a>(
     #[cfg(not(feature = "directory-listing-download"))]
     let download_directory_elem = html! {};
 
-    let styles = STYLES.replace("\n", "").replace("  ", "");
+    let styles: &str = STYLES_MIN.as_str();
     html! {
         (DOCTYPE)
         html {
@@ -105,12 +105,16 @@ pub(crate) fn html_auto_index<'a>(
                                     }
                                 }
                                 td {
-                                    (entry.mtime.map_or("-".to_owned(), |local_dt| {
-                                        local_dt.format(DATETIME_FORMAT_LOCAL).to_string()
-                                    }))
+                                    @match entry.mtime {
+                                        Some(local_dt) => (local_dt.format(DATETIME_FORMAT_LOCAL)),
+                                        None => "-",
+                                    }
                                 }
                                 td align="right" {
-                                    (entry.size.map(format_file_size).unwrap_or("-".into()))
+                                    @match entry.size {
+                                        Some(s) => (FileSize(s)),
+                                        None => "-",
+                                    }
                                 }
                             }
                         }
@@ -127,31 +131,49 @@ pub(crate) fn html_auto_index<'a>(
     }.into()
 }
 
-/// Formats the file size in bytes to a human-readable string
-fn format_file_size(size: u64) -> String {
-    const UNITS: [&str; 6] = ["B", "KiB", "MiB", "GiB", "TiB", "PiB"];
-    let mut size_tmp = size;
+/// `Display` wrapper that writes a human-readable file size directly into the
+/// output buffer, avoiding the per-row `String` allocation that `format!` did.
+pub(crate) struct FileSize(pub u64);
 
-    if size_tmp < 1024 {
-        // return the size with Byte
-        return format!("{} {}", size_tmp, UNITS[0]);
-    }
+impl std::fmt::Display for FileSize {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        const UNITS: [&str; 6] = ["B", "KiB", "MiB", "GiB", "TiB", "PiB"];
+        let mut size_tmp = self.0;
 
-    for unit in &UNITS[1..UNITS.len() - 1] {
-        if size_tmp < 1024 * 1024 {
-            // return the size divided by 1024 with the unit
-            return format!("{:.2} {}", size_tmp as f64 / 1024.0, unit);
+        if size_tmp < 1024 {
+            return write!(f, "{} {}", size_tmp, UNITS[0]);
         }
-        size_tmp >>= 10;
-    }
 
-    // if size is too large, return the largest unit
-    format!("{:.2} {}", size_tmp as f64 / 1024.0, UNITS[UNITS.len() - 1])
+        for unit in &UNITS[1..UNITS.len() - 1] {
+            if size_tmp < 1024 * 1024 {
+                return write!(f, "{:.2} {}", size_tmp as f64 / 1024.0, unit);
+            }
+            size_tmp >>= 10;
+        }
+
+        write!(
+            f,
+            "{:.2} {}",
+            size_tmp as f64 / 1024.0,
+            UNITS[UNITS.len() - 1]
+        )
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::format_file_size;
+    use super::FileSize;
+
+    /// Formats the file size in bytes to a human-readable string.
+    fn format_file_size(size: u64) -> String {
+        FileSize(size).to_string()
+    }
+
+    #[test]
+    fn handle_zero() {
+        let size = 0;
+        assert_eq!("0 B", format_file_size(size))
+    }
 
     #[test]
     fn handle_byte() {
