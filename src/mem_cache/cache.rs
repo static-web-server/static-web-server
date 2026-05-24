@@ -24,7 +24,7 @@ use crate::Result;
 use crate::body::{self, Body};
 use crate::conditional_headers::{ConditionalBody, ConditionalHeaders};
 use crate::handler::RequestHandlerOpts;
-use crate::response::{BadRangeError, bytes_range};
+use crate::response::range::{BadRangeError, bytes_range};
 
 /// Global cache that stores all files in memory.
 /// It provides expiration policies like Time to live (TTL) and Time to idle (TTI) support.
