@@ -61,9 +61,9 @@ pub struct HandleOpts<'a> {
     /// Compression static feature.
     pub compression_static: bool,
     /// Ignore hidden files feature.
-    pub ignore_hidden_files: bool,
+    pub include_hidden: bool,
     /// Prevent following symlinks for files and directories.
-    pub disable_symlinks: bool,
+    pub follow_symlinks: bool,
 }
 
 /// Static file response type with additional data.

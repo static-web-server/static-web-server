@@ -74,8 +74,8 @@ mod tests {
             dir_listing_download: &[],
             redirect_trailing_slash: true,
             compression_static: false,
-            ignore_hidden_files: false,
-            disable_symlinks: false,
+            include_hidden: true,
+            follow_symlinks: true,
             index_files: &["index.htm"],
         })
         .await
@@ -125,8 +125,8 @@ mod tests {
             dir_listing_download: &[],
             redirect_trailing_slash: true,
             compression_static: false,
-            ignore_hidden_files: false,
-            disable_symlinks: false,
+            include_hidden: true,
+            follow_symlinks: true,
             index_files: &["index.htm"],
         })
         .await
@@ -177,8 +177,8 @@ mod tests {
                 dir_listing_download: &[],
                 redirect_trailing_slash: true,
                 compression_static: false,
-                ignore_hidden_files: false,
-                disable_symlinks: false,
+                include_hidden: true,
+                follow_symlinks: true,
                 index_files: &["index.htm"],
             })
             .await
@@ -213,8 +213,8 @@ mod tests {
             dir_listing_download: &[],
             redirect_trailing_slash: true,
             compression_static: false,
-            ignore_hidden_files: false,
-            disable_symlinks: false,
+            include_hidden: true,
+            follow_symlinks: true,
             index_files: &["index.htm"],
         })
         .await
@@ -254,8 +254,8 @@ mod tests {
             dir_listing_download: &[],
             redirect_trailing_slash: true,
             compression_static: false,
-            ignore_hidden_files: false,
-            disable_symlinks: false,
+            include_hidden: true,
+            follow_symlinks: true,
             index_files: &["index.htm"],
         })
         .await
@@ -291,8 +291,8 @@ mod tests {
             dir_listing_download: &[],
             redirect_trailing_slash: false,
             compression_static: false,
-            ignore_hidden_files: false,
-            disable_symlinks: false,
+            include_hidden: true,
+            follow_symlinks: true,
             index_files: &[],
         })
         .await
@@ -333,8 +333,8 @@ mod tests {
                     dir_listing_download: &[],
                     redirect_trailing_slash: true,
                     compression_static: false,
-                    ignore_hidden_files: false,
-                    disable_symlinks: false,
+                    include_hidden: true,
+                    follow_symlinks: true,
                     index_files: &[],
                 })
                 .await
@@ -393,8 +393,8 @@ mod tests {
                 dir_listing_download: &[],
                 redirect_trailing_slash: true,
                 compression_static: false,
-                ignore_hidden_files: false,
-                disable_symlinks: false,
+                include_hidden: true,
+                follow_symlinks: true,
                 index_files: &[],
             })
             .await
@@ -432,8 +432,8 @@ mod tests {
                 dir_listing_download: &[],
                 redirect_trailing_slash: true,
                 compression_static: false,
-                ignore_hidden_files: false,
-                disable_symlinks: false,
+                include_hidden: true,
+                follow_symlinks: true,
                 index_files: &["index.htm"],
             })
             .await
@@ -473,8 +473,8 @@ mod tests {
                 dir_listing_download: &[],
                 redirect_trailing_slash: true,
                 compression_static: false,
-                ignore_hidden_files: false,
-                disable_symlinks: false,
+                include_hidden: true,
+                follow_symlinks: true,
                 index_files: &["index.htm"],
             })
             .await
@@ -515,8 +515,8 @@ mod tests {
                 dir_listing_download: &[],
                 redirect_trailing_slash: true,
                 compression_static: false,
-                ignore_hidden_files: false,
-                disable_symlinks: false,
+                include_hidden: true,
+                follow_symlinks: true,
                 index_files: &["index.htm"],
             })
             .await
@@ -563,8 +563,8 @@ mod tests {
                 dir_listing_download: &[],
                 redirect_trailing_slash: true,
                 compression_static: false,
-                ignore_hidden_files: false,
-                disable_symlinks: false,
+                include_hidden: true,
+                follow_symlinks: true,
                 index_files: &["index.htm"],
             })
             .await
@@ -609,8 +609,8 @@ mod tests {
                 dir_listing_download: &[],
                 redirect_trailing_slash: true,
                 compression_static: false,
-                ignore_hidden_files: false,
-                disable_symlinks: false,
+                include_hidden: true,
+                follow_symlinks: true,
                 index_files: &["index.htm"],
             })
             .await
@@ -650,8 +650,8 @@ mod tests {
                 dir_listing_download: &[],
                 redirect_trailing_slash: true,
                 compression_static: false,
-                ignore_hidden_files: false,
-                disable_symlinks: false,
+                include_hidden: true,
+                follow_symlinks: true,
                 index_files: &["index.htm"],
             })
             .await
@@ -690,8 +690,8 @@ mod tests {
                 dir_listing_download: &[],
                 redirect_trailing_slash: true,
                 compression_static: false,
-                ignore_hidden_files: false,
-                disable_symlinks: false,
+                include_hidden: true,
+                follow_symlinks: true,
                 index_files: &["index.htm"],
             })
             .await
@@ -737,8 +737,8 @@ mod tests {
                 dir_listing_download: &[],
                 redirect_trailing_slash: true,
                 compression_static: false,
-                ignore_hidden_files: false,
-                disable_symlinks: false,
+                include_hidden: true,
+                follow_symlinks: true,
                 index_files: &["index.htm"],
             })
             .await
@@ -827,8 +827,8 @@ mod tests {
                 dir_listing_download: &[],
                 redirect_trailing_slash: true,
                 compression_static: false,
-                ignore_hidden_files: false,
-                disable_symlinks: false,
+                include_hidden: true,
+                follow_symlinks: true,
                 index_files: &["large-test.html"],
             })
             .await
@@ -902,8 +902,8 @@ mod tests {
                 dir_listing_download: &[],
                 redirect_trailing_slash: true,
                 compression_static: false,
-                ignore_hidden_files: false,
-                disable_symlinks: false,
+                include_hidden: true,
+                follow_symlinks: true,
                 index_files: &["index.htm"],
             })
             .await
@@ -959,8 +959,8 @@ mod tests {
                 dir_listing_download: &[],
                 redirect_trailing_slash: true,
                 compression_static: false,
-                ignore_hidden_files: false,
-                disable_symlinks: false,
+                include_hidden: true,
+                follow_symlinks: true,
                 index_files: &[],
             })
             .await
@@ -1016,8 +1016,8 @@ mod tests {
                 dir_listing_download: &[],
                 redirect_trailing_slash: true,
                 compression_static: false,
-                ignore_hidden_files: false,
-                disable_symlinks: false,
+                include_hidden: true,
+                follow_symlinks: true,
                 index_files: &[],
             })
             .await
@@ -1074,8 +1074,8 @@ mod tests {
                 dir_listing_download: &[],
                 redirect_trailing_slash: true,
                 compression_static: false,
-                ignore_hidden_files: false,
-                disable_symlinks: false,
+                include_hidden: true,
+                follow_symlinks: true,
                 index_files: &["index.htm"],
             })
             .await
@@ -1121,8 +1121,8 @@ mod tests {
                 dir_listing_download: &[],
                 redirect_trailing_slash: true,
                 compression_static: false,
-                ignore_hidden_files: false,
-                disable_symlinks: false,
+                include_hidden: true,
+                follow_symlinks: true,
                 index_files: &[],
             })
             .await
@@ -1181,8 +1181,8 @@ mod tests {
                 dir_listing_download: &[],
                 redirect_trailing_slash: true,
                 compression_static: false,
-                ignore_hidden_files: false,
-                disable_symlinks: false,
+                include_hidden: true,
+                follow_symlinks: true,
                 index_files: &[],
             })
             .await
@@ -1238,8 +1238,8 @@ mod tests {
                 dir_listing_download: &[],
                 redirect_trailing_slash: true,
                 compression_static: false,
-                ignore_hidden_files: false,
-                disable_symlinks: false,
+                include_hidden: true,
+                follow_symlinks: true,
                 index_files: &["index.htm"],
             })
             .await
@@ -1295,8 +1295,8 @@ mod tests {
                 dir_listing_download: &[],
                 redirect_trailing_slash: true,
                 compression_static: false,
-                ignore_hidden_files: false,
-                disable_symlinks: false,
+                include_hidden: true,
+                follow_symlinks: true,
                 index_files: &["index.htm"],
             })
             .await
@@ -1355,8 +1355,8 @@ mod tests {
                 dir_listing_download: &[],
                 redirect_trailing_slash: true,
                 compression_static: false,
-                ignore_hidden_files: false,
-                disable_symlinks: false,
+                include_hidden: true,
+                follow_symlinks: true,
                 index_files: &["index.htm"],
             })
             .await
@@ -1405,8 +1405,8 @@ mod tests {
                 dir_listing_download: &[],
                 redirect_trailing_slash: true,
                 compression_static: false,
-                ignore_hidden_files: false,
-                disable_symlinks: false,
+                include_hidden: true,
+                follow_symlinks: true,
                 index_files: &["index.htm"],
             })
             .await
@@ -1451,8 +1451,8 @@ mod tests {
                 dir_listing_download: &[],
                 redirect_trailing_slash: true,
                 compression_static: false,
-                ignore_hidden_files: false,
-                disable_symlinks: false,
+                include_hidden: true,
+                follow_symlinks: true,
                 index_files: &[],
             })
             .await
@@ -1515,8 +1515,8 @@ mod tests {
                 dir_listing_download: &[],
                 redirect_trailing_slash: true,
                 compression_static: false,
-                ignore_hidden_files: false,
-                disable_symlinks: false,
+                include_hidden: true,
+                follow_symlinks: true,
                 index_files: &[],
             })
             .await
@@ -1548,7 +1548,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn handle_ignore_hidden_files() {
+    async fn handle_include_hidden() {
         let root_dir = PathBuf::from("tests/fixtures/public/");
         let headers = HeaderMap::new();
 
@@ -1571,8 +1571,8 @@ mod tests {
                 dir_listing_download: &[],
                 redirect_trailing_slash: true,
                 compression_static: true,
-                ignore_hidden_files: true,
-                disable_symlinks: false,
+                include_hidden: false,
+                follow_symlinks: true,
                 index_files: &["index.htm"],
             })
             .await
@@ -1611,8 +1611,8 @@ mod tests {
                 dir_listing_download: &[],
                 redirect_trailing_slash: true,
                 compression_static: true,
-                ignore_hidden_files: true,
-                disable_symlinks: false,
+                include_hidden: false,
+                follow_symlinks: true,
                 index_files: &[],
             })
             .await
@@ -1667,8 +1667,8 @@ mod tests {
                 dir_listing_download: &[],
                 redirect_trailing_slash: true,
                 compression_static: true,
-                ignore_hidden_files: true,
-                disable_symlinks: false,
+                include_hidden: false,
+                follow_symlinks: true,
                 index_files: &["index.htm"],
             })
             .await
@@ -1711,8 +1711,8 @@ mod tests {
                 dir_listing_download: &[],
                 redirect_trailing_slash: true,
                 compression_static: true,
-                ignore_hidden_files: true,
-                disable_symlinks: false,
+                include_hidden: false,
+                follow_symlinks: true,
                 index_files: &["index.htm", "index.htm"],
             })
             .await
@@ -1737,7 +1737,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn handle_disable_symlinks() {
+    async fn handle_follow_symlinks() {
         let root_dir = PathBuf::from("tests/fixtures/public/");
         let headers = HeaderMap::new();
 
@@ -1760,8 +1760,8 @@ mod tests {
                 dir_listing_download: &[],
                 redirect_trailing_slash: true,
                 compression_static: true,
-                ignore_hidden_files: true,
-                disable_symlinks: true,
+                include_hidden: false,
+                follow_symlinks: false,
                 index_files: &["index.htm", "index.htm"],
             })
             .await
@@ -1796,8 +1796,8 @@ mod tests {
                 dir_listing_download: &[],
                 redirect_trailing_slash: true,
                 compression_static: true,
-                ignore_hidden_files: true,
-                disable_symlinks: false,
+                include_hidden: false,
+                follow_symlinks: true,
                 index_files: &["index.htm", "index.htm"],
             })
             .await
@@ -1842,8 +1842,8 @@ mod tests {
                     dir_listing_download: &[],
                     redirect_trailing_slash: true,
                     compression_static: true,
-                    ignore_hidden_files: true,
-                    disable_symlinks: false,
+                    include_hidden: false,
+                    follow_symlinks: true,
                     index_files: &["index.htm", "index.htm"],
                 })
                 .await
@@ -1889,8 +1889,8 @@ mod tests {
                     dir_listing_download: &[],
                     redirect_trailing_slash: true,
                     compression_static: true,
-                    ignore_hidden_files: true,
-                    disable_symlinks: false,
+                    include_hidden: false,
+                    follow_symlinks: true,
                     index_files: &["index.htm", "index.htm"],
                 })
                 .await

@@ -9,10 +9,10 @@
 //!
 //! 1. **Containment** — the canonical resolved path must live inside the
 //!    canonical base directory.
-//! 2. **Symlink policy** — when `--disable-symlinks` is on, no path component
-//!    may be a symlink.
-//! 3. **Hidden file policy** — when `--ignore-hidden-files` is on, dotfiles
-//!    are reported as `404 Not Found`.
+//! 2. **Symlink policy** — when `--follow-symlinks` is off (the default),
+//!    no path component may be a symlink.
+//! 3. **Hidden file policy** — when `--include-hidden` is off (the default),
+//!    dotfiles are reported as `404 Not Found`.
 //!
 //! The cheap string-only hidden check is intentionally evaluated *after*
 //! containment so a path that escapes the base is rejected first, but
@@ -135,11 +135,11 @@ pub(super) fn enforce(
 
     enforce_containment(&probe, opts.base_path)?;
 
-    if opts.disable_symlinks {
+    if !opts.follow_symlinks {
         enforce_symlink_policy(relative, opts.base_path, file_path)?;
     }
 
-    if opts.ignore_hidden_files && relative.is_hidden() {
+    if !opts.include_hidden && relative.is_hidden() {
         tracing::trace!(
             "considering hidden file {} as not found",
             file_path.display()
@@ -222,7 +222,7 @@ fn cache_safe_probe(probe: &Path) {
 /// of them is a symlink.
 ///
 /// This is a syscall-per-component check, so callers should gate it
-/// behind the `--disable-symlinks` flag.
+/// behind the `--follow-symlinks` flag.
 fn enforce_symlink_policy(
     relative: &Path,
     base_path: &Path,

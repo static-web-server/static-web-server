@@ -54,8 +54,8 @@ mod tests {
                 dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: true,
                 compression_static: false,
-                ignore_hidden_files: false,
-                disable_symlinks: false,
+                include_hidden: true,
+                follow_symlinks: true,
                 index_files: &[],
                 #[cfg(feature = "directory-listing-download")]
                 dir_listing_download: &[],
@@ -91,8 +91,8 @@ mod tests {
                 dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: true,
                 compression_static: false,
-                ignore_hidden_files: false,
-                disable_symlinks: false,
+                include_hidden: true,
+                follow_symlinks: true,
                 index_files: &[],
                 #[cfg(feature = "directory-listing-download")]
                 dir_listing_download: &[],
@@ -141,8 +141,8 @@ mod tests {
                 dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: false,
                 compression_static: false,
-                ignore_hidden_files: false,
-                disable_symlinks: false,
+                include_hidden: true,
+                follow_symlinks: true,
                 index_files: &[],
                 #[cfg(feature = "directory-listing-download")]
                 dir_listing_download: &[],
@@ -191,8 +191,8 @@ mod tests {
                 dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: false,
                 compression_static: false,
-                ignore_hidden_files: false,
-                disable_symlinks: false,
+                include_hidden: true,
+                follow_symlinks: true,
                 index_files: &[],
                 #[cfg(feature = "directory-listing-download")]
                 dir_listing_download: &[],
@@ -228,8 +228,8 @@ mod tests {
                 dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: true,
                 compression_static: false,
-                ignore_hidden_files: false,
-                disable_symlinks: false,
+                include_hidden: true,
+                follow_symlinks: true,
                 index_files: &[],
                 #[cfg(feature = "directory-listing-download")]
                 dir_listing_download: &[],
@@ -289,8 +289,8 @@ mod tests {
                 dir_listing_format: &DirListFmt::Json,
                 redirect_trailing_slash: true,
                 compression_static: false,
-                ignore_hidden_files: true,
-                disable_symlinks: false,
+                include_hidden: false,
+                follow_symlinks: true,
                 index_files: &[],
                 #[cfg(feature = "directory-listing-download")]
                 dir_listing_download: &[],
@@ -368,8 +368,8 @@ mod tests {
                 dir_listing_format: &DirListFmt::Json,
                 redirect_trailing_slash: true,
                 compression_static: false,
-                ignore_hidden_files: false,
-                disable_symlinks: false,
+                include_hidden: true,
+                follow_symlinks: true,
                 index_files: &[],
                 #[cfg(feature = "directory-listing-download")]
                 dir_listing_download: &[],
@@ -405,7 +405,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn dir_listing_ignore_hidden_files() {
+    async fn dir_listing_include_hidden() {
         for method in METHODS {
             match static_files::handle(&HandleOpts {
                 method: &method,
@@ -420,8 +420,8 @@ mod tests {
                 dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: true,
                 compression_static: false,
-                ignore_hidden_files: true,
-                disable_symlinks: false,
+                include_hidden: false,
+                follow_symlinks: true,
                 index_files: &[],
                 #[cfg(feature = "directory-listing-download")]
                 dir_listing_download: &[],
@@ -472,8 +472,8 @@ mod tests {
                 dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: true,
                 compression_static: false,
-                ignore_hidden_files: true,
-                disable_symlinks: false,
+                include_hidden: false,
+                follow_symlinks: true,
                 index_files: &[],
                 dir_listing_download: &[DirDownloadFmt::Targz],
             })
@@ -523,8 +523,8 @@ mod tests {
                 dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: true,
                 compression_static: false,
-                ignore_hidden_files: true,
-                disable_symlinks: false,
+                include_hidden: false,
+                follow_symlinks: true,
                 index_files: &[],
                 dir_listing_download: &[],
             })
@@ -597,8 +597,8 @@ mod tests {
             dir_listing_format: &DirListFmt::Html,
             redirect_trailing_slash: true,
             compression_static: false,
-            ignore_hidden_files: false,
-            disable_symlinks: false,
+            include_hidden: true,
+            follow_symlinks: true,
             index_files: &[],
             #[cfg(feature = "directory-listing-download")]
             dir_listing_download: &[],

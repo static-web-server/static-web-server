@@ -95,12 +95,12 @@ mod tests {
             let dest = path.join(src.strip_prefix(&src_path).unwrap());
 
             // In case of a symlink pointing to a directory, is_dir is false, but src.is_dir() will return true
-            if is_dir || (is_symlink && !opts.disable_symlinks && src.is_dir()) {
+            if is_dir || (is_symlink && opts.follow_symlinks && src.is_dir()) {
                 let mut entries = fs::read_dir(&src).await.unwrap();
                 while let Some(entry) = entries.next_entry().await.unwrap() {
                     // Check and ignore the current hidden file/directory (dotfile) if feature enabled
                     let name = entry.file_name();
-                    if opts.ignore_hidden_files
+                    if !opts.include_hidden
                         && name.as_encoded_bytes().first().is_some_and(|c| *c == b'.')
                     {
                         continue;
@@ -123,7 +123,7 @@ mod tests {
     #[tokio::test]
     async fn dir_listing_download_targz() {
         let base_path = root_dir("tests/fixtures/public");
-        let disable_symlinks = false;
+        let follow_symlinks = true;
         for method in METHODS {
             match static_files::handle(&HandleOpts {
                 method: &method,
@@ -138,8 +138,8 @@ mod tests {
                 dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: true,
                 compression_static: false,
-                ignore_hidden_files: false,
-                disable_symlinks,
+                include_hidden: true,
+                follow_symlinks,
                 index_files: &[],
                 dir_listing_download: &[DirDownloadFmt::Targz],
             })
@@ -172,8 +172,8 @@ mod tests {
                             base_path.clone(),
                             DirDownloadOpts {
                                 method: &method,
-                                disable_symlinks,
-                                ignore_hidden_files: false,
+                                follow_symlinks,
+                                include_hidden: true,
                             },
                         )
                         .await;
@@ -213,8 +213,8 @@ mod tests {
                 dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: true,
                 compression_static: false,
-                ignore_hidden_files: true,
-                disable_symlinks: false,
+                include_hidden: false,
+                follow_symlinks: true,
                 index_files: &[],
                 dir_listing_download: &[DirDownloadFmt::Targz],
             })
@@ -262,7 +262,7 @@ mod tests {
     #[tokio::test]
     async fn dir_listing_download_targz_no_symlinks() {
         let base_path = root_dir("tests/fixtures/public");
-        let disable_symlinks = true;
+        let follow_symlinks = false;
         for method in METHODS {
             match static_files::handle(&HandleOpts {
                 method: &method,
@@ -277,8 +277,8 @@ mod tests {
                 dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: true,
                 compression_static: false,
-                ignore_hidden_files: false,
-                disable_symlinks,
+                include_hidden: true,
+                follow_symlinks,
                 index_files: &[],
                 dir_listing_download: &[DirDownloadFmt::Targz],
             })
@@ -311,8 +311,8 @@ mod tests {
                             base_path.clone(),
                             DirDownloadOpts {
                                 method: &method,
-                                disable_symlinks,
-                                ignore_hidden_files: false,
+                                follow_symlinks,
+                                include_hidden: true,
                             },
                         )
                         .await;
@@ -351,8 +351,8 @@ mod tests {
                 dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: true,
                 compression_static: false,
-                ignore_hidden_files: false,
-                disable_symlinks: false,
+                include_hidden: true,
+                follow_symlinks: true,
                 index_files: &[],
                 dir_listing_download: &[],
             })

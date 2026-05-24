@@ -210,8 +210,8 @@ impl Settings {
         let mut log_forwarded_for = opts.log_forwarded_for;
         let mut trusted_proxies = opts.trusted_proxies;
         let mut redirect_trailing_slash = opts.redirect_trailing_slash;
-        let mut ignore_hidden_files = opts.ignore_hidden_files;
-        let mut disable_symlinks = opts.disable_symlinks;
+        let mut include_hidden = opts.include_hidden;
+        let mut follow_symlinks = opts.follow_symlinks;
         let mut accept_markdown = opts.accept_markdown;
         let mut text_charset = opts.text_charset;
         let mut index_files = opts.index_files;
@@ -399,11 +399,11 @@ impl Settings {
                 if let Some(v) = general.redirect_trailing_slash {
                     redirect_trailing_slash = v
                 }
-                if let Some(v) = general.ignore_hidden_files {
-                    ignore_hidden_files = v
+                if let Some(v) = general.include_hidden {
+                    include_hidden = v
                 }
-                if let Some(v) = general.disable_symlinks {
-                    disable_symlinks = v
+                if let Some(v) = general.follow_symlinks {
+                    follow_symlinks = v
                 }
                 if let Some(v) = general.health {
                     health = v
@@ -721,8 +721,8 @@ impl Settings {
                 log_forwarded_for,
                 trusted_proxies,
                 redirect_trailing_slash,
-                ignore_hidden_files,
-                disable_symlinks,
+                include_hidden,
+                follow_symlinks,
                 accept_markdown,
                 text_charset,
                 index_files,

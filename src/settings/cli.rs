@@ -495,27 +495,27 @@ pub struct General {
 
     #[arg(
         long,
-        default_value = "true",
+        default_value = "false",
         default_missing_value("true"),
         num_args(0..=1),
         require_equals(false),
         action = clap::ArgAction::Set,
-        env = "SERVER_IGNORE_HIDDEN_FILES",
+        env = "SERVER_INCLUDE_HIDDEN",
     )]
-    /// Ignore hidden files/directories (dotfiles), preventing them to be served and being included in auto HTML index pages (directory listing).
-    pub ignore_hidden_files: bool,
+    /// Include hidden files/directories (dotfiles), allowing them to be served and listed in auto HTML index pages (directory listing). Disabled by default; hidden files return `404 Not Found`.
+    pub include_hidden: bool,
 
     #[arg(
         long,
-        default_value = "true",
+        default_value = "false",
         default_missing_value("true"),
         num_args(0..=1),
         require_equals(false),
         action = clap::ArgAction::Set,
-        env = "SERVER_DISABLE_SYMLINKS",
+        env = "SERVER_FOLLOW_SYMLINKS",
     )]
-    /// Prevent following files or directories if any path name component is a symbolic link.
-    pub disable_symlinks: bool,
+    /// Follow symbolic links when serving files or directories. Disabled by default; requests whose path contains any symlink component return `403 Forbidden`.
+    pub follow_symlinks: bool,
 
     #[arg(
         long,

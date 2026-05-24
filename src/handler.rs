@@ -122,9 +122,9 @@ pub struct RequestHandlerOpts {
     /// Redirect trailing slash feature.
     pub redirect_trailing_slash: bool,
     /// Ignore hidden files feature.
-    pub ignore_hidden_files: bool,
+    pub include_hidden: bool,
     /// Prevent following symlinks for files and directories.
-    pub disable_symlinks: bool,
+    pub follow_symlinks: bool,
     /// Accept markdown content negotiation feature.
     pub accept_markdown: bool,
     /// Default `charset=utf-8` parameter applied to certain `text` responses without one.
@@ -184,8 +184,8 @@ impl Default for RequestHandlerOpts {
             log_forwarded_for: false,
             trusted_proxies: Vec::new(),
             redirect_trailing_slash: true,
-            ignore_hidden_files: false,
-            disable_symlinks: false,
+            include_hidden: true,
+            follow_symlinks: true,
             accept_markdown: false,
             text_charset: true,
             health: false,
@@ -226,8 +226,8 @@ impl RequestHandler {
         let dir_listing_download = &self.opts.dir_listing_download;
         let redirect_trailing_slash = self.opts.redirect_trailing_slash;
         let compression_static = self.opts.compression_static;
-        let ignore_hidden_files = self.opts.ignore_hidden_files;
-        let disable_symlinks = self.opts.disable_symlinks;
+        let include_hidden = self.opts.include_hidden;
+        let follow_symlinks = self.opts.follow_symlinks;
         let index_files: Vec<&str> = self.opts.index_files.iter().map(|s| s.as_str()).collect();
         #[cfg(feature = "mem-cache")]
         let memory_cache = self.opts.memory_cache.as_ref();
@@ -333,9 +333,9 @@ impl RequestHandler {
                     dir_listing_download,
                     redirect_trailing_slash,
                     compression_static,
-                    ignore_hidden_files,
+                    include_hidden,
                     index_files,
-                    disable_symlinks,
+                    follow_symlinks,
                 })
                 .await
                 {
