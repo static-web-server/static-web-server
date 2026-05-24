@@ -13,7 +13,7 @@ use std::{net::IpAddr, path::PathBuf};
 use crate::directory_listing::DirListFmt;
 
 #[cfg(feature = "directory-listing-download")]
-use crate::directory_listing_download::DirDownloadFmt;
+use crate::directory_listing::download::DirDownloadFmt;
 
 use crate::Result;
 

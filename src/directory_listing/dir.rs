@@ -19,7 +19,7 @@ use crate::directory_listing::file::{FileEntry, FileType};
 use crate::{Context, Result};
 
 #[cfg(feature = "directory-listing-download")]
-use crate::directory_listing_download::DirDownloadFmt;
+use crate::directory_listing::download::DirDownloadFmt;
 
 /// Non-alphanumeric characters to be percent-encoded
 /// excluding the "unreserved characters" because allowed in a URI.

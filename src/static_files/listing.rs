@@ -22,7 +22,7 @@ use crate::body::Body;
 use crate::directory_listing::{self, DirListOpts};
 
 #[cfg(feature = "directory-listing-download")]
-use crate::directory_listing_download::{DOWNLOAD_PARAM_KEY, DirDownloadOpts, archive_reply};
+use crate::directory_listing::download::{DOWNLOAD_PARAM_KEY, DirDownloadOpts, archive_reply};
 
 use super::opts::HandleOpts;
 

@@ -18,7 +18,7 @@ use crate::mem_cache::cache::MemCacheOpts;
 use crate::directory_listing::DirListFmt;
 
 #[cfg(feature = "directory-listing-download")]
-use crate::directory_listing_download::DirDownloadFmt;
+use crate::directory_listing::download::DirDownloadFmt;
 
 /// Default index file used when no index files are configured.
 pub(super) const DEFAULT_INDEX_FILES: &[&str; 1] = &["index.html"];

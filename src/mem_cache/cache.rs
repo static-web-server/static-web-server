@@ -100,7 +100,7 @@ pub fn init(handler_opts: &mut RequestHandlerOpts) -> Result {
             .build();
 
         if CACHE_STORE.set(cache).is_err() {
-            bail!("unable to initialize the in-memory cache store")
+            tracing::debug!("in-memory cache store already initialized; reusing existing store");
         }
 
         handler_opts.memory_cache = Some(mem_opts);

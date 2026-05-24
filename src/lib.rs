@@ -144,9 +144,6 @@ pub mod custom_headers;
 #[cfg(feature = "directory-listing")]
 #[cfg_attr(docsrs, doc(cfg(feature = "directory-listing")))]
 pub mod directory_listing;
-#[cfg(feature = "directory-listing-download")]
-#[cfg_attr(docsrs, doc(cfg(feature = "directory-listing-download")))]
-pub mod directory_listing_download;
 pub mod error_page;
 pub mod exts;
 #[cfg(feature = "fallback-page")]

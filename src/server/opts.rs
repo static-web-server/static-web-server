@@ -17,7 +17,7 @@ use crate::{
 use crate::directory_listing;
 
 #[cfg(feature = "directory-listing-download")]
-use crate::directory_listing_download;
+pub(crate) use crate::directory_listing::download;
 
 #[cfg(feature = "fallback-page")]
 use crate::fallback_page;
@@ -145,7 +145,7 @@ pub(super) fn init(general: &General, advanced: Option<Advanced>) -> Result<Hand
 
     // Directory listing download
     #[cfg(feature = "directory-listing-download")]
-    directory_listing_download::init(&general.directory_listing_download, &mut handler_opts);
+    download::init(&general.directory_listing_download, &mut handler_opts);
 
     // Fallback page
     #[cfg(feature = "fallback-page")]

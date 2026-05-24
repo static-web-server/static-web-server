@@ -52,7 +52,7 @@ use crate::{
 use crate::directory_listing::DirListFmt;
 
 #[cfg(feature = "directory-listing-download")]
-use crate::directory_listing_download::DirDownloadFmt;
+use crate::directory_listing::download::DirDownloadFmt;
 
 /// It defines options for a request handler.
 pub struct RequestHandlerOpts {
