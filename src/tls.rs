@@ -191,7 +191,10 @@ impl LazyFile {
             self.file = Some(File::open(&self.path)?);
         }
 
-        self.file.as_mut().unwrap().read(buf)
+        match self.file.as_mut() {
+            Some(file) => file.read(buf),
+            None => Err(io::Error::other("file handle unavailable after open")),
+        }
     }
 }
 

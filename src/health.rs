@@ -37,7 +37,7 @@ pub fn pre_process<T>(
     };
 
     let mut resp = Response::new(body);
-    resp.headers_mut().typed_insert(ContentType::html());
+    resp.headers_mut().typed_insert(ContentType::text_utf8());
     Some(Ok(resp))
 }
 
