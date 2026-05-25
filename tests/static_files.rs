@@ -29,6 +29,17 @@ mod tests {
         PathBuf::from("tests/fixtures/public/")
     }
 
+    #[cfg(any(
+        feature = "compression",
+        feature = "compression-deflate",
+        feature = "compression-gzip",
+        feature = "compression-brotli",
+        feature = "compression-zstd"
+    ))]
+    fn comp_root_dir() -> PathBuf {
+        PathBuf::from("tests/fixtures/compression/")
+    }
+
     const METHODS: [Method; 8] = [
         Method::CONNECT,
         Method::DELETE,
@@ -774,8 +785,8 @@ mod tests {
             match static_files::handle(&HandleOpts {
                 method,
                 headers: &headers,
-                base_path: &root_dir(),
-                uri_path: "index.htm",
+                base_path: &comp_root_dir(),
+                uri_path: "large-test.html",
                 uri_query: None,
                 #[cfg(feature = "experimental")]
                 memory_cache: None,
@@ -791,7 +802,7 @@ mod tests {
                 compression_static: false,
                 ignore_hidden_files: false,
                 disable_symlinks: false,
-                index_files: &["index.htm"],
+                index_files: &["large-test.html"],
             })
             .await
             {
@@ -805,8 +816,8 @@ mod tests {
                     )
                     .expect("unexpected bytes error during body compression");
 
-                    let buf = fs::read(root_dir().join("index.htm"))
-                        .expect("unexpected error during index.html reading");
+                    let buf = fs::read(comp_root_dir().join("large-test.html"))
+                        .expect("unexpected error during large-test.html reading");
 
                     assert_eq!(res.status(), 200);
                     assert_eq!(res.headers()["accept-ranges"], "bytes");

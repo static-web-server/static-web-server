@@ -13,8 +13,8 @@
 //! not apply. However:
 //!
 //! - Per-request work is still proportional to `pattern_size * uri_len`.
-//!   To bound it, requests with URIs longer than [`MAX_URI_LEN_FOR_REGEX`]
-//!   bytes are skipped (no regex evaluation, no redirect).
+//!   To bound it, requests with URI paths longer than the internal matching cap
+//!   are skipped (no regex evaluation, no redirect).
 //! - Operators should treat redirect patterns as trusted configuration
 //!   and avoid loading them from untrusted sources.
 
