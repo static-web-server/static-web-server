@@ -43,7 +43,7 @@ pub(crate) fn get_real_root<'a, T>(
 
     for vhost in vhosts {
         if vhost.host == request_host_str {
-            tracing::info!(
+            tracing::debug!(
                 "virtual host matched: vhost={} vhost_root={} method={} uri={}",
                 vhost.host,
                 vhost.root.display(),

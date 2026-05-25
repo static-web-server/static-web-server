@@ -392,9 +392,10 @@ impl Server {
         let ctrlc_task = tokio::spawn(async move {
             if !general.windows_service {
                 tracing::info!("installing graceful shutdown ctrl+c signal handler");
-                tokio::signal::ctrl_c()
-                    .await
-                    .expect("failed to install ctrl+c signal handler");
+                if let Err(err) = tokio::signal::ctrl_c().await {
+                    tracing::error!("failed to install ctrl+c signal handler: {err:?}");
+                    return;
+                }
                 tracing::info!("installing graceful shutdown ctrl+c signal handler");
                 let _ = sender.send(());
             }

@@ -12,7 +12,7 @@ use hyper::{Body, Request, Response, StatusCode, Uri, header::HOST};
 use crate::{
     Error,
     handler::RequestHandlerOpts,
-    redirects::{handle_error, replace_placeholders},
+    redirects::{MAX_URI_LEN_FOR_REGEX, handle_error, replace_placeholders},
     settings::{Rewrites, file::RedirectsKind},
 };
 
@@ -23,6 +23,14 @@ pub(crate) fn pre_process<T>(
 ) -> Option<Result<Response<Body>, Error>> {
     let rewrites = opts.advanced_opts.as_ref()?.rewrites.as_deref()?;
     let uri_path = req.uri().path();
+    if uri_path.len() > MAX_URI_LEN_FOR_REGEX {
+        tracing::debug!(
+            "rewrites: skipping match, uri path length {} exceeds cap {}",
+            uri_path.len(),
+            MAX_URI_LEN_FOR_REGEX
+        );
+        return None;
+    }
 
     let matched = rewrite_uri_path(uri_path, Some(rewrites))?;
     let dest = match replace_placeholders(uri_path, &matched.source, &matched.destination) {
