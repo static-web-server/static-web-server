@@ -7,7 +7,8 @@
 //!
 
 use headers::{
-    AcceptRanges, ContentLength, ContentRange, ContentType, HeaderMapExt, LastModified, Range,
+    AcceptRanges, ContentLength, ContentRange, ContentType, Header, HeaderMapExt, LastModified,
+    Range,
 };
 use hyper::{Body, Response, StatusCode};
 use std::fs::{File, Metadata};
@@ -149,6 +150,7 @@ pub(crate) fn response_body(
     }
 }
 
+#[derive(Debug)]
 pub(crate) struct BadRangeError;
 
 /// It handles the `Range` header returning the corresponding start/end-range bytes
@@ -160,56 +162,261 @@ pub(crate) fn bytes_range(range: Option<Range>, max_len: u64) -> Result<(u64, u6
         return Ok((0, max_len));
     };
 
-    range
-        .iter()
-        .map(|(start, end)| {
-            tracing::trace!("range request received, {:?}-{:?}-{}", start, end, max_len);
-
-            let (start, end) = match (start, end) {
-                (Bound::Unbounded, Bound::Unbounded) => (0, max_len),
-                (Bound::Included(a), Bound::Included(b)) => {
-                    // `start` can not be greater than `end`
-                    if a > b {
-                        return Err(BadRangeError);
-                    }
-                    // For the special case where b == the file size
-                    (a, if b == max_len { b } else { b + 1 })
-                }
-                (Bound::Included(a), Bound::Unbounded) => (a, max_len),
-                (Bound::Unbounded, Bound::Included(b)) => {
-                    if b > max_len {
-                        // `Range` request out of bounds, return only what's available
-                        tracing::trace!("unsatisfiable byte range: -{}/{}", b, max_len);
-                        tracing::trace!("returning only what's available: 0-{}", max_len);
-                        (0, max_len)
-                    } else {
-                        (max_len - b, max_len)
-                    }
-                }
-                _ => unreachable!(),
-            };
-
-            if start < end && end <= max_len {
+    for (start, end) in range.iter() {
+        tracing::trace!("range request received, {:?}-{:?}-{}", start, end, max_len);
+        match normalize_byte_range(start, end, max_len)? {
+            Some((start, end)) => {
                 tracing::trace!("range request to return: {}-{}/{}", start, end, max_len);
                 return Ok((start, end));
             }
+            None => tracing::trace!("unsatisfiable byte range for length {max_len}"),
+        }
+    }
 
-            tracing::trace!("unsatisfiable byte range: {}-{}/{}", start, end, max_len);
+    // NOTE: default to `BadRangeError` in case of wrong `Range` bytes format.
+    // Special case: suffix ranges (bytes=-N) where N > file size are valid per
+    // RFC 9110 section 14.1.2 and should return the entire file (200), but
+    // headers 0.4 `satisfiable_ranges(len)` filters them out. Inspect the
+    // original header on this cold path so out-of-bounds first-byte ranges
+    // (for example bytes=5000-) remain unsatisfiable instead of being mistaken
+    // for an oversized suffix range.
+    if has_oversized_suffix_range(&range, max_len) {
+        tracing::trace!(
+            "suffix range exceeds file size, returning full content: 0-{}/{}",
+            max_len,
+            max_len
+        );
+        Ok((0, max_len))
+    } else {
+        Err(BadRangeError)
+    }
+}
 
-            if start < end && start <= max_len {
-                // `Range` request out of bounds, return only what's available
-                tracing::trace!(
-                    "returning only what's available: {}-{}/{}",
-                    start,
-                    max_len,
-                    max_len
-                );
-                return Ok((start, max_len));
+fn normalize_byte_range(
+    start: Bound<u64>,
+    end: Bound<u64>,
+    max_len: u64,
+) -> Result<Option<(u64, u64)>, BadRangeError> {
+    match (start, end) {
+        (Bound::Included(start), Bound::Included(end)) => {
+            if start > end {
+                return Err(BadRangeError);
             }
+            if start >= max_len {
+                return Ok(None);
+            }
+            let end = if end >= max_len { max_len } else { end + 1 };
+            Ok((start < end).then_some((start, end)))
+        }
+        (Bound::Included(start), Bound::Unbounded) => {
+            Ok((start < max_len).then_some((start, max_len)))
+        }
+        (Bound::Unbounded, Bound::Included(suffix_len)) => {
+            if suffix_len == 0 || max_len == 0 {
+                return Ok(None);
+            }
+            if suffix_len >= max_len {
+                Ok(Some((0, max_len)))
+            } else {
+                Ok(Some((max_len - suffix_len, max_len)))
+            }
+        }
+        _ => Err(BadRangeError),
+    }
+}
 
-            Err(BadRangeError)
-        })
-        .next()
-        // NOTE: default to `BadRangeError` in case of wrong `Range` bytes format
-        .unwrap_or(Err(BadRangeError))
+#[cold]
+fn has_oversized_suffix_range(range: &Range, max_len: u64) -> bool {
+    if max_len == 0 {
+        return false;
+    }
+
+    let mut values = Vec::with_capacity(1);
+    range.encode(&mut values);
+    values
+        .iter()
+        .filter_map(|value| value.to_str().ok())
+        .filter_map(|value| value.strip_prefix("bytes="))
+        .flat_map(|specs| specs.split(','))
+        .any(|spec| suffix_len_exceeds(spec.trim(), max_len))
+}
+
+fn suffix_len_exceeds(spec: &str, max_len: u64) -> bool {
+    let Some(digits) = spec.strip_prefix('-') else {
+        return false;
+    };
+    if digits.is_empty() {
+        return false;
+    }
+
+    let mut value = 0_u64;
+    let mut non_zero = false;
+    for byte in digits.bytes() {
+        if !byte.is_ascii_digit() {
+            return false;
+        }
+        let digit = u64::from(byte - b'0');
+        non_zero |= digit != 0;
+        let Some(next) = value.checked_mul(10).and_then(|v| v.checked_add(digit)) else {
+            return true;
+        };
+        value = next;
+        if value > max_len {
+            return true;
+        }
+    }
+
+    non_zero && value > max_len
+}
+
+#[cfg(test)]
+mod tests {
+    use headers::{HeaderMap, HeaderMapExt, Range};
+
+    use super::bytes_range;
+
+    fn range(spec: &str) -> Option<Range> {
+        let mut map = HeaderMap::new();
+        map.insert(
+            http::header::RANGE,
+            format!("bytes={spec}").parse().unwrap(),
+        );
+        map.typed_get::<Range>()
+    }
+
+    #[test]
+    fn no_range_returns_full_file() {
+        assert_eq!(bytes_range(None, 1000).unwrap(), (0, 1000));
+    }
+
+    #[test]
+    fn inclusive_range_within_bounds() {
+        assert_eq!(bytes_range(range("0-499"), 1000).unwrap(), (0, 500));
+    }
+
+    #[test]
+    fn inclusive_range_to_last_byte() {
+        assert_eq!(bytes_range(range("500-999"), 1000).unwrap(), (500, 1000));
+    }
+
+    #[test]
+    fn suffix_range_within_file() {
+        assert_eq!(bytes_range(range("-200"), 1000).unwrap(), (800, 1000));
+    }
+
+    #[test]
+    fn suffix_range_larger_than_file_returns_full() {
+        assert_eq!(bytes_range(range("-2000"), 1000).unwrap(), (0, 1000));
+    }
+
+    #[test]
+    fn enormous_suffix_range_returns_full() {
+        assert_eq!(
+            bytes_range(range("-18446744073709551616"), 1000).unwrap(),
+            (0, 1000)
+        );
+    }
+
+    #[test]
+    fn open_ended_range_from_offset() {
+        assert_eq!(bytes_range(range("100-"), 1000).unwrap(), (100, 1000));
+    }
+
+    #[test]
+    fn range_start_equals_end_is_single_byte() {
+        assert_eq!(bytes_range(range("5-5"), 1000).unwrap(), (5, 6));
+    }
+
+    #[test]
+    fn range_start_greater_than_end_is_error() {
+        assert!(bytes_range(range("100-50"), 1000).is_err());
+    }
+
+    #[test]
+    fn range_start_beyond_file_size_is_error() {
+        assert!(bytes_range(range("2000-3000"), 1000).is_err());
+    }
+
+    #[test]
+    fn open_ended_range_starting_at_file_size_is_error() {
+        assert!(bytes_range(range("1000-"), 1000).is_err());
+    }
+
+    #[test]
+    fn out_of_bounds_first_byte_ranges_are_errors() {
+        assert!(bytes_range(range("5000-"), 100).is_err());
+        assert!(bytes_range(range("5000-5999"), 100).is_err());
+        assert!(bytes_range(range("100-199"), 100).is_err());
+    }
+
+    #[test]
+    fn range_end_beyond_file_size_is_clamped() {
+        assert_eq!(bytes_range(range("50-999"), 100).unwrap(), (50, 100));
+    }
+
+    #[test]
+    fn huge_range_end_does_not_overflow() {
+        assert_eq!(
+            bytes_range(range("0-18446744073709551615"), 100).unwrap(),
+            (0, 100)
+        );
+    }
+
+    #[test]
+    fn invalid_empty_range_is_error() {
+        assert!(bytes_range(range("-"), 100).is_err());
+    }
+
+    #[test]
+    fn range_on_zero_byte_file_is_unsatisfiable() {
+        assert!(bytes_range(range("0-0"), 0).is_err());
+        assert!(bytes_range(range("-1"), 0).is_err());
+        assert!(bytes_range(range("0-"), 0).is_err());
+    }
+
+    #[test]
+    fn later_satisfiable_range_is_used() {
+        assert_eq!(bytes_range(range("200-300,0-9"), 100).unwrap(), (0, 10));
+    }
+
+    #[test]
+    fn suffix_range_equal_to_file_size_returns_full() {
+        assert_eq!(bytes_range(range("-1000"), 1000).unwrap(), (0, 1000));
+    }
+
+    #[test]
+    fn suffix_range_of_one_byte() {
+        assert_eq!(bytes_range(range("-1"), 1000).unwrap(), (999, 1000));
+    }
+
+    #[test]
+    fn zero_length_suffix_is_unsatisfiable() {
+        assert!(bytes_range(range("-0"), 1000).is_err());
+    }
+
+    #[test]
+    fn leading_zeros_in_suffix_are_parsed() {
+        assert_eq!(bytes_range(range("-00200"), 1000).unwrap(), (800, 1000));
+        assert_eq!(bytes_range(range("-02000"), 1000).unwrap(), (0, 1000));
+    }
+
+    #[test]
+    fn full_file_range_returns_full() {
+        assert_eq!(bytes_range(range("0-999"), 1000).unwrap(), (0, 1000));
+    }
+
+    #[test]
+    fn multi_range_first_satisfiable_wins() {
+        assert_eq!(bytes_range(range("0-9,50-59"), 100).unwrap(), (0, 10));
+    }
+
+    #[test]
+    fn multi_range_with_oversized_suffix_picks_first_valid() {
+        assert_eq!(bytes_range(range("10-19,-99999"), 100).unwrap(), (10, 20));
+    }
+
+    #[test]
+    fn range_at_u64_boundary_file_size() {
+        assert_eq!(bytes_range(range("0-"), u64::MAX).unwrap(), (0, u64::MAX));
+    }
 }
