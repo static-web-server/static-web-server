@@ -33,7 +33,12 @@ pub(crate) fn pre_process<T>(
     }
 
     let matched = rewrite_uri_path(uri_path, Some(rewrites))?;
-    let dest = match replace_placeholders(uri_path, &matched.source, &matched.destination) {
+    let dest = match replace_placeholders(
+        uri_path,
+        &matched.source,
+        &matched.destination,
+        &matched.replacer,
+    ) {
         Ok(dest) => dest,
         Err(err) => return handle_error(err, opts, req),
     };
@@ -131,7 +136,7 @@ mod tests {
     use crate::{
         Error,
         handler::RequestHandlerOpts,
-        settings::{Advanced, Rewrites, file::RedirectsKind},
+        settings::{Advanced, Rewrites, build_placeholder_replacer, file::RedirectsKind},
     };
     use hyper::{Body, Request, Response, StatusCode, header::HOST};
     use regex_lite::Regex;
@@ -145,26 +150,38 @@ mod tests {
     }
 
     fn get_rewrites() -> Vec<Rewrites> {
+        let s1 = Regex::new(r"/source1$").unwrap();
+        let r1 = build_placeholder_replacer(&s1);
+        let s2 = Regex::new(r"/source2$").unwrap();
+        let r2 = build_placeholder_replacer(&s2);
+        let s3 = Regex::new(r"/(prefix/)?(source3)/(.*)").unwrap();
+        let r3 = build_placeholder_replacer(&s3);
+        let s4 = Regex::new(r"/(source4)/(.*)").unwrap();
+        let r4 = build_placeholder_replacer(&s4);
         vec![
             Rewrites {
-                source: Regex::new(r"/source1$").unwrap(),
+                source: s1,
                 destination: "/destination1".into(),
                 redirect: None,
+                replacer: r1,
             },
             Rewrites {
-                source: Regex::new(r"/source2$").unwrap(),
+                source: s2,
                 destination: "/destination2".into(),
                 redirect: Some(RedirectsKind::Temporary),
+                replacer: r2,
             },
             Rewrites {
-                source: Regex::new(r"/(prefix/)?(source3)/(.*)").unwrap(),
+                source: s3,
                 destination: "/destination3/$2/$3".into(),
                 redirect: Some(RedirectsKind::Permanent),
+                replacer: r3,
             },
             Rewrites {
-                source: Regex::new(r"/(source4)/(.*)").unwrap(),
+                source: s4,
                 destination: "http://example.net:1234/destination4/$1?$2".into(),
                 redirect: None,
+                replacer: r4,
             },
         ]
     }

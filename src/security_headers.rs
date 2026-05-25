@@ -9,9 +9,16 @@
 use http::header::{
     CONTENT_SECURITY_POLICY, STRICT_TRANSPORT_SECURITY, X_CONTENT_TYPE_OPTIONS, X_FRAME_OPTIONS,
 };
-use hyper::{Body, Request, Response};
+use hyper::{Body, Request, Response, header::HeaderValue};
 
 use crate::{Error, handler::RequestHandlerOpts};
+
+// Pre-computed static header values to avoid per-response parsing
+static HSTS_VALUE: HeaderValue =
+    HeaderValue::from_static("max-age=63072000; includeSubDomains; preload");
+static XFO_VALUE: HeaderValue = HeaderValue::from_static("DENY");
+static XCTO_VALUE: HeaderValue = HeaderValue::from_static("nosniff");
+static CSP_VALUE: HeaderValue = HeaderValue::from_static("frame-ancestors 'self'");
 
 pub(crate) fn init(enabled: bool, handler_opts: &mut RequestHandlerOpts) {
     handler_opts.security_headers = enabled;
@@ -34,24 +41,18 @@ pub(crate) fn post_process<T>(
 ///`X-Frame-Options: DENY` and `Content-Security-Policy: frame-ancestors 'self'`.
 pub fn append_headers(resp: &mut Response<Body>) {
     // Strict-Transport-Security (HSTS)
-    resp.headers_mut().insert(
-        STRICT_TRANSPORT_SECURITY,
-        "max-age=63072000; includeSubDomains; preload"
-            .parse()
-            .unwrap(),
-    );
+    resp.headers_mut()
+        .insert(STRICT_TRANSPORT_SECURITY, HSTS_VALUE.clone());
 
     // X-Frame-Options
     resp.headers_mut()
-        .insert(X_FRAME_OPTIONS, "DENY".parse().unwrap());
+        .insert(X_FRAME_OPTIONS, XFO_VALUE.clone());
 
     // X-Content-Type-Options
     resp.headers_mut()
-        .insert(X_CONTENT_TYPE_OPTIONS, "nosniff".parse().unwrap());
+        .insert(X_CONTENT_TYPE_OPTIONS, XCTO_VALUE.clone());
 
     // Content Security Policy (CSP)
-    resp.headers_mut().insert(
-        CONTENT_SECURITY_POLICY,
-        "frame-ancestors 'self'".parse().unwrap(),
-    );
+    resp.headers_mut()
+        .insert(CONTENT_SECURITY_POLICY, CSP_VALUE.clone());
 }

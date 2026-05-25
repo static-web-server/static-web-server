@@ -12,20 +12,17 @@
 
 use bytes::Bytes;
 use compact_str::CompactString;
-use headers::{
-    AcceptRanges, ContentLength, ContentRange, ContentType, HeaderMap, HeaderMapExt, LastModified,
-};
+use headers::{AcceptRanges, ContentLength, ContentRange, HeaderMap, HeaderMapExt, LastModified};
+use hyper::header::{CONTENT_TYPE, HeaderValue};
 use hyper::{Body, Response, StatusCode};
 use mini_moka::sync::Cache;
-use std::io::{Read, Seek, SeekFrom};
 use std::path::Path;
 use std::sync::{Arc, OnceLock};
 use std::time::Duration;
-use tokio::sync::Semaphore;
+use tokio::sync::{Semaphore, SemaphorePermit};
 
 use crate::Result;
 use crate::conditional_headers::{ConditionalBody, ConditionalHeaders};
-use crate::fs::stream::FileStream;
 use crate::handler::RequestHandlerOpts;
 use crate::response::{BadRangeError, bytes_range};
 
@@ -96,6 +93,18 @@ pub(crate) fn init(handler_opts: &mut RequestHandlerOpts) -> Result {
     Ok(())
 }
 
+/// Result of a cache lookup via `get_or_acquire`.
+pub(crate) enum CacheResult<'a> {
+    /// Cache hit — return the response directly.
+    Hit(Result<Response<Body>, StatusCode>),
+    /// Cache miss — caller should read the file. The semaphore permit is held
+    /// so that concurrent misses are serialized (single-flight). Drop the permit
+    /// after inserting into the cache store.
+    Miss(SemaphorePermit<'a>),
+    /// An error occurred acquiring the semaphore.
+    Error(StatusCode),
+}
+
 /// Try to get the file in a form of a response from the cache store by a path or
 /// acquires a permit to ensure to hold until the file is read first (once).
 ///
@@ -106,7 +115,7 @@ pub(crate) fn init(handler_opts: &mut RequestHandlerOpts) -> Result {
 pub(crate) async fn get_or_acquire(
     file_path: &Path,
     headers_opt: &HeaderMap,
-) -> Option<Result<Response<Body>, StatusCode>> {
+) -> Option<CacheResult<'static>> {
     let file_path_str = file_path.to_str().or(None)?;
 
     let store = CACHE_STORE.get().unwrap();
@@ -116,7 +125,7 @@ pub(crate) async fn get_or_acquire(
                 "file `{}` found in the in-memory cache store, returning it directly",
                 file_path_str
             );
-            Some(mem_file.response_body(headers_opt))
+            Some(CacheResult::Hit(mem_file.response_body(headers_opt)))
         }
         _ => {
             tracing::debug!(
@@ -124,12 +133,22 @@ pub(crate) async fn get_or_acquire(
                 file_path_str
             );
             // If a file is not found in the store then continue
-            // with the normal flow and wait on first file read
-            if let Err(err) = CACHE_PERMIT.acquire().await {
-                tracing::error!("error trying to acquire permit on first read: {:?}", err);
-                return Some(Err(StatusCode::INTERNAL_SERVER_ERROR));
+            // with the normal flow and wait on first file read.
+            // Hold the permit so concurrent misses are serialized.
+            match CACHE_PERMIT.acquire().await {
+                Ok(permit) => {
+                    // Re-check after acquiring — another request may have populated
+                    // the cache while we were waiting for the permit.
+                    if let Some(mem_file) = store.get::<CompactString>(&file_path_str.into()) {
+                        return Some(CacheResult::Hit(mem_file.response_body(headers_opt)));
+                    }
+                    Some(CacheResult::Miss(permit))
+                }
+                Err(err) => {
+                    tracing::error!("error trying to acquire permit on first read: {:?}", err);
+                    Some(CacheResult::Error(StatusCode::INTERNAL_SERVER_ERROR))
+                }
             }
-            None
         }
     }
 }
@@ -137,14 +156,17 @@ pub(crate) async fn get_or_acquire(
 #[derive(Debug, Clone)]
 pub(crate) struct MemFileTempOpts {
     pub(crate) file_path: String,
-    pub(crate) content_type: ContentType,
+    /// Pre-built `Content-Type` `HeaderValue`. Reusing a `HeaderValue`
+    /// (instead of `ContentType`) avoids re-encoding the mime string
+    /// when the entry is eventually inserted into the cache.
+    pub(crate) content_type: HeaderValue,
     pub(crate) last_modified: Option<LastModified>,
 }
 
 impl MemFileTempOpts {
     pub(crate) fn new(
         file_path: String,
-        content_type: ContentType,
+        content_type: HeaderValue,
         last_modified: Option<LastModified>,
     ) -> Self {
         Self {
@@ -155,16 +177,20 @@ impl MemFileTempOpts {
     }
 }
 
-/// In-memory file representation to be store in the cache.
+/// In-memory file representation to be stored in the cache.
+///
+/// Holds the full file body as a [`Bytes`] (shared, reference-counted, zero-copy
+/// cloneable) and a pre-built `Content-Type` [`HeaderValue`] so that serving a
+/// cached response avoids any per-request allocation or string conversion.
 #[derive(Debug)]
 pub(crate) struct MemFile {
-    /// Bytes of the the current file.
+    /// Bytes of the current file.
     data: Bytes,
-    /// Buffer size for the current file.
-    buf_size: usize,
-    /// `Content-Type` header for the current file.
-    content_type: ContentType,
-    /// `Last Modified` header for the current file.
+    /// Pre-built `Content-Type` header value. Stored as a [`HeaderValue`]
+    /// (rather than `ContentType`) so that emitting it on a cache hit is a
+    /// cheap reference-counted clone.
+    content_type: HeaderValue,
+    /// `Last-Modified` header for the current file.
     last_modified: Option<LastModified>,
 }
 
@@ -172,18 +198,23 @@ impl MemFile {
     #[inline]
     pub(crate) fn new(
         data: Bytes,
-        buf_size: usize,
-        content_type: ContentType,
+        content_type: HeaderValue,
         last_modified: Option<LastModified>,
     ) -> Self {
         Self {
             data,
-            buf_size,
             content_type,
             last_modified,
         }
     }
 
+    /// Build a response for a cache hit.
+    ///
+    /// The body is constructed directly from the in-memory [`Bytes`] (a single
+    /// reference-counted clone for full responses, an O(1) `Bytes::slice` for
+    /// range responses). No allocation or copying of the file contents occurs
+    /// on the hot path; the response body is a single data frame, not a
+    /// chunked stream.
     pub(crate) fn response_body(&self, headers: &HeaderMap) -> Result<Response<Body>, StatusCode> {
         let conditionals = ConditionalHeaders::new(headers);
         let modified = self.last_modified;
@@ -191,62 +222,58 @@ impl MemFile {
         match conditionals.check(modified) {
             ConditionalBody::NoBody(resp) => Ok(resp),
             ConditionalBody::WithBody(range) => {
-                let mem_buf = self.data.clone();
-                let mut len = mem_buf.len() as u64;
-                let mut reader = std::io::Cursor::new(mem_buf);
-                let buf_size = self.buf_size;
+                let total_len = self.data.len() as u64;
 
-                bytes_range(range, len)
+                bytes_range(range, total_len)
                     .map(|(start, end)| {
-                        match reader.seek(SeekFrom::Start(start)) {
-                            Ok(_) => (),
-                            Err(err) => {
-                                tracing::error!("seek file from start error: {:?}", err);
-                                return Err(StatusCode::INTERNAL_SERVER_ERROR);
-                            }
-                        };
-
                         let sub_len = end - start;
-                        let reader = reader.take(sub_len);
+                        let is_partial = sub_len != total_len;
 
-                        let body = Body::wrap_stream(FileStream { reader, buf_size });
-                        let mut resp = Response::new(body);
+                        // Zero-copy body: for a full response we clone the
+                        // `Bytes` (refcount bump); for a range we use
+                        // `Bytes::slice` (O(1), shared buffer).
+                        let body_bytes = if is_partial {
+                            self.data.slice(start as usize..end as usize)
+                        } else {
+                            self.data.clone()
+                        };
+                        let mut resp = Response::new(Body::from(body_bytes));
 
-                        if sub_len != len {
+                        if is_partial {
                             *resp.status_mut() = StatusCode::PARTIAL_CONTENT;
-                            resp.headers_mut().typed_insert(
-                                match ContentRange::bytes(start..end, len) {
-                                    Ok(range) => range,
-                                    Err(err) => {
-                                        tracing::error!("invalid content range error: {:?}", err);
-                                        let mut resp = Response::new(Body::empty());
-                                        *resp.status_mut() = StatusCode::RANGE_NOT_SATISFIABLE;
-                                        resp.headers_mut()
-                                            .typed_insert(ContentRange::unsatisfied_bytes(len));
-                                        return Ok(resp);
-                                    }
-                                },
-                            );
-
-                            len = sub_len;
+                            match ContentRange::bytes(start..end, total_len) {
+                                Ok(range) => {
+                                    resp.headers_mut().typed_insert(range);
+                                }
+                                Err(err) => {
+                                    tracing::error!("invalid content range error: {:?}", err);
+                                    let mut resp = Response::new(Body::empty());
+                                    *resp.status_mut() = StatusCode::RANGE_NOT_SATISFIABLE;
+                                    resp.headers_mut()
+                                        .typed_insert(ContentRange::unsatisfied_bytes(total_len));
+                                    return Ok(resp);
+                                }
+                            }
                         }
 
-                        resp.headers_mut().typed_insert(ContentLength(len));
-                        resp.headers_mut().typed_insert(self.content_type.clone());
-                        resp.headers_mut().typed_insert(AcceptRanges::bytes());
+                        let h = resp.headers_mut();
+                        h.typed_insert(ContentLength(sub_len));
+                        // Cheap refcount clone of the pre-built header value
+                        // (avoids re-stringifying the mime type per request).
+                        h.insert(CONTENT_TYPE, self.content_type.clone());
+                        h.typed_insert(AcceptRanges::bytes());
 
                         if let Some(last_modified) = modified {
-                            resp.headers_mut().typed_insert(last_modified);
+                            h.typed_insert(last_modified);
                         }
 
                         Ok(resp)
                     })
                     .unwrap_or_else(|BadRangeError| {
-                        // bad byte range
                         let mut resp = Response::new(Body::empty());
                         *resp.status_mut() = StatusCode::RANGE_NOT_SATISFIABLE;
                         resp.headers_mut()
-                            .typed_insert(ContentRange::unsatisfied_bytes(len));
+                            .typed_insert(ContentRange::unsatisfied_bytes(total_len));
                         Ok(resp)
                     })
             }

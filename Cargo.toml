@@ -139,6 +139,16 @@ panic = "abort"
 rpath = false
 strip = true
 
+# Same optimizations as `release` but with debug info and no stripping.
+# Use this profile when profiling with samply / Instruments / perf:
+#
+#   cargo build --profile release-profiling --features all
+#   samply record target/release-profiling/static-web-server -p 8787 -d docker/public/
+[profile.release-profiling]
+inherits = "release"
+debug = 2
+strip = false
+
 [package.metadata.docs.rs]
 features = ["all"]
 rustdoc-args = ["--cfg", "docsrs", "--cfg", "tokio_unstable"]
