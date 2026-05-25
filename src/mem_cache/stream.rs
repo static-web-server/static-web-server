@@ -1,4 +1,4 @@
-use bytes::{BufMut, Bytes, BytesMut};
+use bytes::{Bytes, BytesMut};
 use futures_util::Stream;
 use std::io::Read;
 use std::pin::Pin;
@@ -12,60 +12,98 @@ use crate::mem_cache::cache::{CACHE_STORE, MemFile, MemFileTempOpts};
 pub(crate) struct MemCacheFileStream<T> {
     pub(crate) reader: T,
     pub(crate) buf_size: usize,
+    pub(crate) file_size: usize,
     pub(crate) mem_opts: Option<MemFileTempOpts>,
     pub(crate) mem_buf: Option<BytesMut>,
+    pub(crate) buf: BytesMut,
+}
+
+impl<T> MemCacheFileStream<T> {
+    pub(crate) fn new(
+        reader: T,
+        buf_size: usize,
+        file_size: usize,
+        mem_opts: Option<MemFileTempOpts>,
+        mem_buf: Option<BytesMut>,
+    ) -> Self {
+        Self {
+            reader,
+            buf_size,
+            file_size,
+            mem_opts,
+            mem_buf,
+            buf: BytesMut::with_capacity(buf_size),
+        }
+    }
 }
 
 impl<T: Read + Unpin> Stream for MemCacheFileStream<T> {
     type Item = Result<Bytes>;
 
     fn poll_next(self: Pin<&mut Self>, _: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        let buf_size = self.buf_size;
-        let mut buf = BytesMut::zeroed(buf_size);
-        let pinned = Pin::into_inner(self);
+        let this = Pin::into_inner(self);
+        this.buf.resize(this.buf_size, 0);
 
-        match pinned.reader.read(&mut buf[..]) {
+        match this.reader.read(&mut this.buf[..]) {
+            Ok(0) => {
+                // Safety net: try to insert if we somehow reached EOF with a
+                // complete buffer but never tripped the eager-insert branch
+                // below (e.g. a zero-byte file: one `Ok(0)` poll, no `Ok(n)`).
+                try_insert(&mut this.mem_opts, &mut this.mem_buf, this.file_size);
+                Poll::Ready(None)
+            }
             Ok(n) => {
-                if n == 0 {
-                    Poll::Ready(None)
-                } else {
-                    buf.truncate(n);
-                    let buf = buf.freeze();
-
-                    // Handle in-memory cache if enabled
-                    if let (Some(mem_opts), Some(buf_data_mut)) =
-                        (pinned.mem_opts.as_ref(), pinned.mem_buf.as_mut())
-                    {
-                        buf_data_mut.put(buf.clone());
-
-                        // If file size is reached then proceed cache it
-                        if buf_data_mut.len() == buf_data_mut.capacity() {
-                            let buf_data = pinned.mem_buf.take().unwrap().freeze();
-
-                            let mem_file = Arc::new(MemFile::new(
-                                buf_data,
-                                buf_size,
-                                mem_opts.content_type.to_owned(),
-                                mem_opts.last_modified,
-                            ));
-
-                            let file_path = mem_opts.file_path.as_str();
-                            tracing::debug!(
-                                "file `{}` is inserted to the in-memory cache store",
-                                file_path
-                            );
-
-                            CACHE_STORE
-                                .get()
-                                .unwrap()
-                                .insert(file_path.into(), mem_file);
-                        }
+                let buf = this.buf.split_to(n).freeze();
+                if let Some(mem_buf) = this.mem_buf.as_mut() {
+                    mem_buf.extend_from_slice(&buf);
+                    // Insert into the cache eagerly on the last chunk.
+                    //
+                    // We cannot rely on a subsequent `Ok(0)` poll because
+                    // hyper does not always drive the body stream to
+                    // completion: once `Content-Length` bytes have been
+                    // emitted on the wire, the HTTP/1.1 writer may finalize
+                    // the response without polling the body again. Without
+                    // this eager check the cache would never be populated
+                    // for full-file responses served over real HTTP traffic.
+                    if mem_buf.len() >= this.file_size {
+                        try_insert(&mut this.mem_opts, &mut this.mem_buf, this.file_size);
                     }
-
-                    Poll::Ready(Some(Ok(buf)))
                 }
+                Poll::Ready(Some(Ok(buf)))
             }
             Err(err) => Poll::Ready(Some(Err(anyhow::Error::from(err)))),
         }
+    }
+}
+
+/// Move the accumulated body and metadata out of the stream and insert them
+/// into the global cache store, but only if exactly `file_size` bytes were
+/// accumulated. A shorter buffer indicates a truncated read (e.g. the file
+/// was modified or unlinked mid-stream) and must not be cached.
+///
+/// Calling this with already-taken `Option`s is a no-op, so it is safe to
+/// call multiple times.
+fn try_insert(
+    mem_opts: &mut Option<MemFileTempOpts>,
+    mem_buf: &mut Option<BytesMut>,
+    file_size: usize,
+) {
+    let Some(buf) = mem_buf.as_ref() else { return };
+    if buf.len() != file_size {
+        return;
+    }
+    // Both `Option`s are `Some` and the length matches: take and insert.
+    let (Some(opts), Some(buf)) = (mem_opts.take(), mem_buf.take()) else {
+        return;
+    };
+    let file_path = opts.file_path.as_str();
+    tracing::debug!("file `{file_path}` inserted into in-memory cache store");
+    let mem_file = Arc::new(MemFile::new(
+        buf.freeze(),
+        opts.content_type,
+        opts.last_modified,
+    ));
+    if let Some(store) = CACHE_STORE.get() {
+        store.insert(file_path.into(), mem_file);
     }
 }

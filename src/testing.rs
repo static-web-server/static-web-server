@@ -71,7 +71,10 @@ pub mod fixtures {
         let compression_static = general.compression_static;
 
         RequestHandlerOpts {
-            root_dir: general.root,
+            // Canonicalize once for consistency with production startup
+            // (see `server.rs`). The path containment check expects
+            // an already-canonical base.
+            root_dir: general.root.canonicalize().unwrap_or(general.root),
             compression,
             compression_static,
             #[cfg(any(

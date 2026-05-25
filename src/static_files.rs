@@ -11,9 +11,11 @@
 
 use headers::{AcceptRanges, HeaderMap, HeaderMapExt, HeaderValue};
 use hyper::{Body, Method, Response, StatusCode, header::CONTENT_ENCODING, header::CONTENT_LENGTH};
+use std::cell::RefCell;
+use std::collections::HashSet;
 use std::fs::{File, Metadata};
 use std::io;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use crate::Result;
 use crate::conditional_headers::ConditionalHeaders;
@@ -39,6 +41,48 @@ use crate::directory_listing_download::{
 };
 
 const DEFAULT_INDEX_FILES: &[&str; 1] = &["index.html"];
+
+/// Maximum number of containment "OK" decisions cached per worker thread.
+/// Sized for typical static-file workloads where the distinct request paths
+/// are small. When the cap is reached the cache is dropped wholesale; the
+/// next requests pay the `canonicalize` syscall again.
+const CONTAINMENT_CACHE_CAP: usize = 1024;
+
+thread_local! {
+    /// Per-thread set of `probe` paths that have previously been proven
+    /// to live inside the canonical base directory.
+    ///
+    /// Profiling showed the containment check (and its `Path::canonicalize`
+    /// syscall) was the single largest CPU cost on the static-file fast
+    /// path. A workload that repeatedly serves the same documents reaches
+    /// a steady state with effectively no `canonicalize` syscalls. The
+    /// cache is keyed by `PathBuf` so the lookup is a single hash + byte
+    /// compare.
+    ///
+    /// Cache validity: an entry is added only after the slow path has
+    /// proven the probe is contained within `base_path`. The cache is
+    /// not invalidated on filesystem changes. This is acceptable for
+    /// a static-file server: the worst case is a stale "OK" decision
+    /// after an admin renames a directory to a symlink, which is a
+    /// transient state requiring filesystem changes outside SWS.
+    static CONTAINMENT_CACHE: RefCell<HashSet<PathBuf>> =
+        RefCell::new(HashSet::with_capacity(64));
+}
+
+/// Records `probe` as previously-verified-safe in the per-thread
+/// containment cache. When the cache fills, the entire set is dropped
+/// rather than performing per-entry LRU bookkeeping, since the working
+/// set is expected to fit well within `CONTAINMENT_CACHE_CAP`.
+#[inline]
+fn cache_safe_probe(probe: &Path) {
+    CONTAINMENT_CACHE.with(|c| {
+        let mut set = c.borrow_mut();
+        if set.len() >= CONTAINMENT_CACHE_CAP {
+            set.clear();
+        }
+        set.insert(probe.to_path_buf());
+    });
+}
 
 /// Defines all options needed by the static-files handler.
 pub struct HandleOpts<'a> {
@@ -115,11 +159,22 @@ pub async fn handle(opts: &HandleOpts<'_>) -> Result<StaticFileResponse, StatusC
         }
 
         if let Some(result) = cache::get_or_acquire(file_path.as_path(), headers_opt).await {
-            return Ok(StaticFileResponse {
-                resp: result?,
-                // file_path: resp_file_path,
-                file_path,
-            });
+            match result {
+                cache::CacheResult::Hit(result) => {
+                    return Ok(StaticFileResponse {
+                        resp: result?,
+                        file_path,
+                    });
+                }
+                cache::CacheResult::Error(status) => {
+                    return Err(status);
+                }
+                cache::CacheResult::Miss(_permit) => {
+                    // Permit is held while we proceed to read the file below.
+                    // It will be dropped at the end of this scope, after the
+                    // MemCacheFileStream inserts the data into the cache store.
+                }
+            }
         }
     }
 
@@ -128,6 +183,7 @@ pub async fn handle(opts: &HandleOpts<'_>) -> Result<StaticFileResponse, StatusC
         metadata,
         is_dir,
         precompressed_variant,
+        file: pre_opened,
     } = get_composed_file_metadata(
         &mut file_path,
         headers_opt,
@@ -149,31 +205,50 @@ pub async fn handle(opts: &HandleOpts<'_>) -> Result<StaticFileResponse, StatusC
         StatusCode::NOT_FOUND
     })?;
 
-    let file_path_resolved = file_path_temp.canonicalize().map_err(|err| {
-        tracing::error!(
-            "unable to resolve '{}' symlink path: {}",
-            file_path_temp.display(),
-            err,
-        );
-        StatusCode::NOT_FOUND
-    })?;
+    let file_path_resolved =
+        match CONTAINMENT_CACHE.with(|c| c.borrow().contains(file_path_temp.as_path())) {
+            true => file_path_temp.clone(),
+            false => {
+                let resolved = file_path_temp.canonicalize().map_err(|err| {
+                    tracing::error!(
+                        "unable to resolve '{}' symlink path: {}",
+                        file_path_temp.display(),
+                        err,
+                    );
+                    StatusCode::NOT_FOUND
+                })?;
 
-    let base_path = opts.base_path.canonicalize().map_err(|err| {
-        tracing::error!(
-            "unable to resolve '{}' base path: {}",
-            opts.base_path.display(),
-            err,
-        );
-        StatusCode::NOT_FOUND
-    })?;
-
-    if !file_path_resolved.starts_with(base_path) {
-        tracing::error!(
-            "file path '{}' resolves outside of the base path, access denied",
-            file_path_resolved.display()
-        );
-        return Err(StatusCode::NOT_FOUND);
-    }
+                // a. Fast path: when `base_path` is already canonical (the
+                // production case), the resolved file path will share its
+                // prefix and we avoid a per-request `canonicalize` syscall on
+                // the base directory.
+                if resolved.starts_with(opts.base_path) {
+                    cache_safe_probe(file_path_temp.as_path());
+                    resolved
+                } else {
+                    // b. Fallback: canonicalize the base and retry the check.
+                    let base_path = opts.base_path.canonicalize().map_err(|err| {
+                        tracing::error!(
+                            "unable to resolve '{}' base path: {}",
+                            opts.base_path.display(),
+                            err,
+                        );
+                        StatusCode::NOT_FOUND
+                    })?;
+                    if !resolved.starts_with(&base_path) {
+                        tracing::error!(
+                            "file path '{}' resolves outside of the base path, access denied",
+                            resolved.display()
+                        );
+                        return Err(StatusCode::NOT_FOUND);
+                    }
+                    cache_safe_probe(file_path_temp.as_path());
+                    resolved
+                }
+            }
+        };
+    // Silence unused warning when fast path is hit on subsequent requests.
+    let _ = &file_path_resolved;
 
     if opts.disable_symlinks {
         // Check if the whole path or any path component contains a symlink.
@@ -309,11 +384,15 @@ pub async fn handle(opts: &HandleOpts<'_>) -> Result<StaticFileResponse, StatusC
     // Check for a pre-compressed file variant if present under the `opts.compression_static` context
     if let Some(precompressed_meta) = precompressed_variant {
         let (precomp_path, precomp_encoding) = precompressed_meta;
+        // Pre-opened handle (if any) refers to the original file we are
+        // about to replace with the precompressed variant; just drop it.
+        drop(pre_opened);
         let mut resp = file_reply(
             headers_opt,
             file_path,
             &metadata,
             Some(precomp_path),
+            None,
             #[cfg(feature = "experimental")]
             opts.memory_cache,
         )?;
@@ -339,10 +418,17 @@ pub async fn handle(opts: &HandleOpts<'_>) -> Result<StaticFileResponse, StatusC
     }
 
     #[cfg(feature = "experimental")]
-    let resp = file_reply(headers_opt, file_path, &metadata, None, opts.memory_cache)?;
+    let resp = file_reply(
+        headers_opt,
+        file_path,
+        &metadata,
+        None,
+        pre_opened,
+        opts.memory_cache,
+    )?;
 
     #[cfg(not(feature = "experimental"))]
-    let resp = file_reply(headers_opt, file_path, &metadata, None)?;
+    let resp = file_reply(headers_opt, file_path, &metadata, None, pre_opened)?;
 
     Ok(StaticFileResponse {
         resp,
@@ -364,6 +450,11 @@ fn get_composed_file_metadata<'a>(
     // Try to find the file path on the file system
     match try_metadata(file_path) {
         Ok((mut metadata, is_dir)) => {
+            // The optional pre-opened file for `file_path`. When `Some`, the
+            // response pipeline reuses this handle instead of issuing an
+            // extra `open(2)` syscall. We only populate it when the index
+            // file is resolved via `try_file_open` below.
+            let mut opened_file = None;
             if is_dir {
                 // Try every index file variant in order
                 if index_files.is_empty() {
@@ -384,14 +475,21 @@ fn get_composed_file_metadata<'a>(
                             metadata: p.metadata,
                             is_dir: false,
                             precompressed_variant: Some((p.file_path, p.encoding)),
+                            file: None,
                         });
                     }
 
                     // Otherwise, just fallback to finding the index.html
                     // and overwrite the current `meta`
-                    // Also noting that it's still a directory request
-                    if let Ok(meta_res) = try_metadata(file_path) {
-                        (metadata, _) = meta_res;
+                    // Also noting that it's still a directory request.
+                    //
+                    // We open the file directly here: `try_file_open` performs
+                    // a single `open(2)` + `fstat(2)` instead of a `stat(2)`
+                    // followed by an `open(2)` later in `file_reply`,
+                    // saving one path-resolving syscall on the hot path.
+                    if let Ok((file, meta)) = crate::fs::meta::try_file_open(file_path) {
+                        metadata = meta;
+                        opened_file = Some(file);
                         index_found = true;
                         break;
                     }
@@ -419,11 +517,19 @@ fn get_composed_file_metadata<'a>(
                 .flatten()
                 .map(|p| (p.file_path, p.encoding));
 
+            // If we are going to serve a precompressed variant, the
+            // pre-opened file points to the *original* file which won't be
+            // streamed; drop it so `file_reply` opens the precomp file.
+            if precompressed_variant.is_some() {
+                opened_file = None;
+            }
+
             Ok(FileMetadata {
                 file_path,
                 metadata,
                 is_dir,
                 precompressed_variant,
+                file: opened_file,
             })
         }
         Err(err) => {
@@ -436,6 +542,7 @@ fn get_composed_file_metadata<'a>(
                     metadata: p.metadata,
                     is_dir: false,
                     precompressed_variant: Some((p.file_path, p.encoding)),
+                    file: None,
                 });
             }
 
@@ -459,6 +566,7 @@ fn get_composed_file_metadata<'a>(
                         metadata: new_meta,
                         is_dir: false,
                         precompressed_variant: None,
+                        file: None,
                     });
                 }
                 _ => {
@@ -472,6 +580,7 @@ fn get_composed_file_metadata<'a>(
                             metadata: p.metadata,
                             is_dir: false,
                             precompressed_variant: Some((p.file_path, p.encoding)),
+                            file: None,
                         });
                     }
                 }
@@ -483,6 +592,7 @@ fn get_composed_file_metadata<'a>(
                     metadata: new_meta,
                     is_dir: false,
                     precompressed_variant: None,
+                    file: None,
                 });
             }
 
@@ -502,12 +612,21 @@ fn file_reply<'a>(
     path: &'a PathBuf,
     meta: &'a Metadata,
     path_precompressed: Option<PathBuf>,
+    pre_opened: Option<File>,
     #[cfg(feature = "experimental")] memory_cache: Option<&'a MemCacheOpts>,
 ) -> Result<Response<Body>, StatusCode> {
     let conditionals = ConditionalHeaders::new(headers);
-    let file_path = path_precompressed.as_ref().unwrap_or(path);
 
-    match File::open(file_path) {
+    // Reuse the pre-opened handle when serving the original file. For
+    // precompressed variants the open target differs, so we open the
+    // precomp file ourselves (and the caller dropped `pre_opened`).
+    let file_result = match (path_precompressed.as_deref(), pre_opened) {
+        (None, Some(file)) => Ok(file),
+        (Some(precomp_path), _) => File::open(precomp_path),
+        (None, None) => File::open(path),
+    };
+
+    match file_result {
         Ok(file) => {
             #[cfg(feature = "experimental")]
             let resp = response_body(file, path, meta, conditionals, memory_cache);

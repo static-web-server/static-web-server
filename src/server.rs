@@ -217,6 +217,12 @@ impl Server {
         let root_dir = helpers::get_valid_dirpath(&general.root)
             .with_context(|| "root directory was not found or inaccessible")?;
 
+        // Canonicalize the root directory once at startup
+        // so further checks can compare against a precomputed canonical base
+        // without paying a `canonicalize` syscall on every request.
+        // Falls back to the validated path if canonicalization fails.
+        let root_dir = root_dir.canonicalize().unwrap_or(root_dir);
+
         // Custom HTML error page files
         // NOTE: in the case of relative paths, they're joined to the root directory
         let mut page404 = general.page404;
