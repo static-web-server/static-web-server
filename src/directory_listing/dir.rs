@@ -84,8 +84,13 @@ pub(crate) struct DirEntryOpts<'a> {
 pub(crate) fn read_dir_entries(mut opt: DirEntryOpts<'_>) -> Result<Response<Body>> {
     let mut dirs_count: usize = 0;
     let mut files_count: usize = 0;
-    let mut file_entries: Vec<FileEntry> = vec![];
-    let root_path_abs = opt.root_path.canonicalize()?;
+    // The root directory is canonicalized once at startup (see
+    // `server.rs`). To avoid an extra `canonicalize()` syscall per
+    // request, we resolve the absolute form lazily — only when a symlink
+    // entry is actually encountered (the uncommon case).
+    let mut root_path_abs: Option<std::path::PathBuf> = None;
+    let (entries_hint, _) = opt.dir_reader.size_hint();
+    let mut file_entries: Vec<FileEntry> = Vec::with_capacity(entries_hint);
 
     for dir_entry in opt.dir_reader {
         let dir_entry = dir_entry.with_context(|| "unable to read directory entry")?;
@@ -129,7 +134,11 @@ pub(crate) fn read_dir_entries(mut opt: DirEntryOpts<'_>) -> Result<Response<Bod
                     continue;
                 }
             };
-            if !symlink_path.starts_with(&root_path_abs) {
+            if !symlink_path.starts_with(root_path_abs.get_or_insert_with(|| {
+                opt.root_path
+                    .canonicalize()
+                    .unwrap_or_else(|_| opt.root_path.to_path_buf())
+            })) {
                 tracing::warn!(
                     "unable to follow symlink {}, access denied",
                     symlink_path.display()
@@ -196,15 +205,14 @@ pub(crate) fn read_dir_entries(mut opt: DirEntryOpts<'_>) -> Result<Response<Bod
 
     // Check the query request uri for a sorting type. E.g https://blah/?sort=5
     if let Some(q) = opt.uri_query {
-        let mut parts = form_urlencoded::parse(q.as_bytes());
-        if parts.count() > 0 {
-            // NOTE: we just pick up the first value (pair)
-            if let Some(code) = parts
-                .find(|(key, _)| key == "sort" && !key.is_empty())
-                .and_then(|(_, value)| value.trim().parse::<u8>().ok())
-            {
-                opt.order_code = code;
-            }
+        // NOTE: we just pick up the first `sort` pair.
+        // Avoid calling `.count()` (which consumes the iterator) and then
+        // re-parsing the query string a second time.
+        if let Some(code) = form_urlencoded::parse(q.as_bytes())
+            .find(|(key, _)| key == "sort")
+            .and_then(|(_, value)| value.trim().parse::<u8>().ok())
+        {
+            opt.order_code = code;
         }
     }
 

@@ -3,6 +3,16 @@
 // See https://static-web-server.net/ for more information
 // Copyright (C) 2019-present Jose Quintana <joseluisq.net>
 
+use std::sync::LazyLock;
+
+/// Pre-minified version of `STYLES`, computed once.
+///
+/// The directory listing HTML is rendered on every request, so removing
+/// the two per-request `String::replace` passes here avoids a CSS-sized
+/// allocation and a pair of full string scans per response.
+pub(crate) static STYLES_MIN: LazyLock<String> =
+    LazyLock::new(|| STYLES.replace('\n', "").replace("  ", ""));
+
 pub(crate) const STYLES: &str = r#"
 :after, :before { box-sizing: border-box; }
 html {
