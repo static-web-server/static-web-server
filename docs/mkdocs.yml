@@ -145,6 +145,7 @@ nav:
     - 'Compression': 'features/compression.md'
     - 'Pre-compressed files serving': 'features/compression-static.md'
     - 'Cache Control Headers': 'features/cache-control-headers.md'
+    - 'ETag': 'features/etag.md'
     - 'CORS': 'features/cors.md'
     - 'Security Headers': 'features/security-headers.md'
     - 'Basic Authentication': 'features/basic-authentication.md'
