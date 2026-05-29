@@ -90,7 +90,7 @@ static HTTP_CONNECTIONS_ACTIVE: LazyLock<IntGauge> = LazyLock::new(|| {
 /// (information disclosure).
 pub fn init(enabled: bool, handler_opts: &mut RequestHandlerOpts) {
     handler_opts.metrics_enabled = enabled;
-    tracing::info!("metrics endpoint: enabled={enabled}");
+    tracing::info!(enabled, "metrics endpoint");
     if enabled {
         tracing::warn!(
             "metrics endpoint `/metrics` is unauthenticated; restrict access via reverse proxy or network policy"
@@ -108,7 +108,7 @@ pub fn init(enabled: bool, handler_opts: &mut RequestHandlerOpts) {
             )) {
                 tracing::debug!("tokio runtime metrics collector registration skipped: {err:?}");
             }
-            tracing::info!("tokio runtime metrics: enabled");
+            tracing::info!(enabled = true, "tokio runtime metrics");
         }
 
         // HTTP-level metrics

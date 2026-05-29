@@ -30,7 +30,7 @@ const CACHE_EXT_ONE_YEAR: [&str; 32] = [
 
 pub(crate) fn init(enabled: bool, handler_opts: &mut RequestHandlerOpts) {
     handler_opts.cache_control_headers = enabled;
-    tracing::info!("cache control headers: enabled={enabled}");
+    tracing::info!(enabled, "cache control headers");
 }
 
 /// Appends `Cache-Control` header to a response if necessary

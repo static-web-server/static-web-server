@@ -20,16 +20,13 @@ pub(crate) fn init(enabled: bool, handler_opts: &mut RequestHandlerOpts) {
         format!("{:?}", handler_opts.trusted_proxies)
     };
 
-    tracing::info!("log requests with remote IP addresses: enabled={enabled}");
+    tracing::info!(enabled, "log requests with remote IP addresses");
+    tracing::info!(enabled = handler_opts.log_x_real_ip, "log X-Real-IP header");
     tracing::info!(
-        "log X-Real-IP header: enabled={}",
-        handler_opts.log_forwarded_for
+        enabled = handler_opts.log_forwarded_for,
+        "log X-Forwarded-For header"
     );
-    tracing::info!(
-        "log X-Forwarded-For header: enabled={}",
-        handler_opts.log_forwarded_for
-    );
-    tracing::info!("trusted IPs for X-Forwarded-For: {trusted}");
+    tracing::info!(trusted_proxies = %trusted, "trusted IPs for X-Forwarded-For");
 }
 
 /// It logs remote and real IP addresses if available.
@@ -38,50 +35,56 @@ pub(crate) fn pre_process<T>(
     req: &Request<T>,
     remote_addr: Option<SocketAddr>,
 ) {
-    let mut remote_addrs = String::new();
+    let remote_ip = if opts.log_remote_address {
+        remote_addr.map(|addr| addr.ip())
+    } else {
+        None
+    };
 
-    if opts.log_remote_address
-        && let Some(addr) = remote_addr
-    {
-        remote_addrs.push_str(format!(" remote_addr={addr}").as_str());
-    }
-    if opts.log_x_real_ip
-        && (opts.trusted_proxies.is_empty()
-            || remote_addr.is_some_and(|addr| opts.trusted_proxies.contains(&addr.ip())))
-        && let Some(real_ip) = req
-            .headers()
+    let trusted = opts.trusted_proxies.is_empty()
+        || remote_addr.is_some_and(|addr| opts.trusted_proxies.contains(&addr.ip()));
+
+    let x_real_ip = if opts.log_x_real_ip && trusted {
+        req.headers()
             .get("X-Real-IP")
             .and_then(|h| h.to_str().ok())
             .and_then(|s| s.trim().parse::<IpAddr>().ok())
-    {
-        remote_addrs.push_str(format!(" x_real_ip={real_ip}").as_str());
-    }
-    if opts.log_forwarded_for
-        && (opts.trusted_proxies.is_empty()
-            || remote_addr.is_some_and(|addr| opts.trusted_proxies.contains(&addr.ip())))
-        && let Some(forwarded_for) = req
-            .headers()
+    } else {
+        None
+    };
+
+    let real_remote_ip = if opts.log_forwarded_for && trusted {
+        req.headers()
             .get("X-Forwarded-For")
             .and_then(|h| h.to_str().ok())
             .and_then(|s| s.split(',').next())
             .and_then(|s| s.trim().parse::<IpAddr>().ok())
-    {
-        remote_addrs.push_str(format!(" real_remote_ip={forwarded_for}").as_str());
-    }
+    } else {
+        None
+    };
+
+    let method = req.method();
+    let uri = req.uri();
 
     // Log incoming requests in debug mode only if the health option is enabled
     if opts.health && health::is_health_endpoint(req) {
         tracing::debug!(
-            "incoming request: method={} uri={}{remote_addrs}",
-            req.method(),
-            req.uri(),
+            method = %method,
+            uri = %uri,
+            remote_addr = remote_ip.as_ref().map(tracing::field::display),
+            x_real_ip = x_real_ip.as_ref().map(tracing::field::display),
+            real_remote_ip = real_remote_ip.as_ref().map(tracing::field::display),
+            "incoming request"
         );
         return;
     }
 
     tracing::info!(
-        "incoming request: method={} uri={}{remote_addrs}",
-        req.method(),
-        req.uri(),
+        method = %method,
+        uri = %uri,
+        remote_addr = remote_ip.as_ref().map(tracing::field::display),
+        x_real_ip = x_real_ip.as_ref().map(tracing::field::display),
+        real_remote_ip = real_remote_ip.as_ref().map(tracing::field::display),
+        "incoming request"
     );
 }

@@ -58,13 +58,13 @@ pub fn init(formats: &Vec<DirDownloadFmt>, handler_opts: &mut RequestHandlerOpts
     for fmt in formats {
         // Use naive implementation since the list is not expected to be long
         if !handler_opts.dir_listing_download.contains(fmt) {
-            tracing::info!("directory listing download: enabled format {}", &fmt);
+            tracing::info!(format = %fmt, "directory listing download format");
             handler_opts.dir_listing_download.push(fmt.to_owned());
         }
     }
     tracing::info!(
-        "directory listing download: enabled={}",
-        !handler_opts.dir_listing_download.is_empty()
+        enabled = !handler_opts.dir_listing_download.is_empty(),
+        "directory listing download"
     );
 }
 

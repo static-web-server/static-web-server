@@ -15,7 +15,7 @@ use crate::{Error, handler::RequestHandlerOpts};
 /// Initializes the health endpoint.
 pub fn init(enabled: bool, handler_opts: &mut RequestHandlerOpts) {
     handler_opts.health = enabled;
-    tracing::info!("health endpoint: enabled={enabled}");
+    tracing::info!(enabled, "health endpoint");
 }
 
 /// Handles health requests.

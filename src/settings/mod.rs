@@ -137,6 +137,7 @@ impl Settings {
         let mut root = opts.root;
         let mut log_level = opts.log_level;
         let mut log_with_ansi = opts.log_with_ansi;
+        let mut log_format = opts.log_format;
         let mut config_file = opts.config_file.clone();
         let mut cache_control_headers = opts.cache_control_headers;
         let mut etag = opts.etag;
@@ -262,6 +263,9 @@ impl Settings {
                 }
                 if let Some(v) = general.log_with_ansi {
                     log_with_ansi = v;
+                }
+                if let Some(v) = general.log_format {
+                    log_format = v;
                 }
                 if let Some(v) = general.cache_control_headers {
                     cache_control_headers = v
@@ -445,7 +449,7 @@ impl Settings {
 
             // Logging system initialization in config file context
             if log_init {
-                logger::init(log_level.as_str(), log_with_ansi)?;
+                logger::init(log_level.as_str(), &log_format, log_with_ansi)?;
             }
 
             tracing::debug!("config file read successfully");
@@ -634,13 +638,18 @@ impl Settings {
             }
         } else if log_init {
             // Logging system initialization on demand
-            logger::init(log_level.as_str(), log_with_ansi)?;
+            logger::init(log_level.as_str(), &log_format, log_with_ansi)?;
         }
 
         // Runtime validation: HTTP/2 requires TLS
         #[cfg(all(feature = "http2", feature = "tls"))]
         if http2 && !tls {
             bail!("HTTP/2 requires TLS; enable --tls along with --tls-cert and --tls-key");
+        }
+
+        // Runtime validation: ANSI log output requires pretty format
+        if log_with_ansi && log_format != logger::LogFormat::Pretty {
+            bail!("--log-with-ansi requires --log-format=pretty");
         }
 
         // Runtime validation: HTTPS redirect requires TLS
@@ -663,6 +672,7 @@ impl Settings {
                 root,
                 log_level,
                 log_with_ansi,
+                log_format,
                 config_file,
                 cache_control_headers,
                 etag,

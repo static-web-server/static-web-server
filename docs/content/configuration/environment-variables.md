@@ -35,6 +35,10 @@ Defines a grace period in seconds after a `SIGTERM` signal is caught which will 
 
 Specify a logging level in lowercase. Possible values are `error`, `warn`, `info`, `debug` or `trace`. Default `error`.
 
+### SERVER_LOG_FORMAT
+
+Specify the logging output format. Possible values are `json` (structured single-line JSON for production) or `pretty` (human-readable text for development). Default `json`.
+
 ### SERVER_LOG_WITH_ANSI
 
 Enable or disable ANSI escape codes for colors and other text formatting of the log output.

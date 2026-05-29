@@ -88,7 +88,12 @@ pub fn init(handler_opts: &mut RequestHandlerOpts) -> Result {
             .min(MAX_FILE_SIZE);
 
         tracing::info!(
-            "in-memory cache: enabled=true, capacity={capacity}, ttl={ttl}s, tti={tti}s, max_file_size={max_file_size}KiB"
+            enabled = true,
+            capacity,
+            ttl_seconds = ttl,
+            tti_seconds = tti,
+            max_file_size_kib = max_file_size,
+            "in-memory cache"
         );
 
         let mem_opts = MemCacheOpts::new(max_file_size);
@@ -108,7 +113,7 @@ pub fn init(handler_opts: &mut RequestHandlerOpts) -> Result {
         return Ok(());
     }
 
-    tracing::info!("in-memory cache: enabled=false");
+    tracing::info!(enabled = false, "in-memory cache");
 
     Ok(())
 }

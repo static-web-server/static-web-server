@@ -24,7 +24,7 @@ use crate::handler::RequestHandlerOpts;
 /// Initializes directory listings.
 pub fn init(enabled: bool, order: u8, format: DirListFmt, handler_opts: &mut RequestHandlerOpts) {
     handler_opts.dir_listing = enabled;
-    tracing::info!("directory listing: enabled={enabled}");
+    tracing::info!(enabled, "directory listing");
 
     handler_opts.dir_listing_order = order;
     tracing::info!("directory listing order code: {order}");

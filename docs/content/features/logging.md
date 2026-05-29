@@ -1,121 +1,137 @@
 # Logging
 
-**`SWS`** provides logging support by just specifying a log level in lower case. The values allowed are `error`, `warn`, `info`, `debug` and `trace`. The default value is `error`.
+**`SWS`** emits structured logs. Each log entry carries a consistent set of base fields (`timestamp`, `level`, `message`, `target`) plus event-specific fields, so logs can be parsed by aggregation systems or read directly.
 
-This feature is enabled by default and can be controlled by the string `-g, --log-level` option or the equivalent [SERVER_LOG_LEVEL](./../configuration/environment-variables.md#server_log_level) env.
+## Log Level
 
-Below is an example of how to adjust the log level.
+Set the level with the `-g, --log-level` option or the equivalent [SERVER_LOG_LEVEL](./../configuration/environment-variables.md#server_log_level) env.
+
+Values are `error`, `warn`, `info`, `debug` and `trace`. The default is `error`, which is suited for production.
 
 ```sh
 static-web-server \
     --port 8787 \
     --root ./my-public-dir \
-    --log-level "trace"
+    --log-level "info"
 ```
 
-> Note: The log format is not well defined and is subject to change.
+The default `error` level keeps production output limited to failures. Use `info` to see startup configuration and per-request logs, and `debug` or `trace` for diagnostics.
+
+## Log Format
+
+SWS writes logs as single-line JSON by default. Set the format with the `--log-format` option or the equivalent [SERVER_LOG_FORMAT](./../configuration/environment-variables.md#server_log_format) env.
+
+### JSON format
+
+The `json` format writes one JSON object per line to standard error. Every entry contains `timestamp`, `level`, `message` and `target`. Additional fields depend on the event.
+
+```sh
+static-web-server -p 8787 -d ./public/ -g info --log-format json
+```
+
+```json
+{"timestamp":"2026-05-29T23:42:41.505241+02:00","level":"INFO","message":"starting Static Web Server","name":"static-web-server","version":"2.42.0","target":"static_web_server::server"}
+{"timestamp":"2026-05-29T23:42:41.506488+02:00","level":"INFO","message":"log level","log_level":"info","target":"static_web_server::server"}
+{"timestamp":"2026-05-29T23:42:41.506629+02:00","level":"INFO","message":"server bound to tcp socket","addr":"[::]:8787","target":"static_web_server::server"}
+{"timestamp":"2026-05-29T23:42:41.506659+02:00","level":"INFO","message":"runtime worker threads","worker_threads":4,"target":"static_web_server::server"}
+```
+
+Feature configuration logs share a common `enabled` boolean field:
+
+```json
+{"timestamp":"2026-05-29T23:42:41.507288+02:00","level":"INFO","message":"compression static","enabled":true,"target":"static_web_server::compression_static"}
+{"timestamp":"2026-05-29T23:42:41.507364+02:00","level":"INFO","message":"etag headers","enabled":true,"target":"static_web_server::etag"}
+```
+
+### Pretty format
+
+The `pretty` format writes human-readable text, suited for local development. Fields appear after the message as `key=value` pairs.
+
+```sh
+static-web-server -p 8787 -d ./public/ -g info --log-format pretty
+```
+
+```log
+2026-05-29T23:44:04.703047+02:00  INFO static_web_server::server: starting Static Web Server name="static-web-server" version="2.42.0"
+2026-05-29T23:44:04.704137+02:00  INFO static_web_server::compression: auto compression enabled=true formats=deflate,gzip,brotli,zstd compression_level=Default
+2026-05-29T23:44:05.724579+02:00  INFO static_web_server::log_addr: incoming request method=GET uri=/
+```
 
 ## Log Date-Timestamp
 
-SWS prefers the local-time (system date and time) for logs by default to respect the user's system time.
-But SWS also allows the usage of the POSIX [TZ](https://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap08.html) environment variable to override the default timezone.
+SWS uses the local system time for the `timestamp` field by default to respect the host's timezone. The POSIX [TZ](https://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap08.html) environment variable overrides the timezone. Timestamps are RFC 3339 and include the UTC offset.
 
-Below are some examples.
-
-Use the default system time zone (e.g. CET "UTC +1"):
+Use the default system timezone (e.g. CET "UTC +1"):
 
 ```sh
 $ static-web-server -p 8788 -d /var/public/ -g info
-# 2026-02-26T22:26:56.369326294+01:00  INFO static_web_server::server: static-web-server 2.41.0
-# 2026-02-26T22:26:56.369448665+01:00  INFO static_web_server::server: log level: info
-# 2026-02-26T22:26:56.369514676+01:00  INFO static_web_server::server: server bound to tcp socket [::]:8788
-# 2026-02-26T22:26:56.369553858+01:00  INFO static_web_server::server: runtime worker threads: 4
-# 2026-02-26T22:26:56.369591864+01:00  INFO static_web_server::server: runtime max blocking threads: 512
-# ....
+# {"timestamp":"2026-02-26T22:26:56.369326294+01:00","level":"INFO","message":"starting Static Web Server","name":"static-web-server","version":"2.41.0","target":"static_web_server::server"}
 ```
 
-Use a particular time zone via the `TZ` env (e.g. PET "UTC -5"):
+Use a particular timezone via the `TZ` env (e.g. PET "UTC -5"):
 
 ```sh
 $ TZ="America/Lima" \
     static-web-server -p 8788 -d /var/public/ -g info
-# 2026-02-26T16:25:55.345113713-05:00  INFO static_web_server::server: static-web-server 2.41.0
-# 2026-02-26T16:25:55.349553610-05:00  INFO static_web_server::server: log level: info
-# 2026-02-26T16:25:55.350314431-05:00  INFO static_web_server::server: server bound to tcp socket [::]:8788
-# 2026-02-26T16:25:55.350388002-05:00  INFO static_web_server::server: runtime worker threads: 4
-# 2026-02-26T16:25:55.350436754-05:00  INFO static_web_server::server: runtime max blocking threads: 512
-# ....
+# {"timestamp":"2026-02-26T16:25:55.345113713-05:00","level":"INFO","message":"starting Static Web Server","name":"static-web-server","version":"2.41.0","target":"static_web_server::server"}
 ```
 
 ## Log output with ANSI
 
-SWS does not output ANSI escape codes by default. However, If you want ANSI escape for colors and other text formatting when logging then use the boolean `--log-with-ansi` CLI option and its equivalent [SERVER_LOG_WITH_ANSI](./../configuration/environment-variables.md#server_log_with_ansi) env.
-
-For example, if you want colored log output then use the `--log-with-ansi` option as follows:
+The `pretty` format does not output ANSI escape codes by default. Enable colors and other text formatting with the boolean `--log-with-ansi` option or the equivalent [SERVER_LOG_WITH_ANSI](./../configuration/environment-variables.md#server_log_with_ansi) env. This option has no effect on the `json` format.
 
 ```sh
-static-web-server -p 8788 -d ./public/ -g trace -z --log-with-ansi
+static-web-server -p 8788 -d ./public/ -g trace --log-format pretty --log-with-ansi
 ```
+
+## Per-request logging
+
+When the level is `info` or lower, SWS logs each request with the `incoming request` message. Requests to the health endpoint are logged at `debug` level instead, to avoid noise from frequent probes.
+
+```json
+{"timestamp":"2026-05-29T23:43:47.151533+02:00","level":"INFO","message":"incoming request","method":"GET","uri":"/","target":"static_web_server::log_addr"}
+```
+
+The `remote_addr`, `x_real_ip` and `real_remote_ip` fields are added when the corresponding logging options are enabled and a value is available. Fields without a value are omitted.
 
 ## Log Remote Addresses
 
-SWS provides *Remote Address (IP)* logging for every request via an `INFO` log level.
+SWS adds the client's *Remote Address (IP)* to each request log.
 
-This feature is disabled by default and can be enabled by the boolean `--log-remote-address` option or the equivalent [SERVER_LOG_REMOTE_ADDRESS](./../configuration/environment-variables.md#server_log_remote_address) env.
-
-If the feature is enabled then log entries for requests will contain a `remote_addr` section with the remote address (IP) value. Otherwise, it will be empty.
-
-Log entry example:
-
-```log
-2022-05-23T22:24:50.519540Z  INFO static_web_server::handler: incoming request: method=GET uri=/ remote_addr=192.168.1.126:57625
-```
-
-Below is an example of how to enable Remote Address (IP) logging.
+This feature is disabled by default. Enable it with the boolean `--log-remote-address` option or the equivalent [SERVER_LOG_REMOTE_ADDRESS](./../configuration/environment-variables.md#server_log_remote_address) env. When enabled, request logs include a `remote_addr` field.
 
 ```sh
 static-web-server -a "0.0.0.0" -p 8080 -d docker/public/ -g info --log-remote-address=true
 ```
 
-The relevant log output:
-
-```log
-INFO static_web_server::logger: logging level: info
-<...>
-INFO static_web_server::info: log requests with remote IP addresses: enabled=true
-<...>
-INFO static_web_server::handler: incoming request: method=GET uri=/ remote_addr=192.168.1.126:57625
-INFO static_web_server::handler: incoming request: method=GET uri=/favicon.ico remote_addr=192.168.1.126:57625
+```json
+{"timestamp":"2026-05-29T23:43:47.071681+02:00","level":"INFO","message":"log requests with remote IP addresses","enabled":true,"target":"static_web_server::log_addr"}
+{"timestamp":"2026-05-29T23:43:47.151533+02:00","level":"INFO","message":"incoming request","method":"GET","uri":"/","remote_addr":"192.168.1.126","target":"static_web_server::log_addr"}
 ```
 
 ## Logging Client IP from X-Real-IP header
 
-Some upstream proxies will report the client's real IP address in the `X-Real-IP` header.
+Some upstream proxies report the client's real IP address in the `X-Real-IP` header.
 
-To enable logging of the X-Real-IP header, enable the `--log-x-real-ip` option or the equivalent [SERVER_LOG_X_REAL_IP](../configuration/environment-variables.md#server_log_x_real_ip) environment variable.
+Enable logging of the `X-Real-IP` header with the `--log-x-real-ip` option or the equivalent [SERVER_LOG_X_REAL_IP](../configuration/environment-variables.md#server_log_x_real_ip) env. When enabled, request logs include an `x_real_ip` field.
 
-When enabled, the log entries will look like:
-
-```log
-INFO static_web_server::handler: incoming request: method=GET uri=/ x_real_ip=203.0.113.195
+```json
+{"timestamp":"2026-05-29T23:43:47.151533+02:00","level":"INFO","message":"incoming request","method":"GET","uri":"/","x_real_ip":"203.0.113.195","target":"static_web_server::log_addr"}
 ```
 
-If the value of the `X-Real-IP` header does not parse as an IP address, no value will be logged.
+If the value of the `X-Real-IP` header does not parse as an IP address, the `x_real_ip` field is omitted.
 
-To restrict the logging to only requests that originate from trusted proxy IPs, you can use the `--trusted-proxies` option, or the equivalent [SERVER_TRUSTED_PROXIES](../configuration/environment-variables.md#server_trusted_proxies) env. This should be a list of IPs, separated by commas. An empty list (the default) indicates that all IPs should be trusted.
+To restrict logging to requests that originate from trusted proxy IPs, use the `--trusted-proxies` option or the equivalent [SERVER_TRUSTED_PROXIES](../configuration/environment-variables.md#server_trusted_proxies) env. This is a comma-separated list of IPs. An empty list (the default) trusts all IPs.
 
 ## Logging Client IP from X-Forwarded-For header
 
-> Note: This header should only be trusted when you know your upstream is handling X-Forwarded-For securely and when using the `--trusted-proxies` option.
+> Note: Trust this header only when the upstream handles `X-Forwarded-For` securely and the `--trusted-proxies` option is set.
 
-When used behind a reverse proxy the reported `remote_addr` indicates the proxies IP address and port, not the client's real IP.
-The Proxy server can be configured to provide the [X-Forwarded-For header](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Forwarded-For), containing a comma-separated list of IP addresses, starting with the *real remote client IP*, and all following intermediate proxies (if any).
+When SWS runs behind a reverse proxy, the `remote_addr` field reports the proxy's IP address, not the client's. The proxy can be configured to send the [X-Forwarded-For header](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Forwarded-For), a comma-separated list of IP addresses that starts with the *real remote client IP* followed by intermediate proxies.
 
-To enable logging of the real remote IP, enable the `--log-forwarded-for` option or the equivalent [SERVER_LOG_FORWARDED_FOR](../configuration/environment-variables.md#server_log_forwarded_for) env. By default this will log all requests which have a correctly formatted `X-Forwarded-For` header.
+Enable logging of the real remote IP with the `--log-forwarded-for` option or the equivalent [SERVER_LOG_FORWARDED_FOR](../configuration/environment-variables.md#server_log_forwarded_for) env. By default this logs every request with a correctly formatted `X-Forwarded-For` header, adding a `real_remote_ip` field.
 
-Since the content of the `X-Forwarded-For` header can be changed by all proxies in the chain, the remote IP address reported may not be trusted.
-
-To restrict the logging to only requests that originate from trusted proxy IPs, you can use the `--trusted-proxies` option, or the equivalent [SERVER_TRUSTED_PROXIES](../configuration/environment-variables.md#server_trusted_proxies) env. This should be a list of IPs, separated by commas. An empty list (the default) indicates that all IPs should be trusted.
+Because any proxy in the chain can change the `X-Forwarded-For` header, the reported IP may not be trustworthy. Restrict logging to trusted proxy IPs with the `--trusted-proxies` option or the equivalent [SERVER_TRUSTED_PROXIES](../configuration/environment-variables.md#server_trusted_proxies) env. This is a comma-separated list of IPs. An empty list (the default) trusts all IPs.
 
 Command used for the following examples:
 
@@ -125,55 +141,50 @@ static-web-server -a "::" --log-forwarded-for=true --trusted-proxies="::1" -p 80
 
 Look for these lines in the log output:
 
-```log
-<...>
-INFO static_web_server::info: log level: info
-INFO static_web_server::info: log requests with remote IP addresses: enabled=false
-INFO static_web_server::info: log X-Forwarded-For real remote IP addresses: enabled=true
-INFO static_web_server::info: trusted IPs for X-Forwarded-For: [::1]
-<...>
+```json
+{"timestamp":"2026-05-29T23:43:47.071681+02:00","level":"INFO","message":"log level","log_level":"info","target":"static_web_server::server"}
+{"timestamp":"2026-05-29T23:43:47.071700+02:00","level":"INFO","message":"log X-Forwarded-For header","enabled":true,"target":"static_web_server::log_addr"}
+{"timestamp":"2026-05-29T23:43:47.071710+02:00","level":"INFO","message":"trusted IPs for X-Forwarded-For","trusted_proxies":"[::1]","target":"static_web_server::log_addr"}
 ```
 
-We can simulate request as from behind reverse proxy with additional intermediate-proxy with following command:
+Simulate a request from behind a reverse proxy with an additional intermediate proxy:
 
 ```sh
 curl "http://[::1]:8080" --header "X-Forwarded-For: 203.0.113.195, 2001:db8:85a3:8d3:1319:8a2e:370:7348"
 ```
 
-Log entry for this request will look like:
+The request log includes the `real_remote_ip` field:
 
-```log
-INFO static_web_server::handler: incoming request: method=GET uri=/ real_remote_ip=203.0.113.195
+```json
+{"timestamp":"2026-05-29T23:43:47.151533+02:00","level":"INFO","message":"incoming request","method":"GET","uri":"/","real_remote_ip":"203.0.113.195","target":"static_web_server::log_addr"}
 ```
 
 ______________________________________________________________________
 
-If we send the request from `127.0.0.1` instead:
+If the request comes from `127.0.0.1` instead:
 
 ```sh
 curl "http://127.0.0.1:8080" --header "X-Forwarded-For: 203.0.113.195, 2001:db8:85a3:8d3:1319:8a2e:370:7348"
 ```
 
-we get the following log output:
+the log omits `real_remote_ip`:
 
-```log
-INFO static_web_server::handler: incoming request: method=GET uri=/
+```json
+{"timestamp":"2026-05-29T23:43:47.151533+02:00","level":"INFO","message":"incoming request","method":"GET","uri":"/","target":"static_web_server::log_addr"}
 ```
 
-`127.0.0.1` is not in the `trusted_proxies`, so we dont get a `real_remote_address` in the log.
-
-Note the absence of the proxies remote address in these examples. If you want to log the remote address and the real remote address, you need to specify both `--log-remote-address` and `--log-forwarded-for`.
+`127.0.0.1` is not in `trusted_proxies`, so no `real_remote_ip` field is added. To log both the proxy address and the real remote address, set both `--log-remote-address` and `--log-forwarded-for`.
 
 ______________________________________________________________________
 
-**`SWS`** will parse the `X-Forwarded-For` header and if the provided client IP is invalid, it will be ignored to prevent log poisoning attacks. In such cases the `real_remote_ip` section will not be added.
+SWS parses the `X-Forwarded-For` header and ignores an invalid client IP to prevent log poisoning attacks. In that case the `real_remote_ip` field is omitted.
 
-Example from above, but with invalid header:
+Example from above, but with an invalid header:
 
 ```sh
 curl "http://[::1]:8080" --header "X-Forwarded-For: <iframe src=//malware.attack>"
 ```
 
-```log
-2022-05-23T22:24:50.519540Z  INFO static_web_server::handler: incoming request: method=GET uri=/
+```json
+{"timestamp":"2026-05-29T23:43:47.151533+02:00","level":"INFO","message":"incoming request","method":"GET","uri":"/","target":"static_web_server::log_addr"}
 ```

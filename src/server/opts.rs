@@ -92,15 +92,15 @@ pub(super) fn init(general: &General, advanced: Option<Advanced>) -> Result<Hand
     }
 
     tracing::info!(
-        "redirect trailing slash: enabled={}",
-        general.redirect_trailing_slash
+        enabled = general.redirect_trailing_slash,
+        "redirect trailing slash"
     );
-    tracing::info!("include hidden files: enabled={}", general.include_hidden);
-    tracing::info!("follow symlinks: enabled={}", general.follow_symlinks);
+    tracing::info!(enabled = general.include_hidden, "include hidden files");
+    tracing::info!(enabled = general.follow_symlinks, "follow symlinks");
 
     // Default charset for text/* responses
     let default_text_charset = general.text_charset;
-    tracing::info!("text charset: enabled={default_text_charset}");
+    tracing::info!(enabled = default_text_charset, "text charset");
 
     // Parse comma-separated index file list
     let index_files = general
@@ -111,7 +111,7 @@ pub(super) fn init(general: &General, advanced: Option<Advanced>) -> Result<Hand
     if index_files.is_empty() {
         bail!("index files list is empty, provide at least one index file")
     }
-    tracing::info!("index files: {}", general.index_files);
+    tracing::info!(index_files = %general.index_files, "index files");
 
     let mut handler_opts = RequestHandlerOpts {
         root_dir,
