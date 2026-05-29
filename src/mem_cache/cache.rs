@@ -13,7 +13,7 @@
 use bytes::Bytes;
 use compact_str::CompactString;
 use headers::{AcceptRanges, ContentLength, ContentRange, HeaderMap, HeaderMapExt, LastModified};
-use hyper::header::{CONTENT_TYPE, HeaderName, HeaderValue};
+use hyper::header::{CONTENT_TYPE, ETAG, HeaderName, HeaderValue};
 use hyper::{Response, StatusCode};
 use mini_moka::sync::Cache;
 use std::path::Path;
@@ -22,7 +22,7 @@ use std::time::Duration;
 
 use crate::Result;
 use crate::body::{self, Body};
-use crate::conditional_headers::{ConditionalBody, ConditionalHeaders};
+use crate::conditional_headers::{ConditionalBody, ConditionalHeaders, Validators};
 use crate::handler::RequestHandlerOpts;
 use crate::response::range::{BadRangeError, bytes_range};
 
@@ -149,6 +149,9 @@ pub(crate) struct MemFileTempOpts {
     /// when the entry is eventually inserted into the cache.
     pub(crate) content_type: HeaderValue,
     pub(crate) last_modified: Option<LastModified>,
+    /// Pre-built weak `ETag` value. Built once on the disk path and
+    /// reused on every cache hit (refcount-clone only).
+    pub(crate) etag: Option<HeaderValue>,
 }
 
 impl MemFileTempOpts {
@@ -156,11 +159,13 @@ impl MemFileTempOpts {
         file_path: String,
         content_type: HeaderValue,
         last_modified: Option<LastModified>,
+        etag: Option<HeaderValue>,
     ) -> Self {
         Self {
             file_path,
             content_type,
             last_modified,
+            etag,
         }
     }
 }
@@ -180,6 +185,10 @@ pub(crate) struct MemFile {
     content_type: HeaderValue,
     /// `Last-Modified` header for the current file.
     last_modified: Option<LastModified>,
+    /// Weak `ETag` header value for the cached representation. When
+    /// present it is both emitted on the response and used for
+    /// `If-None-Match` / `If-Match` / `If-Range` evaluation.
+    etag: Option<HeaderValue>,
 }
 
 impl MemFile {
@@ -188,11 +197,13 @@ impl MemFile {
         data: Bytes,
         content_type: HeaderValue,
         last_modified: Option<LastModified>,
+        etag: Option<HeaderValue>,
     ) -> Self {
         Self {
             data,
             content_type,
             last_modified,
+            etag,
         }
     }
 
@@ -207,7 +218,27 @@ impl MemFile {
         let conditionals = ConditionalHeaders::new(headers);
         let modified = self.last_modified;
 
-        match conditionals.check(modified) {
+        // The typed `ETag` is only required when the request carries one
+        // of `If-None-Match`, `If-Match` or `If-Range`. Parsing is cheap
+        // (only on conditional requests) and lazy.
+        let etag_typed: Option<headers::ETag> = if conditionals.if_none_match.is_some()
+            || conditionals.if_match.is_some()
+            || conditionals.if_range.is_some()
+        {
+            self.etag
+                .as_ref()
+                .and_then(|hv| hv.to_str().ok().and_then(|s| s.parse().ok()))
+        } else {
+            None
+        };
+
+        let validators = Validators {
+            last_modified: modified,
+            etag: etag_typed.as_ref(),
+            etag_value: self.etag.as_ref(),
+        };
+
+        match conditionals.check(validators) {
             ConditionalBody::NoBody(resp) => Ok(resp),
             ConditionalBody::WithBody(range) => {
                 let total_len = self.data.len() as u64;
@@ -253,6 +284,9 @@ impl MemFile {
 
                         if let Some(last_modified) = modified {
                             h.typed_insert(last_modified);
+                        }
+                        if let Some(etag) = self.etag.as_ref() {
+                            h.insert(ETAG, etag.clone());
                         }
 
                         Ok(resp)

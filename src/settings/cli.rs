@@ -416,6 +416,18 @@ pub struct General {
     /// Enable cache control headers for incoming requests based on a set of file types. The file type list can be found on `src/control_headers.rs` file.
     pub cache_control_headers: bool,
 
+    #[arg(
+        long,
+        default_value = "true",
+        default_missing_value("true"),
+        num_args(0..=1),
+        require_equals(false),
+        action = clap::ArgAction::Set,
+        env = "SERVER_ETAG",
+    )]
+    /// Enable weak `ETag` headers (`W/"<mtime>-<size>"`) and full conditional request handling (`If-None-Match`, `If-Match`, `If-Range`). Composes with `--cache-control-headers`; emits validators on every static-file response so clients can revalidate hot HTML even when long `max-age` is configured elsewhere.
+    pub etag: bool,
+
     #[cfg(feature = "basic-auth")]
     /// It provides The "Basic" HTTP Authentication scheme using credentials as "user-id:password" pairs. Password must be encoded using the "BCrypt" password-hashing function.
     #[arg(long, default_value = "", env = "SERVER_BASIC_AUTH")]

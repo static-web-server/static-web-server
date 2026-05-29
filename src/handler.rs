@@ -97,6 +97,8 @@ pub struct RequestHandlerOpts {
     pub security_headers: bool,
     /// Cache control headers feature.
     pub cache_control_headers: bool,
+    /// Weak ETag header feature.
+    pub etag: bool,
     /// Page for 404 errors.
     pub page404: PathBuf,
     /// Page for 50x errors.
@@ -172,6 +174,7 @@ impl Default for RequestHandlerOpts {
             memory_cache: None,
             security_headers: false,
             cache_control_headers: true,
+            etag: true,
             page404: PathBuf::from("./404.html"),
             page50x: PathBuf::from("./50x.html"),
             #[cfg(feature = "fallback-page")]
@@ -226,6 +229,7 @@ impl RequestHandler {
         let dir_listing_download = &self.opts.dir_listing_download;
         let redirect_trailing_slash = self.opts.redirect_trailing_slash;
         let compression_static = self.opts.compression_static;
+        let etag = self.opts.etag;
         let include_hidden = self.opts.include_hidden;
         let follow_symlinks = self.opts.follow_symlinks;
         let index_files: Vec<&str> = self.opts.index_files.iter().map(|s| s.as_str()).collect();
@@ -333,6 +337,7 @@ impl RequestHandler {
                     dir_listing_download,
                     redirect_trailing_slash,
                     compression_static,
+                    etag,
                     include_hidden,
                     index_files,
                     follow_symlinks,

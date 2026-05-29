@@ -30,6 +30,7 @@ mod tests {
         let opts = fixture_settings("toml/handler_fixtures.toml");
         let general = General {
             compression_static: true,
+            etag: true,
             index_files: "index.htm, index.html".to_owned(),
             ..opts.general
         };
@@ -86,6 +87,7 @@ mod tests {
         let opts = fixture_settings("toml/handler_fixtures.toml");
         let general = General {
             compression_static: true,
+            etag: true,
             ..opts.general
         };
         let req_handler_opts = fixture_req_handler_opts(general, opts.advanced);
@@ -144,6 +146,7 @@ mod tests {
             ))]
             compression: false,
             compression_static: true,
+            etag: true,
             ..opts.general
         };
         let req_handler_opts = fixture_req_handler_opts(general, opts.advanced);
@@ -188,6 +191,7 @@ mod tests {
             ))]
             compression: false,
             compression_static: true,
+            etag: true,
             directory_listing: true,
             directory_listing_format: DirListFmt::Html,
             include_hidden: true,
@@ -241,6 +245,7 @@ mod tests {
             ))]
             compression: false,
             compression_static: true,
+            etag: true,
             ..opts.general
         };
         let req_handler_opts = fixture_req_handler_opts(general, opts.advanced);

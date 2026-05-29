@@ -7,7 +7,7 @@
 //!
 
 use headers::{ContentRange, HeaderMapExt, LastModified};
-use hyper::header::{ACCEPT_RANGES, CONTENT_TYPE, HeaderName, HeaderValue};
+use hyper::header::{ACCEPT_RANGES, CONTENT_TYPE, ETAG, HeaderName, HeaderValue};
 use hyper::{Response, StatusCode};
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -16,7 +16,7 @@ use std::io::{BufReader, Read, Seek, SeekFrom};
 use std::path::Path;
 
 use crate::body::Body;
-use crate::conditional_headers::{ConditionalBody, ConditionalHeaders};
+use crate::conditional_headers::{ConditionalBody, ConditionalHeaders, Validators};
 use crate::fs::stream::{FileStream, optimal_buf_size};
 
 pub(crate) use range::{BadRangeError, bytes_range};
@@ -85,6 +85,7 @@ pub(crate) fn response_body(
     path: &Path,
     meta: &Metadata,
     conditionals: ConditionalHeaders,
+    etag_enabled: bool,
     #[cfg(feature = "mem-cache")] memory_cache: Option<&MemCacheOpts>,
 ) -> Result<Response<Body>, StatusCode> {
     let mut len = meta.len();
@@ -96,7 +97,26 @@ pub(crate) fn response_body(
         .filter(|&t| t != std::time::UNIX_EPOCH)
         .map(LastModified::from);
 
-    match conditionals.check(modified) {
+    // Build a weak ETag from `(mtime, size)` once per response. The same
+    // header value is used for the body response, the cache entry (when
+    // applicable) and the 304 / If-Range short-circuit paths.
+    let etag = if etag_enabled {
+        crate::etag::build_from_meta(meta)
+    } else {
+        None
+    };
+    let (etag_typed, etag_value) = match etag.as_ref() {
+        Some((t, v)) => (Some(t), Some(v)),
+        None => (None, None),
+    };
+
+    let validators = Validators {
+        last_modified: modified,
+        etag: etag_typed,
+        etag_value,
+    };
+
+    match conditionals.check(validators) {
         ConditionalBody::NoBody(resp) => Ok(resp),
         ConditionalBody::WithBody(range) => {
             let buf_size = optimal_buf_size(meta);
@@ -132,6 +152,7 @@ pub(crate) fn response_body(
                                     path_str.to_owned(),
                                     content_type.clone(),
                                     modified,
+                                    etag_value.cloned(),
                                 ))
                             }
                             _ => None,
@@ -188,6 +209,9 @@ pub(crate) fn response_body(
 
                     if let Some(last_modified) = modified {
                         resp.headers_mut().typed_insert(last_modified);
+                    }
+                    if let Some(hv) = etag_value {
+                        insert_raw(resp.headers_mut(), ETAG, hv.clone());
                     }
 
                     Ok(resp)

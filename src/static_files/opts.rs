@@ -60,6 +60,8 @@ pub struct HandleOpts<'a> {
     pub redirect_trailing_slash: bool,
     /// Compression static feature.
     pub compression_static: bool,
+    /// Weak ETag header feature.
+    pub etag: bool,
     /// Ignore hidden files feature.
     pub include_hidden: bool,
     /// Prevent following symlinks for files and directories.

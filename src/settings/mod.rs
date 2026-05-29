@@ -139,6 +139,7 @@ impl Settings {
         let mut log_with_ansi = opts.log_with_ansi;
         let mut config_file = opts.config_file.clone();
         let mut cache_control_headers = opts.cache_control_headers;
+        let mut etag = opts.etag;
 
         #[cfg(any(
             feature = "compression",
@@ -264,6 +265,9 @@ impl Settings {
                 }
                 if let Some(v) = general.cache_control_headers {
                     cache_control_headers = v
+                }
+                if let Some(v) = general.etag {
+                    etag = v
                 }
                 #[cfg(any(
                     feature = "compression",
@@ -661,6 +665,7 @@ impl Settings {
                 log_with_ansi,
                 config_file,
                 cache_control_headers,
+                etag,
                 #[cfg(any(
                     feature = "compression",
                     feature = "compression-gzip",
