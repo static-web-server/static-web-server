@@ -157,6 +157,10 @@ Enable security headers by default when the HTTP/2 feature is activated. Headers
 
 Enable cache control headers for incoming requests based on a set of file types. The file type list can be found in [`src/control_headers.rs`](https://github.com/static-web-server/static-web-server/blob/master//src/control_headers.rs) file. Default `true` (enabled).
 
+### SERVER_ETAG
+
+Enable ETag header generation for static files. SWS emits weak ETags in the format `W/"{hex-digest}"`, where the hex digest is derived from the file's content and metadata (e.g., size, modification time). Default `true` (enabled).
+
 ### SERVER_BASIC_AUTH
 
 It provides [The "Basic" HTTP Authentication Scheme](https://datatracker.ietf.org/doc/html/rfc7617) using credentials as `user-id:password` pairs, encoded using `Base64`. Password must be encoded using the [BCrypt](https://en.wikipedia.org/wiki/Bcrypt) password-hashing function. Default empty (disabled).
