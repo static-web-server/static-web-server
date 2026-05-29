@@ -49,6 +49,7 @@ mod tests {
             dir_listing_download: &[],
             redirect_trailing_slash: true,
             compression_static: false,
+            etag: true,
             include_hidden: true,
             follow_symlinks: true,
             index_files: &["index.htm"],
@@ -204,6 +205,7 @@ mod tests {
             dir_listing_download: &[],
             redirect_trailing_slash: true,
             compression_static: false,
+            etag: true,
             include_hidden: true,
             follow_symlinks: true,
             index_files: &["index.htm"],
@@ -238,6 +240,7 @@ mod tests {
             dir_listing_download: &[],
             redirect_trailing_slash: true,
             compression_static: false,
+            etag: true,
             include_hidden: true,
             follow_symlinks: true,
             index_files: &["index.htm"],
@@ -342,6 +345,7 @@ mod tests {
             dir_listing_download: &[],
             redirect_trailing_slash: true,
             compression_static: false,
+            etag: true,
             include_hidden: true,
             follow_symlinks: true,
             index_files: &[],
@@ -380,6 +384,102 @@ mod tests {
         assert!(
             resp.headers().get("x-cache").is_none(),
             "X-Cache should never appear when the in-memory cache is disabled"
+        );
+    }
+
+    // ETag on the in-memory cache pipeline.
+    //
+    // The cache must store the weak `ETag` once (alongside the body bytes)
+    // and emit it on every hit. `If-None-Match` against the cached value
+    // must yield 304 with the validators echoed.
+
+    #[tokio::test]
+    async fn cached_response_carries_etag_and_handles_if_none_match() {
+        let mut handler_opts = RequestHandlerOpts {
+            advanced_opts: Some(Advanced {
+                memory_cache: Some(MemoryCache {
+                    capacity: Some(DEFAULT_CAPACITY),
+                    ttl: Some(DEFAULT_TTL),
+                    tti: Some(DEFAULT_TTI),
+                    max_file_size: Some(DEFAULT_MAX_FILE_SIZE),
+                }),
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+        let _ = cache::init(&mut handler_opts);
+
+        // Distinct file from other tests to keep the CACHE_STORE entry isolated.
+        let uri: &'static str = "404.html";
+
+        let make_opts = |hdrs: HeaderMap| HandleOpts {
+            method: &Method::GET,
+            headers: Box::leak(Box::new(hdrs)),
+            base_path: Box::leak(Box::new(root_dir())),
+            uri_path: uri,
+            uri_query: None,
+            memory_cache: Some(Box::leak(Box::new(MemCacheOpts::new(
+                DEFAULT_MAX_FILE_SIZE / 1024,
+            )))),
+            #[cfg(feature = "directory-listing")]
+            dir_listing: false,
+            #[cfg(feature = "directory-listing")]
+            dir_listing_order: 6,
+            #[cfg(feature = "directory-listing")]
+            dir_listing_format: Box::leak(Box::new(DirListFmt::Html)),
+            #[cfg(feature = "directory-listing-download")]
+            dir_listing_download: &[],
+            redirect_trailing_slash: true,
+            compression_static: false,
+            etag: true,
+            include_hidden: true,
+            follow_symlinks: true,
+            index_files: &[],
+        };
+
+        // 1) Cache miss — disk path emits ETag and populates the cache.
+        let resp1 = static_files::handle(&make_opts(HeaderMap::new()))
+            .await
+            .expect("first request should succeed")
+            .resp;
+        assert_eq!(resp1.status(), StatusCode::OK);
+        let etag1 = resp1
+            .headers()
+            .get(http::header::ETAG)
+            .cloned()
+            .expect("ETag must be present on disk-served response");
+        // Drain to complete cache population.
+        let _ = resp1.into_body().collect().await.unwrap().to_bytes();
+
+        // 2) Cache hit — same ETag is emitted from cache.
+        let resp2 = static_files::handle(&make_opts(HeaderMap::new()))
+            .await
+            .expect("second request should succeed")
+            .resp;
+        assert_eq!(resp2.status(), StatusCode::OK);
+        assert_eq!(
+            resp2.headers().get("x-cache").map(|v| v.as_bytes()),
+            Some(&b"HIT"[..]),
+            "expected cache hit"
+        );
+        assert_eq!(
+            resp2.headers().get(http::header::ETAG),
+            Some(&etag1),
+            "cache hit must echo the original ETag"
+        );
+
+        // 3) If-None-Match against cached entry → 304 with echoed validators.
+        let mut h = HeaderMap::new();
+        h.insert(http::header::IF_NONE_MATCH, etag1.clone());
+        let resp3 = static_files::handle(&make_opts(h))
+            .await
+            .expect("third request should succeed")
+            .resp;
+        assert_eq!(resp3.status(), StatusCode::NOT_MODIFIED);
+        assert_eq!(
+            resp3.headers().get(http::header::ETAG),
+            Some(&etag1),
+            "304 from cache must echo the ETag (RFC 7232 §4.1)"
         );
     }
 }

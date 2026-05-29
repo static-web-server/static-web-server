@@ -9,7 +9,7 @@ use crate::handler::RequestHandlerOpts;
 use crate::settings::Advanced;
 use crate::settings::cli::General;
 use crate::{
-    Context, Result, compression_static, control_headers, cors, health, helpers, log_addr,
+    Context, Result, compression_static, control_headers, cors, etag, health, helpers, log_addr,
     maintenance_mode, security_headers,
 };
 
@@ -202,6 +202,9 @@ pub(super) fn init(general: &General, advanced: Option<Advanced>) -> Result<Hand
 
     // Cache-Control headers
     control_headers::init(general.cache_control_headers, &mut handler_opts);
+
+    // Weak ETag headers
+    etag::init(general.etag, &mut handler_opts);
 
     // Security headers
     security_headers::init(general.security_headers, &mut handler_opts);

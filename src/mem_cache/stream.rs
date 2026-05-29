@@ -112,6 +112,7 @@ fn try_insert(
         buf.freeze(),
         opts.content_type,
         opts.last_modified,
+        opts.etag,
     ));
     if let Some(store) = CACHE_STORE.get() {
         store.insert(file_path.into(), mem_file);

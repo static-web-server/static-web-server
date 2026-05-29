@@ -138,14 +138,13 @@ fn file_reply(
             #[cfg(feature = "mem-cache")]
             {
                 let _ = open_path;
-                response_body(file, path, meta, conditionals, opts.memory_cache)
+                response_body(file, path, meta, conditionals, opts.etag, opts.memory_cache)
             }
 
             #[cfg(not(feature = "mem-cache"))]
             {
-                let _ = opts;
                 let _ = open_path;
-                response_body(file, path, meta, conditionals)
+                response_body(file, path, meta, conditionals, opts.etag)
             }
         }
         Err(err) => Err(open_error_to_status(err, path)),

@@ -214,6 +214,9 @@ pub struct General {
     /// Cache Control headers.
     pub cache_control_headers: Option<bool>,
 
+    /// Weak ETag headers.
+    pub etag: Option<bool>,
+
     /// Compression.
     #[cfg(any(
         feature = "compression",

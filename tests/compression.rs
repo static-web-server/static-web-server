@@ -29,6 +29,7 @@ pub mod tests {
         let general = General {
             compression: true,
             compression_static: true,
+            etag: true,
             index_files: "index.htm, index.html".to_owned(),
             ..opts.general
         };

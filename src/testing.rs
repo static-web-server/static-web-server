@@ -82,6 +82,7 @@ pub mod fixtures {
             cors: None,
             security_headers: general.security_headers,
             cache_control_headers: general.cache_control_headers,
+            etag: general.etag,
             page404: general.page404,
             page50x: general.page50x,
             // TODO: add support or `page_fallback` when required

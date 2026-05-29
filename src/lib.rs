@@ -145,6 +145,7 @@ pub mod custom_headers;
 #[cfg_attr(docsrs, doc(cfg(feature = "directory-listing")))]
 pub mod directory_listing;
 pub mod error_page;
+pub(crate) mod etag;
 pub mod exts;
 #[cfg(feature = "fallback-page")]
 #[cfg_attr(docsrs, doc(cfg(feature = "fallback-page")))]
