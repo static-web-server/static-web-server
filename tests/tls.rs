@@ -259,10 +259,13 @@ mod test_helpers {
     }
 
     /// Spawn a TLS-enabled SWS server in a background thread.
+    ///
+    /// Pre-binds a TCP listener on port 0 and passes it to the server via
+    /// [`Server::with_pre_bound_listener`], eliminating TOCTOU port races.
     pub fn spawn_server(
-        port: u16,
         extra_args: &[&str],
     ) -> (
+        u16,
         tokio::sync::watch::Sender<()>,
         std::thread::JoinHandle<static_web_server::Result>,
     ) {
@@ -270,7 +273,13 @@ mod test_helpers {
         const KEY: &str = "tests/tls/local.dev_key.pkcs8.pem";
 
         let (cancel_tx, cancel_rx) = tokio::sync::watch::channel(());
-        let port_str = port.to_string();
+
+        // Pre-bind a listener so the port is reserved until the server takes
+        // ownership. This avoids the race between `free_port()` and the
+        // server's own bind call.
+        let listener =
+            std::net::TcpListener::bind("127.0.0.1:0").expect("bind to port 0 for free port");
+        let port = listener.local_addr().unwrap().port();
 
         let mut args: Vec<String> = [
             "static-web-server",
@@ -279,7 +288,7 @@ mod test_helpers {
             "--host",
             "127.0.0.1",
             "--port",
-            &port_str,
+            "0",
             "--tls",
             "--tls-cert",
             CERT,
@@ -300,22 +309,29 @@ mod test_helpers {
                 static_web_server::Settings::get_unparsed(false, &refs).expect("settings parse");
             static_web_server::Server::new(settings)
                 .expect("server build")
+                .with_pre_bound_listener(listener)
                 .run_server_on_rt(Some(cancel_rx), || {}, false)
         });
 
-        (cancel_tx, handle)
+        (port, cancel_tx, handle)
     }
 
     /// Spawn a plain HTTP/1 (no TLS) server.
+    ///
+    /// Pre-binds a TCP listener on port 0 and passes it to the server via
+    /// [`Server::with_pre_bound_listener`], eliminating TOCTOU port races.
     pub fn spawn_plain_server(
-        port: u16,
         extra_args: &[&str],
     ) -> (
+        u16,
         tokio::sync::watch::Sender<()>,
         std::thread::JoinHandle<static_web_server::Result>,
     ) {
         let (cancel_tx, cancel_rx) = tokio::sync::watch::channel(());
-        let port_str = port.to_string();
+
+        let listener =
+            std::net::TcpListener::bind("127.0.0.1:0").expect("bind to port 0 for free port");
+        let port = listener.local_addr().unwrap().port();
 
         let mut args: Vec<String> = [
             "static-web-server",
@@ -324,7 +340,7 @@ mod test_helpers {
             "--host",
             "127.0.0.1",
             "--port",
-            &port_str,
+            "0",
         ]
         .iter()
         .map(|s| s.to_string())
@@ -340,10 +356,11 @@ mod test_helpers {
                 static_web_server::Settings::get_unparsed(false, &refs).expect("settings parse");
             static_web_server::Server::new(settings)
                 .expect("server build")
+                .with_pre_bound_listener(listener)
                 .run_server_on_rt(Some(cancel_rx), || {}, false)
         });
 
-        (cancel_tx, handle)
+        (port, cancel_tx, handle)
     }
 
     /// Send cancel and join the server thread with a timeout.
@@ -407,8 +424,7 @@ mod live_http1_plain_tests {
 
     #[tokio::test]
     async fn http1_plain_serves_files() {
-        let port = free_port();
-        let (cancel_tx, handle) = spawn_plain_server(port, &[]);
+        let (port, cancel_tx, handle) = spawn_plain_server(&[]);
         wait_for_server(port).await;
 
         let status = tokio::time::timeout(TIMEOUT, http_get(port, "/index.htm"))
@@ -421,8 +437,7 @@ mod live_http1_plain_tests {
 
     #[tokio::test]
     async fn http1_plain_returns_404() {
-        let port = free_port();
-        let (cancel_tx, handle) = spawn_plain_server(port, &[]);
+        let (port, cancel_tx, handle) = spawn_plain_server(&[]);
         wait_for_server(port).await;
 
         let status = tokio::time::timeout(TIMEOUT, http_get(port, "/no-such-file.html"))
@@ -478,8 +493,7 @@ mod live_http1_tls_tests {
 
     #[tokio::test]
     async fn serves_files() {
-        let port = free_port();
-        let (cancel_tx, handle) = spawn_server(port, &[]);
+        let (port, cancel_tx, handle) = spawn_server(&[]);
         wait_for_server(port).await;
 
         let status = tokio::time::timeout(TIMEOUT, https_get_http1(port, "/index.htm"))
@@ -492,8 +506,7 @@ mod live_http1_tls_tests {
 
     #[tokio::test]
     async fn returns_404_for_missing_file() {
-        let port = free_port();
-        let (cancel_tx, handle) = spawn_server(port, &[]);
+        let (port, cancel_tx, handle) = spawn_server(&[]);
         wait_for_server(port).await;
 
         let status = tokio::time::timeout(TIMEOUT, https_get_http1(port, "/no-such-file.html"))
@@ -506,8 +519,7 @@ mod live_http1_tls_tests {
 
     #[tokio::test]
     async fn tls_handshake_completes() {
-        let port = free_port();
-        let (cancel_tx, handle) = spawn_server(port, &[]);
+        let (port, cancel_tx, handle) = spawn_server(&[]);
         wait_for_server(port).await;
 
         let cfg = tls_client_config(&["http/1.1"]);
@@ -607,8 +619,7 @@ mod live_http2_tls_tests {
 
     #[tokio::test]
     async fn serves_files() {
-        let port = free_port();
-        let (cancel_tx, handle) = spawn_server(port, &["--http2"]);
+        let (port, cancel_tx, handle) = spawn_server(&["--http2"]);
         wait_for_server(port).await;
 
         let status = tokio::time::timeout(TIMEOUT, https_get_http2(port, "/index.htm"))
@@ -621,8 +632,7 @@ mod live_http2_tls_tests {
 
     #[tokio::test]
     async fn returns_404_for_missing_file() {
-        let port = free_port();
-        let (cancel_tx, handle) = spawn_server(port, &["--http2"]);
+        let (port, cancel_tx, handle) = spawn_server(&["--http2"]);
         wait_for_server(port).await;
 
         let status = tokio::time::timeout(TIMEOUT, https_get_http2(port, "/no-such-file.html"))
@@ -635,8 +645,7 @@ mod live_http2_tls_tests {
 
     #[tokio::test]
     async fn tls_handshake_with_h2_alpn() {
-        let port = free_port();
-        let (cancel_tx, handle) = spawn_server(port, &["--http2"]);
+        let (port, cancel_tx, handle) = spawn_server(&["--http2"]);
         wait_for_server(port).await;
 
         let cfg = tls_client_config(&["h2"]);

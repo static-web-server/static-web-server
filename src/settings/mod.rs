@@ -200,6 +200,12 @@ impl Settings {
         let mut basic_auth = opts.basic_auth;
 
         let mut fd = opts.fd;
+        #[cfg(unix)]
+        let mut unix_socket = opts.unix_socket.clone();
+        #[cfg(unix)]
+        let mut unix_socket_mode = opts.unix_socket_mode;
+        #[cfg(unix)]
+        let mut unix_socket_force = opts.unix_socket_force;
         let mut threads_multiplier = opts.threads_multiplier;
         let mut max_blocking_threads = opts.max_blocking_threads;
         let mut grace_period = opts.grace_period;
@@ -378,6 +384,18 @@ impl Settings {
                 }
                 if let Some(v) = general.fd {
                     fd = Some(v)
+                }
+                #[cfg(unix)]
+                if let Some(v) = general.unix_socket {
+                    unix_socket = Some(v)
+                }
+                #[cfg(unix)]
+                if let Some(v) = general.unix_socket_mode {
+                    unix_socket_mode = Some(v)
+                }
+                #[cfg(unix)]
+                if let Some(v) = general.unix_socket_force {
+                    unix_socket_force = v
                 }
                 if let Some(v) = general.threads_multiplier {
                     threads_multiplier = v
@@ -726,6 +744,12 @@ impl Settings {
                 #[cfg(feature = "basic-auth")]
                 basic_auth,
                 fd,
+                #[cfg(unix)]
+                unix_socket,
+                #[cfg(unix)]
+                unix_socket_mode,
+                #[cfg(unix)]
+                unix_socket_force,
                 threads_multiplier,
                 max_blocking_threads,
                 grace_period,
