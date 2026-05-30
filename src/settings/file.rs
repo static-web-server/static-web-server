@@ -342,6 +342,18 @@ pub struct General {
     /// File descriptor binding feature.
     pub fd: Option<usize>,
 
+    /// Unix Domain Socket path to bind the server to (Unix only).
+    #[cfg(unix)]
+    pub unix_socket: Option<PathBuf>,
+
+    /// Filesystem permission bits (octal) to apply to the Unix Domain Socket.
+    #[cfg(unix)]
+    pub unix_socket_mode: Option<u32>,
+
+    /// Remove a pre-existing socket file before binding.
+    #[cfg(unix)]
+    pub unix_socket_force: Option<bool>,
+
     /// Worker threads.
     pub threads_multiplier: Option<usize>,
 

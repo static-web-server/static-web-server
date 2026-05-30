@@ -57,6 +57,61 @@ pub struct General {
     /// static-web-server to be sandboxed more completely.
     pub fd: Option<usize>,
 
+    // Unix Domain Socket (UDS) options
+    // Mutually exclusive with TCP-based options (host/port/fd) and TLS.
+    // Gated to Unix targets; on Windows these flags are not exposed.
+    #[cfg(unix)]
+    #[cfg_attr(
+        feature = "tls",
+        arg(
+            long,
+            env = "SERVER_UNIX_SOCKET",
+            conflicts_with_all(&["host", "port", "fd", "tls", "https_redirect"]),
+        )
+    )]
+    #[cfg_attr(
+        not(feature = "tls"),
+        arg(
+            long,
+            env = "SERVER_UNIX_SOCKET",
+            conflicts_with_all(&["host", "port", "fd"]),
+        )
+    )]
+    /// Bind the server to a Unix Domain Socket (UDS) at the given filesystem path
+    /// instead of a TCP host/port. Useful for reverse-proxy setups (e.g. nginx) on the
+    /// same host where TCP/IP overhead is undesirable and filesystem-based access
+    /// control is preferred. Cannot be combined with `--host`, `--port`, `--fd`, or
+    /// TLS-related options. The socket file is removed on a graceful shutdown.
+    pub unix_socket: Option<PathBuf>,
+
+    #[cfg(unix)]
+    #[arg(
+        long,
+        env = "SERVER_UNIX_SOCKET_MODE",
+        value_parser = parse_octal_mode,
+        requires = "unix_socket",
+    )]
+    /// Filesystem permission bits applied to the Unix socket file after binding,
+    /// expressed in octal (e.g. `660`, `0660`, or `0o660`). When omitted the socket
+    /// is created with the process umask. Only meaningful together with `--unix-socket`.
+    pub unix_socket_mode: Option<u32>,
+
+    #[cfg(unix)]
+    #[arg(
+        long,
+        default_value = "false",
+        default_missing_value("true"),
+        num_args(0..=1),
+        require_equals(false),
+        action = clap::ArgAction::Set,
+        env = "SERVER_UNIX_SOCKET_FORCE",
+        requires = "unix_socket",
+    )]
+    /// When `true`, remove an existing socket file at `--unix-socket` before binding.
+    /// This is useful when the server was previously killed abruptly and left a stale
+    /// socket behind. Defaults to `false` to avoid clobbering an unrelated file.
+    pub unix_socket_force: bool,
+
     #[cfg_attr(
         not(target_family = "wasm"),
         arg(
@@ -689,5 +744,73 @@ fn value_parser_status_code(s: &str) -> Result<StatusCode, String> {
     match s.parse::<u16>() {
         Ok(code) => StatusCode::from_u16(code).map_err(|err| err.to_string()),
         Err(err) => Err(err.to_string()),
+    }
+}
+
+/// Parse a Unix file mode given in octal (e.g. `660`, `0660`, `0o660`).
+///
+/// The parser intentionally rejects decimal/hex values: file permission bits
+/// are universally expressed in octal, and accepting other bases would silently
+/// produce surprising masks (e.g. `660` parsed as decimal is `0o1224`).
+#[cfg(unix)]
+fn parse_octal_mode(s: &str) -> Result<u32, String> {
+    let trimmed = s.trim();
+    if trimmed.is_empty() {
+        return Err("unix socket mode cannot be empty".to_owned());
+    }
+    let digits = trimmed
+        .strip_prefix("0o")
+        .or_else(|| trimmed.strip_prefix("0O"))
+        .unwrap_or(trimmed);
+    let mode = u32::from_str_radix(digits, 8)
+        .map_err(|e| format!("invalid octal unix socket mode '{s}': {e}"))?;
+    // Reject values that would set bits outside the standard 12-bit Unix mode
+    // space (setuid/setgid/sticky + rwx for u/g/o).
+    if mode > 0o7777 {
+        return Err(format!(
+            "unix socket mode '{s}' exceeds maximum 07777 (12-bit permission mask)"
+        ));
+    }
+    Ok(mode)
+}
+
+#[cfg(all(test, unix))]
+mod tests {
+    use super::parse_octal_mode;
+
+    #[test]
+    fn parses_bare_octal_digits() {
+        // `660` is the canonical "rw-rw----" mask used for socket files in
+        // most reverse-proxy setups; ensure the most common input is accepted.
+        assert_eq!(parse_octal_mode("660").unwrap(), 0o660);
+    }
+
+    #[test]
+    fn parses_leading_zero_and_0o_prefix() {
+        // Both Unix-style (`0660`) and Rust-style (`0o660`) are accepted; they
+        // must produce identical numeric masks.
+        assert_eq!(parse_octal_mode("0660").unwrap(), 0o660);
+        assert_eq!(parse_octal_mode("0o660").unwrap(), 0o660);
+        assert_eq!(parse_octal_mode("0O660").unwrap(), 0o660);
+    }
+
+    #[test]
+    fn rejects_non_octal_digits() {
+        // `8` and `9` are not octal digits; accepting them silently would
+        // produce wrong masks.
+        assert!(parse_octal_mode("789").is_err());
+    }
+
+    #[test]
+    fn rejects_empty_and_whitespace() {
+        assert!(parse_octal_mode("").is_err());
+        assert!(parse_octal_mode("   ").is_err());
+    }
+
+    #[test]
+    fn rejects_values_above_07777() {
+        // Anything beyond the 12-bit permission space is almost certainly a
+        // typo (e.g. typed in decimal).
+        assert!(parse_octal_mode("10000").is_err());
     }
 }

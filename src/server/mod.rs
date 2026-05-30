@@ -5,17 +5,15 @@
 
 //! Server module to construct a multi-threaded HTTP or HTTP/2 web server.
 
-use listenfd::ListenFd;
-use std::net::{IpAddr, SocketAddr, TcpListener};
 use std::sync::Arc;
 use tokio::sync::watch::Receiver;
 
 use crate::handler::RequestHandler;
 use crate::service::RouterService;
-use crate::settings::cli::General;
-use crate::{Context, Error, Result, Settings};
+use crate::{Context, Result, Settings};
 
 mod http1;
+mod listener;
 mod opts;
 
 #[cfg(feature = "tls")]
@@ -24,6 +22,8 @@ mod http1_tls;
 mod http2;
 #[cfg(feature = "tls")]
 mod redirect;
+#[cfg(unix)]
+mod uds;
 
 /// TLS configuration shared by the HTTP/1+TLS and HTTP/2+TLS server modes.
 #[cfg(feature = "tls")]
@@ -187,7 +187,34 @@ impl Server {
             );
         }
 
-        let (tcp_listener, addr_str) = create_tcp_listener(&general)?;
+        // Choose listener kind: Unix Domain Socket (when --unix-socket is set,
+        // Unix only) or a TCP socket otherwise. Clap already enforces mutual
+        // exclusion with host/port/fd/tls, but we still resolve the listener
+        // here so the dispatch below can branch on it.
+        #[cfg(unix)]
+        let unix_listener_info = if let Some(path) = general.unix_socket.as_ref() {
+            use crate::server::listener::create_unix_listener;
+
+            Some(create_unix_listener(
+                path,
+                general.unix_socket_mode,
+                general.unix_socket_force,
+            )?)
+        } else {
+            None
+        };
+
+        // The TCP listener is only bound when no UDS path was provided. Binding
+        // both would either waste a port or fail with a host parse error on
+        // platforms where `host` is required.
+        #[cfg(unix)]
+        let tcp_listener_info = if unix_listener_info.is_none() {
+            Some(crate::server::listener::create_tcp_listener(&general)?)
+        } else {
+            None
+        };
+        #[cfg(not(unix))]
+        let tcp_listener_info = Some(crate::server::listener::create_tcp_listener(&general)?);
 
         tracing::info!(
             worker_threads = self.worker_threads,
@@ -236,6 +263,27 @@ impl Server {
             #[cfg(windows)]
             ctrlc_task,
         };
+
+        // Unix Domain Socket dispatch (Unix only, no TLS). Clap already forbids
+        // combining `--unix-socket` with TLS so we never reach the TLS branch
+        // below when a UDS listener is present.
+        #[cfg(unix)]
+        if let Some((unix_listener, socket_path, addr_str)) = unix_listener_info {
+            return uds::run(
+                unix_listener,
+                socket_path,
+                router_service,
+                &addr_str,
+                self.worker_threads,
+                ctx,
+                cancel_fn,
+            )
+            .await;
+        }
+
+        // Safe to unwrap: when no UDS listener was created, `tcp_listener_info`
+        // is `Some` by construction above.
+        let (tcp_listener, addr_str) = tcp_listener_info.unwrap();
 
         // Dispatch to a TLS-enabled server (HTTP/1+TLS or HTTP/2+TLS) when --tls is set
         #[cfg(feature = "tls")]
@@ -299,31 +347,4 @@ impl Server {
         )
         .await
     }
-}
-
-fn create_tcp_listener(general: &General) -> Result<(TcpListener, String), Error> {
-    let (listener, bound_addr) = match general.fd {
-        Some(fd) => {
-            let listener = ListenFd::from_env()
-                .take_tcp_listener(fd)?
-                .with_context(|| "failed to convert inherited 'fd' into a 'tcp' listener")?;
-            tracing::info!(
-                fd,
-                "converted inherited file descriptor to a 'tcp' listener"
-            );
-            (listener, format!("@FD({fd})"))
-        }
-        None => {
-            let ip = general
-                .host
-                .parse::<IpAddr>()
-                .with_context(|| format!("failed to parse {} address", general.host))?;
-            let addr = SocketAddr::from((ip, general.port));
-            let listener = TcpListener::bind(addr)
-                .with_context(|| format!("failed to bind to {addr} address"))?;
-            tracing::info!(addr = %addr, "server bound to tcp socket");
-            (listener, addr.to_string())
-        }
-    };
-    Ok((listener, bound_addr))
 }
