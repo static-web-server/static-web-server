@@ -35,6 +35,10 @@ Defines a grace period in seconds after a `SIGTERM` signal is caught which will 
 
 Specify a logging level in lowercase. Possible values are `error`, `warn`, `info`, `debug` or `trace`. Default `error`.
 
+### SERVER_LOG_FORMAT
+
+Specify the logging output format. Possible values are `json` (structured single-line JSON for production) or `pretty` (human-readable text for development). Default `json`.
+
 ### SERVER_LOG_WITH_ANSI
 
 Enable or disable ANSI escape codes for colors and other text formatting of the log output.
@@ -152,6 +156,10 @@ Enable security headers by default when the HTTP/2 feature is activated. Headers
 ### SERVER_CACHE_CONTROL_HEADERS
 
 Enable cache control headers for incoming requests based on a set of file types. The file type list can be found in [`src/control_headers.rs`](https://github.com/static-web-server/static-web-server/blob/master//src/control_headers.rs) file. Default `true` (enabled).
+
+### SERVER_ETAG
+
+Enable ETag header generation for static files. SWS emits weak ETags in the format `W/"{hex-digest}"`, where the hex digest is derived from the file's content and metadata (e.g., size, modification time). Default `true` (enabled).
 
 ### SERVER_BASIC_AUTH
 

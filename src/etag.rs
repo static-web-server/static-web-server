@@ -48,7 +48,7 @@ const ETAG_MAX_LEN: usize = 3 + 32 + 1 + 16 + 1;
 /// Initialises the ETag feature on the given handler options.
 pub(crate) fn init(enabled: bool, handler_opts: &mut RequestHandlerOpts) {
     handler_opts.etag = enabled;
-    tracing::info!("etag headers: enabled={enabled}");
+    tracing::info!(enabled, "etag headers");
 }
 
 /// Builds a weak `ETag` value from file metadata.

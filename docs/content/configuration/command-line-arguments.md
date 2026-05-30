@@ -38,8 +38,10 @@ Options:
           A HTML file path (not relative to the root) used for GET requests when the requested path doesn't exist. The fallback page is served with a 200 status code, useful when using client routers. If the path doesn't exist then the feature is not activated [env: SERVER_FALLBACK_PAGE=] [default: ""]
   -g, --log-level <LOG_LEVEL>
           Specify a logging level in lower case. Values: error, warn, info, debug or trace [env: SERVER_LOG_LEVEL=] [default: error]
+      --log-format <LOG_FORMAT>
+          Specify the logging output format. Values: json (structured single-line JSON for production) or pretty (human-readable text for development) [env: SERVER_LOG_FORMAT=] [default: json] [possible values: json, pretty]
       --log-with-ansi [<LOG_WITH_ANSI>]
-          Enable or disable ANSI escape codes for colors and other text formatting of the log output [env: SERVER_LOG_WITH_ANSI=] [default: false] [possible values: true, false]
+          Enable or disable ANSI escape codes for colors and other text formatting of the log output. Only effective when `--log-format pretty` is used [env: SERVER_LOG_WITH_ANSI=] [default: false] [possible values: true, false]
   -c, --cors-allow-origins <CORS_ALLOW_ORIGINS>
           Specify an optional CORS list of allowed origin hosts separated by commas. Host ports or protocols aren't being checked. Use an asterisk (*) to allow any host [env: SERVER_CORS_ALLOW_ORIGINS=] [default: ""]
   -j, --cors-allow-headers <CORS_ALLOW_HEADERS>
@@ -82,6 +84,8 @@ Options:
           Enable security headers by default when TLS feature is activated. Headers included: "Strict-Transport-Security: max-age=63072000; includeSubDomains; preload" (2 years max-age), "X-Frame-Options: DENY" and "Content-Security-Policy: frame-ancestors 'self'" [env: SERVER_SECURITY_HEADERS=] [default: true] [possible values: true, false]
   -e, --cache-control-headers [<CACHE_CONTROL_HEADERS>]
           Enable cache control headers for incoming requests based on a set of file types. The file type list can be found on `src/control_headers.rs` file [env: SERVER_CACHE_CONTROL_HEADERS=] [default: true] [possible values: true, false]
+      --etag [<ETAG>]
+          Enable weak `ETag` headers (`W/"<mtime>-<size>"`) and full conditional request handling (`If-None-Match`, `If-Match`, `If-Range`). Composes with `--cache-control-headers`; emits validators on every static-file response so clients can revalidate hot HTML even when long `max-age` is configured elsewhere [env: SERVER_ETAG=] [default: true] [possible values: true, false]
       --basic-auth <BASIC_AUTH>
           It provides The "Basic" HTTP Authentication scheme using credentials as "user-id:password" pairs. Password must be encoded using the "BCrypt" password-hashing function [env: SERVER_BASIC_AUTH=] [default: ""]
   -q, --grace-period <GRACE_PERIOD>

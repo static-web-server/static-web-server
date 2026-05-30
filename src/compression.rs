@@ -66,8 +66,10 @@ pub fn init(enabled: bool, level: CompressionLevel, handler_opts: &mut RequestHa
         "zstd",
     ];
     tracing::info!(
-        "auto compression: enabled={enabled}, formats={}, compression level={level:?}",
-        FORMATS.join(",")
+        enabled,
+        formats = %FORMATS.join(","),
+        compression_level = ?level,
+        "auto compression"
     );
 }
 

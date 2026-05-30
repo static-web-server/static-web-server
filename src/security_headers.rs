@@ -24,7 +24,7 @@ static RP_VALUE: HeaderValue = HeaderValue::from_static("strict-origin-when-cros
 
 pub(crate) fn init(enabled: bool, handler_opts: &mut RequestHandlerOpts) {
     handler_opts.security_headers = enabled;
-    tracing::info!("security headers: enabled={enabled}");
+    tracing::info!(enabled, "security headers");
 }
 
 /// Appends security headers to a response if necessary

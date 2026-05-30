@@ -23,6 +23,7 @@ root = "./public"
 
 #### Logging
 log-level = "error"
+log-format = "json"
 
 #### Cache Control headers
 cache-control-headers = true

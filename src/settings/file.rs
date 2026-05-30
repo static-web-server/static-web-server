@@ -18,6 +18,7 @@ use crate::directory_listing::DirListFmt;
 #[cfg(feature = "directory-listing-download")]
 use crate::directory_listing::download::DirDownloadFmt;
 
+use crate::logger::LogFormat;
 use crate::{Context, Result, helpers};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -210,6 +211,8 @@ pub struct General {
     pub log_level: Option<LogLevel>,
     /// Enable/disable ANSI escape codes for log output.
     pub log_with_ansi: Option<bool>,
+    /// Logging output format.
+    pub log_format: Option<LogFormat>,
 
     /// Cache Control headers.
     pub cache_control_headers: Option<bool>,

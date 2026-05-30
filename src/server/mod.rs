@@ -168,14 +168,18 @@ impl Server {
         F: FnOnce(),
     {
         tracing::trace!("starting web server");
-        tracing::info!("{} {}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"));
+        tracing::info!(
+            name = env!("CARGO_PKG_NAME"),
+            version = env!("CARGO_PKG_VERSION"),
+            "starting Static Web Server"
+        );
 
         let general = self.opts.general;
         let advanced = self.opts.advanced;
 
-        tracing::info!("log level: {}", general.log_level);
+        tracing::info!(log_level = %general.log_level, "log level");
         if general.config_file.is_file() {
-            tracing::info!("config file used: {}", general.config_file.display());
+            tracing::info!(path = %general.config_file.display(), "config file used");
         } else {
             tracing::debug!(
                 "config file path not found or not a regular file: {}",
@@ -185,14 +189,17 @@ impl Server {
 
         let (tcp_listener, addr_str) = create_tcp_listener(&general)?;
 
-        tracing::info!("runtime worker threads: {}", self.worker_threads);
         tracing::info!(
-            "runtime max blocking threads: {}",
-            general.max_blocking_threads
+            worker_threads = self.worker_threads,
+            "runtime worker threads"
         );
         tracing::info!(
-            "grace period before graceful shutdown: {}s",
-            general.grace_period
+            max_blocking_threads = general.max_blocking_threads,
+            "runtime max blocking threads"
+        );
+        tracing::info!(
+            grace_period_seconds = general.grace_period,
+            "grace period before graceful shutdown"
         );
 
         // Initialize request handler options from configuration
@@ -301,8 +308,8 @@ fn create_tcp_listener(general: &General) -> Result<(TcpListener, String), Error
                 .take_tcp_listener(fd)?
                 .with_context(|| "failed to convert inherited 'fd' into a 'tcp' listener")?;
             tracing::info!(
-                "converted inherited file descriptor {} to a 'tcp' listener",
-                fd
+                fd,
+                "converted inherited file descriptor to a 'tcp' listener"
             );
             (listener, format!("@FD({fd})"))
         }
@@ -314,7 +321,7 @@ fn create_tcp_listener(general: &General) -> Result<(TcpListener, String), Error
             let addr = SocketAddr::from((ip, general.port));
             let listener = TcpListener::bind(addr)
                 .with_context(|| format!("failed to bind to {addr} address"))?;
-            tracing::info!("server bound to tcp socket {}", addr);
+            tracing::info!(addr = %addr, "server bound to tcp socket");
             (listener, addr.to_string())
         }
     };
