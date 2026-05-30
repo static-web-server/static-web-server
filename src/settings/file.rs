@@ -213,6 +213,8 @@ pub struct General {
     pub log_with_ansi: Option<bool>,
     /// Logging output format.
     pub log_format: Option<LogFormat>,
+    /// Optional filesystem path to stream log records to in addition to stderr.
+    pub log_file: Option<PathBuf>,
 
     /// Cache Control headers.
     pub cache_control_headers: Option<bool>,

@@ -206,6 +206,22 @@ pub struct General {
 
     #[arg(
         long,
+        env = "SERVER_LOG_FILE",
+        value_parser = value_parser_pathbuf,
+    )]
+    /// Optional filesystem path to stream log records to in addition to stderr.
+    /// When set, logs are written asynchronously through a background worker
+    /// thread (non-blocking I/O), so the request path is never delayed by disk
+    /// writes. Missing parent directories are created on startup. ANSI escape
+    /// codes are always disabled for file output regardless of
+    /// `--log-with-ansi`. The file uses the format selected by
+    /// `--log-format` (JSON by default). The file is opened in append mode and
+    /// is not rotated by SWS, use an external tool (e.g. `logrotate`) for
+    /// rotation.
+    pub log_file: Option<PathBuf>,
+
+    #[arg(
+        long,
         short = 'c',
         default_value = "",
         env = "SERVER_CORS_ALLOW_ORIGINS"

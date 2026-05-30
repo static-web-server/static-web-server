@@ -138,6 +138,7 @@ impl Settings {
         let mut log_level = opts.log_level;
         let mut log_with_ansi = opts.log_with_ansi;
         let mut log_format = opts.log_format;
+        let mut log_file = opts.log_file.clone();
         let mut config_file = opts.config_file.clone();
         let mut cache_control_headers = opts.cache_control_headers;
         let mut etag = opts.etag;
@@ -272,6 +273,9 @@ impl Settings {
                 }
                 if let Some(v) = general.log_format {
                     log_format = v;
+                }
+                if let Some(v) = general.log_file {
+                    log_file = Some(v);
                 }
                 if let Some(v) = general.cache_control_headers {
                     cache_control_headers = v
@@ -467,7 +471,12 @@ impl Settings {
 
             // Logging system initialization in config file context
             if log_init {
-                logger::init(log_level.as_str(), &log_format, log_with_ansi)?;
+                logger::init(
+                    log_level.as_str(),
+                    &log_format,
+                    log_with_ansi,
+                    log_file.as_deref(),
+                )?;
             }
 
             tracing::debug!("config file read successfully");
@@ -656,7 +665,12 @@ impl Settings {
             }
         } else if log_init {
             // Logging system initialization on demand
-            logger::init(log_level.as_str(), &log_format, log_with_ansi)?;
+            logger::init(
+                log_level.as_str(),
+                &log_format,
+                log_with_ansi,
+                log_file.as_deref(),
+            )?;
         }
 
         // Runtime validation: HTTP/2 requires TLS
@@ -691,6 +705,7 @@ impl Settings {
                 log_level,
                 log_with_ansi,
                 log_format,
+                log_file,
                 config_file,
                 cache_control_headers,
                 etag,
