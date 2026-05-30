@@ -153,6 +153,7 @@ nav:
     - 'Docker': 'features/docker.md'
     - 'Graceful Shutdown': 'features/graceful-shutdown.md'
     - 'File Descriptor Socket Passing': './features/file-descriptor-socket-passing.md'
+    - 'Unix Domain Socket': 'features/unix-domain-socket.md'
     - 'Worker Threads Customization': 'features/worker-threads.md'
     - 'Blocking Threads Customization': 'features/blocking-threads.md'
     - 'Error Pages': 'features/error-pages.md'

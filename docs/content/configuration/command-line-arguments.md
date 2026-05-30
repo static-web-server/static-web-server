@@ -24,6 +24,12 @@ Options:
           Host port [env: SERVER_PORT=] [default: 8787]
   -f, --fd <FD>
           Instead of binding to a TCP port, accept incoming connections to an already-bound TCP socket listener on the specified file descriptor number (usually zero). Requires that the parent process (e.g. inetd, launchd, or systemd) binds an address and port on behalf of static-web-server, before arranging for the resulting file descriptor to be inherited by static-web-server. Cannot be used in conjunction with the port and host arguments. The included systemd unit file utilises this feature to increase security by allowing the static-web-server to be sandboxed more completely [env: SERVER_LISTEN_FD=]
+      --unix-socket <UNIX_SOCKET>
+          Bind the server to a Unix Domain Socket (UDS) at the given filesystem path instead of a TCP host/port. Useful for reverse-proxy setups (e.g. nginx) on the same host where TCP/IP overhead is undesirable and filesystem-based access control is preferred. Cannot be combined with `--host`, `--port`, `--fd`, or TLS-related options. The socket file is removed on a graceful shutdown [env: SERVER_UNIX_SOCKET=]
+      --unix-socket-mode <UNIX_SOCKET_MODE>
+          Filesystem permission bits applied to the Unix socket file after binding, expressed in octal (e.g. `660`, `0660`, or `0o660`). When omitted the socket is created with the process umask. Only meaningful together with `--unix-socket` [env: SERVER_UNIX_SOCKET_MODE=]
+      --unix-socket-force [<UNIX_SOCKET_FORCE>]
+          When `true`, remove an existing socket file at `--unix-socket` before binding. This is useful when the server was previously killed abruptly and left a stale socket behind. Defaults to `false` to avoid clobbering an unrelated file [env: SERVER_UNIX_SOCKET_FORCE=] [default: false] [possible values: true, false]
   -n, --threads-multiplier <THREADS_MULTIPLIER>
           Number of worker threads multiplier that'll be multiplied by the number of system CPUs using the formula: `worker threads = number of CPUs * n` where `n` is the value that changes here. When multiplier value is 0 or 1 then one thread per core is used. Number of worker threads result should be a number between 1 and 32,768 though it is advised to keep this value on the smaller side [env: SERVER_THREADS_MULTIPLIER=] [default: 1]
   -b, --max-blocking-threads <MAX_BLOCKING_THREADS>

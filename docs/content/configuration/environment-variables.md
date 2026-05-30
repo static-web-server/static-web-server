@@ -169,6 +169,18 @@ It provides [The "Basic" HTTP Authentication Scheme](https://datatracker.ietf.or
 
 Check for a trailing slash in the requested directory URI and redirect permanent (308) to the same path with a trailing slash suffix if it is missing. Default `true` (enabled).
 
+### SERVER_UNIX_SOCKET
+
+Filesystem path to bind a Unix Domain Socket (e.g. `/run/sws.sock`) instead of a TCP host and port. This option is mutually exclusive with `SERVER_HOST`, `SERVER_PORT`, `SERVER_LISTEN_FD`, and TLS options. Default empty (disabled).
+
+### SERVER_UNIX_SOCKET_MODE
+
+Permission bits in octal (`660`, `0660`, `0o660`) applied to the Unix socket file after binding. Default: process umask.
+
+### SERVER_UNIX_SOCKET_FORCE
+
+Remove a stale socket file before binding (socket-type files only; refuses to clobber regular files or directories). Default `false` (disabled).
+
 ### SERVER_INCLUDE_HIDDEN
 
 Include hidden files/directories (dotfiles), allowing them to be served and listed in auto HTML index pages (directory listing). Disabled by default; hidden files return `404 Not Found`.
