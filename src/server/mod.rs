@@ -5,6 +5,7 @@
 
 //! Server module to construct a multi-threaded HTTP or HTTP/2 web server.
 
+use std::net::TcpListener;
 use std::sync::Arc;
 use tokio::sync::watch::Receiver;
 
@@ -73,6 +74,10 @@ pub struct Server {
     opts: Settings,
     worker_threads: usize,
     max_blocking_threads: usize,
+    /// Optional pre-bound TCP listener injected by the caller.
+    /// When set, the server uses this listener instead of creating one
+    /// from the `--host` / `--port` settings.
+    pre_bound_listener: Option<(TcpListener, String)>,
 }
 
 impl Server {
@@ -92,7 +97,21 @@ impl Server {
             opts,
             worker_threads,
             max_blocking_threads,
+            pre_bound_listener: None,
         })
+    }
+
+    /// Attach a pre-bound TCP listener. The server will use this listener
+    /// instead of creating one from the `--host` / `--port` settings.
+    /// The listener must already be in a listening state (created via
+    /// [`std::net::TcpListener::bind`]).
+    pub fn with_pre_bound_listener(mut self, listener: std::net::TcpListener) -> Self {
+        let addr = listener
+            .local_addr()
+            .map(|a| a.to_string())
+            .unwrap_or_else(|_| "pre-bound".into());
+        self.pre_bound_listener = Some((listener, addr));
+        self
     }
 
     /// Run the multi-threaded `Server` as standalone.
@@ -176,6 +195,7 @@ impl Server {
 
         let general = self.opts.general;
         let advanced = self.opts.advanced;
+        let pre_bound = self.pre_bound_listener;
 
         tracing::info!(log_level = %general.log_level, "log level");
         if general.config_file.is_file() {
@@ -207,14 +227,22 @@ impl Server {
         // The TCP listener is only bound when no UDS path was provided. Binding
         // both would either waste a port or fail with a host parse error on
         // platforms where `host` is required.
+        // When a pre-bound listener was injected (e.g. by tests), use it
+        // instead of creating a new one — this avoids TOCTOU port races.
         #[cfg(unix)]
         let tcp_listener_info = if unix_listener_info.is_none() {
-            Some(crate::server::listener::create_tcp_listener(&general)?)
+            Some(match pre_bound {
+                Some(pre) => pre,
+                None => crate::server::listener::create_tcp_listener(&general)?,
+            })
         } else {
             None
         };
         #[cfg(not(unix))]
-        let tcp_listener_info = Some(crate::server::listener::create_tcp_listener(&general)?);
+        let tcp_listener_info = Some(match pre_bound {
+            Some(pre) => pre,
+            None => crate::server::listener::create_tcp_listener(&general)?,
+        });
 
         tracing::info!(
             worker_threads = self.worker_threads,
@@ -245,7 +273,9 @@ impl Server {
             if !windows_service {
                 tracing::info!("installing graceful shutdown ctrl+c signal handler");
                 if let Err(err) = tokio::signal::ctrl_c().await {
-                    return Err(Error::new(err).context("failed to install ctrl+c signal handler"));
+                    return Err(
+                        crate::Error::new(err).context("failed to install ctrl+c signal handler")
+                    );
                 }
                 tracing::info!("graceful shutdown ctrl+c signal received");
                 let _ = sender.send(());
