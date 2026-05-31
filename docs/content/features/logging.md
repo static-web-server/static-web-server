@@ -188,3 +188,68 @@ curl "http://[::1]:8080" --header "X-Forwarded-For: <iframe src=//malware.attack
 ```json
 {"timestamp":"2026-05-29T23:43:47.151533+02:00","level":"INFO","message":"incoming request","method":"GET","uri":"/","target":"static_web_server::log_addr"}
 ```
+
+## File Logging
+
+By default **SWS** writes log records to standard error. The `--log-file` option additionally streams every record to a file on disk, in **addition** to `stderr`. This is useful for production deployments where `stderr` is captured by a service manager but a durable on-disk copy is also required.
+
+### Options
+
+| CLI option | Environment variable | TOML key | Description |
+| -- | -- | -- | -- |
+| `--log-file <PATH>` | [`SERVER_LOG_FILE`](../configuration/environment-variables.md#server_log_file) | `log-file` | Filesystem path to stream log records to in addition to `stderr`. Missing parent directories are created on startup. The file is opened in append mode. |
+
+The file uses the format selected by [`--log-format`](./logging.md#log-format) (`json` by default) and the level selected by [`--log-level`](./logging.md#log-level). ANSI escape codes are **always disabled** for file output regardless of `--log-with-ansi`, so the file stays parsable.
+
+### Example
+
+```sh
+static-web-server \
+    --port 8787 \
+    --root ./my-public-dir \
+    --log-level info \
+    --log-format json \
+    --log-file /var/log/sws/server.log
+```
+
+Every log record is now written twice: once to stderr (so `systemd`/`journalctl`, Docker logging drivers, etc. continue to work) and once to `/var/log/sws/server.log`.
+
+### Concurrency and performance
+
+- File writes are performed by a dedicated background worker thread using a lock-free queue. The request path never blocks on disk I/O, regardless of how slow or congested the underlying filesystem is.
+- The default queue capacity (`128,000` lines) is large enough that messages are dropped only under extreme back-pressure, as a right trade-off for a server hot path where blocking the request path on disk would be far worse than losing a debug line.
+- File writes are **append-only**: SWS never rewrites or truncates the log file, so log shippers (Fluent Bit, Vector, Filebeat, etc.) can tail it safely.
+
+### Log rotation
+
+SWS does **not** rotate the file itself. Use an external tool such as [`logrotate`](https://linux.die.net/man/8/logrotate) with the `copytruncate` strategy, or have your log shipper rotate via `dateext` on a schedule. A minimal `logrotate.d` snippet:
+
+```text
+/var/log/sws/server.log {
+    daily
+    rotate 14
+    compress
+    missingok
+    notifempty
+    copytruncate
+}
+```
+
+`copytruncate` is recommended because SWS keeps the file descriptor open for the lifetime of the process, a plain `move + create` rotation would leave SWS writing to the rotated (now-renamed) file until restart.
+
+### TOML configuration
+
+```toml
+[general]
+log-level = "info"
+log-format = "json"
+log-file = "/var/log/sws/server.log"
+```
+
+### Permissions
+
+The log file and any missing parent directories are created with the process umask. To restrict access, set a tighter umask before launching SWS, or create the directory with the desired ownership and mode ahead of time:
+
+```sh
+install -d -m 0750 -o sws -g sws /var/log/sws
+```

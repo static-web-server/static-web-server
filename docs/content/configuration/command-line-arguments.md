@@ -48,6 +48,8 @@ Options:
           Specify the logging output format. Values: json (structured single-line JSON for production) or pretty (human-readable text for development) [env: SERVER_LOG_FORMAT=] [default: json] [possible values: json, pretty]
       --log-with-ansi [<LOG_WITH_ANSI>]
           Enable or disable ANSI escape codes for colors and other text formatting of the log output. Only effective when `--log-format pretty` is used [env: SERVER_LOG_WITH_ANSI=] [default: false] [possible values: true, false]
+      --log-file <LOG_FILE>
+          Optional filesystem path to stream log records to in addition to stderr. When set, logs are written asynchronously through a background worker thread (non-blocking I/O), so the request path is never delayed by disk writes. Missing parent directories are created on startup. ANSI escape codes are always disabled for file output regardless of `--log-with-ansi`. The file uses the format selected by `--log-format` (JSON by default). The file is opened in append mode and is not rotated by SWS, use an external tool (e.g. `logrotate`) for rotation [env: SERVER_LOG_FILE=]
   -c, --cors-allow-origins <CORS_ALLOW_ORIGINS>
           Specify an optional CORS list of allowed origin hosts separated by commas. Host ports or protocols aren't being checked. Use an asterisk (*) to allow any host [env: SERVER_CORS_ALLOW_ORIGINS=] [default: ""]
   -j, --cors-allow-headers <CORS_ALLOW_HEADERS>
