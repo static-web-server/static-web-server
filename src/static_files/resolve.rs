@@ -39,39 +39,32 @@ pub(super) fn file_metadata<'a>(
             // extra `open(2)` syscall. We only populate it when the index
             // file is resolved via `try_file_open` below.
             let mut opened_file = None;
+            // Whether the resolved `file_path` points to an existing file.
+            // For non-directory requests this is always true.
+            // For directory requests it becomes true only when an index file (or its
+            // `.html` suffix sibling) was successfully resolved. Used to
+            // gate the pre-compressed variant probe so we never issue
+            // `stat(2)` for `.br`/`.gz`/`.zst` siblings of a non-existent
+            // index (see issue #617).
+            let mut resolved_exists = !is_dir;
             if is_dir {
                 if index_files.is_empty() {
                     index_files = DEFAULT_INDEX_FILES;
                 }
-                let mut index_found = false;
                 for index in index_files {
                     // Append a HTML index page by default if it's a directory path (`autoindex`).
                     tracing::debug!("dir: appending {} to the directory path", index);
                     file_path.push(index);
 
-                    if compression_static
-                        && let Some(p) =
-                            compression_static::precompressed_variant(file_path, headers)
-                    {
-                        return Ok(FileMetadata {
-                            file_path,
-                            metadata: p.metadata,
-                            is_dir: false,
-                            precompressed_variant: Some((p.file_path, p.encoding)),
-                            file: None,
-                        });
-                    }
-
-                    // Fallback to finding the appended index file and overwrite the
-                    // current metadata. Still considered a directory request.
-                    // We open the file directly here: `try_file_open` performs
-                    // a single `open(2)` + `fstat(2)` instead of a `stat(2)`
-                    // followed by an `open(2)` later in `file_reply`,
-                    // saving one path-resolving syscall on the hot path.
+                    // Try to open the appended index file directly.
+                    // `try_file_open` performs a single `open(2)` + `fstat(2)`
+                    // instead of `stat(2)` followed by `open(2)` later in
+                    // `file_reply`, saving one path-resolving syscall on the
+                    // hot path.
                     if let Ok((file, meta)) = try_file_open(file_path) {
                         metadata = meta;
                         opened_file = Some(file);
-                        index_found = true;
+                        resolved_exists = true;
                         break;
                     }
 
@@ -82,19 +75,24 @@ pub(super) fn file_metadata<'a>(
                     (file_path, new_meta) = try_metadata_with_html_suffix(file_path);
                     if let Some(new_meta) = new_meta {
                         metadata = new_meta;
-                        index_found = true;
+                        resolved_exists = true;
                         break;
                     }
                 }
 
                 // If no index was found, append the last index of the list
                 // to preserve the original directory-listing behavior.
-                if !index_found && !index_files.is_empty() {
+                if !resolved_exists && !index_files.is_empty() {
                     file_path.push(index_files.last().unwrap());
                 }
             }
 
-            let precompressed_variant = compression_static
+            // Only probe for pre-compressed siblings when the resolved file
+            // actually exists. Probing for `.br`/`.gz`/`.zst` of a path that
+            // was never confirmed on disk wastes one `stat(2)` per
+            // configured encoding on the request hot path
+            // (see issue #617).
+            let precompressed_variant = (compression_static && resolved_exists)
                 .then(|| compression_static::precompressed_variant(file_path, headers))
                 .flatten()
                 .map(|p| (p.file_path, p.encoding));
@@ -115,69 +113,38 @@ pub(super) fn file_metadata<'a>(
             })
         }
         Err(err) => {
-            // Pre-compressed variant check for a file that was not found.
-            if compression_static
-                && let Some(p) = compression_static::precompressed_variant(file_path, headers)
-            {
-                return Ok(FileMetadata {
-                    file_path,
-                    metadata: p.metadata,
-                    is_dir: false,
-                    precompressed_variant: Some((p.file_path, p.encoding)),
-                    file: None,
-                });
-            }
-
-            // Otherwise, if the file path doesn't exist try the `.html`-suffixed path.
-            // For example: `/posts/article` falls back to `/posts/article.html`.
+            // If the file path doesn't exist, then try the `.html`-suffixed path
+            // first. For example: `/posts/article` falls back to
+            // `/posts/article.html`.
+            //
+            // We intentionally do *not* probe for pre-compressed siblings
+            // of the original (non-existent) path. Doing so would waste
+            // one `stat(2)` per configured encoding for every truly
+            // missing path (see issue #617).
             let new_meta: Option<Metadata>;
             (file_path, new_meta) = try_metadata_with_html_suffix(file_path);
 
-            #[cfg(any(
-                feature = "compression",
-                feature = "compression-deflate",
-                feature = "compression-gzip",
-                feature = "compression-brotli",
-                feature = "compression-zstd"
-            ))]
-            match new_meta {
-                Some(new_meta) => {
-                    return Ok(FileMetadata {
-                        file_path,
-                        metadata: new_meta,
-                        is_dir: false,
-                        precompressed_variant: None,
-                        file: None,
-                    });
-                }
-                _ => {
-                    // Last pre-compressed variant check for the suffixed file.
-                    if compression_static
-                        && let Some(p) =
-                            compression_static::precompressed_variant(file_path, headers)
-                    {
-                        return Ok(FileMetadata {
-                            file_path,
-                            metadata: p.metadata,
-                            is_dir: false,
-                            precompressed_variant: Some((p.file_path, p.encoding)),
-                            file: None,
-                        });
-                    }
-                }
-            }
-            #[cfg(not(feature = "compression"))]
-            if let Some(new_meta) = new_meta {
-                return Ok(FileMetadata {
-                    file_path,
-                    metadata: new_meta,
-                    is_dir: false,
-                    precompressed_variant: None,
-                    file: None,
-                });
-            }
+            let Some(new_meta) = new_meta else {
+                // Neither the original path nor its `.html` sibling exists.
+                // Return the original error without probing for compressed
+                // variants of non-existent files.
+                return Err(err);
+            };
 
-            Err(err)
+            // The `.html` sibling exists. Only now is it worth probing for
+            // its pre-compressed sibling (`/article.html.br`, etc.).
+            let precompressed_variant = compression_static
+                .then(|| compression_static::precompressed_variant(file_path, headers))
+                .flatten()
+                .map(|p| (p.file_path, p.encoding));
+
+            Ok(FileMetadata {
+                file_path,
+                metadata: new_meta,
+                is_dir: false,
+                precompressed_variant,
+                file: None,
+            })
         }
     }
 }
