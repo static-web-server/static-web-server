@@ -47,6 +47,10 @@ Enable or disable ANSI escape codes for colors and other text formatting of the 
 
 Log incoming request information along with its Remote Address (IP) if available using the `info` log level. Default `false`.
 
+### SERVER_LOG_FILE
+
+Stream log records to a file on disk in addition to `stderr`. The file is opened in append mode and is not rotated by SWS, use an external tool (e.g. `logrotate`) for rotation. ANSI escape codes are always disabled for file output regardless of `SERVER_LOG_WITH_ANSI`, so the file stays parsable. Default empty (disabled).
+
 ### SERVER_LOG_X_REAL_IP
 
 Log the X-Real-IP header if available using the `info` log level. Default `false`.
