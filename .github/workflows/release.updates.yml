@@ -6,7 +6,7 @@ on:
 
 permissions:
   contents: write
-  pull-requests: 
+  pull-requests: write
 
 env:
   LABEL_VERSION: "v2"
