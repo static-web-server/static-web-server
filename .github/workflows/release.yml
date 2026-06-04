@@ -72,6 +72,11 @@ jobs:
           - windows-msvc-i686
           - windows-msvc-arm64
           - windows-pc-gnu
+          # FIPS builds
+          - linux-gnu-fips
+          - linux-gnu-arm64-fips
+          - linux-musl-fips
+          - linux-musl-arm64-fips
         include:
         - build: linux-musl
           os: ubuntu-22.04
@@ -161,6 +166,23 @@ jobs:
           os: windows-2022
           rust: stable
           target: x86_64-pc-windows-gnu
+        # FIPS builds
+        - build: linux-gnu-fips
+          os: ubuntu-22.04
+          rust: stable
+          target: x86_64-unknown-linux-gnu
+        - build: linux-gnu-arm64-fips
+          os: ubuntu-22.04
+          rust: stable
+          target: aarch64-unknown-linux-gnu
+        - build: linux-musl-fips
+          os: ubuntu-22.04
+          rust: stable
+          target: x86_64-unknown-linux-musl
+        - build: linux-musl-arm64-fips
+          os: ubuntu-22.04
+          rust: stable
+          target: aarch64-unknown-linux-musl 
 
     steps:
     - name: Checkout repository
@@ -202,6 +224,12 @@ jobs:
               | sudo tar zxf - -C /usr/local/bin/ cross cross-util
             cross -V
             echo "CARGO_BIN=/usr/local/bin/cross" >> $GITHUB_ENV
+
+            if [[ "${{ matrix.build }}" == *-fips ]]; then
+                echo "INFO: Setting up Cargo features and Cross envs for FIPS builds..."
+                echo "CARGO_FEATURES=--no-default-features --features all-fips" >> $GITHUB_ENV
+                echo "CROSS_CONFIG=Cross.fips.toml" >> $GITHUB_ENV
+            fi
           fi
         fi
         echo "TARGET_FLAGS=--target=${{ matrix.target }}" >> $GITHUB_ENV
@@ -231,7 +259,7 @@ jobs:
 
         cp {README.md,LICENSE-APACHE,LICENSE-MIT} "$staging/"
 
-        if [ "${{ matrix.os }}" = "windows-2022" ]; then
+        if [[ "${{ matrix.os }}" == windows-* ]]; then
           cp "target/${{ matrix.target }}/release/static-web-server.exe" "$staging/"
           7z a "$staging.zip" "$staging"
           echo "ASSET=$staging.zip" >> $GITHUB_ENV
