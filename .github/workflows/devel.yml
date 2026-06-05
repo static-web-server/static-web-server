@@ -101,6 +101,11 @@ jobs:
           - windows-msvc-i686
           - windows-msvc-arm64
           - windows-pc-gnu
+          # FIPS builds
+          - linux-gnu-fips
+          - linux-gnu-arm64-fips
+          - linux-musl-fips
+          - linux-musl-arm64-fips
         include:
           # Specific Rust channels.
           # We test against the latest and minimum Rust stable version.
@@ -198,6 +203,23 @@ jobs:
             os: windows-2022
             rust: stable
             target: x86_64-pc-windows-gnu
+          # FIPS builds
+          - build: linux-gnu-fips
+            os: ubuntu-22.04-aarch64
+            rust: stable
+            target: x86_64-unknown-linux-gnu
+          - build: linux-gnu-arm64-fips
+            os: ubuntu-22.04
+            rust: stable
+            target: aarch64-unknown-linux-gnu
+          - build: linux-musl-fips
+            os: ubuntu-22.04
+            rust: stable
+            target: x86_64-unknown-linux-musl
+          - build: linux-musl-arm64-fips
+            os: ubuntu-22.04
+            rust: stable
+            target: aarch64-unknown-linux-musl 
 
     steps:
     - name: Checkout repository
@@ -249,6 +271,12 @@ jobs:
             | sudo tar zxf - -C /usr/local/bin/ cross cross-util
           cross -V
           echo "CARGO_BIN=/usr/local/bin/cross" >> $GITHUB_ENV
+
+          if [[ "${{ matrix.build }}" == *-fips ]]; then
+            echo "INFO: Setting up Cargo features and Cross envs for FIPS builds..."
+            echo "CARGO_FEATURES=--no-default-features --features all-fips" >> $GITHUB_ENV
+            echo "CROSS_CONFIG=Cross.fips.toml" >> $GITHUB_ENV
+          fi
         fi
 
     - name: Setup Cargo
@@ -294,8 +322,10 @@ jobs:
           ;;
           *)
             if [[ "${{ matrix.os }}" == "windows-2022" ]]; then
+              target/${{ matrix.target }}/debug/static-web-server.exe -V
               target/${{ matrix.target }}/debug/static-web-server.exe -h
             else
+              target/${{ matrix.target }}/debug/static-web-server -V
               target/${{ matrix.target }}/debug/static-web-server -h
             fi
           ;;
@@ -325,8 +355,10 @@ jobs:
           ;;
           *)
             if [[ "${{ matrix.os }}" == "windows-2022" ]]; then
+              target/${{ matrix.target }}/debug/static-web-server.exe -V
               target/${{ matrix.target }}/debug/static-web-server.exe -h
             else
+              target/${{ matrix.target }}/debug/static-web-server -V
               target/${{ matrix.target }}/debug/static-web-server -h
             fi
           ;;

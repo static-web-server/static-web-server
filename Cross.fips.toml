@@ -1,18 +1,46 @@
 # Cross-compilation configuration for FIPS builds.
-# The FIPS crypto provider (aws-lc-fips-sys) requires CMake, Go, and libclang
-# (used by bindgen) at build time. These pre-build commands install them into
-# the cross Docker containers.
 #
-# Usage: set CROSS_CONFIG=Cross.fips.toml before invoking cross.
+# The FIPS crypto provider (aws-lc-fips-sys) requires CMake, Go (≥ 1.17.13),
+# and libclang (used by bindgen) at build time. These pre-build commands
+# install them into the cross Docker containers.
+#
+# Go is a *build-time* tool (used by AWS-LC's FIPS delocator), so the Go
+# binary architecture must match the *build machine* (the GitHub Actions
+# runner or your local host), NOT the compilation target. We detect the
+# architecture dynamically with `dpkg --print-architecture`.
+#
+# The GOROOT env var is set in .cargo/config.toml via the [env] section,
+# which Cargo propagates to all build scripts (including aws-lc-fips-sys).
+# This is necessary because Go invoked through a symlink miscomputes its
+# GOROOT on Linux (os.Executable returns the symlink path).
+#
+# Usage: CROSS_CONFIG=Cross.fips.toml cross build --features all-fips ...
+[build.env]
+passthrough = [
+    "RUSTFLAGS",
+    "GOROOT=/usr/local/go",
+]
 
 [target.x86_64-unknown-linux-gnu]
-pre-build = ["apt-get update && apt-get install -y cmake golang libclang-dev"]
+pre-build = [
+    "DEBIAN_FRONTEND=noninteractive apt-get update -qq","DEBIAN_FRONTEND=noninteractive apt-get install -qq -y --no-install-recommends cmake libclang-dev curl ca-certificates",
+    "rm -rf /usr/local/go && ARCH=$(dpkg --print-architecture) && curl --proto '=https' --tlsv1.2 -sSfL \"https://go.dev/dl/go1.22.10.linux-${ARCH}.tar.gz\" | tar -C /usr/local -xz && ln -sf /usr/local/go/bin/go /usr/bin/go && ln -sf /usr/local/go/bin/gofmt /usr/bin/gofmt && /usr/local/go/bin/go version"
+]
 
 [target.x86_64-unknown-linux-musl]
-pre-build = ["apt-get update && apt-get install -y cmake golang libclang-dev"]
+pre-build = [
+    "DEBIAN_FRONTEND=noninteractive apt-get update -qq","DEBIAN_FRONTEND=noninteractive apt-get install -qq -y --no-install-recommends cmake libclang-dev curl ca-certificates",
+    "rm -rf /usr/local/go && ARCH=$(dpkg --print-architecture) && curl --proto '=https' --tlsv1.2 -sSfL \"https://go.dev/dl/go1.22.10.linux-${ARCH}.tar.gz\" | tar -C /usr/local -xz && ln -sf /usr/local/go/bin/go /usr/bin/go && ln -sf /usr/local/go/bin/gofmt /usr/bin/gofmt && /usr/local/go/bin/go version"
+]
 
 [target.aarch64-unknown-linux-gnu]
-pre-build = ["apt-get update && apt-get install -y cmake golang libclang-dev"]
+pre-build = [
+    "DEBIAN_FRONTEND=noninteractive apt-get update -qq","DEBIAN_FRONTEND=noninteractive apt-get install -qq -y --no-install-recommends cmake libclang-dev curl ca-certificates",
+    "rm -rf /usr/local/go && ARCH=$(dpkg --print-architecture) && curl --proto '=https' --tlsv1.2 -sSfL \"https://go.dev/dl/go1.22.10.linux-${ARCH}.tar.gz\" | tar -C /usr/local -xz && ln -sf /usr/local/go/bin/go /usr/bin/go && ln -sf /usr/local/go/bin/gofmt /usr/bin/gofmt && /usr/local/go/bin/go version"
+]
 
 [target.aarch64-unknown-linux-musl]
-pre-build = ["apt-get update && apt-get install -y cmake golang libclang-dev"]
+pre-build = [
+    "DEBIAN_FRONTEND=noninteractive apt-get update -qq","DEBIAN_FRONTEND=noninteractive apt-get install -qq -y --no-install-recommends cmake libclang-dev curl ca-certificates",
+    "rm -rf /usr/local/go && ARCH=$(dpkg --print-architecture) && curl --proto '=https' --tlsv1.2 -sSfL \"https://go.dev/dl/go1.22.10.linux-${ARCH}.tar.gz\" | tar -C /usr/local -xz && ln -sf /usr/local/go/bin/go /usr/bin/go && ln -sf /usr/local/go/bin/gofmt /usr/bin/gofmt && /usr/local/go/bin/go version"
+]
