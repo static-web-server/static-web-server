@@ -219,7 +219,7 @@ jobs:
           - build: linux-musl-arm64-fips
             os: ubuntu-22.04
             rust: stable
-            target: aarch64-unknown-linux-musl 
+            target: aarch64-unknown-linux-musl
 
     steps:
     - name: Checkout repository
@@ -298,7 +298,7 @@ jobs:
 
     - name: Skip tests
       shell: bash
-      if: ${{ contains(fromJSON('["macos-arm64", "linux-android-arm64", "linux-android-armv7", "netbsd", "illumos", "windows-msvc-arm64"]'), matrix.build) }}
+      if: ${{ contains(fromJSON('["macos-arm64", "linux-android-arm64", "linux-android-armv7", "netbsd", "illumos", "windows-msvc-arm64", "linux-gnu-arm64-fips", "linux-musl-arm64-fips"]'), matrix.build) }}
       run: |
         # Can't run tests: cross-compiling
         echo "SKIP_TESTS=--no-run" >> $GITHUB_ENV
