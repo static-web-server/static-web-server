@@ -327,59 +327,11 @@ jobs:
         # ring crate: add Visual Studio Build Tools "VS 2022 C++ ARM64 build tools" and "clang" components
         $env:Path += ";C:\Program Files (x86)\Microsoft Visual Studio\2022\Enterprise\VC\Tools\Llvm\x64\bin"
 
-    - name: Setup Linux 32-bit
-      if: ${{ contains(matrix.build, 'linux-gnu-i686') }}
+    - name: Setup Linux/BSD tools
       shell: bash
+      if: ${{ !startsWith(matrix.os, 'windows') }}
       run: |
-        sudo apt-get update
-        sudo apt-get install -y gcc-multilib g++-multilib
-
-    - name: Setup Linux FIPS 64-bit
-      if: ${{ endsWith(matrix.build, 'fips') }}
-      shell: bash
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y \
-          cmake \
-          golang \
-          libclang-dev \
-          musl-tools \
-          musl-dev \
-          linux-headers-generic
-
-        # Detect the current architecture
-        ARCH=$(uname -m)
-        echo "Configuring musl environment for: $ARCH"
-
-        # Dynamically target Ubuntu's architecture-isolated musl include tree
-        MUSL_INC_DIR="/usr/include/${ARCH}-linux-musl"
-        sudo mkdir -p "$MUSL_INC_DIR"
-
-        # 1. Link the universal Linux kernel headers into the architecture's musl path
-        sudo ln -sf /usr/include/linux "$MUSL_INC_DIR/linux"
-        sudo ln -sf /usr/include/asm-generic "$MUSL_INC_DIR/asm-generic"
-
-        # 2. Link architecture-specific headers and compiler wrappers
-        if [ "$ARCH" = "aarch64" ]; then
-          sudo ln -sf /usr/include/aarch64-linux-gnu/asm "$MUSL_INC_DIR/asm"
-          sudo ln -sf /usr/bin/musl-gcc /usr/local/bin/aarch64-linux-musl-gcc
-          sudo ln -sf /usr/bin/g++ /usr/local/bin/aarch64-linux-musl-g++
-          echo "Successfully configured for aarch64."
-          
-        elif [ "$ARCH" = "x86_64" ]; then
-          sudo ln -sf /usr/include/x86_64-linux-gnu/asm "$MUSL_INC_DIR/asm"
-          sudo ln -sf /usr/bin/musl-gcc /usr/local/bin/x86_64-linux-musl-gcc
-          sudo ln -sf /usr/bin/g++ /usr/local/bin/x86_64-linux-musl-g++
-          echo "Successfully configured for x86_64."
-          
-        else
-          echo "Error: Unsupported runner architecture: $ARCH"
-          exit 1
-        fi
-
-        echo "INFO: Setting up Cargo features for FIPS builds..."
-        echo "CARGO_FEATURES=--no-default-features --features all-fips" >> $GITHUB_ENV
-        echo "RUSTFLAGS=--cfg tokio_unstable" >> $GITHUB_ENV
+        scripts/ci/install_tools.sh --build=${{ matrix.build }} --target=${{ matrix.target }}
 
     - name: Skip tests
       shell: bash
