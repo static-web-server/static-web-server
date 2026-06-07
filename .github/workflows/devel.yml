@@ -206,12 +206,12 @@ jobs:
             target: x86_64-unknown-illumos
           - build: macos
             native: true
-            os: macos-14
+            os: macos-26
             rust: stable
             target: x86_64-apple-darwin
           - build: macos-arm64
             native: true
-            os: macos-14
+            os: macos-26
             rust: stable
             target: aarch64-apple-darwin
           - build: windows-msvc
