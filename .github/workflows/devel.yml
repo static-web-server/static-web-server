@@ -229,7 +229,7 @@ jobs:
             target: i686-pc-windows-msvc
           - build: windows-msvc-arm64
             native: true
-            os: windows-2025
+            os: windows-11-arm
             rust: stable
             target: aarch64-pc-windows-msvc
           - build: windows-pc-gnu
