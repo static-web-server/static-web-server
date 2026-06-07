@@ -51,11 +51,6 @@ parse_args() {
         ;;
     esac
   done
-
-  if [[ -z "$TARGET" ]] || [[ -z "$BUILD" ]]; then
-    info "Neither --target=VALUE nor --build=VALUE should be provided. Nothing to do."
-    exit 0
-  fi
 }
 
 setup_all() {
@@ -86,6 +81,12 @@ setup_all() {
       setup_linux_android
       exit 0
       ;;
+    # Linux amd64/arm64 (GNU and musl)
+    aarch64-unknown-linux-gnu|aarch64-unknown-linux-musl|x86_64-unknown-linux-gnu|x86_64-unknown-linux-musl)
+      echo "Setting up build tools for Linux 64-bit on '$ARCH'..."
+      setup_linux_64_bit
+      exit 0
+      ;;
     *)
       info "No target case matching, nothing to do."
       ;;
@@ -93,7 +94,17 @@ setup_all() {
 }
 
 setup_linux_fips_64_bit() {
-  info "Installing build tools for Linux FIPS 64-bit on '$ARCH'..."
+  setup_linux_64_bit
+
+  info "Setting up Cargo features for FIPS builds..."
+  echo "CARGO_FEATURES=--no-default-features --features all-fips" >> $GITHUB_ENV
+  echo "RUSTFLAGS=--cfg tokio_unstable" >> $GITHUB_ENV
+  info "Successfully configured!"
+}
+
+# Linux 64-bit (arm64/amd64) and (GNU/musl) builds.
+setup_linux_64_bit() {
+  info "Installing build tools for Linux 64-bit on '$ARCH'..."
 
   ensure sudo apt-get update
   ensure sudo apt-get install -y \
@@ -133,11 +144,6 @@ setup_linux_fips_64_bit() {
       err "Unsupported runner architecture: $ARCH"
       ;;
   esac
-
-  info "Setting up Cargo features for FIPS builds..."
-  echo "CARGO_FEATURES=--no-default-features --features all-fips" >> $GITHUB_ENV
-  echo "RUSTFLAGS=--cfg tokio_unstable" >> $GITHUB_ENV
-  info "Successfully configured!"
 }
 
 setup_linux_gnu_32_bit() {
