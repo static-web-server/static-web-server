@@ -122,7 +122,7 @@ wasmer run wasmer/static-web-server --net --enable-threads --mapdir /public:/my/
 
 ## Binaries
 
-Pre-compiled binaries grouped by CPU architectures.
+Pre-compiled binaries are grouped by CPU architectures or features, depending on the case.
 
 ### x86_64
 
