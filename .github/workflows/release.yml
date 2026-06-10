@@ -4,14 +4,27 @@ on:
     tags:
     - 'v2.[0-9]+.[0-9]+'
     - 'v2.[0-9]+.[0-9]+-beta.[0-9]+'
+  pull_request:
+    types:
+      - labeled
 
 jobs:
   create-release:
     name: create-release
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
+    if: contains(github.event.label.name, 'test:release:v2')
     outputs:
       sws_version: ${{ env.SWS_VERSION }}
     steps:
+      - name: Prepare Docker envs
+        shell: bash
+        run: |
+          version=${{ github.event.label.name }}
+          semver=${version#*test:release:v}
+          echo "SEMVER=$semver" >> $GITHUB_ENV
+          echo "SEMVER_MAJOR=${semver%.*.*}" >> $GITHUB_ENV
+          echo "SEMVER_MINOR=${semver%.*}" >> $GITHUB_ENV
+
       - name: Get the release version from the tag
         shell: bash
         if: env.SWS_VERSION == ''
@@ -19,7 +32,9 @@ jobs:
           # Apparently, this is the right way to get a tag name. Really?
           #
           # See: https://github.community/t5/GitHub-Actions/How-to-get-just-the-tag-name/m-p/32167/highlight/true#M1027
-          echo "SWS_VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
+          #echo "SWS_VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
+          
+          echo "SWS_VERSION=${SEMVER}" >> $GITHUB_ENV
           echo "version is: ${{ env.SWS_VERSION }}"
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -29,7 +44,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release create ${{ env.SWS_VERSION }} --verify-tag --draft --title="${{ env.SWS_VERSION }}"
+          # gh release create ${{ env.SWS_VERSION }} --verify-tag --draft --title="${{ env.SWS_VERSION }}"
+          gh release create ${{ env.SWS_VERSION }} --draft --title="${{ env.SWS_VERSION }}"
 
   build-release:
     name: build-release
@@ -79,120 +95,131 @@ jobs:
           - linux-musl-arm64-fips
         include:
         - build: linux-musl
-          os: ubuntu-22.04
+          native: true
+          os: ubuntu-24.04
           rust: stable
           target: x86_64-unknown-linux-musl
         - build: linux-musl-i686
-          os: ubuntu-22.04
+          os: ubuntu-24.04
           rust: stable
           target: i686-unknown-linux-musl
         - build: linux-musl-arm64
-          os: ubuntu-22.04
+          native: true
+          os: ubuntu-24.04-arm
           rust: stable
           target: aarch64-unknown-linux-musl
         - build: linux-gnu
-          os: ubuntu-22.04
+          native: true
+          os: ubuntu-24.04
           rust: stable
           target: x86_64-unknown-linux-gnu
         - build: linux-gnu-i686
-          os: ubuntu-22.04
+          os: ubuntu-24.04
           rust: stable
           target: i686-unknown-linux-gnu
         - build: linux-gnu-arm64
-          os: ubuntu-22.04
+          native: true
+          os: ubuntu-24.04-arm
           rust: stable
           target: aarch64-unknown-linux-gnu
         - build: linux-arm-gnueabihf
-          os: ubuntu-22.04
+          os: ubuntu-24.04
           rust: stable
           target: arm-unknown-linux-gnueabihf
         - build: linux-musl-armv6
-          os: ubuntu-22.04
+          os: ubuntu-24.04
           rust: stable
           target: arm-unknown-linux-musleabihf
         - build: linux-musl-armv7
-          os: ubuntu-22.04
+          os: ubuntu-24.04
           rust: stable
           target: armv7-unknown-linux-musleabihf
         - build: linux-gnu-armv7
-          os: ubuntu-22.04
+          os: ubuntu-24.04
           rust: stable
           target: armv7-unknown-linux-gnueabihf
         - build: linux-ppc64le
-          os: ubuntu-22.04
+          os: ubuntu-24.04
           rust: stable
           target: powerpc64le-unknown-linux-gnu
         - build: linux-s390x
-          os: ubuntu-22.04
+          os: ubuntu-24.04
           rust: stable
           target: s390x-unknown-linux-gnu
+        #  NOTE: looks like not supported by `listenfd` crate
         # - build: linux-android-armv7
-        #   os: ubuntu-22.04
+        #   os: ubuntu-24.04
         #   rust: stable
         #   target: armv7-linux-androideabi
         - build: linux-android-arm64
-          os: ubuntu-22.04
+          os: ubuntu-24.04
           rust: stable
           target: aarch64-linux-android
         - build: netbsd
-          os: ubuntu-22.04
+          os: ubuntu-24.04
           rust: stable
           target: x86_64-unknown-netbsd
         - build: illumos
-          os: ubuntu-22.04
+          os: ubuntu-24.04
           rust: stable
           target: x86_64-unknown-illumos
         - build: macos
-          os: macos-14
+          native: true
+          os: macos-26
           rust: stable
           target: x86_64-apple-darwin
         - build: macos-arm64
-          os: macos-14
+          native: true
+          os: macos-26
           rust: stable
           target: aarch64-apple-darwin
         - build: windows-msvc
-          os: windows-2022
+          native: true
+          os: windows-2025
           rust: stable
           target: x86_64-pc-windows-msvc
         - build: windows-msvc-i686
-          os: windows-2022
+          native: true
+          os: windows-2025
           rust: stable
           target: i686-pc-windows-msvc
         - build: windows-msvc-arm64
-          os: windows-2022
+          native: true
+          os: windows-11-arm
           rust: stable
           target: aarch64-pc-windows-msvc
         - build: windows-pc-gnu
-          os: windows-2022
+          native: true
+          os: windows-2025
           rust: stable
           target: x86_64-pc-windows-gnu
         # FIPS builds
         - build: linux-gnu-fips
-          os: ubuntu-22.04
+          native: true
+          os: ubuntu-24.04
           rust: stable
           target: x86_64-unknown-linux-gnu
-        - build: linux-gnu-arm64-fips
-          os: ubuntu-22.04
-          rust: stable
-          target: aarch64-unknown-linux-gnu
         - build: linux-musl-fips
-          os: ubuntu-22.04
+          native: true
+          os: ubuntu-24.04
           rust: stable
           target: x86_64-unknown-linux-musl
-        - build: linux-musl-arm64-fips
-          os: ubuntu-22.04
+        - build: linux-gnu-arm64-fips
+          native: true
+          os: ubuntu-24.04-arm
           rust: stable
-          target: aarch64-unknown-linux-musl 
+          target: aarch64-unknown-linux-gnu
+        - build: linux-musl-arm64-fips
+          native: true
+          os: ubuntu-24.04-arm
+          rust: stable
+          target: aarch64-unknown-linux-musl
 
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
       with:
         fetch-depth: 1
-
-    - name: Install Linux/BSD tools
-      if: ${{ !contains(matrix.os, 'windows') }}
-      run: scripts/ci/install_tools.sh --target=${{ matrix.target }}
 
     - name: Install Rust
       uses: dtolnay/rust-toolchain@stable
@@ -201,39 +228,42 @@ jobs:
         target: ${{ matrix.target }}
 
     - name: Set up Cross
+      if: ${{ !matrix.native && matrix.target != '' }}
       shell: bash
       run: |
-        if [ "${{ matrix.os }}" = "ubuntu-22.04" ]; then
-          # Use 'cargo.sh' script for Android targets only
-          if [[ "${{ matrix.build }}" == "linux-android-armv7" ]] || [[ "${{ matrix.build }}" == "linux-android-arm64" ]]; then
-            echo "CARGO_BIN=scripts/ci/cargo.sh" >> $GITHUB_ENV
-          else
-            target=''
-            case "${{ matrix.os }}" in
-              *macos*)
-                target=x86_64-apple-darwin
-              ;;
-              *)
-                target=x86_64-unknown-linux-musl
-              ;;
-            esac
+        echo "Configuring Cross..."
+        # Use 'cargo.sh' script for Android targets only
+        if [[ "${{ matrix.build }}" == "linux-android-armv7" ]] || [[ "${{ matrix.build }}" == "linux-android-arm64" ]]; then
+          echo "CARGO_BIN=scripts/ci/cargo.sh" >> $GITHUB_ENV
+        else
+          target=''
+          case "${{ matrix.os }}" in
+            *macos*)
+              target=x86_64-apple-darwin
+            ;;
+            *)
+              target=x86_64-unknown-linux-musl
+            ;;
+          esac
 
-            echo "Installing cross..."
-            curl -sSL \
-              "https://github.com/cross-rs/cross/releases/download/v0.2.5/cross-$target.tar.gz" \
-              | sudo tar zxf - -C /usr/local/bin/ cross cross-util
-            cross -V
-            echo "CARGO_BIN=/usr/local/bin/cross" >> $GITHUB_ENV
-
-            if [[ "${{ matrix.build }}" == *-fips ]]; then
-                echo "INFO: Setting up Cargo features and Cross envs for FIPS builds..."
-                echo "CARGO_FEATURES=--no-default-features --features all-fips" >> $GITHUB_ENV
-                echo "CROSS_CONFIG=Cross.fips.toml" >> $GITHUB_ENV
-            fi
-          fi
+          echo "Installing cross..."
+          curl -sSL \
+            "https://github.com/cross-rs/cross/releases/download/v0.2.5/cross-$target.tar.gz" \
+            | sudo tar zxf - -C /usr/local/bin/ cross cross-util
+          cross -V
+          echo "CARGO_BIN=/usr/local/bin/cross" >> $GITHUB_ENV
         fi
-        echo "TARGET_FLAGS=--target=${{ matrix.target }}" >> $GITHUB_ENV
-        echo "TARGET_DIR=./target/${{ matrix.target }}" >> $GITHUB_ENV
+
+    - name: Setup Cargo
+      shell: bash
+      run: |
+        if [[ "${{ matrix.target }}" != "" ]]; then
+          echo "TARGET_FLAGS=--target=${{ matrix.target }}" >> $GITHUB_ENV
+          echo "TARGET_DIR=./target/${{ matrix.target }}" >> $GITHUB_ENV
+        fi
+        echo "cargo command is: ${{ env.CARGO_BIN }}"
+        echo "target flag is: ${{ env.TARGET_FLAGS }}"
+        echo "target dir is: ${{ env.TARGET_DIR }}"
 
     - name: Setup Windows ARM64
       if: ${{ contains(matrix.build, 'windows-msvc-arm64') }}
@@ -241,19 +271,25 @@ jobs:
         # ring crate: add Visual Studio Build Tools "VS 2022 C++ ARM64 build tools" and "clang" components
         $env:Path += ";C:\Program Files (x86)\Microsoft Visual Studio\2022\Enterprise\VC\Tools\Llvm\x64\bin"
 
-    - name: Show command used for Cargo
+    - name: Setup Linux/BSD tools
+      shell: bash
+      if: ${{ !startsWith(matrix.os, 'windows') }}
       run: |
-        echo "cargo command is: ${{ env.CARGO_BIN }}"
-        echo "target flag is: ${{ env.TARGET_FLAGS }}"
-        echo "target dir is: ${{ env.TARGET_DIR }}"
+        scripts/ci/install_tools.sh --build=${{ matrix.build }} --target=${{ matrix.target }}
 
     - name: Build release binary
+      shell: bash
       run: ${{ env.CARGO_BIN }} build --bin static-web-server -vv --release ${{ env.CARGO_FEATURES }} ${{ env.TARGET_FLAGS }}
 
     - name: Build archive
       shell: bash
       run: |
-        staging="static-web-server-${{ needs.create-release.outputs.sws_version }}-${{ matrix.target }}"
+        suffix=""
+        if [[ "${{ matrix.build }}" == *-fips ]]; then
+          suffix="-fips"
+        fi
+
+        staging="static-web-server-${{ needs.create-release.outputs.sws_version }}-${{ matrix.target }}$suffix"
         mkdir -p "$staging/"
         mkdir -p bin
 
