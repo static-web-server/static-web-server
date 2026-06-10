@@ -5,6 +5,83 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v2.43.0 - 2026-06-10
+
+This new `v2.43.0` brings bug fixes, new features and improvements. A fix for unnecessary pre-compressed file lookups, FIPS-capable TLS support via a new Cargo feature and prebuilt binaries, several performance optimizations, hardening across several modules, better byte-range suffix detection and extract normalization coverage, CI workflow updates and other enhancements.
+
+**Fixes**
+
+- [b224b6e][b224b6e] Update project dependencies. PR [#685][685] by [@joseluisq][joseluisq]
+- [8421a06][8421a06] Unnecessary pre-compressed file look up when the uncompressed one doesn't exist. PR [#684][684] by [@joseluisq][joseluisq]
+- [9b9c1a7][9b9c1a7] Docker: Update Alpine (`3.23.4`) & Debian (`13.5`) Docker images. PR [#678][678] by [@joseluisq][joseluisq]
+
+[b224b6e]: https://github.com/static-web-server/static-web-server/commit/b224b6e
+[8421a06]: https://github.com/static-web-server/static-web-server/commit/8421a06
+[9b9c1a7]: https://github.com/static-web-server/static-web-server/commit/9b9c1a7
+
+**Features**
+
+- [3ff096c][3ff096c] FIPS-capable TLS via new `http2-fips` Cargo feature flag using `aws-lc-rs` in FIPS mode. PR [#645][645] by [@alexander-bauer][alexander-bauer]. See [docs](https://static-web-server.net/features/http2-tls/#fips-validated-cryptography).
+- [7ff6cf6][7ff6cf6] Optional default text charset via `--default-charset`. PR [#656][656] by [@davlgd][davlgd]. See [docs](https://static-web-server.net/features/text-charset) (follow-up PR [#657][657] by [@joseluisq][joseluisq]).
+
+[3ff096c]: https://github.com/static-web-server/static-web-server/commit/3ff096c
+[7ff6cf6]: https://github.com/static-web-server/static-web-server/commit/7ff6cf6
+
+**Refactorings**
+
+- [a5af389][a5af389] Hardening and robustness increase for several modules. PR [#672][672] by [@joseluisq][joseluisq]
+- [6514b87][6514b87] Minimum size threshold for dynamic compression. PR [#673][673] by [@joseluisq][joseluisq]
+- [f503ee1][f503ee1] Byte-range suffix detection and extract normalization helpers, which increases case coverage. PR [#674][674] by [@joseluisq][joseluisq]
+- [e5103c3][e5103c3] Performance optimizations for several modules. PR [#675][675] by [@joseluisq][joseluisq]
+- [aa66137][aa66137] Improve directory listing performance. PR [#676][676] by [@joseluisq][joseluisq]
+- [2302e46][2302e46] Improve MIME types for compression and default text charset features (follow-up). PR [#657][657] by [@joseluisq][joseluisq]
+- [216e45b][216e45b] CI: Update `devel` workflow to compile several targets and FIPS directly via GitHub Actions runners. PR [#691][691] by [@joseluisq][joseluisq]
+- [2ac6c5e][2ac6c5e] CI: Update `release` workflow to compile several targets and FIPS directly via GitHub Actions runners. PR [#693][693] by [@joseluisq][joseluisq]
+- [dc2c7a2][dc2c7a2] CI: Update `release` GitHub Actions workflows for FIPS builds (follow-up). PR [#689][689] by [@joseluisq][joseluisq]
+- [6f0d607][6f0d607] CI: Update `release` GitHub Actions workflows for FIPS builds. PR [#688][688] by [@joseluisq][joseluisq]
+
+**Docs**
+
+- [f93f80e][f93f80e] Add missing FIPS Docker images and binary descriptions. PR [#687][687] by [@joseluisq][joseluisq]
+- [6dc9798][6dc9798] Add missing `.html` suffix feature for `404` errors. PR [#686][686] by [@joseluisq][joseluisq]
+
+[aa66137]: https://github.com/static-web-server/static-web-server/commit/aa66137
+[e5103c3]: https://github.com/static-web-server/static-web-server/commit/e5103c3
+[f503ee1]: https://github.com/static-web-server/static-web-server/commit/f503ee1
+[6514b87]: https://github.com/static-web-server/static-web-server/commit/6514b87
+[a5af389]: https://github.com/static-web-server/static-web-server/commit/a5af389
+[2302e46]: https://github.com/static-web-server/static-web-server/commit/2302e46
+[2ac6c5e]: https://github.com/static-web-server/static-web-server/commit/2ac6c5e
+[216e45b]: https://github.com/static-web-server/static-web-server/commit/216e45b
+[dc2c7a2]: https://github.com/static-web-server/static-web-server/commit/dc2c7a2
+[6f0d607]: https://github.com/static-web-server/static-web-server/commit/6f0d607
+[f93f80e]: https://github.com/static-web-server/static-web-server/commit/f93f80e
+[6dc9798]: https://github.com/static-web-server/static-web-server/commit/6dc9798
+[645]: https://github.com/static-web-server/static-web-server/pull/645
+[656]: https://github.com/static-web-server/static-web-server/pull/656
+[657]: https://github.com/static-web-server/static-web-server/pull/657
+[672]: https://github.com/static-web-server/static-web-server/pull/672
+[673]: https://github.com/static-web-server/static-web-server/pull/673
+[674]: https://github.com/static-web-server/static-web-server/pull/674
+[675]: https://github.com/static-web-server/static-web-server/pull/675
+[676]: https://github.com/static-web-server/static-web-server/pull/676
+[678]: https://github.com/static-web-server/static-web-server/pull/678
+[684]: https://github.com/static-web-server/static-web-server/pull/684
+[685]: https://github.com/static-web-server/static-web-server/pull/685
+[686]: https://github.com/static-web-server/static-web-server/pull/686
+[687]: https://github.com/static-web-server/static-web-server/pull/687
+[688]: https://github.com/static-web-server/static-web-server/pull/688
+[689]: https://github.com/static-web-server/static-web-server/pull/689
+[691]: https://github.com/static-web-server/static-web-server/pull/691
+[693]: https://github.com/static-web-server/static-web-server/pull/693
+
+[alexander-bauer]: https://github.com/alexander-bauer
+
+For more details see the [v2.43.0 milestone][v2430-milestone] and the full changelog [v2.42.0...v2.43.0][v2430-diff].
+
+[v2430-diff]: https://github.com/static-web-server/static-web-server/compare/v2.42.0...v2.43.0
+[v2430-milestone]: https://github.com/static-web-server/static-web-server/milestone/39?closed=1
+
 ## v2.42.0 - 2026-03-27
 
 This new `v2.42.0` brings bug fixes, new features and improvements. Fix a memory increase regression introduced in `v2.40.0`. Support for HTTP Prometheus metrics, Local-time for logs by default, support for the POSIX `TZ` environment variable to configure logs's timezone as well as other minor improvements.
