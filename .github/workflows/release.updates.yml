@@ -61,7 +61,7 @@ jobs:
             --body "An automated PR containing documentation and script installer updates corresponding to the current release \`${{ env.SERVER_VERSION }}\`.<br>See https://static-web-server.net/download-and-install/ for more details." \
             --base "master" \
             --head "${{ env.PR_BRANCH_NAME }}" \
-            --label "{{ env.LABEL_VERSION }}" \
+            --label "${{ env.LABEL_VERSION }}" \
             --label "enhancement" \
             --label "documentation" \
             --label "automated" \
