@@ -4,27 +4,14 @@ on:
     tags:
     - 'v2.[0-9]+.[0-9]+'
     - 'v2.[0-9]+.[0-9]+-beta.[0-9]+'
-  pull_request:
-    types:
-      - labeled
 
 jobs:
   create-release:
     name: create-release
     runs-on: ubuntu-24.04
-    if: contains(github.event.label.name, 'test:release:v2')
     outputs:
       sws_version: ${{ env.SWS_VERSION }}
     steps:
-      - name: Prepare Docker envs
-        shell: bash
-        run: |
-          version=${{ github.event.label.name }}
-          semver=${version#*test:release:v}
-          echo "SEMVER=$semver" >> $GITHUB_ENV
-          echo "SEMVER_MAJOR=${semver%.*.*}" >> $GITHUB_ENV
-          echo "SEMVER_MINOR=${semver%.*}" >> $GITHUB_ENV
-
       - name: Get the release version from the tag
         shell: bash
         if: env.SWS_VERSION == ''
@@ -32,9 +19,7 @@ jobs:
           # Apparently, this is the right way to get a tag name. Really?
           #
           # See: https://github.community/t5/GitHub-Actions/How-to-get-just-the-tag-name/m-p/32167/highlight/true#M1027
-          #echo "SWS_VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
-          
-          echo "SWS_VERSION=${SEMVER}" >> $GITHUB_ENV
+          echo "SWS_VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
           echo "version is: ${{ env.SWS_VERSION }}"
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -44,8 +29,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # gh release create ${{ env.SWS_VERSION }} --verify-tag --draft --title="${{ env.SWS_VERSION }}"
-          gh release create ${{ env.SWS_VERSION }} --draft --title="${{ env.SWS_VERSION }}"
+          gh release create ${{ env.SWS_VERSION }} --verify-tag --draft --title="${{ env.SWS_VERSION }}"
 
   build-release:
     name: build-release
