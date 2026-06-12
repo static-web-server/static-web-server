@@ -5,7 +5,7 @@
     /></a>
   </div>
 
-<h1 align="center">Static Web Server</h1>
+<h1 align="center">Static Web Server (v2 LTS)</h1>
 
 <h4 align="center">
     A cross-platform, high-performance and asynchronous web server for static files-serving ⚡
@@ -26,6 +26,10 @@
 </div>
 
 ## Overview
+
+> [!NOTE]
+> **v2** is **LTS** (Long-term support) since `2026-06-12` providing only critical bug fixes and security updates.<br>
+> For the latest features and improvements, please check the upcoming [`v3`](https://github.com/static-web-server/static-web-server).
 
 **Static Web Server** (or **`SWS`** abbreviated) is a tiny and fast production-ready web server suitable to serve static web files or assets.
 

@@ -7,6 +7,15 @@ on:
       - src/**
       - tests/**
       - ./*.md
+  push:
+    branches:
+      - 2.x
+    paths:
+      - .github/workflows/devel.project.docs.yml
+      - docs/**
+      - src/**
+      - tests/**
+      - ./*.md
 
 jobs:
   docs-check:

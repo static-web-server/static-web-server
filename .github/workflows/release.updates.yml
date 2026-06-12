@@ -14,6 +14,7 @@ env:
 jobs:
   release_updates:
     runs-on: ubuntu-22.04
+    if: contains(github.ref, 'v2.')
     environment: release-updates-static-web-server
     steps:
       - name: Checkout

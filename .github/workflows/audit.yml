@@ -4,13 +4,13 @@ on:
     - cron: '10 01 * * *' # Every day at 01:10 UTC
   push:
     branches:
-      - master
+      - 2.x
     paths:
       - "**/Cargo.lock"
       - "**/Cargo.toml"
   pull_request:
     branches:
-      - master
+      - 2.x
     paths:
       - "**/Cargo.lock"
       - "**/Cargo.toml"

@@ -2,7 +2,7 @@ name: devel-docker
 on:
   merge_group:
     branches:
-      - master
+      - 2.x
   pull_request:
     paths:
       - docker/**/Dockerfile
@@ -10,7 +10,7 @@ on:
       - .github/workflows/devel.docker.yml
   push:
     branches:
-      - master
+      - 2.x
     paths:
       - docker/**/Dockerfile
       - scripts/ci/**/*.sh
