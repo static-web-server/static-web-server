@@ -79,6 +79,49 @@ docker run --rm -it -p 8787:80 joseluisq/static-web-server:2-debian -g info
 docker run --rm -it -p 8787:80 ghcr.io/static-web-server/static-web-server:2-debian -g info
 ```
 
+### FIPS-validated TLS
+
+For deployments that require **FIPS 140-validated cryptography** (US federal, regulated industries), there are a few Docker image variants available with [FIPS-validated TLS](./http2-tls.md#fips-validated-cryptography) via the `http2-fips` feature.
+FIPS images use [`aws-lc-rs`](https://github.com/aws/aws-lc-rs) in FIPS mode instead of `ring` as the TLS crypto provider.
+
+Platforms supported by FIPS images are `linux/amd64` and `linux/arm64` only.
+
+!!! tip "Verify FIPS mode"
+
+    To verify that the image supports FIPS mode, check the output of the following command:
+
+    ```sh
+    docker run --rm ghcr.io/static-web-server/static-web-server:2-fips -V | grep -i "fips"
+    # FIPS Mode:
+    #   Module Version:   AWS-LC-FIPS 3.0.x
+    #   Crypto Provider:  aws-lc-rs (via aws-lc-fips-sys)
+    ```
+
+**Scratch**
+
+```sh
+# Scratch (just the binary)
+docker run --rm -it -p 8787:80 joseluisq/static-web-server:2-fips -g info
+# or
+docker run --rm -it -p 8787:80 ghcr.io/static-web-server/static-web-server:2-fips -g info
+```
+
+**Alpine**
+
+```sh
+docker run --rm -it -p 8787:80 joseluisq/static-web-server:2-fips-alpine -g info
+# or
+docker run --rm -it -p 8787:80 ghcr.io/static-web-server/static-web-server:2-fips-alpine -g info
+```
+
+**Debian**
+
+```sh
+docker run --rm -it -p 8787:80 joseluisq/static-web-server:2-fips-debian -g info
+# or
+docker run --rm -it -p 8787:80 ghcr.io/static-web-server/static-web-server:2-fips-debian -g info
+```
+
 ### Development
 
 Additionally, we publish **development** Docker images based on `master` branch changes.

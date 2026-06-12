@@ -42,6 +42,7 @@ Options:
           HTML file path for 404 errors. If the path is not specified or simply doesn't exist then the server will use a generic HTML error message. If a relative path is used then it will be resolved under the root directory [env: SERVER_ERROR_PAGE_404=] [default: ./404.html]
       --page-fallback <PAGE_FALLBACK>
           A HTML file path (not relative to the root) used for GET requests when the requested path doesn't exist. The fallback page is served with a 200 status code, useful when using client routers. If the path doesn't exist then the feature is not activated [env: SERVER_FALLBACK_PAGE=] [default: ""]
+          A HTML file path (not relative to the root) used for GET requests when the requested path doesn't exist. The fallback page is served with a 200 status code, useful when using client routers. If the path doesn't exist then the feature is not activated [env: SERVER_FALLBACK_PAGE=] [default: ""]
   -g, --log-level <LOG_LEVEL>
           Specify a logging level in lower case. Values: error, warn, info, debug or trace [env: SERVER_LOG_LEVEL=] [default: error]
       --log-format <LOG_FORMAT>
@@ -51,6 +52,7 @@ Options:
       --log-file <LOG_FILE>
           Optional filesystem path to stream log records to in addition to stderr. When set, logs are written asynchronously through a background worker thread (non-blocking I/O), so the request path is never delayed by disk writes. Missing parent directories are created on startup. ANSI escape codes are always disabled for file output regardless of `--log-with-ansi`. The file uses the format selected by `--log-format` (JSON by default). The file is opened in append mode and is not rotated by SWS, use an external tool (e.g. `logrotate`) for rotation [env: SERVER_LOG_FILE=]
   -c, --cors-allow-origins <CORS_ALLOW_ORIGINS>
+          Specify an optional CORS list of allowed origin hosts separated by commas. Host ports or protocols aren't being checked. Use an asterisk (*) to allow any host [env: SERVER_CORS_ALLOW_ORIGINS=] [default: ""]
           Specify an optional CORS list of allowed origin hosts separated by commas. Host ports or protocols aren't being checked. Use an asterisk (*) to allow any host [env: SERVER_CORS_ALLOW_ORIGINS=] [default: ""]
   -j, --cors-allow-headers <CORS_ALLOW_HEADERS>
           Specify an optional CORS list of allowed headers separated by commas. Default "origin, content-type". It requires `--cors-allow-origins` to be used along with [env: SERVER_CORS_ALLOW_HEADERS=] [default: "origin, content-type, authorization"]
@@ -96,6 +98,7 @@ Options:
           Enable weak `ETag` headers (`W/"<mtime>-<size>"`) and full conditional request handling (`If-None-Match`, `If-Match`, `If-Range`). Composes with `--cache-control-headers`; emits validators on every static-file response so clients can revalidate hot HTML even when long `max-age` is configured elsewhere [env: SERVER_ETAG=] [default: true] [possible values: true, false]
       --basic-auth <BASIC_AUTH>
           It provides The "Basic" HTTP Authentication scheme using credentials as "user-id:password" pairs. Password must be encoded using the "BCrypt" password-hashing function [env: SERVER_BASIC_AUTH=] [default: ""]
+          It provides The "Basic" HTTP Authentication scheme using credentials as "user-id:password" pairs. Password must be encoded using the "BCrypt" password-hashing function [env: SERVER_BASIC_AUTH=] [default: ""]
   -q, --grace-period <GRACE_PERIOD>
           Defines a grace period in seconds after a `SIGTERM` signal is caught which will delay the server before to shut it down gracefully. The maximum value is 255 seconds [env: SERVER_GRACE_PERIOD=] [default: 0]
   -w, --config-file <CONFIG_FILE>
@@ -122,11 +125,14 @@ Options:
           Add a /health endpoint that doesn't generate any log entry and returns a 200 status code. This is especially useful with Kubernetes liveness and readiness probes [env: SERVER_HEALTH=] [default: false] [possible values: true, false]
       --metrics [<METRICS>]
           Enable the /metrics endpoint that exposes Prometheus metrics for HTTP requests, connections, and latency [env: SERVER_METRICS=] [default: false] [possible values: true, false]
+      --metrics [<METRICS>]
+          Enable the /metrics endpoint that exposes Prometheus metrics for HTTP requests, connections, and latency [env: SERVER_METRICS=] [default: false] [possible values: true, false]
       --maintenance-mode [<MAINTENANCE_MODE>]
           Enable the server's maintenance mode functionality [env: SERVER_MAINTENANCE_MODE=] [default: false] [possible values: true, false]
       --maintenance-mode-status <MAINTENANCE_MODE_STATUS>
           Provide a custom HTTP status code when entering into maintenance mode. Default 503 [env: SERVER_MAINTENANCE_MODE_STATUS=] [default: 503]
       --maintenance-mode-file <MAINTENANCE_MODE_FILE>
+          Provide a custom maintenance mode HTML file. If not provided then a generic message will be displayed [env: SERVER_MAINTENANCE_MODE_FILE=] [default: ""]
           Provide a custom maintenance mode HTML file. If not provided then a generic message will be displayed [env: SERVER_MAINTENANCE_MODE_FILE=] [default: ""]
   -V, --version
           Print version info and exit

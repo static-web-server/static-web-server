@@ -8,6 +8,9 @@ permissions:
   contents: write
   pull-requests: write
 
+env:
+  LABEL_VERSION: "v2"
+
 jobs:
   release_updates:
     runs-on: ubuntu-22.04
@@ -55,8 +58,11 @@ jobs:
         run: |
           gh pr create \
             --title "Post release ${{ env.SERVER_VERSION }} updates" \
-            --body "An automated PR containing documentation and script installer updates corresponding to the current release \`${{ env.SERVER_VERSION }}\`.\n\nSee https://static-web-server.net/download-and-install/ for more details." \
+            --body "An automated PR containing documentation and script installer updates corresponding to the current release \`${{ env.SERVER_VERSION }}\`.<br>See https://static-web-server.net/download-and-install/ for more details." \
             --base "master" \
             --head "${{ env.PR_BRANCH_NAME }}" \
-            --label "v2" --label "enhancement" --label "documentation" --label "automated" \
+            --label "${{ env.LABEL_VERSION }}" \
+            --label "enhancement" \
+            --label "documentation" \
+            --label "automated" \
             --draft

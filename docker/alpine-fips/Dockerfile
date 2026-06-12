@@ -1,4 +1,4 @@
-FROM --platform=$BUILDPLATFORM alpine:3.22.3 AS build
+FROM --platform=$BUILDPLATFORM alpine:3.23.4 AS build
 
 ARG TARGETPLATFORM
 ARG SERVER_VERSION=0.0.0
@@ -32,7 +32,7 @@ RUN set -ex \
     && file /usr/local/bin/static-web-server \
     && true
 
-FROM alpine:3.22.3
+FROM alpine:3.23.4
 
 ARG SERVER_VERSION=0.0.0
 ARG SERVER_USER_NAME=sws

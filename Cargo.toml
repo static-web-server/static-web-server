@@ -1,6 +1,6 @@
 [package]
 name = "static-web-server"
-version = "2.42.0"
+version = "2.43.0"
 edition = "2024"
 rust-version = "1.88.0"
 authors = ["Jose Quintana <https://joseluisq.net>"]
@@ -78,6 +78,7 @@ experimental = ["metrics", "tokio-metrics-collector"]
 [dependencies]
 aho-corasick = "1.1.4"
 anyhow = "1.0"
+aws-lc-rs = { version = "1", optional = true, default-features = false }
 async-compression = { version = "0.4", default-features = false, optional = true, features = ["brotli", "deflate", "gzip", "zstd", "tokio"] }
 async-tar = { version = "0.5.1", optional = true }
 bcrypt = { version = "0.18.0", optional = true }
@@ -111,7 +112,6 @@ serde_json = "1.0"
 serde_repr = "0.1"
 shadow-rs = "1.4.0"
 tokio = { version = "1", default-features = false, features = ["rt-multi-thread", "macros", "fs", "io-util", "net", "signal"] }
-aws-lc-rs = { version = "1", optional = true, default-features = false }
 tokio-rustls = { version = "0.26", optional = true, default-features = false }
 tokio-util = { version = "0.7", default-features = false, features = ["io", "compat"] }
 toml = "0.9"

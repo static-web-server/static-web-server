@@ -8,7 +8,7 @@ jobs:
   build:
     name: build
     environment: release-build-manual
-    if: contains(github.event.label.name, 'release:manual:v2.')
+    if: contains(github.event.label.name, 'release:manual:v3.')
     runs-on: ${{ matrix.os }}
     env:
       # For some builds, we use cross to test on 32-bit and big-endian

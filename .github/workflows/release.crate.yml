@@ -7,7 +7,7 @@ on:
 jobs:
   check-secret:
     runs-on: ubuntu-22.04
-    if: contains(github.ref, 'v2.')
+    if: contains(github.ref, 'v3.')
     environment: crates-io-static-web-server
     outputs:
       publish: ${{ steps.check.outputs.publish }}

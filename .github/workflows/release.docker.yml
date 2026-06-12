@@ -7,7 +7,7 @@ on:
 jobs:
   docker-image-alpine:
     runs-on: ubuntu-22.04
-    if: contains(github.ref, 'v2.')
+    if: contains(github.ref, 'v3.')
     steps:
       -
         name: Checkout repository
@@ -68,7 +68,7 @@ jobs:
   docker-image-debian:
     needs: ['docker-image-alpine']
     runs-on: ubuntu-22.04
-    if: contains(github.ref, 'v2.')
+    if: contains(github.ref, 'v3.')
     steps:
       -
         name: Checkout repository

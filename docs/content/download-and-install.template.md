@@ -122,7 +122,7 @@ wasmer run wasmer/static-web-server --net --enable-threads --mapdir /public:/my/
 
 ## Binaries
 
-Pre-compiled binaries grouped by CPU architectures.
+Pre-compiled binaries are grouped by CPU architectures or features, depending on the case.
 
 ### x86_64
 
@@ -143,6 +143,13 @@ Pre-compiled binaries grouped by CPU architectures.
 - [static-web-server-{{RELEASE_VERSION}}-x86_64-unknown-illumos.tar.gz](https://github.com/static-web-server/static-web-server/releases/download/{{RELEASE_VERSION}}/static-web-server-{{RELEASE_VERSION}}-x86_64-unknown-illumos.tar.gz)<br>
 <small>**SHA256SUM:** `{{x86_64-unknown-illumos.tar.gz}}`</small>
 
+#### FIPS
+
+- [static-web-server-{{RELEASE_VERSION}}-x86_64-unknown-linux-gnu-fips.tar.gz](https://github.com/static-web-server/static-web-server/releases/download/{{RELEASE_VERSION}}/static-web-server-{{RELEASE_VERSION}}-x86_64-unknown-linux-gnu-fips.tar.gz)<br>
+<small>**SHA256SUM:** `{{x86_64-unknown-linux-gnu-fips.tar.gz}}`</small>
+- [static-web-server-{{RELEASE_VERSION}}-x86_64-unknown-linux-musl-fips.tar.gz](https://github.com/static-web-server/static-web-server/releases/download/{{RELEASE_VERSION}}/static-web-server-{{RELEASE_VERSION}}-x86_64-unknown-linux-musl-fips.tar.gz)<br>
+<small>**SHA256SUM:** `{{x86_64-unknown-linux-musl-fips.tar.gz}}`</small>
+
 ### ARM64
 
 - [static-web-server-{{RELEASE_VERSION}}-aarch64-unknown-linux-gnu.tar.gz](https://github.com/static-web-server/static-web-server/releases/download/{{RELEASE_VERSION}}/static-web-server-{{RELEASE_VERSION}}-aarch64-unknown-linux-gnu.tar.gz)<br>
@@ -155,6 +162,13 @@ Pre-compiled binaries grouped by CPU architectures.
 <small>**SHA256SUM:** `{{aarch64-linux-android.tar.gz}}`</small>
 - [static-web-server-{{RELEASE_VERSION}}-aarch64-pc-windows-msvc.zip](https://github.com/static-web-server/static-web-server/releases/download/{{RELEASE_VERSION}}/static-web-server-{{RELEASE_VERSION}}-aarch64-pc-windows-msvc.zip)<br>
 <small>**SHA256SUM:** `{{aarch64-pc-windows-msvc.zip}}`</small>
+
+#### FIPS
+
+- [static-web-server-{{RELEASE_VERSION}}-aarch64-unknown-linux-gnu-fips.tar.gz](https://github.com/static-web-server/static-web-server/releases/download/{{RELEASE_VERSION}}/static-web-server-{{RELEASE_VERSION}}-aarch64-unknown-linux-gnu-fips.tar.gz)<br>
+<small>**SHA256SUM:** `{{aarch64-unknown-linux-gnu-fips.tar.gz}}`</small>
+- [static-web-server-{{RELEASE_VERSION}}-aarch64-unknown-linux-musl-fips.tar.gz](https://github.com/static-web-server/static-web-server/releases/download/{{RELEASE_VERSION}}/static-web-server-{{RELEASE_VERSION}}-aarch64-unknown-linux-musl-fips.tar.gz)<br>
+<small>**SHA256SUM:** `{{aarch64-unknown-linux-musl-fips.tar.gz}}`</small>
 
 ### x86
 

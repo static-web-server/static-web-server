@@ -18,6 +18,10 @@ static-web-server \
     --page50x ./my-page-50x.html
 ```
 
+## Default `.html` suffixes
+
+If a page does not exist at the specified path, **SWS** will attempt to serve a page with the same path but with an `.html` suffix. For example, if `--page404` is set to `./my-page-404` and that file does not exist, **SWS** will look for `./my-page-404.html` and serve it if found. This allows for convenient configuration without needing to specify the `.html` extension if your error pages are named with that suffix.
+
 ## Fallback Page for use with Client Routers
 
 It is possible to provide a HTML file to be used as fallback page when `GET` request paths dont exist.
