@@ -129,6 +129,7 @@ jobs:
   docker-image-scratch:
     needs: ['docker-image-alpine']
     runs-on: ubuntu-22.04
+    if: contains(github.ref, 'v2.')
     steps:
       -
         name: Checkout repository

@@ -3,7 +3,7 @@ name: release-docker-devel
 on:
   push:
     branches:
-      - master
+      - 2.x
     paths:
       - .github/workflows/release.docker.devel.yml
       - .cargo/config.toml
