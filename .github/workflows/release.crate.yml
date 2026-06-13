@@ -6,8 +6,8 @@ on:
 
 jobs:
   check-secret:
-    runs-on: ubuntu-22.04
-    if: contains(github.ref, 'v2.')
+    runs-on: ubuntu-24.04
+    if: contains(github.ref, 'v3.')
     environment: crates-io-static-web-server
     outputs:
       publish: ${{ steps.check.outputs.publish }}
@@ -20,7 +20,7 @@ jobs:
 
   publish:
     needs: check-secret
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     if: needs.check-secret.outputs.publish == 'true'
     environment: crates-io-static-web-server
     steps:

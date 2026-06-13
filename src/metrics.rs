@@ -9,13 +9,14 @@
 use std::sync::LazyLock;
 
 use headers::{ContentType, HeaderMapExt};
-use hyper::{Body, Request, Response, StatusCode};
+use hyper::{Request, Response, StatusCode};
 use prometheus::{
     Encoder, HistogramOpts, HistogramVec, IntCounterVec, IntGauge, Opts, TextEncoder,
     default_registry,
 };
 
-use crate::{Error, handler::RequestHandlerOpts, http_ext::MethodExt};
+use crate::body::Body;
+use crate::{Error, exts::http::MethodExt, handler::RequestHandlerOpts};
 
 // Histogram buckets tuned for static file serving (50µs to 10s).
 // Sub-millisecond range captures cache hits and small in-memory responses.
@@ -81,7 +82,7 @@ static HTTP_CONNECTIONS_ACTIVE: LazyLock<IntGauge> = LazyLock::new(|| {
 /// # Security
 ///
 /// The `/metrics` endpoint is exposed **without any built-in access
-/// control** — it is intentionally unauthenticated so that a sidecar
+/// control** \u2014 it is intentionally unauthenticated so that a sidecar
 /// Prometheus scraper can reach it cheaply. Operators MUST place SWS
 /// behind a reverse proxy or network policy that restricts `/metrics`
 /// to trusted scrapers; otherwise an unauthenticated client could
@@ -89,7 +90,7 @@ static HTTP_CONNECTIONS_ACTIVE: LazyLock<IntGauge> = LazyLock::new(|| {
 /// (information disclosure).
 pub fn init(enabled: bool, handler_opts: &mut RequestHandlerOpts) {
     handler_opts.metrics_enabled = enabled;
-    tracing::info!("metrics endpoint: enabled={enabled}");
+    tracing::info!(enabled, "metrics endpoint");
     if enabled {
         tracing::warn!(
             "metrics endpoint `/metrics` is unauthenticated; restrict access via reverse proxy or network policy"
@@ -107,7 +108,7 @@ pub fn init(enabled: bool, handler_opts: &mut RequestHandlerOpts) {
             )) {
                 tracing::debug!("tokio runtime metrics collector registration skipped: {err:?}");
             }
-            tracing::info!("tokio runtime metrics: enabled");
+            tracing::info!(enabled = true, "tokio runtime metrics");
         }
 
         // HTTP-level metrics
@@ -164,9 +165,9 @@ pub fn pre_process<T>(
                 ));
             }
         };
-        Body::from(data)
+        crate::body::full(data)
     } else {
-        Body::empty()
+        crate::body::empty()
     };
     let mut resp = Response::new(body);
     resp.headers_mut()
@@ -231,13 +232,13 @@ fn status_class(code: u16) -> &'static str {
 mod tests {
     use super::*;
     use crate::handler::RequestHandlerOpts;
-    use hyper::{Body, Request};
+    use hyper::Request;
 
     fn make_request(method: &str, uri: &str) -> Request<Body> {
         Request::builder()
             .method(method)
             .uri(uri)
-            .body(Body::empty())
+            .body(crate::body::empty())
             .unwrap()
     }
 
@@ -320,7 +321,7 @@ mod tests {
             .method("GET")
             .uri("/index.html")
             .header(hyper::header::HOST, "example.com")
-            .body(Body::empty())
+            .body(crate::body::empty())
             .unwrap();
         record_request(&req, StatusCode::OK, 1024, 0.005);
 

@@ -12,6 +12,9 @@ arbitrary = { version = "1",  features = ["derive"] }
 libfuzzer-sys = { version = "0.4", features = ["arbitrary-derive"] }
 static-web-server = { path = ".." }
 hyper = { version = "0.14", features = ["stream", "http1", "http2", "tcp", "server"] }
+headers = "0.4"
+regex-lite = "0.1"
+aho-corasick = "1.1"
 
 [profile.release]
 debug = 1
@@ -19,3 +22,15 @@ debug = 1
 [[bin]]
 name = "static_files"
 path = "src/static_files.rs"
+
+[[bin]]
+name = "content_disposition"
+path = "src/content_disposition.rs"
+
+[[bin]]
+name = "cors_origin"
+path = "src/cors_origin.rs"
+
+[[bin]]
+name = "redirect_placeholders"
+path = "src/redirect_placeholders.rs"

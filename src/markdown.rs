@@ -9,11 +9,12 @@
 //! an Accept header that includes text/markdown.
 
 use headers::HeaderMapExt;
-use hyper::{Body, Request, Response};
+use hyper::{Request, Response};
 use std::path::Path;
 
+use crate::body::Body;
 use crate::{
-    Error, fs::meta::try_markdown_variant, handler::RequestHandlerOpts, headers_ext::Accept,
+    Error, exts::headers::Accept, fs::meta::try_markdown_variant, handler::RequestHandlerOpts,
 };
 
 /// Pre-process a request to check if a markdown variant URI should be used.
@@ -64,7 +65,7 @@ pub(crate) fn post_process(
     // Set the Content-Type to text/markdown; charset=utf-8
     if let Ok(content_type) = "text/markdown; charset=utf-8".parse() {
         resp.headers_mut()
-            .insert(hyper::header::CONTENT_TYPE, content_type);
+            .insert(http::header::CONTENT_TYPE, content_type);
     }
 
     Ok(resp)
@@ -73,14 +74,14 @@ pub(crate) fn post_process(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use hyper::{Body, Request};
+    use hyper::Request;
 
     #[test]
     fn test_no_accept_header() {
         let req = Request::builder()
             .method("GET")
             .uri("/test")
-            .body(Body::empty())
+            .body(crate::body::empty())
             .unwrap();
 
         // Without Accept header, should return None (no markdown variant)
@@ -96,7 +97,7 @@ mod tests {
             .method("GET")
             .uri("/test")
             .header("Accept", "text/html")
-            .body(Body::empty())
+            .body(crate::body::empty())
             .unwrap();
 
         // With Accept: text/html, should return None (no markdown variant)
@@ -112,7 +113,7 @@ mod tests {
             .method("GET")
             .uri("/test")
             .header("Accept", "text/markdown")
-            .body(Body::empty())
+            .body(crate::body::empty())
             .unwrap();
 
         // With Accept: text/markdown but no file, should return None

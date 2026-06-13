@@ -23,6 +23,7 @@ root = "./public"
 
 #### Logging
 log-level = "error"
+log-format = "json"
 
 #### Cache Control headers
 cache-control-headers = true
@@ -97,8 +98,8 @@ health = false
 #### Markdown content negotiation
 accept-markdown = false
 
-#### Default charset for text/* responses (empty to disable)
-text-charset = "utf-8"
+#### Default charset for text responses (enabled by default)
+# text-charset = false
 
 #### List of index files
 # index-files = "index.html, index.htm"
@@ -172,6 +173,12 @@ maintenance-mode = false
 # [[advanced.virtual-hosts]]
 # host = "blog.example.com"
 # root = "/var/blog/html"
+
+# [advanced.memory-cache]
+# capacity = 100
+# ttl = 1800      # 30 minutes
+# tti = 300       # 5 minutes
+# max-file-size = 8192  # 8 MiB
 ```
 
 ### General options
@@ -188,7 +195,7 @@ So they are equivalent to each other **except** for the `-w, --config-file` opti
 
 The TOML `[advanced]` section is intended for more complex features.
 
-For example [Custom HTTP Headers](../features/custom-http-headers.md), [Custom URL Redirects](../features/url-redirects.md), [URL Rewrites](../features/url-rewrites.md), or [Virtual Hosting](../features/virtual-hosting.md)
+For example [Custom HTTP Headers](../features/custom-http-headers.md), [Custom URL Redirects](../features/url-redirects.md), [URL Rewrites](../features/url-rewrites.md), [Virtual Hosting](../features/virtual-hosting.md), or [In-Memory Cache](../features/memory-cache.md).
 
 ### Precedence
 

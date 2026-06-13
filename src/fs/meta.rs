@@ -11,7 +11,7 @@ use std::fs::{File, Metadata};
 use std::path::{Path, PathBuf};
 
 use crate::Result;
-use crate::headers_ext::ContentCoding;
+use crate::exts::headers::ContentCoding;
 
 /// It defines a composed file metadata structure containing the current file
 /// and its optional pre-compressed variant.

@@ -35,6 +35,10 @@ Defines a grace period in seconds after a `SIGTERM` signal is caught which will 
 
 Specify a logging level in lowercase. Possible values are `error`, `warn`, `info`, `debug` or `trace`. Default `error`.
 
+### SERVER_LOG_FORMAT
+
+Specify the logging output format. Possible values are `json` (structured single-line JSON for production) or `pretty` (human-readable text for development). Default `json`.
+
 ### SERVER_LOG_WITH_ANSI
 
 Enable or disable ANSI escape codes for colors and other text formatting of the log output.
@@ -42,6 +46,10 @@ Enable or disable ANSI escape codes for colors and other text formatting of the 
 ### SERVER_LOG_REMOTE_ADDRESS
 
 Log incoming request information along with its Remote Address (IP) if available using the `info` log level. Default `false`.
+
+### SERVER_LOG_FILE
+
+Stream log records to a file on disk in addition to `stderr`. The file is opened in append mode and is not rotated by SWS, use an external tool (e.g. `logrotate`) for rotation. ANSI escape codes are always disabled for file output regardless of `SERVER_LOG_WITH_ANSI`, so the file stays parsable. Default empty (disabled).
 
 ### SERVER_LOG_X_REAL_IP
 
@@ -153,6 +161,10 @@ Enable security headers by default when the HTTP/2 feature is activated. Headers
 
 Enable cache control headers for incoming requests based on a set of file types. The file type list can be found in [`src/control_headers.rs`](https://github.com/static-web-server/static-web-server/blob/master//src/control_headers.rs) file. Default `true` (enabled).
 
+### SERVER_ETAG
+
+Enable ETag header generation for static files. SWS emits weak ETags in the format `W/"{hex-digest}"`, where the hex digest is derived from the file's content and metadata (e.g., size, modification time). Default `true` (enabled).
+
 ### SERVER_BASIC_AUTH
 
 It provides [The "Basic" HTTP Authentication Scheme](https://datatracker.ietf.org/doc/html/rfc7617) using credentials as `user-id:password` pairs, encoded using `Base64`. Password must be encoded using the [BCrypt](https://en.wikipedia.org/wiki/Bcrypt) password-hashing function. Default empty (disabled).
@@ -161,13 +173,25 @@ It provides [The "Basic" HTTP Authentication Scheme](https://datatracker.ietf.or
 
 Check for a trailing slash in the requested directory URI and redirect permanent (308) to the same path with a trailing slash suffix if it is missing. Default `true` (enabled).
 
-### SERVER_IGNORE_HIDDEN_FILES
+### SERVER_UNIX_SOCKET
 
-Ignore hidden files/directories (dotfiles), preventing them from being served and being included in auto HTML index pages (directory listing).
+Filesystem path to bind a Unix Domain Socket (e.g. `/run/sws.sock`) instead of a TCP host and port. This option is mutually exclusive with `SERVER_HOST`, `SERVER_PORT`, `SERVER_LISTEN_FD`, and TLS options. Default empty (disabled).
 
-### SERVER_DISABLE_SYMLINKS
+### SERVER_UNIX_SOCKET_MODE
 
-Prevent following files or directories if any path name component is a symbolic link.
+Permission bits in octal (`660`, `0660`, `0o660`) applied to the Unix socket file after binding. Default: process umask.
+
+### SERVER_UNIX_SOCKET_FORCE
+
+Remove a stale socket file before binding (socket-type files only; refuses to clobber regular files or directories). Default `false` (disabled).
+
+### SERVER_INCLUDE_HIDDEN
+
+Include hidden files/directories (dotfiles), allowing them to be served and listed in auto HTML index pages (directory listing). Disabled by default; hidden files return `404 Not Found`.
+
+### SERVER_FOLLOW_SYMLINKS
+
+Follow symbolic links when serving files or directories. Disabled by default; requests whose path contains any symlink component return `403 Forbidden`.
 
 ### SERVER_HEALTH
 
@@ -179,7 +203,7 @@ Enable markdown content negotiation. When a client sends `Accept: text/markdown`
 
 ### SERVER_TEXT_CHARSET
 
-Declare a default `charset` parameter on `text/*` responses that don't already carry one. See [Default Charset for Text Responses](../features/text-charset.md) for details. Default `utf-8`; set to an empty value to disable.
+Declare a default `charset=utf-8` parameter on `text/*` responses that don't already carry one. See [Default Charset for Text Responses](../features/text-charset.md) for details. Default `true`; set to `false` to disable.
 
 ### SERVER_INDEX_FILES
 

@@ -6,19 +6,20 @@
 use chrono::{DateTime, Local};
 use clap::ValueEnum;
 use headers::{ContentLength, ContentType, HeaderMapExt};
-use hyper::Method;
-use hyper::{Body, Response};
+use http::Method;
+use hyper::Response;
 use mime_guess::mime;
 use percent_encoding::{AsciiSet, NON_ALPHANUMERIC, percent_encode};
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 
+use crate::body::Body;
 use crate::directory_listing::autoindex::{html_auto_index, json_auto_index};
 use crate::directory_listing::file::{FileEntry, FileType};
 use crate::{Context, Result};
 
 #[cfg(feature = "directory-listing-download")]
-use crate::directory_listing_download::DirDownloadFmt;
+use crate::directory_listing::download::DirDownloadFmt;
 
 /// Non-alphanumeric characters to be percent-encoded
 /// excluding the "unreserved characters" because allowed in a URI.
@@ -59,9 +60,9 @@ pub struct DirListOpts<'a> {
     /// Directory listing download.
     pub dir_listing_download: &'a [DirDownloadFmt],
     /// Ignore hidden files (dotfiles).
-    pub ignore_hidden_files: bool,
+    pub include_hidden: bool,
     /// Prevent following symlinks for files and directories.
-    pub disable_symlinks: bool,
+    pub follow_symlinks: bool,
 }
 
 /// Defines read directory entries.
@@ -73,8 +74,8 @@ pub(crate) struct DirEntryOpts<'a> {
     pub(crate) is_head: bool,
     pub(crate) order_code: u8,
     pub(crate) content_format: &'a DirListFmt,
-    pub(crate) ignore_hidden_files: bool,
-    pub(crate) disable_symlinks: bool,
+    pub(crate) include_hidden: bool,
+    pub(crate) follow_symlinks: bool,
     #[cfg(feature = "directory-listing-download")]
     pub(crate) download: &'a [DirDownloadFmt],
 }
@@ -85,7 +86,7 @@ pub(crate) fn read_dir_entries(mut opt: DirEntryOpts<'_>) -> Result<Response<Bod
     let mut dirs_count: usize = 0;
     let mut files_count: usize = 0;
     // The root directory is canonicalized once at startup (see
-    // `server.rs`). To avoid an extra `canonicalize()` syscall per
+    // `server/opts.rs`). To avoid an extra `canonicalize()` syscall per
     // request, we resolve the absolute form lazily — only when a symlink
     // entry is actually encountered (the uncommon case).
     let mut root_path_abs: Option<std::path::PathBuf> = None;
@@ -108,7 +109,7 @@ pub(crate) fn read_dir_entries(mut opt: DirEntryOpts<'_>) -> Result<Response<Bod
         let name = dir_entry.file_name();
 
         // Check and ignore the current hidden file/directory (dotfile) if feature enabled
-        if opt.ignore_hidden_files && name.as_encoded_bytes().first().is_some_and(|c| *c == b'.') {
+        if !opt.include_hidden && name.as_encoded_bytes().first().is_some_and(|c| *c == b'.') {
             continue;
         }
 
@@ -118,7 +119,7 @@ pub(crate) fn read_dir_entries(mut opt: DirEntryOpts<'_>) -> Result<Response<Bod
         } else if meta.is_file() {
             files_count += 1;
             (FileType::File, Some(meta.len()))
-        } else if !opt.disable_symlinks && meta.file_type().is_symlink() {
+        } else if opt.follow_symlinks && meta.file_type().is_symlink() {
             // NOTE: we resolve the symlink path below to just know if is a directory or not.
             // However, we are still showing the symlink name but not the resolved name.
 
@@ -216,7 +217,7 @@ pub(crate) fn read_dir_entries(mut opt: DirEntryOpts<'_>) -> Result<Response<Bod
         }
     }
 
-    let mut resp = Response::new(Body::empty());
+    let mut resp = Response::new(crate::body::empty());
 
     // Handle directory listing content format
     let content = match opt.content_format {
@@ -252,7 +253,7 @@ pub(crate) fn read_dir_entries(mut opt: DirEntryOpts<'_>) -> Result<Response<Bod
         return Ok(resp);
     }
 
-    *resp.body_mut() = Body::from(content);
+    *resp.body_mut() = crate::body::full(content);
 
     Ok(resp)
 }

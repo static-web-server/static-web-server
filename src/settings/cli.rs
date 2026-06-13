@@ -13,7 +13,8 @@ use std::{net::IpAddr, path::PathBuf};
 use crate::directory_listing::DirListFmt;
 
 #[cfg(feature = "directory-listing-download")]
-use crate::directory_listing_download::DirDownloadFmt;
+use crate::directory_listing::download::DirDownloadFmt;
+use crate::logger::LogFormat;
 
 use crate::Result;
 
@@ -25,12 +26,12 @@ pub struct General {
     /// Host address (E.g 127.0.0.1 or ::1)
     pub host: String,
 
-    #[arg(long, short = 'p', default_value = "80", env = "SERVER_PORT")]
+    #[arg(long, short = 'p', default_value = "8787", env = "SERVER_PORT")]
     /// Host port
     pub port: u16,
 
     #[cfg_attr(
-        feature = "http2",
+        feature = "tls",
         arg(
             long,
             short = 'f',
@@ -39,7 +40,7 @@ pub struct General {
         )
     )]
     #[cfg_attr(
-        not(feature = "http2"),
+        not(feature = "tls"),
         arg(
             long,
             short = 'f',
@@ -55,6 +56,61 @@ pub struct General {
     /// included systemd unit file utilises this feature to increase security by allowing the
     /// static-web-server to be sandboxed more completely.
     pub fd: Option<usize>,
+
+    // Unix Domain Socket (UDS) options
+    // Mutually exclusive with TCP-based options (host/port/fd) and TLS.
+    // Gated to Unix targets; on Windows these flags are not exposed.
+    #[cfg(unix)]
+    #[cfg_attr(
+        feature = "tls",
+        arg(
+            long,
+            env = "SERVER_UNIX_SOCKET",
+            conflicts_with_all(&["host", "port", "fd", "tls", "https_redirect"]),
+        )
+    )]
+    #[cfg_attr(
+        not(feature = "tls"),
+        arg(
+            long,
+            env = "SERVER_UNIX_SOCKET",
+            conflicts_with_all(&["host", "port", "fd"]),
+        )
+    )]
+    /// Bind the server to a Unix Domain Socket (UDS) at the given filesystem path
+    /// instead of a TCP host/port. Useful for reverse-proxy setups (e.g. nginx) on the
+    /// same host where TCP/IP overhead is undesirable and filesystem-based access
+    /// control is preferred. Cannot be combined with `--host`, `--port`, `--fd`, or
+    /// TLS-related options. The socket file is removed on a graceful shutdown.
+    pub unix_socket: Option<PathBuf>,
+
+    #[cfg(unix)]
+    #[arg(
+        long,
+        env = "SERVER_UNIX_SOCKET_MODE",
+        value_parser = parse_octal_mode,
+        requires = "unix_socket",
+    )]
+    /// Filesystem permission bits applied to the Unix socket file after binding,
+    /// expressed in octal (e.g. `660`, `0660`, or `0o660`). When omitted the socket
+    /// is created with the process umask. Only meaningful together with `--unix-socket`.
+    pub unix_socket_mode: Option<u32>,
+
+    #[cfg(unix)]
+    #[arg(
+        long,
+        default_value = "false",
+        default_missing_value("true"),
+        num_args(0..=1),
+        require_equals(false),
+        action = clap::ArgAction::Set,
+        env = "SERVER_UNIX_SOCKET_FORCE",
+        requires = "unix_socket",
+    )]
+    /// When `true`, remove an existing socket file at `--unix-socket` before binding.
+    /// This is useful when the server was previously killed abruptly and left a stale
+    /// socket behind. Defaults to `false` to avoid clobbering an unrelated file.
+    pub unix_socket_force: bool,
 
     #[cfg_attr(
         not(target_family = "wasm"),
@@ -129,15 +185,40 @@ pub struct General {
 
     #[arg(
         long,
+        value_enum,
+        default_value = "json",
+        env = "SERVER_LOG_FORMAT",
+        ignore_case(true)
+    )]
+    /// Specify the logging output format. Values: json (structured single-line JSON for production) or pretty (human-readable text for development)
+    pub log_format: LogFormat,
+
+    #[arg(
+        long,
         default_value = "false",
         default_missing_value("true"),
         num_args(0..=1),
-        require_equals(false),
         action = clap::ArgAction::Set,
         env = "SERVER_LOG_WITH_ANSI",
     )]
-    /// Enable or disable ANSI escape codes for colors and other text formatting of the log output.
+    /// Enable or disable ANSI escape codes for colors and other text formatting of the log output. Only effective when `--log-format pretty` is used.
     pub log_with_ansi: bool,
+
+    #[arg(
+        long,
+        env = "SERVER_LOG_FILE",
+        value_parser = value_parser_pathbuf,
+    )]
+    /// Optional filesystem path to stream log records to in addition to stderr.
+    /// When set, logs are written asynchronously through a background worker
+    /// thread (non-blocking I/O), so the request path is never delayed by disk
+    /// writes. Missing parent directories are created on startup. ANSI escape
+    /// codes are always disabled for file output regardless of
+    /// `--log-with-ansi`. The file uses the format selected by
+    /// `--log-format` (JSON by default). The file is opened in append mode and
+    /// is not rotated by SWS, use an external tool (e.g. `logrotate`) for
+    /// rotation.
+    pub log_file: Option<PathBuf>,
 
     #[arg(
         long,
@@ -173,24 +254,24 @@ pub struct General {
         num_args(0..=1),
         require_equals(false),
         action = clap::ArgAction::Set,
-        env = "SERVER_HTTP2_TLS",
+        env = "SERVER_TLS",
     )]
-    #[cfg(feature = "http2")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "http2")))]
-    /// Enable HTTP/2 with TLS support.
-    pub http2: bool,
+    #[cfg(feature = "tls")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "tls")))]
+    /// Enable TLS/HTTPS support. Requires --tls-cert and --tls-key.
+    pub tls: bool,
 
-    #[arg(long, required_if_eq("http2", "true"), env = "SERVER_HTTP2_TLS_CERT")]
-    #[cfg(feature = "http2")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "http2")))]
-    /// Specify the file path to read the certificate.
-    pub http2_tls_cert: Option<PathBuf>,
+    #[arg(long, required_if_eq("tls", "true"), env = "SERVER_TLS_CERT")]
+    #[cfg(feature = "tls")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "tls")))]
+    /// Specify the file path to the TLS certificate.
+    pub tls_cert: Option<PathBuf>,
 
-    #[arg(long, required_if_eq("http2", "true"), env = "SERVER_HTTP2_TLS_KEY")]
-    #[cfg(feature = "http2")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "http2")))]
-    /// Specify the file path to read the private key.
-    pub http2_tls_key: Option<PathBuf>,
+    #[arg(long, required_if_eq("tls", "true"), env = "SERVER_TLS_KEY")]
+    #[cfg(feature = "tls")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "tls")))]
+    /// Specify the file path to the TLS private key.
+    pub tls_key: Option<PathBuf>,
 
     #[arg(
         long,
@@ -199,44 +280,46 @@ pub struct General {
         num_args(0..=1),
         require_equals(false),
         action = clap::ArgAction::Set,
-        requires_if("true", "http2"),
+        env = "SERVER_HTTP2",
+    )]
+    #[cfg(feature = "http2")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "http2")))]
+    /// Enable HTTP/2 protocol support. Requires TLS to be enabled (--tls).
+    pub http2: bool,
+
+    #[arg(
+        long,
+        default_value = "false",
+        default_missing_value("true"),
+        num_args(0..=1),
+        require_equals(false),
+        action = clap::ArgAction::Set,
         env = "SERVER_HTTPS_REDIRECT"
     )]
-    #[cfg(feature = "http2")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "http2")))]
-    /// Redirect all requests with scheme "http" to "https" for the current server instance. It depends on "http2" to be enabled.
+    #[cfg(feature = "tls")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "tls")))]
+    /// Redirect all requests with scheme "http" to "https" for the current server instance. Requires TLS to be enabled (--tls).
     pub https_redirect: bool,
 
-    #[arg(
-        long,
-        requires_if("true", "https_redirect"),
-        default_value = "localhost",
-        env = "SERVER_HTTPS_REDIRECT_HOST"
-    )]
-    #[cfg(feature = "http2")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "http2")))]
-    /// Canonical host name or IP of the HTTPS (HTTPS/2) server. It depends on "https_redirect" to be enabled.
+    #[arg(long, default_value = "localhost", env = "SERVER_HTTPS_REDIRECT_HOST")]
+    #[cfg(feature = "tls")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "tls")))]
+    /// Canonical host name or IP of the HTTPS server. It depends on "https_redirect" to be enabled.
     pub https_redirect_host: String,
 
-    #[arg(
-        long,
-        requires_if("true", "https_redirect"),
-        default_value = "80",
-        env = "SERVER_HTTPS_REDIRECT_FROM_PORT"
-    )]
-    #[cfg(feature = "http2")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "http2")))]
+    #[arg(long, default_value = "80", env = "SERVER_HTTPS_REDIRECT_FROM_PORT")]
+    #[cfg(feature = "tls")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "tls")))]
     /// HTTP host port where the redirect server will listen for requests to redirect them to HTTPS. It depends on "https_redirect" to be enabled.
     pub https_redirect_from_port: u16,
 
     #[arg(
         long,
-        requires_if("true", "https_redirect"),
         default_value = "localhost",
         env = "SERVER_HTTPS_REDIRECT_FROM_HOSTS"
     )]
-    #[cfg(feature = "http2")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "http2")))]
+    #[cfg(feature = "tls")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "tls")))]
     /// List of host names or IPs allowed to redirect from. HTTP requests must contain the HTTP 'Host' header and match against this list. It depends on "https_redirect" to be enabled.
     pub https_redirect_from_hosts: String,
 
@@ -298,7 +381,7 @@ pub struct General {
 
     #[arg(
         long,
-        default_value = "false",
+        default_value = "true",
         default_missing_value("true"),
         num_args(0..=1),
         require_equals(false),
@@ -365,17 +448,32 @@ pub struct General {
     /// Specify list of enabled format(s) for directory download. Format supported: `targz`. Default to empty list (disabled).
     pub directory_listing_download: Vec<DirDownloadFmt>,
 
-    #[arg(
-        long,
-        default_value = "false",
-        default_value_if("http2", "true", Some("true")),
-        default_missing_value("true"),
-        num_args(0..=1),
-        require_equals(false),
-        action = clap::ArgAction::Set,
-        env = "SERVER_SECURITY_HEADERS",
+    #[cfg_attr(
+        feature = "tls",
+        arg(
+            long,
+            default_value = "true",
+            default_missing_value("true"),
+            num_args(0..=1),
+            require_equals(false),
+            action = clap::ArgAction::Set,
+            default_value_if("tls", "true", Some("true")),
+            env = "SERVER_SECURITY_HEADERS",
+        )
     )]
-    /// Enable security headers by default when HTTP/2 feature is activated.
+    #[cfg_attr(
+        not(feature = "tls"),
+        arg(
+            long,
+            default_value = "false",
+            default_missing_value("true"),
+            num_args(0..=1),
+            require_equals(false),
+            action = clap::ArgAction::Set,
+            env = "SERVER_SECURITY_HEADERS",
+        )
+    )]
+    /// Enable security headers by default when TLS feature is activated.
     /// Headers included: "Strict-Transport-Security: max-age=63072000; includeSubDomains; preload" (2 years max-age),
     /// "X-Frame-Options: DENY" and "Content-Security-Policy: frame-ancestors 'self'".
     pub security_headers: bool,
@@ -398,6 +496,18 @@ pub struct General {
     )]
     /// Enable cache control headers for incoming requests based on a set of file types. The file type list can be found on `src/control_headers.rs` file.
     pub cache_control_headers: bool,
+
+    #[arg(
+        long,
+        default_value = "true",
+        default_missing_value("true"),
+        num_args(0..=1),
+        require_equals(false),
+        action = clap::ArgAction::Set,
+        env = "SERVER_ETAG",
+    )]
+    /// Enable weak `ETag` headers (`W/"<mtime>-<size>"`) and full conditional request handling (`If-None-Match`, `If-Match`, `If-Range`). Composes with `--cache-control-headers`; emits validators on every static-file response so clients can revalidate hot HTML even when long `max-age` is configured elsewhere.
+    pub etag: bool,
 
     #[cfg(feature = "basic-auth")]
     /// It provides The "Basic" HTTP Authentication scheme using credentials as "user-id:password" pairs. Password must be encoded using the "BCrypt" password-hashing function.
@@ -478,27 +588,27 @@ pub struct General {
 
     #[arg(
         long,
-        default_value = "true",
+        default_value = "false",
         default_missing_value("true"),
         num_args(0..=1),
         require_equals(false),
         action = clap::ArgAction::Set,
-        env = "SERVER_IGNORE_HIDDEN_FILES",
+        env = "SERVER_INCLUDE_HIDDEN",
     )]
-    /// Ignore hidden files/directories (dotfiles), preventing them to be served and being included in auto HTML index pages (directory listing).
-    pub ignore_hidden_files: bool,
+    /// Include hidden files/directories (dotfiles), allowing them to be served and listed in auto HTML index pages (directory listing). Disabled by default; hidden files return `404 Not Found`.
+    pub include_hidden: bool,
 
     #[arg(
         long,
-        default_value = "true",
+        default_value = "false",
         default_missing_value("true"),
         num_args(0..=1),
         require_equals(false),
         action = clap::ArgAction::Set,
-        env = "SERVER_DISABLE_SYMLINKS",
+        env = "SERVER_FOLLOW_SYMLINKS",
     )]
-    /// Prevent following files or directories if any path name component is a symbolic link.
-    pub disable_symlinks: bool,
+    /// Follow symbolic links when serving files or directories. Disabled by default; requests whose path contains any symlink component return `403 Forbidden`.
+    pub follow_symlinks: bool,
 
     #[arg(
         long,
@@ -650,5 +760,73 @@ fn value_parser_status_code(s: &str) -> Result<StatusCode, String> {
     match s.parse::<u16>() {
         Ok(code) => StatusCode::from_u16(code).map_err(|err| err.to_string()),
         Err(err) => Err(err.to_string()),
+    }
+}
+
+/// Parse a Unix file mode given in octal (e.g. `660`, `0660`, `0o660`).
+///
+/// The parser intentionally rejects decimal/hex values: file permission bits
+/// are universally expressed in octal, and accepting other bases would silently
+/// produce surprising masks (e.g. `660` parsed as decimal is `0o1224`).
+#[cfg(unix)]
+fn parse_octal_mode(s: &str) -> Result<u32, String> {
+    let trimmed = s.trim();
+    if trimmed.is_empty() {
+        return Err("unix socket mode cannot be empty".to_owned());
+    }
+    let digits = trimmed
+        .strip_prefix("0o")
+        .or_else(|| trimmed.strip_prefix("0O"))
+        .unwrap_or(trimmed);
+    let mode = u32::from_str_radix(digits, 8)
+        .map_err(|e| format!("invalid octal unix socket mode '{s}': {e}"))?;
+    // Reject values that would set bits outside the standard 12-bit Unix mode
+    // space (setuid/setgid/sticky + rwx for u/g/o).
+    if mode > 0o7777 {
+        return Err(format!(
+            "unix socket mode '{s}' exceeds maximum 07777 (12-bit permission mask)"
+        ));
+    }
+    Ok(mode)
+}
+
+#[cfg(all(test, unix))]
+mod tests {
+    use super::parse_octal_mode;
+
+    #[test]
+    fn parses_bare_octal_digits() {
+        // `660` is the canonical "rw-rw----" mask used for socket files in
+        // most reverse-proxy setups; ensure the most common input is accepted.
+        assert_eq!(parse_octal_mode("660").unwrap(), 0o660);
+    }
+
+    #[test]
+    fn parses_leading_zero_and_0o_prefix() {
+        // Both Unix-style (`0660`) and Rust-style (`0o660`) are accepted; they
+        // must produce identical numeric masks.
+        assert_eq!(parse_octal_mode("0660").unwrap(), 0o660);
+        assert_eq!(parse_octal_mode("0o660").unwrap(), 0o660);
+        assert_eq!(parse_octal_mode("0O660").unwrap(), 0o660);
+    }
+
+    #[test]
+    fn rejects_non_octal_digits() {
+        // `8` and `9` are not octal digits; accepting them silently would
+        // produce wrong masks.
+        assert!(parse_octal_mode("789").is_err());
+    }
+
+    #[test]
+    fn rejects_empty_and_whitespace() {
+        assert!(parse_octal_mode("").is_err());
+        assert!(parse_octal_mode("   ").is_err());
+    }
+
+    #[test]
+    fn rejects_values_above_07777() {
+        // Anything beyond the 12-bit permission space is almost certainly a
+        // typo (e.g. typed in decimal).
+        assert!(parse_octal_mode("10000").is_err());
     }
 }

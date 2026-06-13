@@ -8,9 +8,12 @@
 
 use bcrypt::verify as bcrypt_verify;
 use headers::{Authorization, HeaderMap, HeaderMapExt, authorization::Basic};
-use hyper::{Body, Request, Response, StatusCode, header::WWW_AUTHENTICATE};
+use hyper::{Request, Response, StatusCode, header::WWW_AUTHENTICATE};
 
-use crate::{Error, error_page, handler::RequestHandlerOpts, http_ext::MethodExt};
+use crate::Error;
+use crate::error_page;
+use crate::exts::http::MethodExt;
+use crate::handler::RequestHandlerOpts;
 
 /// Initializes `Basic` HTTP Authorization handling
 pub(crate) fn init(credentials: &str, handler_opts: &mut RequestHandlerOpts) {
@@ -25,7 +28,7 @@ pub(crate) fn init(credentials: &str, handler_opts: &mut RequestHandlerOpts) {
 pub(crate) fn pre_process<T>(
     opts: &RequestHandlerOpts,
     req: &Request<T>,
-) -> Option<Result<Response<Body>, Error>> {
+) -> Option<Result<Response<crate::body::Body>, Error>> {
     if opts.basic_auth.is_empty() {
         return None;
     }
@@ -85,16 +88,18 @@ pub fn check_request(headers: &HeaderMap, userid: &str, password: &str) -> Resul
 #[cfg(test)]
 mod tests {
     use super::{check_request, pre_process};
+    use crate::body;
+    use crate::body::Body;
     use crate::{Error, handler::RequestHandlerOpts};
     use headers::HeaderMap;
-    use hyper::{Body, Request, Response, StatusCode, header::WWW_AUTHENTICATE};
+    use hyper::{Request, Response, StatusCode, header::WWW_AUTHENTICATE};
 
     fn make_request(method: &str, auth_header: &str) -> Request<Body> {
         let mut builder = Request::builder();
         if !auth_header.is_empty() {
             builder = builder.header("Authorization", auth_header);
         }
-        builder.method(method).uri("/").body(Body::empty()).unwrap()
+        builder.method(method).uri("/").body(body::empty()).unwrap()
     }
 
     fn is_401(result: Option<Result<Response<Body>, Error>>) -> bool {
@@ -106,7 +111,7 @@ mod tests {
         }
     }
 
-    fn is_500(result: Option<Result<Response<Body>, Error>>) -> bool {
+    fn is_500(result: Option<Result<Response<crate::body::Body>, Error>>) -> bool {
         if let Some(Ok(response)) = result {
             response.status() == StatusCode::INTERNAL_SERVER_ERROR
         } else {

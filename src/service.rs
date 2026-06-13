@@ -6,20 +6,19 @@
 //! The module provides a custom [Hyper service](hyper::service::Service).
 //!
 
-use hyper::{Body, Request, Response, service::Service};
-use std::convert::Infallible;
-use std::future::{Future, Ready, ready};
+use hyper::{Request, Response, body::Incoming, service::Service};
+use std::future::Future;
 use std::net::SocketAddr;
 use std::pin::Pin;
 use std::sync::Arc;
-use std::task::{Context, Poll};
 
-use crate::{Error, handler::RequestHandler, transport::Transport};
+use crate::{Error, body, handler::RequestHandler};
 
 #[cfg(feature = "metrics")]
 use crate::metrics;
 
 /// It defines the router service which is the main entry point for Hyper Server.
+#[derive(Clone)]
 pub struct RouterService {
     builder: RequestServiceBuilder,
 }
@@ -31,19 +30,10 @@ impl RouterService {
             builder: RequestServiceBuilder::new(handler),
         }
     }
-}
 
-impl<T: Transport + Send + 'static> Service<&T> for RouterService {
-    type Response = RequestService;
-    type Error = Infallible;
-    type Future = Ready<Result<Self::Response, Self::Error>>;
-
-    fn poll_ready(&mut self, _: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        Poll::Ready(Ok(()))
-    }
-
-    fn call(&mut self, conn: &T) -> Self::Future {
-        ready(Ok(self.builder.build(conn.remote_addr())))
+    /// Build a new request service for an accepted connection.
+    pub fn build(&self, remote_addr: Option<SocketAddr>) -> RequestService {
+        self.builder.build(remote_addr)
     }
 }
 
@@ -71,16 +61,13 @@ impl Drop for RequestService {
     }
 }
 
-impl Service<Request<Body>> for RequestService {
-    type Response = Response<Body>;
+impl Service<Request<Incoming>> for RequestService {
+    type Response = Response<body::Body>;
     type Error = Error;
-    type Future = Pin<Box<dyn Future<Output = Result<Response<Body>, Error>> + Send + 'static>>;
+    type Future =
+        Pin<Box<dyn Future<Output = Result<Response<body::Body>, Error>> + Send + 'static>>;
 
-    fn poll_ready(&mut self, _: &mut Context<'_>) -> Poll<Result<(), Error>> {
-        Poll::Ready(Ok(()))
-    }
-
-    fn call(&mut self, mut req: Request<Body>) -> Self::Future {
+    fn call(&self, mut req: Request<Incoming>) -> Self::Future {
         let handler = self.handler.clone();
         let remote_addr = self.remote_addr;
         Box::pin(async move { handler.handle(&mut req, remote_addr).await })
@@ -88,6 +75,7 @@ impl Service<Request<Body>> for RequestService {
 }
 
 /// It defines a Hyper service request builder.
+#[derive(Clone)]
 pub struct RequestServiceBuilder {
     handler: Arc<RequestHandler>,
 }

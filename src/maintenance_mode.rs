@@ -6,12 +6,12 @@
 //! Provides maintenance mode functionality.
 //!
 
-use headers::{AcceptRanges, ContentLength, ContentType, HeaderMapExt};
-use hyper::{Body, Method, Request, Response, StatusCode};
-use mime_guess::mime;
+use hyper::{Method, Request, Response, StatusCode};
 use std::path::{Path, PathBuf};
 
-use crate::{Error, Result, handler::RequestHandlerOpts, helpers, http_ext::MethodExt};
+use crate::body::Body;
+use crate::error_page::build_html_response;
+use crate::{Error, Result, handler::RequestHandlerOpts, helpers};
 
 const DEFAULT_BODY_CONTENT: &str = "The server is in maintenance mode.";
 
@@ -37,6 +37,9 @@ pub(crate) fn init(
         "maintenance mode file: \"{}\"",
         handler_opts.maintenance_mode_file.display()
     );
+    // SECURITY/PERF: Pre-cache the maintenance body so we never touch disk
+    // from inside the async request hot path. See `error_page::PAGE_CACHE`.
+    crate::error_page::cache_page(&handler_opts.maintenance_mode_file);
 }
 
 /// Produces maintenance mode response if necessary
@@ -64,10 +67,12 @@ pub fn get_response(
     tracing::debug!("server has entered into maintenance mode");
     tracing::debug!("maintenance mode file path to use: {}", file_path.display());
 
-    let body_content = if file_path.is_file() {
-        String::from_utf8_lossy(&helpers::read_bytes_default(file_path))
-            .trim()
-            .to_owned()
+    let body_content = if let Some(cached) = crate::error_page::cached_page(file_path) {
+        cached.as_str().to_owned()
+    } else if file_path.is_file() {
+        // Cache miss (e.g. called directly without going through `init`).
+        crate::error_page::cache_page(file_path);
+        helpers::read_text_default(file_path)
     } else {
         tracing::debug!(
             "maintenance mode file path not found or not a regular file, using a default message"
@@ -77,34 +82,25 @@ pub fn get_response(
         )
     };
 
-    let mut body = Body::empty();
-    let len = body_content.len() as u64;
-
-    if !method.is_head() {
-        body = Body::from(body_content)
-    }
-
-    let mut resp = Response::new(body);
-    *resp.status_mut() = *status_code;
-    resp.headers_mut()
-        .typed_insert(ContentType::from(mime::TEXT_HTML_UTF_8));
-    resp.headers_mut().typed_insert(ContentLength(len));
-    resp.headers_mut().typed_insert(AcceptRanges::bytes());
-
-    Ok(resp)
+    Ok(build_html_response(
+        body_content,
+        *status_code,
+        Some(method),
+    ))
 }
 
 #[cfg(test)]
 mod tests {
     use super::pre_process;
+    use crate::body::Body;
     use crate::{Error, handler::RequestHandlerOpts};
-    use hyper::{Body, Request, Response, StatusCode};
+    use hyper::{Request, Response, StatusCode};
 
     fn make_request() -> Request<Body> {
         Request::builder()
             .method("GET")
             .uri("/")
-            .body(Body::empty())
+            .body(crate::body::empty())
             .unwrap()
     }
 

@@ -1,0 +1,14 @@
+[general]
+host = "127.0.0.1"
+port = 8787
+root = "tests/fixtures/public"
+
+[advanced.memory-cache]
+# Cap entry count for the in-memory store.
+capacity = 50
+# 10 minutes
+ttl = 600
+# 2 minutes
+tti = 120
+# 4 KiB; small enough to exercise the per-file size cap.
+max-file-size = 4

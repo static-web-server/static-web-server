@@ -5,14 +5,19 @@
 
 //! Module that allows to rewrite request URLs with pattern matching support.
 //!
+//! See [`crate::redirects`] for the ReDoS / pattern-complexity notes that
+//! also apply to rewrites: patterns are admin-supplied, evaluated by the
+//! non-backtracking `regex_lite` engine, and URIs longer than
+//! [`crate::redirects::MAX_URI_LEN_FOR_REGEX`] are skipped.
 
 use headers::HeaderValue;
-use hyper::{Body, Request, Response, StatusCode, Uri, header::HOST};
+use hyper::{Request, Response, StatusCode, Uri, header::HOST};
 
+use crate::body::Body;
 use crate::{
     Error,
     handler::RequestHandlerOpts,
-    redirects::{MAX_URI_LEN_FOR_REGEX, handle_error, replace_placeholders},
+    redirects::{handle_error, replace_placeholders},
     settings::{Rewrites, file::RedirectsKind},
 };
 
@@ -23,11 +28,12 @@ pub(crate) fn pre_process<T>(
 ) -> Option<Result<Response<Body>, Error>> {
     let rewrites = opts.advanced_opts.as_ref()?.rewrites.as_deref()?;
     let uri_path = req.uri().path();
-    if uri_path.len() > MAX_URI_LEN_FOR_REGEX {
+    // SECURITY (ReDoS bound): mirror redirects' cap on regex input size.
+    if uri_path.len() > crate::redirects::MAX_URI_LEN_FOR_REGEX {
         tracing::debug!(
             "rewrites: skipping match, uri path length {} exceeds cap {}",
             uri_path.len(),
-            MAX_URI_LEN_FOR_REGEX
+            crate::redirects::MAX_URI_LEN_FOR_REGEX
         );
         return None;
     }
@@ -55,7 +61,7 @@ pub(crate) fn pre_process<T>(
                 );
             }
         };
-        let mut resp = Response::new(Body::empty());
+        let mut resp = Response::new(crate::body::empty());
         resp.headers_mut().insert(hyper::header::LOCATION, loc);
         *resp.status_mut() = match redirect_type {
             RedirectsKind::Permanent => StatusCode::MOVED_PERMANENTLY,
@@ -133,12 +139,13 @@ pub fn rewrite_uri_path<'a>(
 #[cfg(test)]
 mod tests {
     use super::pre_process;
+    use crate::body::Body;
     use crate::{
         Error,
         handler::RequestHandlerOpts,
         settings::{Advanced, Rewrites, build_placeholder_replacer, file::RedirectsKind},
     };
-    use hyper::{Body, Request, Response, StatusCode, header::HOST};
+    use hyper::{Request, Response, StatusCode, header::HOST};
     use regex_lite::Regex;
 
     fn make_request(host: &str, uri: &str) -> Request<Body> {
@@ -146,7 +153,11 @@ mod tests {
         if !host.is_empty() {
             builder = builder.header("Host", host);
         }
-        builder.method("GET").uri(uri).body(Body::empty()).unwrap()
+        builder
+            .method("GET")
+            .uri(uri)
+            .body(crate::body::empty())
+            .unwrap()
     }
 
     fn get_rewrites() -> Vec<Rewrites> {

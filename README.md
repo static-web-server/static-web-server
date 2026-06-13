@@ -27,6 +27,9 @@
 
 ## Overview
 
+> [!NOTE]
+> This is the upcoming **v3**, still in development. For **production** use, check out the **[v2 (LTS)](https://github.com/static-web-server/static-web-server/tree/2.x)**.
+
 **Static Web Server** (or **`SWS`** abbreviated) is a tiny and fast production-ready web server suitable to serve static web files or assets.
 
 It is focused on **lightness and easy-to-use** principles while keeping [high performance and safety](https://blog.rust-lang.org/2015/04/10/Fearless-Concurrency.html) powered by [The Rust Programming Language](https://rust-lang.org).

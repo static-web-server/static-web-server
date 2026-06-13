@@ -8,7 +8,8 @@ mod tests {
     use bytes::Bytes;
     use headers::HeaderMap;
     use http::{Method, StatusCode};
-    use static_web_server::http_ext::MethodExt;
+    use http_body_util::BodyExt;
+    use static_web_server::exts::http::MethodExt;
     use std::fs;
     use std::path::PathBuf;
 
@@ -29,6 +30,8 @@ mod tests {
         PathBuf::from("tests/fixtures/public/")
     }
 
+    /// Root directory for dynamic-compression test fixtures
+    /// (files larger than the minimum compression threshold of 200 bytes).
     #[cfg(any(
         feature = "compression",
         feature = "compression-deflate",
@@ -59,7 +62,7 @@ mod tests {
             base_path: &root_dir(),
             uri_path: "index.htm",
             uri_query: None,
-            #[cfg(feature = "experimental")]
+            #[cfg(feature = "mem-cache")]
             memory_cache: None,
             #[cfg(feature = "directory-listing")]
             dir_listing: false,
@@ -71,13 +74,14 @@ mod tests {
             dir_listing_download: &[],
             redirect_trailing_slash: true,
             compression_static: false,
-            ignore_hidden_files: false,
-            disable_symlinks: false,
+            etag: true,
+            include_hidden: true,
+            follow_symlinks: true,
             index_files: &["index.htm"],
         })
         .await
         .expect("unexpected error response on `handle` function");
-        let mut res = result.resp;
+        let res = result.resp;
 
         let buf = fs::read(root_dir().join("index.htm"))
             .expect("unexpected error during index.html reading");
@@ -92,9 +96,12 @@ mod tests {
 
         assert!(ctype == "text/html", "content-type is not html: {ctype:?}",);
 
-        let body = hyper::body::to_bytes(res.body_mut())
+        let body = res
+            .into_body()
+            .collect()
             .await
-            .expect("unexpected bytes error during `body` conversion");
+            .expect("unexpected bytes error during `body` conversion")
+            .to_bytes();
 
         assert_eq!(body, buf);
     }
@@ -107,7 +114,7 @@ mod tests {
             base_path: &root_dir(),
             uri_path: "index.htm",
             uri_query: None,
-            #[cfg(feature = "experimental")]
+            #[cfg(feature = "mem-cache")]
             memory_cache: None,
             #[cfg(feature = "directory-listing")]
             dir_listing: false,
@@ -119,13 +126,14 @@ mod tests {
             dir_listing_download: &[],
             redirect_trailing_slash: true,
             compression_static: false,
-            ignore_hidden_files: false,
-            disable_symlinks: false,
+            etag: true,
+            include_hidden: true,
+            follow_symlinks: true,
             index_files: &["index.htm"],
         })
         .await
         .expect("unexpected error response on `handle` function");
-        let mut res = result.resp;
+        let res = result.resp;
 
         let buf = fs::read(root_dir().join("index.htm"))
             .expect("unexpected error during index.html reading");
@@ -140,9 +148,12 @@ mod tests {
 
         assert!(ctype == "text/html", "content-type is not html: {ctype:?}",);
 
-        let body = hyper::body::to_bytes(res.body_mut())
+        let body = res
+            .into_body()
+            .collect()
             .await
-            .expect("unexpected bytes error during `body` conversion");
+            .expect("unexpected bytes error during `body` conversion")
+            .to_bytes();
 
         assert_eq!(body, buf);
     }
@@ -156,7 +167,7 @@ mod tests {
                 base_path: &root_dir(),
                 uri_path: "xyz.html",
                 uri_query: None,
-                #[cfg(feature = "experimental")]
+                #[cfg(feature = "mem-cache")]
                 memory_cache: None,
                 #[cfg(feature = "directory-listing")]
                 dir_listing: false,
@@ -168,8 +179,9 @@ mod tests {
                 dir_listing_download: &[],
                 redirect_trailing_slash: true,
                 compression_static: false,
-                ignore_hidden_files: false,
-                disable_symlinks: false,
+                etag: true,
+                include_hidden: true,
+                follow_symlinks: true,
                 index_files: &["index.htm"],
             })
             .await
@@ -192,7 +204,7 @@ mod tests {
             base_path: &root_dir(),
             uri_path: "assets",
             uri_query: None,
-            #[cfg(feature = "experimental")]
+            #[cfg(feature = "mem-cache")]
             memory_cache: None,
             #[cfg(feature = "directory-listing")]
             dir_listing: false,
@@ -204,20 +216,24 @@ mod tests {
             dir_listing_download: &[],
             redirect_trailing_slash: true,
             compression_static: false,
-            ignore_hidden_files: false,
-            disable_symlinks: false,
+            etag: true,
+            include_hidden: true,
+            follow_symlinks: true,
             index_files: &["index.htm"],
         })
         .await
         .expect("unexpected error response on `handle` function");
-        let mut res = result.resp;
+        let res = result.resp;
 
         assert_eq!(res.status(), 308);
         assert_eq!(res.headers()["location"], "assets/");
 
-        let body = hyper::body::to_bytes(res.body_mut())
+        let body = res
+            .into_body()
+            .collect()
             .await
-            .expect("unexpected bytes error during `body` conversion");
+            .expect("unexpected bytes error during `body` conversion")
+            .to_bytes();
 
         assert_eq!(body, Bytes::new());
     }
@@ -230,7 +246,7 @@ mod tests {
             base_path: &root_dir(),
             uri_path: "assets",
             uri_query: None,
-            #[cfg(feature = "experimental")]
+            #[cfg(feature = "mem-cache")]
             memory_cache: None,
             #[cfg(feature = "directory-listing")]
             dir_listing: false,
@@ -242,8 +258,9 @@ mod tests {
             dir_listing_download: &[],
             redirect_trailing_slash: true,
             compression_static: false,
-            ignore_hidden_files: false,
-            disable_symlinks: false,
+            etag: true,
+            include_hidden: true,
+            follow_symlinks: true,
             index_files: &["index.htm"],
         })
         .await
@@ -267,7 +284,7 @@ mod tests {
             base_path: &root_dir(),
             uri_path: "assets",
             uri_query: None,
-            #[cfg(feature = "experimental")]
+            #[cfg(feature = "mem-cache")]
             memory_cache: None,
             #[cfg(feature = "directory-listing")]
             dir_listing: false,
@@ -279,8 +296,9 @@ mod tests {
             dir_listing_download: &[],
             redirect_trailing_slash: false,
             compression_static: false,
-            ignore_hidden_files: false,
-            disable_symlinks: false,
+            etag: true,
+            include_hidden: true,
+            follow_symlinks: true,
             index_files: &[],
         })
         .await
@@ -309,7 +327,7 @@ mod tests {
                     base_path: &root_dir(),
                     uri_path: uri,
                     uri_query: None,
-                    #[cfg(feature = "experimental")]
+                    #[cfg(feature = "mem-cache")]
                     memory_cache: None,
                     #[cfg(feature = "directory-listing")]
                     dir_listing: false,
@@ -321,22 +339,26 @@ mod tests {
                     dir_listing_download: &[],
                     redirect_trailing_slash: true,
                     compression_static: false,
-                    ignore_hidden_files: false,
-                    disable_symlinks: false,
+                    etag: true,
+                    include_hidden: true,
+                    follow_symlinks: true,
                     index_files: &[],
                 })
                 .await
                 {
                     Ok(result) => {
-                        let mut res = result.resp;
+                        let res = result.resp;
                         if uri == "/assets" {
                             // it should redirect permanently
                             assert_eq!(res.status(), 308);
                             assert_eq!(res.headers()["location"], "/assets/");
 
-                            let body = hyper::body::to_bytes(res.body_mut())
+                            let body = res
+                                .into_body()
+                                .collect()
                                 .await
-                                .expect("unexpected bytes error during `body` conversion");
+                                .expect("unexpected bytes error during `body` conversion")
+                                .to_bytes();
 
                             assert_eq!(body, Bytes::new());
                         } else {
@@ -366,7 +388,7 @@ mod tests {
                 base_path: &root_dir(),
                 uri_path: "/assets/index%2ehtml",
                 uri_query: None,
-                #[cfg(feature = "experimental")]
+                #[cfg(feature = "mem-cache")]
                 memory_cache: None,
                 #[cfg(feature = "directory-listing")]
                 dir_listing: false,
@@ -378,8 +400,9 @@ mod tests {
                 dir_listing_download: &[],
                 redirect_trailing_slash: true,
                 compression_static: false,
-                ignore_hidden_files: false,
-                disable_symlinks: false,
+                etag: true,
+                include_hidden: true,
+                follow_symlinks: true,
                 index_files: &[],
             })
             .await
@@ -405,7 +428,7 @@ mod tests {
                 base_path: &root_dir(),
                 uri_path: "/%2E%2e.html",
                 uri_query: None,
-                #[cfg(feature = "experimental")]
+                #[cfg(feature = "mem-cache")]
                 memory_cache: None,
                 #[cfg(feature = "directory-listing")]
                 dir_listing: false,
@@ -417,8 +440,9 @@ mod tests {
                 dir_listing_download: &[],
                 redirect_trailing_slash: true,
                 compression_static: false,
-                ignore_hidden_files: false,
-                disable_symlinks: false,
+                etag: true,
+                include_hidden: true,
+                follow_symlinks: true,
                 index_files: &["index.htm"],
             })
             .await
@@ -446,7 +470,7 @@ mod tests {
                 base_path: &root_dir(),
                 uri_path: "index.htm",
                 uri_query: None,
-                #[cfg(feature = "experimental")]
+                #[cfg(feature = "mem-cache")]
                 memory_cache: None,
                 #[cfg(feature = "directory-listing")]
                 dir_listing: false,
@@ -458,8 +482,9 @@ mod tests {
                 dir_listing_download: &[],
                 redirect_trailing_slash: true,
                 compression_static: false,
-                ignore_hidden_files: false,
-                disable_symlinks: false,
+                etag: true,
+                include_hidden: true,
+                follow_symlinks: true,
                 index_files: &["index.htm"],
             })
             .await
@@ -488,7 +513,7 @@ mod tests {
                 base_path: &root_dir(),
                 uri_path: "index.htm",
                 uri_query: None,
-                #[cfg(feature = "experimental")]
+                #[cfg(feature = "mem-cache")]
                 memory_cache: None,
                 #[cfg(feature = "directory-listing")]
                 dir_listing: false,
@@ -500,19 +525,23 @@ mod tests {
                 dir_listing_download: &[],
                 redirect_trailing_slash: true,
                 compression_static: false,
-                ignore_hidden_files: false,
-                disable_symlinks: false,
+                etag: true,
+                include_hidden: true,
+                follow_symlinks: true,
                 index_files: &["index.htm"],
             })
             .await
             {
                 Ok(result) => {
-                    let mut res = result.resp;
+                    let res = result.resp;
                     assert_eq!(res.status(), 304);
                     assert_eq!(res.headers().get("content-length"), None);
-                    let body = hyper::body::to_bytes(res.body_mut())
+                    let body = res
+                        .into_body()
+                        .collect()
                         .await
-                        .expect("unexpected bytes error during `body` conversion");
+                        .expect("unexpected bytes error during `body` conversion")
+                        .to_bytes();
                     assert_eq!(body, "");
                 }
                 Err(_) => {
@@ -533,7 +562,7 @@ mod tests {
                 base_path: &root_dir(),
                 uri_path: "index.htm",
                 uri_query: None,
-                #[cfg(feature = "experimental")]
+                #[cfg(feature = "mem-cache")]
                 memory_cache: None,
                 #[cfg(feature = "directory-listing")]
                 dir_listing: false,
@@ -545,18 +574,22 @@ mod tests {
                 dir_listing_download: &[],
                 redirect_trailing_slash: true,
                 compression_static: false,
-                ignore_hidden_files: false,
-                disable_symlinks: false,
+                etag: true,
+                include_hidden: true,
+                follow_symlinks: true,
                 index_files: &["index.htm"],
             })
             .await
             {
                 Ok(result) => {
-                    let mut res = result.resp;
+                    let res = result.resp;
                     assert_eq!(res.status(), 200);
-                    let body = hyper::body::to_bytes(res.body_mut())
+                    let body = res
+                        .into_body()
+                        .collect()
                         .await
-                        .expect("unexpected bytes error during `body` conversion");
+                        .expect("unexpected bytes error during `body` conversion")
+                        .to_bytes();
                     assert_eq!(body, buf);
                     assert_eq!(res1.headers()["content-length"], buf.len().to_string());
                 }
@@ -576,7 +609,7 @@ mod tests {
                 base_path: &root_dir(),
                 uri_path: "index.htm",
                 uri_query: None,
-                #[cfg(feature = "experimental")]
+                #[cfg(feature = "mem-cache")]
                 memory_cache: None,
                 #[cfg(feature = "directory-listing")]
                 dir_listing: false,
@@ -588,8 +621,9 @@ mod tests {
                 dir_listing_download: &[],
                 redirect_trailing_slash: true,
                 compression_static: false,
-                ignore_hidden_files: false,
-                disable_symlinks: false,
+                etag: true,
+                include_hidden: true,
+                follow_symlinks: true,
                 index_files: &["index.htm"],
             })
             .await
@@ -617,7 +651,7 @@ mod tests {
                 base_path: &root_dir(),
                 uri_path: "index.htm",
                 uri_query: None,
-                #[cfg(feature = "experimental")]
+                #[cfg(feature = "mem-cache")]
                 memory_cache: None,
                 #[cfg(feature = "directory-listing")]
                 dir_listing: false,
@@ -629,8 +663,9 @@ mod tests {
                 dir_listing_download: &[],
                 redirect_trailing_slash: true,
                 compression_static: false,
-                ignore_hidden_files: false,
-                disable_symlinks: false,
+                etag: true,
+                include_hidden: true,
+                follow_symlinks: true,
                 index_files: &["index.htm"],
             })
             .await
@@ -657,7 +692,7 @@ mod tests {
                 base_path: &root_dir(),
                 uri_path: "index.htm",
                 uri_query: None,
-                #[cfg(feature = "experimental")]
+                #[cfg(feature = "mem-cache")]
                 memory_cache: None,
                 #[cfg(feature = "directory-listing")]
                 dir_listing: false,
@@ -669,19 +704,23 @@ mod tests {
                 dir_listing_download: &[],
                 redirect_trailing_slash: true,
                 compression_static: false,
-                ignore_hidden_files: false,
-                disable_symlinks: false,
+                etag: true,
+                include_hidden: true,
+                follow_symlinks: true,
                 index_files: &["index.htm"],
             })
             .await
             {
                 Ok(result) => {
-                    let mut res = result.resp;
+                    let res = result.resp;
                     assert_eq!(res.status(), 412);
 
-                    let body = hyper::body::to_bytes(res.body_mut())
+                    let body = res
+                        .into_body()
+                        .collect()
                         .await
-                        .expect("unexpected bytes error during `body` conversion");
+                        .expect("unexpected bytes error during `body` conversion")
+                        .to_bytes();
 
                     assert_eq!(body, "");
                 }
@@ -701,7 +740,7 @@ mod tests {
                 base_path: &root_dir(),
                 uri_path: "index.htm",
                 uri_query: None,
-                #[cfg(feature = "experimental")]
+                #[cfg(feature = "mem-cache")]
                 memory_cache: None,
                 #[cfg(feature = "directory-listing")]
                 dir_listing: false,
@@ -713,8 +752,9 @@ mod tests {
                 dir_listing_download: &[],
                 redirect_trailing_slash: true,
                 compression_static: false,
-                ignore_hidden_files: false,
-                disable_symlinks: false,
+                etag: true,
+                include_hidden: true,
+                follow_symlinks: true,
                 index_files: &["index.htm"],
             })
             .await
@@ -722,7 +762,7 @@ mod tests {
                 Ok(result) => match method {
                     // The handle only accepts HEAD or GET request methods
                     Method::GET | Method::HEAD => {
-                        let mut res = result.resp;
+                        let res = result.resp;
                         let buf = fs::read(root_dir().join("index.htm"))
                             .expect("unexpected error during index.html reading");
                         let buf = Bytes::from(buf);
@@ -736,9 +776,12 @@ mod tests {
 
                         assert!(ctype == "text/html", "content-type is not html: {ctype:?}",);
 
-                        let body = hyper::body::to_bytes(res.body_mut())
+                        let body = res
+                            .into_body()
+                            .collect()
                             .await
-                            .expect("unexpected bytes error during `body` conversion");
+                            .expect("unexpected bytes error during `body` conversion")
+                            .to_bytes();
 
                         assert_eq!(body, buf);
                     }
@@ -788,7 +831,7 @@ mod tests {
                 base_path: &comp_root_dir(),
                 uri_path: "large-test.html",
                 uri_query: None,
-                #[cfg(feature = "experimental")]
+                #[cfg(feature = "mem-cache")]
                 memory_cache: None,
                 #[cfg(feature = "directory-listing")]
                 dir_listing: false,
@@ -800,8 +843,9 @@ mod tests {
                 dir_listing_download: &[],
                 redirect_trailing_slash: true,
                 compression_static: false,
-                ignore_hidden_files: false,
-                disable_symlinks: false,
+                etag: true,
+                include_hidden: true,
+                follow_symlinks: true,
                 index_files: &["large-test.html"],
             })
             .await
@@ -863,7 +907,7 @@ mod tests {
                 base_path: &root_dir(),
                 uri_path: "index.htm",
                 uri_query: None,
-                #[cfg(feature = "experimental")]
+                #[cfg(feature = "mem-cache")]
                 memory_cache: None,
                 #[cfg(feature = "directory-listing")]
                 dir_listing: false,
@@ -875,23 +919,27 @@ mod tests {
                 dir_listing_download: &[],
                 redirect_trailing_slash: true,
                 compression_static: false,
-                ignore_hidden_files: false,
-                disable_symlinks: false,
+                etag: true,
+                include_hidden: true,
+                follow_symlinks: true,
                 index_files: &["index.htm"],
             })
             .await
             {
                 Ok(result) => {
-                    let mut res = result.resp;
+                    let res = result.resp;
                     assert_eq!(res.status(), 206);
                     assert_eq!(
                         res.headers()["content-range"],
                         format!("bytes 0-0/{}", buf.len())
                     );
                     assert_eq!(res.headers()["content-length"], "1");
-                    let body = hyper::body::to_bytes(res.body_mut())
+                    let body = res
+                        .into_body()
+                        .collect()
                         .await
-                        .expect("unexpected bytes error during `body` conversion");
+                        .expect("unexpected bytes error during `body` conversion")
+                        .to_bytes();
                     assert_eq!(body, &buf[..=0]);
                 }
                 Err(_) => {
@@ -917,7 +965,7 @@ mod tests {
                 base_path: &root_dir(),
                 uri_path: "assets/index.html",
                 uri_query: None,
-                #[cfg(feature = "experimental")]
+                #[cfg(feature = "mem-cache")]
                 memory_cache: None,
                 #[cfg(feature = "directory-listing")]
                 dir_listing: false,
@@ -929,23 +977,27 @@ mod tests {
                 dir_listing_download: &[],
                 redirect_trailing_slash: true,
                 compression_static: false,
-                ignore_hidden_files: false,
-                disable_symlinks: false,
+                etag: true,
+                include_hidden: true,
+                follow_symlinks: true,
                 index_files: &[],
             })
             .await
             {
                 Ok(result) => {
-                    let mut res = result.resp;
+                    let res = result.resp;
                     assert_eq!(res.status(), 206);
                     assert_eq!(
                         res.headers()["content-range"],
                         format!("bytes 100-200/{}", buf.len())
                     );
                     assert_eq!(res.headers()["content-length"], "101");
-                    let body = hyper::body::to_bytes(res.body_mut())
+                    let body = res
+                        .into_body()
+                        .collect()
                         .await
-                        .expect("unexpected bytes error during `body` conversion");
+                        .expect("unexpected bytes error during `body` conversion")
+                        .to_bytes();
                     assert_eq!(body, &buf[100..=200]);
                 }
                 Err(_) => {
@@ -971,7 +1023,7 @@ mod tests {
                 base_path: &root_dir(),
                 uri_path: "assets/index.html",
                 uri_query: None,
-                #[cfg(feature = "experimental")]
+                #[cfg(feature = "mem-cache")]
                 memory_cache: None,
                 #[cfg(feature = "directory-listing")]
                 dir_listing: false,
@@ -983,23 +1035,27 @@ mod tests {
                 dir_listing_download: &[],
                 redirect_trailing_slash: true,
                 compression_static: false,
-                ignore_hidden_files: false,
-                disable_symlinks: false,
+                etag: true,
+                include_hidden: true,
+                follow_symlinks: true,
                 index_files: &[],
             })
             .await
             {
                 Ok(result) => {
-                    let mut res = result.resp;
+                    let res = result.resp;
                     assert_eq!(res.status(), 206);
                     assert_eq!(
                         res.headers()["content-range"],
                         format!("bytes 100-{}/{}", buf.len() - 1, buf.len())
                     );
                     assert!(res.headers().get("content-length").is_some());
-                    let body = hyper::body::to_bytes(res.body_mut())
+                    let body = res
+                        .into_body()
+                        .collect()
                         .await
-                        .expect("unexpected bytes error during `body` conversion");
+                        .expect("unexpected bytes error during `body` conversion")
+                        .to_bytes();
                     assert!(body.len() > 400);
                 }
                 Err(_) => {
@@ -1026,7 +1082,7 @@ mod tests {
                 base_path: &root_dir(),
                 uri_path: "index.htm",
                 uri_query: None,
-                #[cfg(feature = "experimental")]
+                #[cfg(feature = "mem-cache")]
                 memory_cache: None,
                 #[cfg(feature = "directory-listing")]
                 dir_listing: false,
@@ -1038,8 +1094,9 @@ mod tests {
                 dir_listing_download: &[],
                 redirect_trailing_slash: true,
                 compression_static: false,
-                ignore_hidden_files: false,
-                disable_symlinks: false,
+                etag: true,
+                include_hidden: true,
+                follow_symlinks: true,
                 index_files: &["index.htm"],
             })
             .await
@@ -1073,7 +1130,7 @@ mod tests {
                 base_path: &root_dir(),
                 uri_path: "assets/index.html",
                 uri_query: None,
-                #[cfg(feature = "experimental")]
+                #[cfg(feature = "mem-cache")]
                 memory_cache: None,
                 #[cfg(feature = "directory-listing")]
                 dir_listing: false,
@@ -1085,14 +1142,15 @@ mod tests {
                 dir_listing_download: &[],
                 redirect_trailing_slash: true,
                 compression_static: false,
-                ignore_hidden_files: false,
-                disable_symlinks: false,
+                etag: true,
+                include_hidden: true,
+                follow_symlinks: true,
                 index_files: &[],
             })
             .await
             {
                 Ok(result) => {
-                    let mut res = result.resp;
+                    let res = result.resp;
                     assert_eq!(res.status(), 206);
                     assert_eq!(
                         res.headers()["content-range"],
@@ -1102,9 +1160,12 @@ mod tests {
                         res.headers()["content-length"],
                         &buf[100..].len().to_string()
                     );
-                    let body = hyper::body::to_bytes(res.body_mut())
+                    let body = res
+                        .into_body()
+                        .collect()
                         .await
-                        .expect("unexpected bytes error during `body` conversion");
+                        .expect("unexpected bytes error during `body` conversion")
+                        .to_bytes();
                     assert_eq!(body, &buf[100..]);
                 }
                 Err(_) => {
@@ -1130,7 +1191,7 @@ mod tests {
                 base_path: &root_dir(),
                 uri_path: "assets/index.html",
                 uri_query: None,
-                #[cfg(feature = "experimental")]
+                #[cfg(feature = "mem-cache")]
                 memory_cache: None,
                 #[cfg(feature = "directory-listing")]
                 dir_listing: false,
@@ -1142,23 +1203,27 @@ mod tests {
                 dir_listing_download: &[],
                 redirect_trailing_slash: true,
                 compression_static: false,
-                ignore_hidden_files: false,
-                disable_symlinks: false,
+                etag: true,
+                include_hidden: true,
+                follow_symlinks: true,
                 index_files: &[],
             })
             .await
             {
                 Ok(result) => {
-                    let mut res = result.resp;
+                    let res = result.resp;
                     assert_eq!(res.status(), 206);
                     assert_eq!(
                         res.headers()["content-range"],
                         format!("bytes {}-{}/{}", buf.len() - 100, buf.len() - 1, buf.len())
                     );
                     assert_eq!(res.headers()["content-length"], "100");
-                    let body = hyper::body::to_bytes(res.body_mut())
+                    let body = res
+                        .into_body()
+                        .collect()
                         .await
-                        .expect("unexpected bytes error during `body` conversion");
+                        .expect("unexpected bytes error during `body` conversion")
+                        .to_bytes();
                     assert_eq!(body, &buf[buf.len() - 100..]);
                 }
                 Err(_) => {
@@ -1184,7 +1249,7 @@ mod tests {
                 base_path: &root_dir(),
                 uri_path: "index.htm",
                 uri_query: None,
-                #[cfg(feature = "experimental")]
+                #[cfg(feature = "mem-cache")]
                 memory_cache: None,
                 #[cfg(feature = "directory-listing")]
                 dir_listing: false,
@@ -1196,23 +1261,27 @@ mod tests {
                 dir_listing_download: &[],
                 redirect_trailing_slash: true,
                 compression_static: false,
-                ignore_hidden_files: false,
-                disable_symlinks: false,
+                etag: true,
+                include_hidden: true,
+                follow_symlinks: true,
                 index_files: &["index.htm"],
             })
             .await
             {
                 Ok(result) => {
-                    let mut res = result.resp;
+                    let res = result.resp;
                     assert_eq!(res.status(), 416);
                     assert_eq!(
                         res.headers()["content-range"],
                         format!("bytes */{}", buf.len())
                     );
                     assert_eq!(res.headers().get("content-length"), None);
-                    let body = hyper::body::to_bytes(res.body_mut())
+                    let body = res
+                        .into_body()
+                        .collect()
                         .await
-                        .expect("unexpected bytes error during `body` conversion");
+                        .expect("unexpected bytes error during `body` conversion")
+                        .to_bytes();
                     assert_eq!(body, "");
                 }
                 Err(_) => {
@@ -1238,7 +1307,7 @@ mod tests {
                 base_path: &root_dir(),
                 uri_path: "index.htm",
                 uri_query: None,
-                #[cfg(feature = "experimental")]
+                #[cfg(feature = "mem-cache")]
                 memory_cache: None,
                 #[cfg(feature = "directory-listing")]
                 dir_listing: false,
@@ -1250,23 +1319,27 @@ mod tests {
                 dir_listing_download: &[],
                 redirect_trailing_slash: true,
                 compression_static: false,
-                ignore_hidden_files: false,
-                disable_symlinks: false,
+                etag: true,
+                include_hidden: true,
+                follow_symlinks: true,
                 index_files: &["index.htm"],
             })
             .await
             {
                 Ok(result) => {
-                    let mut res = result.resp;
+                    let res = result.resp;
                     assert_eq!(res.status(), 416);
                     assert_eq!(
                         res.headers()["content-range"],
                         format!("bytes */{}", buf.len())
                     );
                     assert!(res.headers().get("content-length").is_none());
-                    let body = hyper::body::to_bytes(res.body_mut())
+                    let body = res
+                        .into_body()
+                        .collect()
                         .await
-                        .expect("unexpected bytes error during `body` conversion");
+                        .expect("unexpected bytes error during `body` conversion")
+                        .to_bytes();
                     assert!(body.is_empty());
                 }
                 Err(_) => {
@@ -1295,7 +1368,7 @@ mod tests {
                 base_path: &root_dir(),
                 uri_path: "assets/index.html",
                 uri_query: None,
-                #[cfg(feature = "experimental")]
+                #[cfg(feature = "mem-cache")]
                 memory_cache: None,
                 #[cfg(feature = "directory-listing")]
                 dir_listing: false,
@@ -1307,19 +1380,23 @@ mod tests {
                 dir_listing_download: &[],
                 redirect_trailing_slash: true,
                 compression_static: false,
-                ignore_hidden_files: false,
-                disable_symlinks: false,
+                etag: true,
+                include_hidden: true,
+                follow_symlinks: true,
                 index_files: &["index.htm"],
             })
             .await
             {
                 Ok(result) => {
-                    let mut res = result.resp;
+                    let res = result.resp;
                     assert_eq!(res.status(), 200);
                     assert!(res.headers().get("content-length").is_some());
-                    let body = hyper::body::to_bytes(res.body_mut())
+                    let body = res
+                        .into_body()
+                        .collect()
                         .await
-                        .expect("unexpected bytes error during `body` conversion");
+                        .expect("unexpected bytes error during `body` conversion")
+                        .to_bytes();
                     assert!(body.len() > 500);
                 }
                 Err(_) => {
@@ -1342,7 +1419,7 @@ mod tests {
                 base_path: &root_dir(),
                 uri_path: "index.htm",
                 uri_query: None,
-                #[cfg(feature = "experimental")]
+                #[cfg(feature = "mem-cache")]
                 memory_cache: None,
                 #[cfg(feature = "directory-listing")]
                 dir_listing: false,
@@ -1354,8 +1431,9 @@ mod tests {
                 dir_listing_download: &[],
                 redirect_trailing_slash: true,
                 compression_static: false,
-                ignore_hidden_files: false,
-                disable_symlinks: false,
+                etag: true,
+                include_hidden: true,
+                follow_symlinks: true,
                 index_files: &["index.htm"],
             })
             .await
@@ -1388,7 +1466,7 @@ mod tests {
                 base_path: &root_dir(),
                 uri_path: "assets/index.html",
                 uri_query: None,
-                #[cfg(feature = "experimental")]
+                #[cfg(feature = "mem-cache")]
                 memory_cache: None,
                 #[cfg(feature = "directory-listing")]
                 dir_listing: false,
@@ -1400,14 +1478,15 @@ mod tests {
                 dir_listing_download: &[],
                 redirect_trailing_slash: true,
                 compression_static: false,
-                ignore_hidden_files: false,
-                disable_symlinks: false,
+                etag: true,
+                include_hidden: true,
+                follow_symlinks: true,
                 index_files: &[],
             })
             .await
             {
                 Ok(result) => {
-                    let mut res = result.resp;
+                    let res = result.resp;
                     assert_eq!(res.status(), 206);
                     assert_eq!(
                         res.headers()["content-range"],
@@ -1417,9 +1496,12 @@ mod tests {
                         res.headers()["content-length"],
                         format!("{}", buf.len() - 100)
                     );
-                    let body = hyper::body::to_bytes(res.body_mut())
+                    let body = res
+                        .into_body()
+                        .collect()
                         .await
-                        .expect("unexpected bytes error during `body` conversion");
+                        .expect("unexpected bytes error during `body` conversion")
+                        .to_bytes();
                     assert_eq!(body, &buf[100..=buf.len() - 1]);
                 }
                 Err(_) => {
@@ -1449,7 +1531,7 @@ mod tests {
                 base_path: &root_dir(),
                 uri_path: "assets/index.html",
                 uri_query: None,
-                #[cfg(feature = "experimental")]
+                #[cfg(feature = "mem-cache")]
                 memory_cache: None,
                 #[cfg(feature = "directory-listing")]
                 dir_listing: false,
@@ -1461,14 +1543,15 @@ mod tests {
                 dir_listing_download: &[],
                 redirect_trailing_slash: true,
                 compression_static: false,
-                ignore_hidden_files: false,
-                disable_symlinks: false,
+                etag: true,
+                include_hidden: true,
+                follow_symlinks: true,
                 index_files: &[],
             })
             .await
             {
                 Ok(result) => {
-                    let mut res = result.resp;
+                    let res = result.resp;
                     assert_eq!(res.status(), 206);
                     assert_eq!(
                         res.headers()["content-range"],
@@ -1478,9 +1561,12 @@ mod tests {
                         res.headers()["content-length"],
                         format!("{}", buf.len() - 100)
                     );
-                    let body = hyper::body::to_bytes(res.body_mut())
+                    let body = res
+                        .into_body()
+                        .collect()
                         .await
-                        .expect("unexpected bytes error during `body` conversion");
+                        .expect("unexpected bytes error during `body` conversion")
+                        .to_bytes();
                     assert_eq!(body, &buf[100..=buf.len() - 1]);
                 }
                 Err(_) => {
@@ -1491,7 +1577,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn handle_ignore_hidden_files() {
+    async fn handle_include_hidden() {
         let root_dir = PathBuf::from("tests/fixtures/public/");
         let headers = HeaderMap::new();
 
@@ -1502,7 +1588,7 @@ mod tests {
                 base_path: &root_dir,
                 uri_path: ".dotfile",
                 uri_query: None,
-                #[cfg(feature = "experimental")]
+                #[cfg(feature = "mem-cache")]
                 memory_cache: None,
                 #[cfg(feature = "directory-listing")]
                 dir_listing: false,
@@ -1514,8 +1600,9 @@ mod tests {
                 dir_listing_download: &[],
                 redirect_trailing_slash: true,
                 compression_static: true,
-                ignore_hidden_files: true,
-                disable_symlinks: false,
+                etag: true,
+                include_hidden: false,
+                follow_symlinks: true,
                 index_files: &["index.htm"],
             })
             .await
@@ -1542,7 +1629,7 @@ mod tests {
                 base_path: &root_dir,
                 uri_path: "foo.html",
                 uri_query: None,
-                #[cfg(feature = "experimental")]
+                #[cfg(feature = "mem-cache")]
                 memory_cache: None,
                 #[cfg(feature = "directory-listing")]
                 dir_listing: false,
@@ -1554,13 +1641,14 @@ mod tests {
                 dir_listing_download: &[],
                 redirect_trailing_slash: true,
                 compression_static: true,
-                ignore_hidden_files: true,
-                disable_symlinks: false,
+                etag: true,
+                include_hidden: false,
+                follow_symlinks: true,
                 index_files: &[],
             })
             .await
             .expect("unexpected error response on `handle` function");
-            let mut res = result.resp;
+            let res = result.resp;
 
             let buf = fs::read(root_dir.join("foo.html"))
                 .expect("unexpected error during index.html reading");
@@ -1575,9 +1663,12 @@ mod tests {
 
             assert!(ctype == "text/html", "content-type is not html: {ctype:?}",);
 
-            let body = hyper::body::to_bytes(res.body_mut())
+            let body = res
+                .into_body()
+                .collect()
                 .await
-                .expect("unexpected bytes error during `body` conversion");
+                .expect("unexpected bytes error during `body` conversion")
+                .to_bytes();
 
             assert_eq!(body, buf);
         }
@@ -1595,7 +1686,7 @@ mod tests {
                 base_path: &root_dir,
                 uri_path: ".hidden-file.txt",
                 uri_query: None,
-                #[cfg(feature = "experimental")]
+                #[cfg(feature = "mem-cache")]
                 memory_cache: None,
                 #[cfg(feature = "directory-listing")]
                 dir_listing: false,
@@ -1607,8 +1698,9 @@ mod tests {
                 dir_listing_download: &[],
                 redirect_trailing_slash: true,
                 compression_static: true,
-                ignore_hidden_files: true,
-                disable_symlinks: false,
+                etag: true,
+                include_hidden: false,
+                follow_symlinks: true,
                 index_files: &["index.htm"],
             })
             .await
@@ -1639,7 +1731,7 @@ mod tests {
                 base_path: &root_dir,
                 uri_path: "/",
                 uri_query: None,
-                #[cfg(feature = "experimental")]
+                #[cfg(feature = "mem-cache")]
                 memory_cache: None,
                 #[cfg(feature = "directory-listing")]
                 dir_listing: false,
@@ -1651,19 +1743,23 @@ mod tests {
                 dir_listing_download: &[],
                 redirect_trailing_slash: true,
                 compression_static: true,
-                ignore_hidden_files: true,
-                disable_symlinks: false,
+                etag: true,
+                include_hidden: false,
+                follow_symlinks: true,
                 index_files: &["index.htm", "index.htm"],
             })
             .await
             {
                 Ok(result) => {
-                    let mut res = result.resp;
+                    let res = result.resp;
                     assert_eq!(res.status(), 200);
                     assert_eq!(res.headers()["content-length"], format!("{}", buf.len()));
-                    let body = hyper::body::to_bytes(res.body_mut())
+                    let body = res
+                        .into_body()
+                        .collect()
                         .await
-                        .expect("unexpected bytes error during `body` conversion");
+                        .expect("unexpected bytes error during `body` conversion")
+                        .to_bytes();
                     assert_eq!(body, &buf);
                 }
                 Err(_) => {
@@ -1674,7 +1770,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn handle_disable_symlinks() {
+    async fn handle_follow_symlinks() {
         let root_dir = PathBuf::from("tests/fixtures/public/");
         let headers = HeaderMap::new();
 
@@ -1685,7 +1781,7 @@ mod tests {
                 base_path: &root_dir,
                 uri_path: "/symlink",
                 uri_query: None,
-                #[cfg(feature = "experimental")]
+                #[cfg(feature = "mem-cache")]
                 memory_cache: None,
                 #[cfg(feature = "directory-listing")]
                 dir_listing: false,
@@ -1697,8 +1793,9 @@ mod tests {
                 dir_listing_download: &[],
                 redirect_trailing_slash: true,
                 compression_static: true,
-                ignore_hidden_files: true,
-                disable_symlinks: true,
+                etag: true,
+                include_hidden: false,
+                follow_symlinks: false,
                 index_files: &["index.htm", "index.htm"],
             })
             .await
@@ -1721,7 +1818,7 @@ mod tests {
                 base_path: &root_dir,
                 uri_path: "/symlink/spécial file.txt~",
                 uri_query: None,
-                #[cfg(feature = "experimental")]
+                #[cfg(feature = "mem-cache")]
                 memory_cache: None,
                 #[cfg(feature = "directory-listing")]
                 dir_listing: false,
@@ -1733,8 +1830,9 @@ mod tests {
                 dir_listing_download: &[],
                 redirect_trailing_slash: true,
                 compression_static: true,
-                ignore_hidden_files: true,
-                disable_symlinks: false,
+                etag: true,
+                include_hidden: false,
+                follow_symlinks: true,
                 index_files: &["index.htm", "index.htm"],
             })
             .await
@@ -1767,7 +1865,7 @@ mod tests {
                     base_path: &root_dir,
                     uri_path: "/readme.md",
                     uri_query: None,
-                    #[cfg(feature = "experimental")]
+                    #[cfg(feature = "mem-cache")]
                     memory_cache: None,
                     #[cfg(feature = "directory-listing")]
                     dir_listing: false,
@@ -1779,8 +1877,9 @@ mod tests {
                     dir_listing_download: &[],
                     redirect_trailing_slash: true,
                     compression_static: true,
-                    ignore_hidden_files: true,
-                    disable_symlinks: false,
+                    etag: true,
+                    include_hidden: false,
+                    follow_symlinks: true,
                     index_files: &["index.htm", "index.htm"],
                 })
                 .await
@@ -1814,7 +1913,7 @@ mod tests {
                     base_path: &root_dir,
                     uri_path: "/unknown.md",
                     uri_query: None,
-                    #[cfg(feature = "experimental")]
+                    #[cfg(feature = "mem-cache")]
                     memory_cache: None,
                     #[cfg(feature = "directory-listing")]
                     dir_listing: false,
@@ -1826,8 +1925,9 @@ mod tests {
                     dir_listing_download: &[],
                     redirect_trailing_slash: true,
                     compression_static: true,
-                    ignore_hidden_files: true,
-                    disable_symlinks: false,
+                    etag: true,
+                    include_hidden: false,
+                    follow_symlinks: true,
                     index_files: &["index.htm", "index.htm"],
                 })
                 .await

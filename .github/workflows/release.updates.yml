@@ -9,11 +9,12 @@ permissions:
   pull-requests: write
 
 env:
-  LABEL_VERSION: "v2"
+  LABEL_VERSION: "v3"
 
 jobs:
   release_updates:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
+    if: contains(github.ref, 'v3.')
     environment: release-updates-static-web-server
     steps:
       - name: Checkout

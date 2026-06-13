@@ -8,25 +8,23 @@
 
 use async_compression::tokio::write::GzipEncoder;
 use async_tar::Builder;
-use bytes::BytesMut;
 use clap::ValueEnum;
 use headers::{ContentType, HeaderMapExt};
 use http::{HeaderValue, Method, Response};
-use hyper::{Body, body::Sender};
 use mime_guess::Mime;
 use std::fmt::Display;
 use std::path::Path;
 use std::path::PathBuf;
 use std::str::FromStr;
-use std::task::Poll::{Pending, Ready};
 use tokio::fs;
-use tokio::io;
 use tokio::io::AsyncWriteExt;
 use tokio_util::compat::TokioAsyncWriteCompatExt;
+use tokio_util::io::ReaderStream;
 
 use crate::Result;
+use crate::body::Body;
+use crate::exts::http::MethodExt;
 use crate::handler::RequestHandlerOpts;
-use crate::http_ext::MethodExt;
 
 /// query parameter key to download directory as tar.gz
 pub const DOWNLOAD_PARAM_KEY: &str = "download";
@@ -50,9 +48,9 @@ pub struct DirDownloadOpts<'a> {
     /// Request method.
     pub method: &'a Method,
     /// Prevent following symlinks for files and directories.
-    pub disable_symlinks: bool,
+    pub follow_symlinks: bool,
     /// Ignore hidden files (dotfiles).
-    pub ignore_hidden_files: bool,
+    pub include_hidden: bool,
 }
 
 /// Initializes directory listing download
@@ -60,19 +58,19 @@ pub fn init(formats: &Vec<DirDownloadFmt>, handler_opts: &mut RequestHandlerOpts
     for fmt in formats {
         // Use naive implementation since the list is not expected to be long
         if !handler_opts.dir_listing_download.contains(fmt) {
-            tracing::info!("directory listing download: enabled format {}", &fmt);
+            tracing::info!(format = %fmt, "directory listing download format");
             handler_opts.dir_listing_download.push(fmt.to_owned());
         }
     }
     tracing::info!(
-        "directory listing download: enabled={}",
-        !handler_opts.dir_listing_download.is_empty()
+        enabled = !handler_opts.dir_listing_download.is_empty(),
+        "directory listing download"
     );
 }
 
-/// impl AsyncWrite for hyper::Body::Sender
+/// It implements `AsyncWrite` backed by a Tokio duplex writer used as the `GzipEncoder` write target.
 pub struct ChannelBuffer {
-    s: Sender,
+    writer: tokio::io::DuplexStream,
 }
 
 impl tokio::io::AsyncWrite for ChannelBuffer {
@@ -81,32 +79,21 @@ impl tokio::io::AsyncWrite for ChannelBuffer {
         cx: &mut std::task::Context<'_>,
         buf: &[u8],
     ) -> std::task::Poll<Result<usize, std::io::Error>> {
-        let this = self.get_mut();
-        let b = BytesMut::from(buf);
-        match this.s.poll_ready(cx) {
-            Ready(r) => match r {
-                Ok(()) => match this.s.try_send_data(b.freeze()) {
-                    Ok(_) => Ready(Ok(buf.len())),
-                    Err(_) => Pending,
-                },
-                Err(e) => Ready(Err(io::Error::new(io::ErrorKind::BrokenPipe, e))),
-            },
-            Pending => Pending,
-        }
+        std::pin::Pin::new(&mut self.get_mut().writer).poll_write(cx, buf)
     }
 
     fn poll_flush(
         self: std::pin::Pin<&mut Self>,
-        _cx: &mut std::task::Context<'_>,
+        cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Result<(), std::io::Error>> {
-        std::task::Poll::Ready(Ok(()))
+        std::pin::Pin::new(&mut self.get_mut().writer).poll_flush(cx)
     }
 
     fn poll_shutdown(
         self: std::pin::Pin<&mut Self>,
-        _cx: &mut std::task::Context<'_>,
+        cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Result<(), std::io::Error>> {
-        std::task::Poll::Ready(Ok(()))
+        std::pin::Pin::new(&mut self.get_mut().writer).poll_shutdown(cx)
     }
 }
 
@@ -171,15 +158,20 @@ where
     Q: AsRef<Path>,
 {
     let archive_name = path.as_ref().with_extension("tar.gz");
-    let mut resp = Response::new(Body::empty());
+    let mut resp = Response::new(crate::body::empty());
 
     resp.headers_mut().typed_insert(ContentType::from(
         Mime::from_str("application/gzip").unwrap_or(mime_guess::mime::APPLICATION_OCTET_STREAM),
     ));
-
-    // A safe `Content-Disposition` value that combines an
+    // SECURITY: Build a safe `Content-Disposition` value that combines an
     // ASCII-safe quoted-string `filename=...` (for legacy user agents) and
     // an RFC 5987 `filename*=UTF-8''<percent-encoded>` (for modern UAs).
+    //
+    // The previous implementation interpolated the directory name into the
+    // quoted-string without escaping `"` or `\`, producing a malformed
+    // header for any directory name containing those characters. While
+    // `HeaderValue::from_str` blocks CRLF, malformed Content-Disposition
+    // can still confuse downstream proxies and browsers.
     let archive_name_str = archive_name.to_string_lossy();
     let ascii_safe = sanitize_filename_for_quoted_string(&archive_name_str);
     let percent_encoded = rfc5987_encode_filename(&archive_name_str);
@@ -202,13 +194,14 @@ where
         return resp;
     }
 
-    let (tx, body) = Body::channel();
+    let (read_half, write_half) = tokio::io::duplex(64 * 1024);
+    let body = crate::body::stream(ReaderStream::new(read_half));
     tokio::task::spawn(archive(
         path.as_ref().into(),
         src_path.as_ref().into(),
-        ChannelBuffer { s: tx },
-        !opts.disable_symlinks,
-        opts.ignore_hidden_files,
+        ChannelBuffer { writer: write_half },
+        opts.follow_symlinks,
+        !opts.include_hidden,
     ));
     *resp.body_mut() = body;
 
@@ -280,7 +273,7 @@ mod tests {
     }
 
     /// SECURITY: Control bytes (CR/LF/NUL) must not survive into a header
-    /// value — they could be reflected if a downstream proxy mishandles
+    /// value \u2014 they could be reflected if a downstream proxy mishandles
     /// `Content-Disposition`.
     #[test]
     fn sanitize_strips_control_bytes() {
@@ -316,7 +309,7 @@ mod tests {
         assert_eq!(rfc5987_encode_filename(input), input);
     }
 
-    /// Everything outside attr-char must be percent-encoded — in
+    /// Everything outside attr-char must be percent-encoded \u2014 in
     /// particular, `"`, `\`, space, CR, LF, and any non-ASCII byte.
     #[test]
     fn rfc5987_encodes_unsafe_bytes() {
@@ -326,5 +319,99 @@ mod tests {
         assert_eq!(rfc5987_encode_filename("a\r\nb"), "a%0D%0Ab");
         // UTF-8 `\u{00f6}` = 0xC3 0xB6
         assert_eq!(rfc5987_encode_filename("\u{00f6}"), "%C3%B6");
+    }
+
+    // Property-based regression tests for Content-Disposition helpers.
+    //
+    // These encode the security invariants that protect the
+    // `Content-Disposition` header against quoted-string framing breaks,
+    // header smuggling via control bytes, and ambiguous user-agent
+    // parsing of non-ASCII filenames.
+    use proptest::prelude::*;
+
+    fn is_attr_char(b: u8) -> bool {
+        b.is_ascii_alphanumeric()
+            || matches!(
+                b,
+                b'!' | b'#' | b'$' | b'&' | b'+' | b'-' | b'.' | b'^' | b'_' | b'`' | b'|' | b'~'
+            )
+    }
+
+    proptest! {
+        #![proptest_config(ProptestConfig {
+            cases: 256, ..ProptestConfig::default()
+        })]
+
+        /// `sanitize_filename_for_quoted_string` MUST always yield a
+        /// non-empty ASCII string with no quoted-string-breaking or
+        /// control bytes, for any UTF-8 input.
+        #[test]
+        fn prop_sanitize_filename_invariants(name in "\\PC{0,256}") {
+            let out = sanitize_filename_for_quoted_string(&name);
+            prop_assert!(!out.is_empty(), "output must never be empty");
+            prop_assert!(out.is_ascii(), "output must be pure ASCII");
+            for ch in out.chars() {
+                prop_assert!(
+                    ch != '"' && ch != '\\',
+                    "quoted-string break byte leaked: {:?}",
+                    ch
+                );
+                let code = ch as u32;
+                prop_assert!(
+                    code >= 0x20 && code != 0x7f,
+                    "control byte leaked: {:?}",
+                    ch
+                );
+            }
+        }
+
+        /// Sanitization is idempotent: a single pass already produces a
+        /// fixed point of the transform.
+        #[test]
+        fn prop_sanitize_filename_is_idempotent(name in "\\PC{0,256}") {
+            let once = sanitize_filename_for_quoted_string(&name);
+            let twice = sanitize_filename_for_quoted_string(&once);
+            prop_assert_eq!(once, twice);
+        }
+
+        /// `rfc5987_encode_filename` MUST emit only attr-char bytes or
+        /// well-formed `%HH` percent-escapes, for any UTF-8 input.
+        #[test]
+        fn prop_rfc5987_encode_only_safe_alphabet(name in "\\PC{0,256}") {
+            let out = rfc5987_encode_filename(&name);
+            let bytes = out.as_bytes();
+            let mut i = 0;
+            while i < bytes.len() {
+                let b = bytes[i];
+                if b == b'%' {
+                    // Must be followed by exactly two uppercase hex digits.
+                    prop_assert!(i + 2 < bytes.len(), "truncated percent-escape at {i}");
+                    let h1 = bytes[i + 1];
+                    let h2 = bytes[i + 2];
+                    let is_hex_upper = |c: u8| c.is_ascii_digit() || (b'A'..=b'F').contains(&c);
+                    prop_assert!(
+                        is_hex_upper(h1) && is_hex_upper(h2),
+                        "non-uppercase-hex percent-escape: %{}{}",
+                        h1 as char,
+                        h2 as char
+                    );
+                    i += 3;
+                } else {
+                    prop_assert!(
+                        is_attr_char(b),
+                        "non-attr-char byte leaked: 0x{:02X}",
+                        b
+                    );
+                    i += 1;
+                }
+            }
+        }
+
+        /// Inputs already drawn from the attr-char alphabet must
+        /// round-trip unchanged.
+        #[test]
+        fn prop_rfc5987_attr_char_inputs_roundtrip(s in "[A-Za-z0-9!#\\$&+\\-\\.\\^_`|~]{0,128}") {
+            prop_assert_eq!(rfc5987_encode_filename(&s).clone(), s);
+        }
     }
 }

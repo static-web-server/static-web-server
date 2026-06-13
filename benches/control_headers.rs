@@ -1,10 +1,10 @@
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 
-use hyper::{Body, Response, StatusCode};
+use hyper::{Response, StatusCode};
 use static_web_server::control_headers;
 
 fn append_headers_benchmark(c: &mut Criterion) {
-    let mut resp = Response::new(Body::empty());
+    let mut resp = Response::new(static_web_server::body::empty());
     *resp.status_mut() = StatusCode::OK;
     let uri_path: &str = "assets/image.jpg";
 

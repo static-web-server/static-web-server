@@ -9,7 +9,7 @@ pub mod tests {
     use hyper::{Method, Request};
     use std::net::SocketAddr;
 
-    use static_web_server::http_ext::MethodExt;
+    use static_web_server::exts::http::MethodExt;
     use static_web_server::testing::fixtures::{
         REMOTE_ADDR, fixture_req_handler, fixture_req_handler_opts, fixture_settings,
     };
@@ -21,7 +21,7 @@ pub mod tests {
         let req_handler = fixture_req_handler(req_handler_opts);
         let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
 
-        let mut req = Request::default();
+        let mut req = Request::new(());
         *req.method_mut() = hyper::Method::GET;
         *req.uri_mut() = "http://localhost/".parse().unwrap();
 
@@ -63,7 +63,7 @@ pub mod tests {
         let req_handler = fixture_req_handler(req_handler_opts);
         let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
 
-        let mut req = Request::default();
+        let mut req = Request::new(());
         *req.method_mut() = hyper::Method::GET;
         *req.uri_mut() = "http://localhost/index.html".parse().unwrap();
 
@@ -89,7 +89,7 @@ pub mod tests {
 
                 assert_eq!(
                     res.headers().get("cache-control"),
-                    Some(&HeaderValue::from_static("max-age=86400"))
+                    Some(&HeaderValue::from_static("no-cache"))
                 );
                 assert_eq!(
                     res.headers().get("server"),
@@ -120,7 +120,7 @@ pub mod tests {
             Method::TRACE,
         ];
         for method in methods {
-            let mut req = Request::default();
+            let mut req = Request::new(());
             *req.method_mut() = method.clone();
             *req.uri_mut() = "http://localhost/index.html".parse().unwrap();
 

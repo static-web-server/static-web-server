@@ -13,9 +13,10 @@ use headers::{
     HeaderMapExt, HeaderName, HeaderValue, Origin,
 };
 use http::header;
-use hyper::{Body, Request, Response, StatusCode};
+use hyper::{Request, Response, StatusCode};
 use std::collections::HashSet;
 
+use crate::body::Body;
 use crate::{Error, error_page, handler::RequestHandlerOpts};
 
 /// It defines CORS instance.
@@ -46,27 +47,54 @@ pub fn new(
                     s.split(',').map(|s| s.trim()).collect::<Vec<_>>()
                 }
             });
+        // SECURITY/ROBUSTNESS: Reject malformed admin-supplied tokens with
+        // a structured `tracing::error!` instead of letting the builder
+        // panic at startup. This keeps SWS aligned with the rest of the
+        // codebase's error model and avoids an attacker-controlled abort
+        // surface if origin/header lists ever get fed from a less-trusted
+        // configuration source.
+        let allow_headers_vec = validate_header_names("cors.allow_headers", &allow_headers_vec);
+        let expose_headers_vec = validate_header_names("cors.expose_headers", &expose_headers_vec);
         let [allow_headers_str, expose_headers_str] =
             [&allow_headers_vec, &expose_headers_vec].map(|v| v.join(","));
 
         let cors_res = if origins_str == "*" {
-            Some(
-                cors.allow_any_origin()
-                    .allow_headers(allow_headers_vec)
-                    .expose_headers(expose_headers_vec)
-                    .allow_methods(vec!["GET", "HEAD", "OPTIONS"]),
-            )
+            match cors
+                .allow_any_origin()
+                .allow_headers(allow_headers_vec)
+                .and_then(|cors| cors.expose_headers(expose_headers_vec))
+                .and_then(|cors| cors.allow_methods(["GET", "HEAD", "OPTIONS"]))
+            {
+                Ok(cors) => Some(cors),
+                Err(err) => {
+                    tracing::error!("cors: failed to build configuration: {err:?}");
+                    None
+                }
+            }
         } else {
-            let hosts = origins_str.split(',').map(|s| s.trim()).collect::<Vec<_>>();
+            let hosts = origins_str
+                .split(',')
+                .map(|s| s.trim())
+                .filter(|s| validate_origin_str("cors.allow_origins", s))
+                .collect::<Vec<_>>();
             if hosts.is_empty() {
+                tracing::error!(
+                    "cors: no valid origins found in `{origins_str}`; CORS will be disabled"
+                );
                 None
             } else {
-                Some(
-                    cors.allow_origins(hosts)
-                        .allow_headers(allow_headers_vec)
-                        .expose_headers(expose_headers_vec)
-                        .allow_methods(vec!["GET", "HEAD", "OPTIONS"]),
-                )
+                match cors
+                    .allow_origins(hosts)
+                    .and_then(|cors| cors.allow_headers(allow_headers_vec))
+                    .and_then(|cors| cors.expose_headers(expose_headers_vec))
+                    .and_then(|cors| cors.allow_methods(["GET", "HEAD", "OPTIONS"]))
+                {
+                    Ok(cors) => Some(cors),
+                    Err(err) => {
+                        tracing::error!("cors: failed to build configuration: {err:?}");
+                        None
+                    }
+                }
             }
         };
 
@@ -84,6 +112,49 @@ pub fn new(
     Cors::build(cors)
 }
 
+/// Filter out entries that would cause `Cors::allow_headers` /
+/// `expose_headers` to panic, logging each rejected value. Returns the
+/// surviving entries.
+fn validate_header_names<'a>(field: &str, names: &[&'a str]) -> Vec<&'a str> {
+    names
+        .iter()
+        .copied()
+        .filter(|h| {
+            if HeaderName::try_from(*h).is_ok() {
+                true
+            } else {
+                tracing::error!("{field}: ignoring invalid HTTP header name `{h}`");
+                false
+            }
+        })
+        .collect()
+}
+
+/// Verifies that an origin string looks like `scheme://authority` so
+/// `IntoOrigin::into_origin` will not panic on it.
+#[doc(hidden)]
+pub fn validate_origin_str(field: &str, origin: &str) -> bool {
+    let mut parts = origin.splitn(2, "://");
+    let scheme = parts.next();
+    let rest = parts.next();
+    match (scheme, rest) {
+        (Some(s), Some(r)) if !s.is_empty() && !r.is_empty() => {
+            if Origin::try_from_parts(s, r, None).is_ok() {
+                true
+            } else {
+                tracing::error!("{field}: ignoring invalid origin `{origin}`");
+                false
+            }
+        }
+        _ => {
+            tracing::error!(
+                "{field}: ignoring origin `{origin}` (expected `scheme://host[:port]`)"
+            );
+            false
+        }
+    }
+}
+
 impl Cors {
     /// Creates a new Cors instance.
     pub fn new() -> Self {
@@ -97,21 +168,17 @@ impl Cors {
     }
 
     /// Adds multiple methods to the existing list of allowed request methods.
-    ///
-    /// # Panics
-    ///
-    /// Panics if the provided argument is not a valid `http::Method`.
-    pub fn allow_methods<I>(mut self, methods: I) -> Self
+    pub fn allow_methods<I>(mut self, methods: I) -> Result<Self, Error>
     where
         I: IntoIterator,
         http::Method: TryFrom<I::Item>,
     {
-        let iter = methods.into_iter().map(|m| match TryFrom::try_from(m) {
-            Ok(m) => m,
-            Err(_) => panic!("cors: illegal method"),
-        });
-        self.allowed_methods.extend(iter);
-        self
+        for method in methods {
+            let method =
+                http::Method::try_from(method).map_err(|_| Error::msg("cors: illegal method"))?;
+            self.allowed_methods.insert(method);
+        }
+        Ok(self)
     }
 
     /// Sets that *any* `Origin` header is allowed.
@@ -126,67 +193,53 @@ impl Cors {
     }
 
     /// Add multiple origins to the existing list of allowed `Origin`s.
-    ///
-    /// # Panics
-    ///
-    /// Panics if the provided argument is not a valid `Origin`.
-    pub fn allow_origins<I>(mut self, origins: I) -> Self
+    pub fn allow_origins<I>(mut self, origins: I) -> Result<Self, Error>
     where
         I: IntoIterator,
         I::Item: IntoOrigin,
     {
-        let iter = origins
-            .into_iter()
-            .map(IntoOrigin::into_origin)
-            .map(|origin| {
-                origin
-                    .to_string()
-                    .parse()
-                    .expect("cors: Origin is always a valid HeaderValue")
-            });
-
-        self.origins.get_or_insert_with(HashSet::new).extend(iter);
-        self
+        let allowed = self.origins.get_or_insert_with(HashSet::new);
+        for origin in origins {
+            let origin = origin.into_origin()?;
+            let value = HeaderValue::from_str(&origin.to_string())
+                .map_err(|err| Error::msg(format!("cors: invalid origin header value: {err}")))?;
+            allowed.insert(value);
+        }
+        Ok(self)
     }
 
     /// Adds multiple headers to the list of allowed request headers.
     ///
     /// **Note**: These should match the values the browser sends via `Access-Control-Request-Headers`, e.g.`content-type`.
     ///
-    /// # Panics
-    ///
-    /// Panics if any of the headers are not a valid `http::header::HeaderName`.
-    pub fn allow_headers<I>(mut self, headers: I) -> Self
+    pub fn allow_headers<I>(mut self, headers: I) -> Result<Self, Error>
     where
         I: IntoIterator,
         HeaderName: TryFrom<I::Item>,
     {
-        let iter = headers.into_iter().map(|h| match TryFrom::try_from(h) {
-            Ok(h) => h,
-            Err(_) => panic!("cors: illegal Header"),
-        });
-        self.allowed_headers.extend(iter);
-        self
+        for header in headers {
+            let header = HeaderName::try_from(header)
+                .map_err(|_| Error::msg("cors: illegal allow header"))?;
+            self.allowed_headers.insert(header);
+        }
+        Ok(self)
     }
 
     /// Adds multiple headers to the list of exposed request headers.
     ///
     /// **Note**: These should match the values the browser sends via `Access-Control-Request-Headers`, e.g.`content-type`.
     ///
-    /// # Panics
-    ///
-    /// Panics if any of the headers are not a valid `http::header::HeaderName`.
-    pub fn expose_headers<I>(mut self, headers: I) -> Self
+    pub fn expose_headers<I>(mut self, headers: I) -> Result<Self, Error>
     where
         I: IntoIterator,
         HeaderName: TryFrom<I::Item>,
     {
-        let iter = headers.into_iter().map(|h| match TryFrom::try_from(h) {
-            Ok(h) => h,
-            Err(_) => panic!("cors: illegal Header"),
-        });
-        self.exposed_headers.extend(iter);
-        self
+        for header in headers {
+            let header = HeaderName::try_from(header)
+                .map_err(|_| Error::msg("cors: illegal expose header"))?;
+            self.exposed_headers.insert(header);
+        }
+        Ok(self)
     }
 
     /// Builds the `Cors` wrapper from the configured settings.
@@ -362,16 +415,16 @@ impl Configured {
 /// Cast values into the origin header.
 pub trait IntoOrigin {
     /// Cast actual value into an origin header.
-    fn into_origin(self) -> Origin;
+    fn into_origin(self) -> Result<Origin, Error>;
 }
 
 impl IntoOrigin for &str {
-    fn into_origin(self) -> Origin {
-        let mut parts = self.splitn(2, "://");
-        let scheme = parts.next().expect("cors::into_origin: missing url scheme");
-        let rest = parts.next().expect("cors::into_origin: missing url scheme");
-
-        Origin::try_from_parts(scheme, rest, None).expect("cors::into_origin: invalid Origin")
+    fn into_origin(self) -> Result<Origin, Error> {
+        let (scheme, rest) = self
+            .split_once("://")
+            .ok_or_else(|| Error::msg("cors::into_origin: expected `scheme://host[:port]`"))?;
+        Origin::try_from_parts(scheme, rest, None)
+            .map_err(|_| Error::msg("cors::into_origin: invalid Origin"))
     }
 }
 
@@ -435,8 +488,8 @@ pub(crate) fn post_process<T>(
             resp.headers_mut().insert(k, v.to_owned());
         }
         resp.headers_mut().insert(
-            hyper::header::VARY,
-            HeaderValue::from_name(hyper::header::ORIGIN),
+            http::header::VARY,
+            HeaderValue::from_name(http::header::ORIGIN),
         );
         resp.headers_mut().remove(http::header::ALLOW);
     }
@@ -446,28 +499,35 @@ pub(crate) fn post_process<T>(
 #[cfg(test)]
 mod tests {
     use super::{Configured, Cors, post_process, pre_process};
+    use crate::body::Body;
     use crate::{Error, handler::RequestHandlerOpts};
-    use hyper::{Body, Request, Response, StatusCode};
+    use hyper::{Request, Response, StatusCode};
 
     fn make_request(method: &str, origin: &str) -> Request<Body> {
         let mut builder = Request::builder();
         if !origin.is_empty() {
             builder = builder.header("Origin", origin);
         }
-        builder.method(method).uri("/").body(Body::empty()).unwrap()
+        builder
+            .method(method)
+            .uri("/")
+            .body(crate::body::empty())
+            .unwrap()
     }
 
     fn make_response() -> Response<Body> {
-        Response::builder().body(Body::empty()).unwrap()
+        Response::builder().body(crate::body::empty()).unwrap()
     }
 
     fn make_cors_config() -> Option<Configured> {
-        Cors::build(Some(
-            Cors::new()
-                .allow_origins(vec!["https://example.com/"])
-                .allow_headers(vec!["X-Allowed"])
-                .allow_methods(vec!["GET", "HEAD"]),
-        ))
+        let cors = Cors::new()
+            .allow_origins(vec!["https://example.com/"])
+            .unwrap()
+            .allow_headers(vec!["X-Allowed"])
+            .unwrap()
+            .allow_methods(vec!["GET", "HEAD"])
+            .unwrap();
+        Cors::build(Some(cors))
     }
 
     fn get_allowed_origin(resp: Response<Body>) -> Option<String> {
@@ -574,5 +634,66 @@ mod tests {
         assert_eq!(get_allowed_origin(resp), Some("https://example.com".into()));
 
         Ok(())
+    }
+
+    // Property-based regression tests for the CORS configuration
+    // validators. These functions exist precisely to keep panicking
+    // builder methods (`Cors::allow_origins` / `allow_headers`) away
+    // from arbitrary admin-supplied tokens, so the property to enforce
+    // is "never panic, and when we return `true` the builder must
+    // accept the value".
+    use super::{validate_header_names, validate_origin_str};
+    use headers::{HeaderName, Origin};
+    use proptest::prelude::*;
+
+    proptest! {
+        #![proptest_config(ProptestConfig {
+            cases: 256, ..ProptestConfig::default()
+        })]
+
+        /// `validate_origin_str` MUST be total: it must never panic for
+        /// any UTF-8 input. Additionally, when it returns `true`, the
+        /// downstream `Origin::try_from_parts(scheme, rest, None)` call
+        /// performed by `IntoOrigin for &str` MUST succeed.
+        #[test]
+        fn prop_validate_origin_str_never_panics(origin in "\\PC{0,128}") {
+            let ok = validate_origin_str("cors.allow_origins", &origin);
+            if ok {
+                let (scheme, rest) = origin.split_once("://").unwrap();
+                prop_assert!(
+                    Origin::try_from_parts(scheme, rest, None).is_ok(),
+                    "validator accepted `{origin}` but `Origin::try_from_parts` rejects it"
+                );
+            }
+        }
+
+        /// `validate_origin_str` rejects any string that does not match
+        /// the `scheme://rest` shape, regardless of payload.
+        #[test]
+        fn prop_validate_origin_str_rejects_missing_scheme(s in "[^/:\\s]{0,32}") {
+            prop_assert!(
+                !validate_origin_str("cors.allow_origins", &s),
+                "validator accepted `{s}` which has no `scheme://` separator"
+            );
+        }
+
+        /// `validate_header_names` MUST be total and may only retain
+        /// entries that `HeaderName::try_from` actually accepts.
+        #[test]
+        fn prop_validate_header_names_retains_only_valid(
+            names in proptest::collection::vec("\\PC{0,32}", 0..16),
+        ) {
+            let slice: Vec<&str> = names.iter().map(|s| s.as_str()).collect();
+            let kept = validate_header_names("cors.allow_headers", &slice);
+            for h in &kept {
+                prop_assert!(
+                    HeaderName::try_from(*h).is_ok(),
+                    "validator kept invalid header name `{h}`"
+                );
+            }
+            // Filtering must be order-preserving and idempotent.
+            let kept2 = validate_header_names("cors.allow_headers", &kept);
+            prop_assert_eq!(kept, kept2);
+        }
     }
 }

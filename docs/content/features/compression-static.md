@@ -2,12 +2,16 @@
 
 **`SWS`** provides support to serve pre-compressed [`Gzip`](https://datatracker.ietf.org/doc/html/rfc1952), [`Brotli`](https://www.ietf.org/rfc/rfc7932.txt) and [`Zstandard` (zstd)](https://datatracker.ietf.org/doc/html/rfc8878) files directly from the disk.
 
-SWS can look up existing pre-compressed file variants (`.gz`, `.br` or `.zst`) on disk and serve them directly.
+SWS can look up existing pre-compressed file variants (`.gz`, `.br` or `.zst`) on disk and serve them directly with **zero CPU cost** — no on-the-fly compression overhead.
 
-The feature is disabled by default and can be controlled by the boolean `--compression-static` option or the equivalent [SERVER_COMPRESSION_STATIC](./../configuration/environment-variables.md#server_compression_static) env.
+This feature can be controlled by the boolean `--compression-static` option or the equivalent [SERVER_COMPRESSION_STATIC](./../configuration/environment-variables.md#server_compression_static) env. It is **disabled by default**.
 
-When the `compression-static` option is enabled and the pre-compressed file is found on the file system then it's served directly.
-Otherwise, if the pre-compressed file is not found then SWS just continues the normal workflow (trying to serve the original file requested instead). Additionally, if for example the [compression](../features/compression.md) option was also enabled then the requested file can be compressed on the fly right after.
+!!! tip "Independent from dynamic compression"
+
+    Static compression operates **independently** from [on-the-fly compression](compression.md). You can enable one without the other, or combine both for maximum efficiency: pre-compressed variants are tried first, and dynamic compression falls through automatically if no variant exists.
+
+When the `compression-static` option is enabled and a pre-compressed file is found on the file system then it's served directly.
+Otherwise, if the pre-compressed file is not found then SWS just continues the normal workflow (trying to serve the original file requested instead). If [compression](compression.md) is also enabled, the requested file can be compressed on the fly right after.
 
 !!! info "Compressed file type"
 

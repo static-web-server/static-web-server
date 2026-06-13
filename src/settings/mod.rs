@@ -25,7 +25,6 @@ pub use cli::Commands;
 
 use cli::General;
 
-#[cfg(feature = "experimental")]
 use self::file::MemoryCache;
 
 use self::file::{RedirectsKind, Settings as FileSettings};
@@ -92,8 +91,7 @@ pub struct Advanced {
     pub redirects: Option<Vec<Redirects>>,
     /// Name-based virtual hosting
     pub virtual_hosts: Option<Vec<VirtualHosts>>,
-    #[cfg(feature = "experimental")]
-    /// In-memory cache feature (experimental).
+    /// In-memory cache configuration.
     pub memory_cache: Option<MemoryCache>,
 }
 
@@ -139,8 +137,11 @@ impl Settings {
         let mut root = opts.root;
         let mut log_level = opts.log_level;
         let mut log_with_ansi = opts.log_with_ansi;
+        let mut log_format = opts.log_format;
+        let mut log_file = opts.log_file.clone();
         let mut config_file = opts.config_file.clone();
         let mut cache_control_headers = opts.cache_control_headers;
+        let mut etag = opts.etag;
 
         #[cfg(any(
             feature = "compression",
@@ -164,20 +165,22 @@ impl Settings {
         let mut page404 = opts.page404;
         let mut page50x = opts.page50x;
 
+        #[cfg(feature = "tls")]
+        let mut tls = opts.tls;
+        #[cfg(feature = "tls")]
+        let mut tls_cert = opts.tls_cert;
+        #[cfg(feature = "tls")]
+        let mut tls_key = opts.tls_key;
+        #[cfg(feature = "tls")]
+        let mut https_redirect = opts.https_redirect;
+        #[cfg(feature = "tls")]
+        let mut https_redirect_host = opts.https_redirect_host;
+        #[cfg(feature = "tls")]
+        let mut https_redirect_from_port = opts.https_redirect_from_port;
+        #[cfg(feature = "tls")]
+        let mut https_redirect_from_hosts = opts.https_redirect_from_hosts;
         #[cfg(feature = "http2")]
         let mut http2 = opts.http2;
-        #[cfg(feature = "http2")]
-        let mut http2_tls_cert = opts.http2_tls_cert;
-        #[cfg(feature = "http2")]
-        let mut http2_tls_key = opts.http2_tls_key;
-        #[cfg(feature = "http2")]
-        let mut https_redirect = opts.https_redirect;
-        #[cfg(feature = "http2")]
-        let mut https_redirect_host = opts.https_redirect_host;
-        #[cfg(feature = "http2")]
-        let mut https_redirect_from_port = opts.https_redirect_from_port;
-        #[cfg(feature = "http2")]
-        let mut https_redirect_from_hosts = opts.https_redirect_from_hosts;
 
         let mut security_headers = opts.security_headers;
         let mut cors_allow_origins = opts.cors_allow_origins;
@@ -198,6 +201,12 @@ impl Settings {
         let mut basic_auth = opts.basic_auth;
 
         let mut fd = opts.fd;
+        #[cfg(unix)]
+        let mut unix_socket = opts.unix_socket.clone();
+        #[cfg(unix)]
+        let mut unix_socket_mode = opts.unix_socket_mode;
+        #[cfg(unix)]
+        let mut unix_socket_force = opts.unix_socket_force;
         let mut threads_multiplier = opts.threads_multiplier;
         let mut max_blocking_threads = opts.max_blocking_threads;
         let mut grace_period = opts.grace_period;
@@ -210,10 +219,10 @@ impl Settings {
         let mut log_forwarded_for = opts.log_forwarded_for;
         let mut trusted_proxies = opts.trusted_proxies;
         let mut redirect_trailing_slash = opts.redirect_trailing_slash;
-        let mut ignore_hidden_files = opts.ignore_hidden_files;
-        let mut disable_symlinks = opts.disable_symlinks;
+        let mut include_hidden = opts.include_hidden;
+        let mut follow_symlinks = opts.follow_symlinks;
         let mut accept_markdown = opts.accept_markdown;
-        let mut default_text_charset = opts.text_charset;
+        let mut text_charset = opts.text_charset;
         let mut index_files = opts.index_files;
         let mut health = opts.health;
 
@@ -262,8 +271,17 @@ impl Settings {
                 if let Some(v) = general.log_with_ansi {
                     log_with_ansi = v;
                 }
+                if let Some(v) = general.log_format {
+                    log_format = v;
+                }
+                if let Some(v) = general.log_file {
+                    log_file = Some(v);
+                }
                 if let Some(v) = general.cache_control_headers {
                     cache_control_headers = v
+                }
+                if let Some(v) = general.etag {
+                    etag = v
                 }
                 #[cfg(any(
                     feature = "compression",
@@ -294,44 +312,48 @@ impl Settings {
                 if let Some(v) = general.page50x {
                     page50x = v
                 }
+                #[cfg(feature = "tls")]
+                if let Some(v) = general.tls {
+                    tls = v
+                }
+                #[cfg(feature = "tls")]
+                if let Some(v) = general.tls_cert {
+                    tls_cert = Some(v)
+                }
+                #[cfg(feature = "tls")]
+                if let Some(v) = general.tls_key {
+                    tls_key = Some(v)
+                }
                 #[cfg(feature = "http2")]
                 if let Some(v) = general.http2 {
                     http2 = v
                 }
-                #[cfg(feature = "http2")]
-                if let Some(v) = general.http2_tls_cert {
-                    http2_tls_cert = Some(v)
-                }
-                #[cfg(feature = "http2")]
-                if let Some(v) = general.http2_tls_key {
-                    http2_tls_key = Some(v)
-                }
-                #[cfg(feature = "http2")]
+                #[cfg(feature = "tls")]
                 if let Some(v) = general.https_redirect {
                     https_redirect = v
                 }
-                #[cfg(feature = "http2")]
+                #[cfg(feature = "tls")]
                 if let Some(v) = general.https_redirect_host {
                     https_redirect_host = v
                 }
-                #[cfg(feature = "http2")]
+                #[cfg(feature = "tls")]
                 if let Some(v) = general.https_redirect_from_port {
                     https_redirect_from_port = v
                 }
-                #[cfg(feature = "http2")]
+                #[cfg(feature = "tls")]
                 if let Some(v) = general.https_redirect_from_hosts {
                     https_redirect_from_hosts = v
                 }
-                #[cfg(feature = "http2")]
+                #[cfg(feature = "tls")]
                 match general.security_headers {
                     Some(v) => security_headers = v,
                     _ => {
-                        if http2 {
+                        if tls {
                             security_headers = true;
                         }
                     }
                 }
-                #[cfg(not(feature = "http2"))]
+                #[cfg(not(feature = "tls"))]
                 if let Some(v) = general.security_headers {
                     security_headers = v
                 }
@@ -367,6 +389,18 @@ impl Settings {
                 if let Some(v) = general.fd {
                     fd = Some(v)
                 }
+                #[cfg(unix)]
+                if let Some(v) = general.unix_socket {
+                    unix_socket = Some(v)
+                }
+                #[cfg(unix)]
+                if let Some(v) = general.unix_socket_mode {
+                    unix_socket_mode = Some(v)
+                }
+                #[cfg(unix)]
+                if let Some(v) = general.unix_socket_force {
+                    unix_socket_force = v
+                }
                 if let Some(v) = general.threads_multiplier {
                     threads_multiplier = v
                 }
@@ -395,11 +429,11 @@ impl Settings {
                 if let Some(v) = general.redirect_trailing_slash {
                     redirect_trailing_slash = v
                 }
-                if let Some(v) = general.ignore_hidden_files {
-                    ignore_hidden_files = v
+                if let Some(v) = general.include_hidden {
+                    include_hidden = v
                 }
-                if let Some(v) = general.disable_symlinks {
-                    disable_symlinks = v
+                if let Some(v) = general.follow_symlinks {
+                    follow_symlinks = v
                 }
                 if let Some(v) = general.health {
                     health = v
@@ -408,7 +442,7 @@ impl Settings {
                     accept_markdown = v
                 }
                 if let Some(v) = general.text_charset {
-                    default_text_charset = v
+                    text_charset = v
                 }
                 #[cfg(feature = "metrics")]
                 if let Some(v) = general.metrics {
@@ -437,7 +471,12 @@ impl Settings {
 
             // Logging system initialization in config file context
             if log_init {
-                logger::init(log_level.as_str(), log_with_ansi)?;
+                logger::init(
+                    log_level.as_str(),
+                    &log_format,
+                    log_with_ansi,
+                    log_file.as_deref(),
+                )?;
             }
 
             tracing::debug!("config file read successfully");
@@ -598,7 +637,7 @@ impl Settings {
                                     .with_context(|| "root directory for virtual host was not found or inaccessible")?;
                                 // Canonicalize once so the per-request
                                 // containment check can skip a `canonicalize`
-                                // syscall (see `static_files`).
+                                // syscall (see `static_files::security`).
                                 let root_dir = root_dir.canonicalize().unwrap_or(root_dir);
                                 tracing::debug!(
                                     "added virtual host: {} -> {}",
@@ -621,13 +660,40 @@ impl Settings {
                     rewrites: rewrites_entries,
                     redirects: redirects_entries,
                     virtual_hosts: vhosts_entries,
-                    #[cfg(feature = "experimental")]
                     memory_cache: advanced.memory_cache,
                 });
             }
         } else if log_init {
             // Logging system initialization on demand
-            logger::init(log_level.as_str(), log_with_ansi)?;
+            logger::init(
+                log_level.as_str(),
+                &log_format,
+                log_with_ansi,
+                log_file.as_deref(),
+            )?;
+        }
+
+        // Runtime validation: HTTP/2 requires TLS
+        #[cfg(all(feature = "http2", feature = "tls"))]
+        if http2 && !tls {
+            bail!("HTTP/2 requires TLS; enable --tls along with --tls-cert and --tls-key");
+        }
+
+        // Runtime validation: ANSI log output requires pretty format
+        if log_with_ansi && log_format != logger::LogFormat::Pretty {
+            bail!("--log-with-ansi requires --log-format=pretty");
+        }
+
+        // Runtime validation: HTTPS redirect requires TLS
+        #[cfg(feature = "tls")]
+        if https_redirect && !tls {
+            bail!("--https-redirect requires TLS to be enabled (--tls)");
+        }
+
+        // Auto-enable security headers when TLS is on (applies when no config file is present)
+        #[cfg(feature = "tls")]
+        if tls && !security_headers {
+            security_headers = true;
         }
 
         Ok(Settings {
@@ -638,8 +704,11 @@ impl Settings {
                 root,
                 log_level,
                 log_with_ansi,
+                log_format,
+                log_file,
                 config_file,
                 cache_control_headers,
+                etag,
                 #[cfg(any(
                     feature = "compression",
                     feature = "compression-gzip",
@@ -661,17 +730,19 @@ impl Settings {
                 page50x,
                 #[cfg(feature = "http2")]
                 http2,
-                #[cfg(feature = "http2")]
-                http2_tls_cert,
-                #[cfg(feature = "http2")]
-                http2_tls_key,
-                #[cfg(feature = "http2")]
+                #[cfg(feature = "tls")]
+                tls,
+                #[cfg(feature = "tls")]
+                tls_cert,
+                #[cfg(feature = "tls")]
+                tls_key,
+                #[cfg(feature = "tls")]
                 https_redirect,
-                #[cfg(feature = "http2")]
+                #[cfg(feature = "tls")]
                 https_redirect_host,
-                #[cfg(feature = "http2")]
+                #[cfg(feature = "tls")]
                 https_redirect_from_port,
-                #[cfg(feature = "http2")]
+                #[cfg(feature = "tls")]
                 https_redirect_from_hosts,
                 security_headers,
                 cors_allow_origins,
@@ -688,6 +759,12 @@ impl Settings {
                 #[cfg(feature = "basic-auth")]
                 basic_auth,
                 fd,
+                #[cfg(unix)]
+                unix_socket,
+                #[cfg(unix)]
+                unix_socket_mode,
+                #[cfg(unix)]
+                unix_socket_force,
                 threads_multiplier,
                 max_blocking_threads,
                 grace_period,
@@ -698,10 +775,10 @@ impl Settings {
                 log_forwarded_for,
                 trusted_proxies,
                 redirect_trailing_slash,
-                ignore_hidden_files,
-                disable_symlinks,
+                include_hidden,
+                follow_symlinks,
                 accept_markdown,
-                text_charset: default_text_charset,
+                text_charset,
                 index_files,
                 health,
                 #[cfg(feature = "metrics")]

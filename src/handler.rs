@@ -6,13 +6,15 @@
 //! Request handler module intended to manage incoming HTTP requests.
 //!
 
-use hyper::{Body, Request, Response, StatusCode};
+use hyper::{Request, Response, StatusCode};
 use std::{
     future::Future,
     net::{IpAddr, SocketAddr},
     path::PathBuf,
     sync::Arc,
 };
+
+use crate::body::Body;
 
 #[cfg(any(
     feature = "compression",
@@ -34,13 +36,13 @@ use crate::fallback_page;
 #[cfg(feature = "metrics")]
 use crate::metrics;
 
-#[cfg(feature = "experimental")]
+#[cfg(feature = "mem-cache")]
 use crate::mem_cache::cache::MemCacheOpts;
 
 use crate::{
-    Error, Result, control_headers, cors, custom_headers, error_page, health,
-    http_ext::MethodExt,
-    log_addr, maintenance_mode, redirects, rewrites, security_headers,
+    Error, Result, control_headers, cors, custom_headers, error_page,
+    exts::http::MethodExt,
+    health, log_addr, maintenance_mode, redirects, rewrites, security_headers,
     settings::Advanced,
     static_files::{self, HandleOpts},
     text_charset, virtual_hosts,
@@ -50,15 +52,15 @@ use crate::{
 use crate::directory_listing::DirListFmt;
 
 #[cfg(feature = "directory-listing-download")]
-use crate::directory_listing_download::DirDownloadFmt;
+use crate::directory_listing::download::DirDownloadFmt;
 
 /// It defines options for a request handler.
 pub struct RequestHandlerOpts {
     // General options
     /// Root directory of static files.
     pub root_dir: PathBuf,
-    #[cfg(feature = "experimental")]
-    /// In-memory cache feature (experimental).
+    #[cfg(feature = "mem-cache")]
+    /// In-memory cache feature.
     pub memory_cache: Option<MemCacheOpts>,
     /// Compression feature.
     pub compression: bool,
@@ -95,6 +97,8 @@ pub struct RequestHandlerOpts {
     pub security_headers: bool,
     /// Cache control headers feature.
     pub cache_control_headers: bool,
+    /// Weak ETag header feature.
+    pub etag: bool,
     /// Page for 404 errors.
     pub page404: PathBuf,
     /// Page for 50x errors.
@@ -120,9 +124,9 @@ pub struct RequestHandlerOpts {
     /// Redirect trailing slash feature.
     pub redirect_trailing_slash: bool,
     /// Ignore hidden files feature.
-    pub ignore_hidden_files: bool,
+    pub include_hidden: bool,
     /// Prevent following symlinks for files and directories.
-    pub disable_symlinks: bool,
+    pub follow_symlinks: bool,
     /// Accept markdown content negotiation feature.
     pub accept_markdown: bool,
     /// Default `charset=utf-8` parameter applied to certain `text` responses without one.
@@ -166,10 +170,11 @@ impl Default for RequestHandlerOpts {
             #[cfg(feature = "directory-listing-download")]
             dir_listing_download: Vec::new(),
             cors: None,
-            #[cfg(feature = "experimental")]
+            #[cfg(feature = "mem-cache")]
             memory_cache: None,
             security_headers: false,
             cache_control_headers: true,
+            etag: true,
             page404: PathBuf::from("./404.html"),
             page50x: PathBuf::from("./50x.html"),
             #[cfg(feature = "fallback-page")]
@@ -182,8 +187,8 @@ impl Default for RequestHandlerOpts {
             log_forwarded_for: false,
             trusted_proxies: Vec::new(),
             redirect_trailing_slash: true,
-            ignore_hidden_files: false,
-            disable_symlinks: false,
+            include_hidden: true,
+            follow_symlinks: true,
             accept_markdown: false,
             text_charset: true,
             health: false,
@@ -205,11 +210,14 @@ pub struct RequestHandler {
 
 impl RequestHandler {
     /// Main entry point for incoming requests.
-    pub fn handle<'a>(
+    pub fn handle<'a, B>(
         &'a self,
-        req: &'a mut Request<Body>,
+        req: &'a mut Request<B>,
         remote_addr: Option<SocketAddr>,
-    ) -> impl Future<Output = Result<Response<Body>, Error>> + Send + 'a {
+    ) -> impl Future<Output = Result<Response<Body>, Error>> + Send + 'a
+    where
+        B: Send + 'a,
+    {
         let mut base_path = &self.opts.root_dir;
         #[cfg(feature = "directory-listing")]
         let dir_listing = self.opts.dir_listing;
@@ -221,10 +229,11 @@ impl RequestHandler {
         let dir_listing_download = &self.opts.dir_listing_download;
         let redirect_trailing_slash = self.opts.redirect_trailing_slash;
         let compression_static = self.opts.compression_static;
-        let ignore_hidden_files = self.opts.ignore_hidden_files;
-        let disable_symlinks = self.opts.disable_symlinks;
+        let etag = self.opts.etag;
+        let include_hidden = self.opts.include_hidden;
+        let follow_symlinks = self.opts.follow_symlinks;
         let index_files: Vec<&str> = self.opts.index_files.iter().map(|s| s.as_str()).collect();
-        #[cfg(feature = "experimental")]
+        #[cfg(feature = "mem-cache")]
         let memory_cache = self.opts.memory_cache.as_ref();
 
         log_addr::pre_process(&self.opts, req, remote_addr);
@@ -313,7 +322,7 @@ impl RequestHandler {
                 let (resp, file_path) = match static_files::handle(&HandleOpts {
                     method: req.method(),
                     headers: req.headers(),
-                    #[cfg(feature = "experimental")]
+                    #[cfg(feature = "mem-cache")]
                     memory_cache,
                     base_path,
                     uri_path,
@@ -328,9 +337,10 @@ impl RequestHandler {
                     dir_listing_download,
                     redirect_trailing_slash,
                     compression_static,
-                    ignore_hidden_files,
+                    etag,
+                    include_hidden,
                     index_files,
-                    disable_symlinks,
+                    follow_symlinks,
                 })
                 .await
                 {
@@ -392,7 +402,7 @@ impl RequestHandler {
                 if let Ok(ref resp) = result {
                     let bytes = resp
                         .headers()
-                        .get(hyper::header::CONTENT_LENGTH)
+                        .get(http::header::CONTENT_LENGTH)
                         .and_then(|v| v.to_str().ok())
                         .and_then(|v| v.parse::<u64>().ok())
                         .unwrap_or(0);

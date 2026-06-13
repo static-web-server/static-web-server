@@ -8,12 +8,13 @@
 //! nginx's `charset` directives, applied here to every `text/*` subtype.
 
 use hyper::{
-    Body, Response,
+    Response,
     header::{CONTENT_TYPE, HeaderValue},
 };
 use mime_guess::{Mime, mime};
 
-use crate::mime_ext::MimeExt;
+use crate::body::Body;
+use crate::exts::mime::MimeExt;
 use crate::{Error, handler::RequestHandlerOpts};
 
 /// MIME types requiring an explicit `; charset=utf-8` header.
@@ -63,7 +64,7 @@ pub(crate) fn post_process(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use hyper::Body;
+    use crate::body;
 
     fn opts(text_charset: bool) -> RequestHandlerOpts {
         RequestHandlerOpts {
@@ -73,7 +74,7 @@ mod tests {
     }
 
     fn resp_with(ct: &str) -> Response<Body> {
-        let mut resp = Response::new(Body::empty());
+        let mut resp = Response::new(body::empty());
         resp.headers_mut()
             .insert(CONTENT_TYPE, HeaderValue::from_str(ct).unwrap());
         resp
@@ -131,7 +132,7 @@ mod tests {
 
     #[test]
     fn ignores_when_content_type_missing() {
-        let r = post_process(&opts(true), Response::new(Body::empty())).unwrap();
+        let r = post_process(&opts(true), Response::new(body::empty())).unwrap();
         assert!(r.headers().get(CONTENT_TYPE).is_none());
     }
 

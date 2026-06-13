@@ -9,12 +9,13 @@ mod json;
 pub(crate) use html::html_auto_index;
 pub(crate) use json::json_auto_index;
 
-use hyper::{Body, Response, StatusCode};
+use hyper::{Response, StatusCode};
 use std::io;
 
 use crate::Result;
+use crate::body::Body;
 use crate::directory_listing::dir::{DirEntryOpts, DirListOpts, read_dir_entries};
-use crate::http_ext::MethodExt;
+use crate::exts::http::MethodExt;
 
 /// Provides directory listing support for the current request.
 /// Note that this function highly depends on `static_files::composed_file_metadata()` function
@@ -38,8 +39,8 @@ pub fn auto_index(opts: DirListOpts<'_>) -> Result<Response<Body>, StatusCode> {
                 is_head: opts.method.is_head(),
                 order_code: opts.dir_listing_order,
                 content_format: opts.dir_listing_format,
-                ignore_hidden_files: opts.ignore_hidden_files,
-                disable_symlinks: opts.disable_symlinks,
+                include_hidden: opts.include_hidden,
+                follow_symlinks: opts.follow_symlinks,
                 #[cfg(feature = "directory-listing-download")]
                 download: opts.dir_listing_download,
             };

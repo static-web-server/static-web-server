@@ -1,44 +1,54 @@
 use bytes::{Bytes, BytesMut};
 use futures_util::Stream;
-use std::io::Read;
+use std::io::{self, Read};
 use std::pin::Pin;
 use std::sync::Arc;
 use std::task::{Context, Poll};
 
-use crate::Result;
 use crate::mem_cache::cache::{CACHE_STORE, MemFile, MemFileTempOpts};
 
+/// A streaming file reader that, on successful completion, inserts the
+/// fully-read bytes into the global in-memory cache store.
+///
+/// Only use this stream for **full-file** responses (no `Range` header).
+/// Range requests must use the plain [`crate::fs::stream::FileStream`] to
+/// avoid wasted allocations and to keep partial content out of the cache.
 #[derive(Debug)]
 pub(crate) struct MemCacheFileStream<T> {
-    pub(crate) reader: T,
-    pub(crate) buf_size: usize,
-    pub(crate) file_size: usize,
-    pub(crate) mem_opts: Option<MemFileTempOpts>,
-    pub(crate) mem_buf: Option<BytesMut>,
-    pub(crate) buf: BytesMut,
+    reader: T,
+    buf_size: usize,
+    /// Expected total byte length of the file. The cache is populated only
+    /// when the accumulated buffer length matches this value, which guards
+    /// against truncated reads (e.g. the file being modified mid-stream).
+    file_size: usize,
+    /// Metadata to attach to the cache entry. Taken on completion.
+    mem_opts: Option<MemFileTempOpts>,
+    /// Accumulator for the full file body. Taken on completion.
+    mem_buf: Option<BytesMut>,
+    /// Scratch read buffer reused on every poll.
+    buf: BytesMut,
 }
 
 impl<T> MemCacheFileStream<T> {
     pub(crate) fn new(
         reader: T,
         buf_size: usize,
+        mem_opts: MemFileTempOpts,
         file_size: usize,
-        mem_opts: Option<MemFileTempOpts>,
-        mem_buf: Option<BytesMut>,
     ) -> Self {
         Self {
             reader,
             buf_size,
             file_size,
-            mem_opts,
-            mem_buf,
+            mem_opts: Some(mem_opts),
+            mem_buf: Some(BytesMut::with_capacity(file_size)),
             buf: BytesMut::with_capacity(buf_size),
         }
     }
 }
 
 impl<T: Read + Unpin> Stream for MemCacheFileStream<T> {
-    type Item = Result<Bytes>;
+    type Item = io::Result<Bytes>;
 
     fn poll_next(self: Pin<&mut Self>, _: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let this = Pin::into_inner(self);
@@ -71,7 +81,7 @@ impl<T: Read + Unpin> Stream for MemCacheFileStream<T> {
                 }
                 Poll::Ready(Some(Ok(buf)))
             }
-            Err(err) => Poll::Ready(Some(Err(anyhow::Error::from(err)))),
+            Err(err) => Poll::Ready(Some(Err(err))),
         }
     }
 }
@@ -102,6 +112,7 @@ fn try_insert(
         buf.freeze(),
         opts.content_type,
         opts.last_modified,
+        opts.etag,
     ));
     if let Some(store) = CACHE_STORE.get() {
         store.insert(file_path.into(), mem_file);

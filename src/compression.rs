@@ -17,27 +17,23 @@ use async_compression::tokio::bufread::GzipEncoder;
 #[cfg(any(feature = "compression", feature = "compression-zstd"))]
 use async_compression::tokio::bufread::ZstdEncoder;
 
-use bytes::Bytes;
-use futures_util::Stream;
 use headers::{ContentType, HeaderMap, HeaderMapExt, HeaderValue};
+use http_body_util::BodyExt as _;
 use hyper::{
-    Body, Method, Request, Response, StatusCode,
+    Method, Request, Response, StatusCode,
     header::{CONTENT_ENCODING, CONTENT_LENGTH},
 };
 use mime_guess::Mime;
-use pin_project::pin_project;
-use std::pin::Pin;
-use std::task::{Context, Poll};
 use tokio_util::io::{ReaderStream, StreamReader};
 
-use crate::{
-    Error, Result, error_page,
-    handler::RequestHandlerOpts,
-    headers_ext::{AcceptEncoding, ContentCoding},
-    http_ext::MethodExt,
-    mime_ext::MimeExt,
-    settings::CompressionLevel,
-};
+use crate::body::Body;
+use crate::error_page;
+use crate::exts::headers::{AcceptEncoding, ContentCoding};
+use crate::exts::http::{MethodExt, append_vary_accept_encoding};
+use crate::exts::mime::MimeExt;
+use crate::handler::RequestHandlerOpts;
+use crate::settings::CompressionLevel;
+use crate::{Error, Result};
 
 /// Minimum response body size in bytes below which dynamic compression is skipped.
 const MIN_COMPRESS_SIZE: usize = 200;
@@ -70,8 +66,10 @@ pub fn init(enabled: bool, level: CompressionLevel, handler_opts: &mut RequestHa
         "zstd",
     ];
     tracing::info!(
-        "auto compression: enabled={enabled}, formats={}, compression level={level:?}",
-        FORMATS.join(",")
+        enabled,
+        formats = %FORMATS.join(","),
+        compression_level = ?level,
+        "auto compression"
     );
 }
 
@@ -91,20 +89,7 @@ pub(crate) fn post_process<T>(
     }
 
     // Compression content encoding varies so use a `Vary` header
-    let enc = HeaderValue::from_name(hyper::header::ACCEPT_ENCODING);
-    let value = resp.headers().get(hyper::header::VARY).map_or(enc, |h| {
-        let mut a = h.to_str().unwrap_or_default().to_owned();
-        let b = hyper::header::ACCEPT_ENCODING.as_str();
-        if !a.contains(b) {
-            if !a.is_empty() {
-                a.push(',');
-            }
-            a.push_str(b);
-        }
-        HeaderValue::from_str(a.as_str()).unwrap()
-    });
-
-    resp.headers_mut().insert(hyper::header::VARY, value);
+    append_vary_accept_encoding(&mut resp);
 
     // Auto compression based on the `Accept-Encoding` header
     match auto(req.method(), req.headers(), opts.compression_level, resp) {
@@ -170,25 +155,25 @@ pub fn auto(
         #[cfg(any(feature = "compression", feature = "compression-gzip"))]
         if encoding == ContentCoding::GZIP {
             let (head, body) = resp.into_parts();
-            return Ok(gzip(head, body.into(), level));
+            return Ok(gzip(head, body, level));
         }
 
         #[cfg(any(feature = "compression", feature = "compression-deflate"))]
         if encoding == ContentCoding::DEFLATE {
             let (head, body) = resp.into_parts();
-            return Ok(deflate(head, body.into(), level));
+            return Ok(deflate(head, body, level));
         }
 
         #[cfg(any(feature = "compression", feature = "compression-brotli"))]
         if encoding == ContentCoding::BROTLI {
             let (head, body) = resp.into_parts();
-            return Ok(brotli(head, body.into(), level));
+            return Ok(brotli(head, body, level));
         }
 
         #[cfg(any(feature = "compression", feature = "compression-zstd"))]
         if encoding == ContentCoding::ZSTD {
             let (head, body) = resp.into_parts();
-            return Ok(zstd(head, body.into(), level));
+            return Ok(zstd(head, body, level));
         }
 
         tracing::trace!(
@@ -208,7 +193,7 @@ pub fn auto(
 )]
 pub fn gzip(
     mut head: http::response::Parts,
-    body: CompressableBody<Body, hyper::Error>,
+    body: Body,
     level: CompressionLevel,
 ) -> Response<Body> {
     const DEFAULT_COMPRESSION_LEVEL: i32 = 4;
@@ -216,8 +201,8 @@ pub fn gzip(
     tracing::trace!("compressing response body on the fly using GZIP");
 
     let level = level.into_algorithm_level(DEFAULT_COMPRESSION_LEVEL);
-    let body = Body::wrap_stream(ReaderStream::new(GzipEncoder::with_quality(
-        StreamReader::new(body),
+    let body = crate::body::stream(ReaderStream::new(GzipEncoder::with_quality(
+        StreamReader::new(body.into_data_stream()),
         level,
     )));
     let header = create_encoding_header(head.headers.remove(CONTENT_ENCODING), ContentCoding::GZIP);
@@ -235,7 +220,7 @@ pub fn gzip(
 )]
 pub fn deflate(
     mut head: http::response::Parts,
-    body: CompressableBody<Body, hyper::Error>,
+    body: Body,
     level: CompressionLevel,
 ) -> Response<Body> {
     const DEFAULT_COMPRESSION_LEVEL: i32 = 4;
@@ -243,8 +228,8 @@ pub fn deflate(
     tracing::trace!("compressing response body on the fly using DEFLATE");
 
     let level = level.into_algorithm_level(DEFAULT_COMPRESSION_LEVEL);
-    let body = Body::wrap_stream(ReaderStream::new(DeflateEncoder::with_quality(
-        StreamReader::new(body),
+    let body = crate::body::stream(ReaderStream::new(DeflateEncoder::with_quality(
+        StreamReader::new(body.into_data_stream()),
         level,
     )));
     let header = create_encoding_header(
@@ -265,7 +250,7 @@ pub fn deflate(
 )]
 pub fn brotli(
     mut head: http::response::Parts,
-    body: CompressableBody<Body, hyper::Error>,
+    body: Body,
     level: CompressionLevel,
 ) -> Response<Body> {
     const DEFAULT_COMPRESSION_LEVEL: i32 = 4;
@@ -273,8 +258,8 @@ pub fn brotli(
     tracing::trace!("compressing response body on the fly using BROTLI");
 
     let level = level.into_algorithm_level(DEFAULT_COMPRESSION_LEVEL);
-    let body = Body::wrap_stream(ReaderStream::new(BrotliEncoder::with_quality(
-        StreamReader::new(body),
+    let body = crate::body::stream(ReaderStream::new(BrotliEncoder::with_quality(
+        StreamReader::new(body.into_data_stream()),
         level,
     )));
     let header =
@@ -293,7 +278,7 @@ pub fn brotli(
 )]
 pub fn zstd(
     mut head: http::response::Parts,
-    body: CompressableBody<Body, hyper::Error>,
+    body: Body,
     level: CompressionLevel,
 ) -> Response<Body> {
     const DEFAULT_COMPRESSION_LEVEL: i32 = 3;
@@ -301,8 +286,8 @@ pub fn zstd(
     tracing::trace!("compressing response body on the fly using ZSTD");
 
     let level = level.into_algorithm_level(DEFAULT_COMPRESSION_LEVEL);
-    let body = Body::wrap_stream(ReaderStream::new(ZstdEncoder::with_quality(
-        StreamReader::new(body),
+    let body = crate::body::stream(ReaderStream::new(ZstdEncoder::with_quality(
+        StreamReader::new(body.into_data_stream()),
         level,
     )));
     let header = create_encoding_header(head.headers.remove(CONTENT_ENCODING), ContentCoding::ZSTD);
@@ -351,49 +336,20 @@ pub fn get_encodings(headers: &HeaderMap<HeaderValue>) -> Vec<ContentCoding> {
     vec![]
 }
 
-/// A wrapper around any type that implements [`Stream`](futures_util::Stream) to be
-/// compatible with async_compression's `Stream` based encoders.
-#[pin_project]
-#[derive(Debug)]
-pub struct CompressableBody<S, E>
-where
-    S: Stream<Item = Result<Bytes, E>>,
-    E: std::error::Error,
-{
-    #[pin]
-    body: S,
-}
-
-impl<S, E> Stream for CompressableBody<S, E>
-where
-    S: Stream<Item = Result<Bytes, E>>,
-    E: std::error::Error,
-{
-    type Item = std::io::Result<Bytes>;
-
-    fn poll_next(self: Pin<&mut Self>, ctx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        use std::io::{Error, ErrorKind};
-
-        let pin = self.project();
-        S::poll_next(pin.body, ctx).map_err(|_| Error::from(ErrorKind::InvalidData))
-    }
-}
-
-impl From<Body> for CompressableBody<Body, hyper::Error> {
-    #[inline(always)]
-    fn from(body: Body) -> Self {
-        CompressableBody { body }
-    }
-}
-
 #[cfg(test)]
 #[cfg(any(feature = "compression", feature = "compression-gzip"))]
 mod tests {
     use super::*;
+    use crate::body;
+    use crate::settings::CompressionLevel;
     use http::header::{ACCEPT_ENCODING, CONTENT_TYPE};
+    use hyper::{Method, Response};
 
+    /// Build a `Response<Body>` with a text content-type header,
+    /// a content-length header, and a body of `size` bytes.
     fn text_response_with_size(size: usize) -> Response<Body> {
-        let mut resp = Response::new(Body::from(vec![b'x'; size]));
+        let body = body::full(vec![b'x'; size]);
+        let mut resp = Response::new(body);
         resp.headers_mut()
             .insert(CONTENT_TYPE, "text/html".parse().unwrap());
         resp.headers_mut()
@@ -401,25 +357,30 @@ mod tests {
         resp
     }
 
+    /// Build a `Response<Body>` without any `Content-Length` header.
     fn text_response_without_length() -> Response<Body> {
-        let mut resp = Response::new(Body::from("hello world"));
+        let body = body::full(b"hello world".as_slice());
+        let mut resp = Response::new(body);
         resp.headers_mut()
             .insert(CONTENT_TYPE, "text/html".parse().unwrap());
         resp
     }
 
+    /// Build a simple GET `HeaderMap` with an Accept-Encoding: gzip header.
     fn accept_gzip_headers() -> HeaderMap<HeaderValue> {
-        let mut headers = HeaderMap::new();
-        headers.insert(ACCEPT_ENCODING, "gzip".parse().unwrap());
-        headers
+        let mut h = HeaderMap::new();
+        h.insert(ACCEPT_ENCODING, "gzip".parse().unwrap());
+        h
     }
+
+    // Minimum-size threshold tests
 
     #[test]
     fn small_response_below_threshold_is_not_compressed() {
         let resp = text_response_with_size(MIN_COMPRESS_SIZE - 1);
         let headers = accept_gzip_headers();
         let result = auto(&Method::GET, &headers, CompressionLevel::Default, resp).unwrap();
-
+        // no content-encoding should be set
         assert!(
             result.headers().get(CONTENT_ENCODING).is_none(),
             "responses below {MIN_COMPRESS_SIZE} bytes must not be compressed"
@@ -431,7 +392,6 @@ mod tests {
         let resp = text_response_with_size(MIN_COMPRESS_SIZE);
         let headers = accept_gzip_headers();
         let result = auto(&Method::GET, &headers, CompressionLevel::Default, resp).unwrap();
-
         assert!(
             result.headers().get(CONTENT_ENCODING).is_some(),
             "responses at exactly {MIN_COMPRESS_SIZE} bytes must be compressed"
@@ -443,7 +403,6 @@ mod tests {
         let resp = text_response_with_size(MIN_COMPRESS_SIZE + 1);
         let headers = accept_gzip_headers();
         let result = auto(&Method::GET, &headers, CompressionLevel::Default, resp).unwrap();
-
         assert!(
             result.headers().get(CONTENT_ENCODING).is_some(),
             "responses above {MIN_COMPRESS_SIZE} bytes must be compressed"
@@ -455,10 +414,9 @@ mod tests {
         let resp = text_response_without_length();
         let headers = accept_gzip_headers();
         let result = auto(&Method::GET, &headers, CompressionLevel::Default, resp).unwrap();
-
         assert!(
             result.headers().get(CONTENT_ENCODING).is_some(),
-            "responses without Content-Length must still be compressed"
+            "responses without Content-Length must still be compressed (safe default)"
         );
     }
 
@@ -467,7 +425,6 @@ mod tests {
         let resp = text_response_with_size(MIN_COMPRESS_SIZE - 1);
         let headers = accept_gzip_headers();
         let result = auto(&Method::HEAD, &headers, CompressionLevel::Default, resp).unwrap();
-
         assert!(
             result.headers().get(CONTENT_ENCODING).is_none(),
             "HEAD requests are never compressed regardless of size"
@@ -476,7 +433,8 @@ mod tests {
 
     #[test]
     fn non_compressible_content_type_is_not_compressed() {
-        let mut resp = Response::new(Body::from(vec![b'x'; MIN_COMPRESS_SIZE + 100]));
+        let body = body::full(vec![b'x'; MIN_COMPRESS_SIZE + 100]);
+        let mut resp = Response::new(body);
         resp.headers_mut()
             .insert(CONTENT_TYPE, "image/png".parse().unwrap());
         resp.headers_mut().insert(
@@ -485,7 +443,6 @@ mod tests {
         );
         let headers = accept_gzip_headers();
         let result = auto(&Method::GET, &headers, CompressionLevel::Default, resp).unwrap();
-
         assert!(
             result.headers().get(CONTENT_ENCODING).is_none(),
             "non-compressible content-types are never compressed"

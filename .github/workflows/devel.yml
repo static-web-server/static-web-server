@@ -69,8 +69,8 @@ jobs:
         cargo fmt --all -- --check tests/*.rs
 
     # The `all` feature alias selects exactly one TLS crypto provider
-    # (http2-ring, the default). Using `--all-features` would enable both
-    # http2-ring and http2-fips simultaneously, which is rejected by a
+    # (tls-ring, the default). Using `--all-features` would enable both
+    # tls-ring and tls-fips simultaneously, which is rejected by a
     # compile_error in src/tls.rs because the two providers are mutually
     # exclusive. The FIPS provider is checked separately by devel-fips.
     - name: Check via Clippy

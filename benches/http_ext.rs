@@ -1,7 +1,7 @@
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 
 use hyper::Method;
-use static_web_server::http_ext::MethodExt;
+use static_web_server::exts::http::MethodExt;
 
 fn is_allowed_benchmark(c: &mut Criterion) {
     let method = Method::default();

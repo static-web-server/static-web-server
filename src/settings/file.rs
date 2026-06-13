@@ -16,8 +16,9 @@ use std::{collections::BTreeSet, path::PathBuf};
 use crate::directory_listing::DirListFmt;
 
 #[cfg(feature = "directory-listing-download")]
-use crate::directory_listing_download::DirDownloadFmt;
+use crate::directory_listing::download::DirDownloadFmt;
 
+use crate::logger::LogFormat;
 use crate::{Context, Result, helpers};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -164,10 +165,9 @@ pub struct VirtualHosts {
     pub root: Option<PathBuf>,
 }
 
-#[cfg(feature = "experimental")]
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "kebab-case")]
-/// Represents the in-memory file cache feature.
+/// Represents the in-memory file cache configuration.
 pub struct MemoryCache {
     /// Maximum capacity entries of the memory cache store.
     pub capacity: Option<u64>,
@@ -175,7 +175,7 @@ pub struct MemoryCache {
     pub ttl: Option<u64>,
     /// Time to idle in seconds of a cached file entry.
     pub tti: Option<u64>,
-    /// Maximum size in bytes for a file entry to be cached.
+    /// Maximum file size in KiB for a file entry to be cached.
     pub max_file_size: Option<u64>,
 }
 
@@ -191,8 +191,7 @@ pub struct Advanced {
     pub redirects: Option<Vec<Redirects>>,
     /// Name-based virtual hosting
     pub virtual_hosts: Option<Vec<VirtualHosts>>,
-    #[cfg(feature = "experimental")]
-    /// In-memory cache feature (experimental).
+    /// In-memory cache feature.
     pub memory_cache: Option<MemoryCache>,
 }
 
@@ -212,9 +211,16 @@ pub struct General {
     pub log_level: Option<LogLevel>,
     /// Enable/disable ANSI escape codes for log output.
     pub log_with_ansi: Option<bool>,
+    /// Logging output format.
+    pub log_format: Option<LogFormat>,
+    /// Optional filesystem path to stream log records to in addition to stderr.
+    pub log_file: Option<PathBuf>,
 
     /// Cache Control headers.
     pub cache_control_headers: Option<bool>,
+
+    /// Weak ETag headers.
+    pub etag: Option<bool>,
 
     /// Compression.
     #[cfg(any(
@@ -264,34 +270,39 @@ pub struct General {
     /// Error 50x pages.
     pub page50x: Option<PathBuf>,
 
-    /// HTTP/2 + TLS.
+    /// TLS support.
+    #[cfg(feature = "tls")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "tls")))]
+    pub tls: Option<bool>,
+    /// TLS certificate file path.
+    #[cfg(feature = "tls")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "tls")))]
+    pub tls_cert: Option<PathBuf>,
+    /// TLS private key file path.
+    #[cfg(feature = "tls")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "tls")))]
+    pub tls_key: Option<PathBuf>,
+
+    /// HTTP/2 protocol support.
     #[cfg(feature = "http2")]
     #[cfg_attr(docsrs, doc(cfg(feature = "http2")))]
     pub http2: Option<bool>,
-    /// Http2 tls certificate feature.
-    #[cfg(feature = "http2")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "http2")))]
-    pub http2_tls_cert: Option<PathBuf>,
-    /// Http2 tls key feature.
-    #[cfg(feature = "http2")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "http2")))]
-    pub http2_tls_key: Option<PathBuf>,
 
     /// Redirect all HTTP requests to HTTPS.
-    #[cfg(feature = "http2")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "http2")))]
+    #[cfg(feature = "tls")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "tls")))]
     pub https_redirect: Option<bool>,
-    /// HTTP host port where the redirect server will listen for requests to redirect them to HTTPS.
-    #[cfg(feature = "http2")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "http2")))]
+    /// Hostname used in HTTPS redirect responses.
+    #[cfg(feature = "tls")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "tls")))]
     pub https_redirect_host: Option<String>,
-    /// Host port for redirecting HTTP requests to HTTPS.
-    #[cfg(feature = "http2")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "http2")))]
+    /// Port the HTTP redirect listener binds to.
+    #[cfg(feature = "tls")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "tls")))]
     pub https_redirect_from_port: Option<u16>,
     /// List of host names or IPs allowed to redirect from.
-    #[cfg(feature = "http2")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "http2")))]
+    #[cfg(feature = "tls")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "tls")))]
     pub https_redirect_from_hosts: Option<String>,
 
     /// Security headers.
@@ -333,6 +344,18 @@ pub struct General {
     /// File descriptor binding feature.
     pub fd: Option<usize>,
 
+    /// Unix Domain Socket path to bind the server to (Unix only).
+    #[cfg(unix)]
+    pub unix_socket: Option<PathBuf>,
+
+    /// Filesystem permission bits (octal) to apply to the Unix Domain Socket.
+    #[cfg(unix)]
+    pub unix_socket_mode: Option<u32>,
+
+    /// Remove a pre-existing socket file before binding.
+    #[cfg(unix)]
+    pub unix_socket_force: Option<bool>,
+
     /// Worker threads.
     pub threads_multiplier: Option<usize>,
 
@@ -362,11 +385,11 @@ pub struct General {
     /// Redirect trailing slash feature.
     pub redirect_trailing_slash: Option<bool>,
 
-    /// Ignore hidden files feature.
-    pub ignore_hidden_files: Option<bool>,
+    /// Include hidden files (dotfiles) feature.
+    pub include_hidden: Option<bool>,
 
-    /// Prevent following symbolic links of files or directories.
-    pub disable_symlinks: Option<bool>,
+    /// Follow symbolic links when serving files or directories.
+    pub follow_symlinks: Option<bool>,
 
     /// Health endpoint feature.
     pub health: Option<bool>,
@@ -389,10 +412,6 @@ pub struct General {
 
     /// Custom maintenance mode HTML file.
     pub maintenance_mode_file: Option<PathBuf>,
-
-    #[cfg(feature = "experimental")]
-    /// In-memory files cache feature.
-    pub memory_cache: Option<bool>,
 
     #[cfg(windows)]
     /// windows service feature.

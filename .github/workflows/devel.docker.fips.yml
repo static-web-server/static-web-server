@@ -35,7 +35,7 @@ jobs:
         arch:
           - linux/amd64
           - linux/arm64
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     services:
       registry:
         image: registry:2
@@ -149,7 +149,7 @@ jobs:
         arch:
           - linux/amd64
           - linux/arm64
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     services:
       registry:
         image: registry:2

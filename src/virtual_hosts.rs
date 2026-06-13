@@ -43,6 +43,11 @@ pub(crate) fn get_real_root<'a, T>(
 
     for vhost in vhosts {
         if vhost.host == request_host_str {
+            // PERF/LOGGING: This fires on every matched request (one per
+            // HTTP exchange that targets a configured vhost), so it must
+            // not run at `info` level \u2014 it would amplify access-log
+            // volume by an order of magnitude and risk leaking request
+            // URIs into operator-facing logs. Use `debug` instead.
             tracing::debug!(
                 "virtual host matched: vhost={} vhost_root={} method={} uri={}",
                 vhost.host,
@@ -59,7 +64,7 @@ pub(crate) fn get_real_root<'a, T>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use hyper::{Body, Request, Uri};
+    use hyper::{Request, Uri};
 
     fn create_vhost(host: &str, root: &str) -> VirtualHosts {
         VirtualHosts {
@@ -77,7 +82,7 @@ mod tests {
         let mut req = Request::builder()
             .uri("http://example.com/")
             .header(HOST, "example.com")
-            .body(Body::empty())
+            .body(crate::body::empty())
             .unwrap();
 
         let result = get_real_root(&mut req, Some(&vhosts));
@@ -90,7 +95,7 @@ mod tests {
         let mut req = Request::builder()
             .uri("http://example.com:8080/")
             .header(HOST, "example.com:8080")
-            .body(Body::empty())
+            .body(crate::body::empty())
             .unwrap();
 
         let result = get_real_root(&mut req, Some(&vhosts));
@@ -102,7 +107,7 @@ mod tests {
         let vhosts = [create_vhost("example.com", "/var/www/example")];
         let mut req = Request::builder()
             .uri(Uri::builder().authority("example.com").build().unwrap())
-            .body(Body::empty())
+            .body(crate::body::empty())
             .unwrap();
 
         let result = get_real_root(&mut req, Some(&vhosts));
@@ -115,7 +120,7 @@ mod tests {
         let mut req = Request::builder()
             .uri("http://example2.com/")
             .header(HOST, "example2.com")
-            .body(Body::empty())
+            .body(crate::body::empty())
             .unwrap();
 
         let result = get_real_root(&mut req, Some(&vhosts));
@@ -127,7 +132,7 @@ mod tests {
         let mut req = Request::builder()
             .uri("http://example.com/")
             .header(HOST, "example.com")
-            .body(Body::empty())
+            .body(crate::body::empty())
             .unwrap();
 
         let result = get_real_root(&mut req, None);
@@ -139,7 +144,7 @@ mod tests {
         let mut req = Request::builder()
             .uri("http://example.com/")
             .header(HOST, "example.com")
-            .body(Body::empty())
+            .body(crate::body::empty())
             .unwrap();
 
         let result = get_real_root(&mut req, Some(&[]));

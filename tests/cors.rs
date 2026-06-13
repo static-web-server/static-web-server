@@ -10,7 +10,7 @@ mod tests {
     use std::net::SocketAddr;
 
     use static_web_server::cors;
-    use static_web_server::http_ext::MethodExt;
+    use static_web_server::exts::http::MethodExt;
     use static_web_server::testing::fixtures::{
         REMOTE_ADDR, fixture_req_handler, fixture_req_handler_opts, fixture_settings,
     };
@@ -208,7 +208,7 @@ mod tests {
             Method::TRACE,
         ];
         for method in methods {
-            let mut req = Request::default();
+            let mut req = Request::new(());
             let mut headers = HeaderMap::new();
             headers.insert("origin", HeaderValue::from_str(origin.as_str()).unwrap());
             headers.insert(

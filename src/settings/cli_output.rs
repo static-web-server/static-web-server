@@ -18,7 +18,7 @@ pub fn display_version() -> Result {
     println!("Built:        {}", build::COMMIT_DATE);
     println!("Git commit:   {}", build::COMMIT_HASH);
     println!("Build target: {}", build::BUILD_TARGET);
-    #[cfg(feature = "http2-fips")]
+    #[cfg(feature = "tls-fips")]
     {
         if aws_lc_rs::try_fips_mode().is_ok() {
             println!("FIPS Mode:");

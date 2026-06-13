@@ -6,6 +6,7 @@
 #[cfg(test)]
 pub mod tests {
     use headers::HeaderValue;
+    use http_body_util::BodyExt;
     use hyper::Request;
     use std::net::SocketAddr;
 
@@ -20,7 +21,7 @@ pub mod tests {
         let req_handler = fixture_req_handler(req_handler_opts);
         let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
 
-        let mut req = Request::default();
+        let mut req = Request::new(());
         *req.method_mut() = hyper::Method::GET;
         *req.uri_mut() = "http://localhost/article".parse().unwrap();
         req.headers_mut().insert(
@@ -37,7 +38,7 @@ pub mod tests {
                     Some(&HeaderValue::from_static("text/html; charset=utf-8"))
                 );
 
-                let body_bytes = hyper::body::to_bytes(res.into_body()).await.unwrap();
+                let body_bytes = res.into_body().collect().await.unwrap().to_bytes();
                 let body_str = String::from_utf8(body_bytes.to_vec()).unwrap();
                 assert!(body_str.contains("Article HTML"));
             }
@@ -54,7 +55,7 @@ pub mod tests {
         let req_handler = fixture_req_handler(req_handler_opts);
         let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
 
-        let mut req = Request::default();
+        let mut req = Request::new(());
         *req.method_mut() = hyper::Method::GET;
         *req.uri_mut() = "http://localhost/article".parse().unwrap();
         req.headers_mut().insert(
@@ -71,7 +72,7 @@ pub mod tests {
                     Some(&HeaderValue::from_static("text/markdown; charset=utf-8"))
                 );
 
-                let body_bytes = hyper::body::to_bytes(res.into_body()).await.unwrap();
+                let body_bytes = res.into_body().collect().await.unwrap().to_bytes();
                 let body_str = String::from_utf8(body_bytes.to_vec()).unwrap();
                 assert!(body_str.contains("# Article Markdown"));
                 assert!(body_str.contains("This is the markdown source version"));
@@ -89,7 +90,7 @@ pub mod tests {
         let req_handler = fixture_req_handler(req_handler_opts);
         let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
 
-        let mut req = Request::default();
+        let mut req = Request::new(());
         *req.method_mut() = hyper::Method::HEAD;
         *req.uri_mut() = "http://localhost/article".parse().unwrap();
         req.headers_mut().insert(
@@ -121,7 +122,7 @@ pub mod tests {
         let req_handler = fixture_req_handler(req_handler_opts);
         let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
 
-        let mut req = Request::default();
+        let mut req = Request::new(());
         *req.method_mut() = hyper::Method::GET;
         *req.uri_mut() = "http://localhost/article".parse().unwrap();
         // No Accept header - should return HTML
@@ -134,7 +135,7 @@ pub mod tests {
                     Some(&HeaderValue::from_static("text/html; charset=utf-8"))
                 );
 
-                let body_bytes = hyper::body::to_bytes(res.into_body()).await.unwrap();
+                let body_bytes = res.into_body().collect().await.unwrap().to_bytes();
                 let body_str = String::from_utf8(body_bytes.to_vec()).unwrap();
                 assert!(body_str.contains("Article HTML"));
             }
@@ -151,7 +152,7 @@ pub mod tests {
         let req_handler = fixture_req_handler(req_handler_opts);
         let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
 
-        let mut req = Request::default();
+        let mut req = Request::new(());
         *req.method_mut() = hyper::Method::GET;
         *req.uri_mut() = "http://localhost/article".parse().unwrap();
         req.headers_mut()
@@ -166,7 +167,7 @@ pub mod tests {
                     Some(&HeaderValue::from_static("text/html; charset=utf-8"))
                 );
 
-                let body_bytes = hyper::body::to_bytes(res.into_body()).await.unwrap();
+                let body_bytes = res.into_body().collect().await.unwrap().to_bytes();
                 let body_str = String::from_utf8(body_bytes.to_vec()).unwrap();
                 assert!(body_str.contains("Article HTML"));
             }
@@ -183,7 +184,7 @@ pub mod tests {
         let req_handler = fixture_req_handler(req_handler_opts);
         let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
 
-        let mut req = Request::default();
+        let mut req = Request::new(());
         *req.method_mut() = hyper::Method::GET;
         *req.uri_mut() = "http://localhost/doc".parse().unwrap();
         req.headers_mut().insert(
@@ -199,7 +200,7 @@ pub mod tests {
                     Some(&HeaderValue::from_static("text/markdown; charset=utf-8"))
                 );
 
-                let body_bytes = hyper::body::to_bytes(res.into_body()).await.unwrap();
+                let body_bytes = res.into_body().collect().await.unwrap().to_bytes();
                 let body_str = String::from_utf8(body_bytes.to_vec()).unwrap();
                 assert!(body_str.contains("# Documentation"));
                 assert!(body_str.contains("Direct markdown file"));
@@ -217,7 +218,7 @@ pub mod tests {
         let req_handler = fixture_req_handler(req_handler_opts);
         let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
 
-        let mut req = Request::default();
+        let mut req = Request::new(());
         *req.method_mut() = hyper::Method::GET;
         *req.uri_mut() = "http://localhost/".parse().unwrap();
         req.headers_mut().insert(
@@ -233,7 +234,7 @@ pub mod tests {
                     Some(&HeaderValue::from_static("text/markdown; charset=utf-8"))
                 );
 
-                let body_bytes = hyper::body::to_bytes(res.into_body()).await.unwrap();
+                let body_bytes = res.into_body().collect().await.unwrap().to_bytes();
                 let body_str = String::from_utf8(body_bytes.to_vec()).unwrap();
                 assert!(body_str.contains("# Index Markdown"));
             }
@@ -250,7 +251,7 @@ pub mod tests {
         let req_handler = fixture_req_handler(req_handler_opts);
         let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
 
-        let mut req = Request::default();
+        let mut req = Request::new(());
         *req.method_mut() = hyper::Method::POST;
         *req.uri_mut() = "http://localhost/article".parse().unwrap();
         req.headers_mut().insert(
@@ -276,7 +277,7 @@ pub mod tests {
         let req_handler = fixture_req_handler(req_handler_opts);
         let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
 
-        let mut req = Request::default();
+        let mut req = Request::new(());
         *req.method_mut() = hyper::Method::GET;
         *req.uri_mut() = "http://localhost/test.html".parse().unwrap();
         req.headers_mut().insert(
@@ -293,7 +294,7 @@ pub mod tests {
                     Some(&HeaderValue::from_static("text/html; charset=utf-8"))
                 );
 
-                let body_bytes = hyper::body::to_bytes(res.into_body()).await.unwrap();
+                let body_bytes = res.into_body().collect().await.unwrap().to_bytes();
                 let body_str = String::from_utf8(body_bytes.to_vec()).unwrap();
                 assert!(body_str.contains("Test Page"));
             }
@@ -310,7 +311,7 @@ pub mod tests {
         let req_handler = fixture_req_handler(req_handler_opts);
         let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
 
-        let mut req = Request::default();
+        let mut req = Request::new(());
         *req.method_mut() = hyper::Method::HEAD;
         *req.uri_mut() = "http://localhost/test.html".parse().unwrap();
         req.headers_mut().insert(
@@ -342,7 +343,7 @@ pub mod tests {
         let req_handler = fixture_req_handler(req_handler_opts);
         let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
 
-        let mut req = Request::default();
+        let mut req = Request::new(());
         *req.method_mut() = hyper::Method::GET;
         *req.uri_mut() = "http://localhost/article.html".parse().unwrap();
         // No Accept header - should return HTML with HTML content-type
@@ -355,7 +356,7 @@ pub mod tests {
                     Some(&HeaderValue::from_static("text/html; charset=utf-8"))
                 );
 
-                let body_bytes = hyper::body::to_bytes(res.into_body()).await.unwrap();
+                let body_bytes = res.into_body().collect().await.unwrap().to_bytes();
                 let body_str = String::from_utf8(body_bytes.to_vec()).unwrap();
                 assert!(body_str.contains("Article HTML"));
             }
@@ -372,7 +373,7 @@ pub mod tests {
         let req_handler = fixture_req_handler(req_handler_opts);
         let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
 
-        let mut req = Request::default();
+        let mut req = Request::new(());
         *req.method_mut() = hyper::Method::HEAD;
         *req.uri_mut() = "http://localhost/article.html".parse().unwrap();
         // No Accept header - should return HTML with HTML content-type
@@ -400,7 +401,7 @@ pub mod tests {
         let req_handler = fixture_req_handler(req_handler_opts);
         let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
 
-        let mut req = Request::default();
+        let mut req = Request::new(());
         *req.method_mut() = hyper::Method::GET;
         *req.uri_mut() = "http://localhost/nonexistent".parse().unwrap();
         req.headers_mut().insert(

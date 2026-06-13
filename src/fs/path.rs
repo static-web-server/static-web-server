@@ -80,7 +80,8 @@ fn decode_tail_path(tail: &str) -> PathBuf {
 }
 
 /// Sanitizes a base/tail path and then it returns a unified one.
-pub(crate) fn sanitize_path(base: &Path, tail: &str) -> Result<PathBuf, StatusCode> {
+#[doc(hidden)]
+pub fn sanitize_path(base: &Path, tail: &str) -> Result<PathBuf, StatusCode> {
     let path_decoded = decode_tail_path(tail);
     let mut full_path = base.to_path_buf();
     tracing::trace!("dir: base={:?}, route={:?}", full_path, path_decoded);
@@ -189,6 +190,72 @@ mod tests {
                 err.to_string().contains("unable to get metadata for path"),
                 "unexpected error message: {err}"
             ),
+        }
+    }
+
+    // Property-based regression tests for `sanitize_path`
+    //
+    // These properties encode the security invariants of path
+    // sanitisation: regardless of the request tail (random bytes,
+    // percent-encoded escapes, dot segments, Windows drive prefixes,
+    // mixed slashes, embedded NULs) the resulting path MUST stay
+    // inside the configured `base` directory.
+    //
+    // We assert this structurally (no `RootDir`/`Prefix`/`ParentDir`
+    // components beyond `base` itself) so the property holds without
+    // touching the filesystem.
+    use proptest::prelude::*;
+    use std::path::Component;
+
+    fn assert_under_base(base: &std::path::Path, full: &std::path::Path) {
+        let extra = full
+            .strip_prefix(base)
+            .expect("sanitized path must extend base");
+        for comp in extra.components() {
+            match comp {
+                Component::Normal(_) | Component::CurDir => {}
+                Component::ParentDir | Component::RootDir | Component::Prefix(_) => {
+                    panic!("sanitize_path leaked traversal component {comp:?} in {full:?}");
+                }
+            }
+        }
+    }
+
+    proptest! {
+        #![proptest_config(ProptestConfig {
+            cases: 256, ..ProptestConfig::default()
+        })]
+
+        /// Arbitrary ASCII-ish tails (including `../`, `\\`, `%2e`, NULs,
+        /// drive letters) must never escape the base directory.
+        #[test]
+        fn prop_sanitize_path_never_escapes_base(tail in "\\PC{0,128}") {
+            let base = PathBuf::from("docker/public");
+            if let Ok(full) = sanitize_path(&base, &tail) {
+                assert_under_base(&base, &full);
+            }
+        }
+
+        /// Targeted traversal patterns: many `../` segments interleaved
+        /// with arbitrary content.
+        #[test]
+        fn prop_sanitize_path_resists_dot_dot_floods(
+            tail in proptest::collection::vec(
+                prop_oneof![
+                    Just("../".to_string()),
+                    Just("..\\".to_string()),
+                    Just("%2e%2e/".to_string()),
+                    Just("./".to_string()),
+                    "[a-zA-Z0-9_.-]{1,8}".prop_map(String::from),
+                ],
+                0..32,
+            )
+        ) {
+            let base = PathBuf::from("docker/public");
+            let tail = tail.concat();
+            if let Ok(full) = sanitize_path(&base, &tail) {
+                assert_under_base(&base, &full);
+            }
         }
     }
 }

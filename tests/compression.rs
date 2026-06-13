@@ -29,6 +29,7 @@ pub mod tests {
         let general = General {
             compression: true,
             compression_static: true,
+            etag: true,
             index_files: "index.htm, index.html".to_owned(),
             ..opts.general
         };
@@ -36,7 +37,7 @@ pub mod tests {
         let req_handler = fixture_req_handler(req_handler_opts);
         let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
 
-        let mut req = Request::default();
+        let mut req = Request::new(());
         *req.method_mut() = hyper::Method::GET;
         *req.uri_mut() = "http://localhost".parse().unwrap();
         req.headers_mut().insert(
@@ -61,7 +62,7 @@ pub mod tests {
                 );
                 assert_eq!(
                     res.headers().get("cache-control"),
-                    Some(&HeaderValue::from_static("max-age=86400"))
+                    Some(&HeaderValue::from_static("no-cache"))
                 );
                 assert_eq!(
                     res.headers().get("server"),

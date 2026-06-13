@@ -3,16 +3,10 @@
 #![deny(rust_2018_idioms)]
 #![deny(dead_code)]
 
-#[cfg(any(
-    feature = "compression",
-    feature = "compression-deflate",
-    feature = "compression-gzip",
-    feature = "compression-brotli",
-    feature = "compression-zstd"
-))]
 #[cfg(test)]
 mod tests {
     use bytes::Bytes;
+    use http_body_util::BodyExt;
     use hyper::Request;
     use std::net::SocketAddr;
     use std::path::PathBuf;
@@ -36,13 +30,14 @@ mod tests {
         let opts = fixture_settings("toml/handler_fixtures.toml");
         let general = General {
             compression_static: true,
+            etag: true,
             index_files: "index.htm, index.html".to_owned(),
             ..opts.general
         };
         let req_handler_opts = fixture_req_handler_opts(general, opts.advanced);
         let req_handler = fixture_req_handler(req_handler_opts);
 
-        let mut req = Request::default();
+        let mut req = Request::new(());
         *req.method_mut() = hyper::Method::GET;
         *req.uri_mut() = "http://localhost/index.htm".parse().unwrap();
         req.headers_mut().insert(
@@ -52,7 +47,7 @@ mod tests {
 
         let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
         match req_handler.handle(&mut req, remote_addr).await {
-            Ok(mut res) => {
+            Ok(res) => {
                 let headers = res.headers();
 
                 assert_eq!(res.status(), 200);
@@ -66,9 +61,12 @@ mod tests {
                 );
                 assert_eq!(headers["vary"], "accept-encoding");
 
-                let body = hyper::body::to_bytes(res.body_mut())
+                let body = res
+                    .into_body()
+                    .collect()
                     .await
-                    .expect("unexpected bytes error during `body` conversion");
+                    .expect("unexpected bytes error during `body` conversion")
+                    .to_bytes();
 
                 assert_eq!(
                     body, archive_buf,
@@ -89,12 +87,13 @@ mod tests {
         let opts = fixture_settings("toml/handler_fixtures.toml");
         let general = General {
             compression_static: true,
+            etag: true,
             ..opts.general
         };
         let req_handler_opts = fixture_req_handler_opts(general, opts.advanced);
         let req_handler = fixture_req_handler(req_handler_opts);
 
-        let mut req = Request::default();
+        let mut req = Request::new(());
         *req.method_mut() = hyper::Method::GET;
         *req.uri_mut() = "http://localhost/404.html".parse().unwrap();
         req.headers_mut().insert(
@@ -104,7 +103,7 @@ mod tests {
 
         let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
         match req_handler.handle(&mut req, remote_addr).await {
-            Ok(mut res) => {
+            Ok(res) => {
                 let headers = res.headers();
 
                 assert_eq!(res.status(), 200);
@@ -118,9 +117,12 @@ mod tests {
                 );
                 assert_eq!(headers["vary"], "accept-encoding");
 
-                let body = hyper::body::to_bytes(res.body_mut())
+                let body = res
+                    .into_body()
+                    .collect()
                     .await
-                    .expect("unexpected bytes error during `body` conversion");
+                    .expect("unexpected bytes error during `body` conversion")
+                    .to_bytes();
 
                 assert_eq!(
                     body, archive_buf,
@@ -135,14 +137,22 @@ mod tests {
     async fn compression_static_file_does_not_exist() {
         let opts = fixture_settings("toml/handler_fixtures.toml");
         let general = General {
+            #[cfg(any(
+                feature = "compression",
+                feature = "compression-gzip",
+                feature = "compression-brotli",
+                feature = "compression-zstd",
+                feature = "compression-deflate"
+            ))]
             compression: false,
             compression_static: true,
+            etag: true,
             ..opts.general
         };
         let req_handler_opts = fixture_req_handler_opts(general, opts.advanced);
         let req_handler = fixture_req_handler(req_handler_opts);
 
-        let mut req = Request::default();
+        let mut req = Request::new(());
         *req.method_mut() = hyper::Method::GET;
         *req.uri_mut() = "http://localhost/index.htm".parse().unwrap();
         req.headers_mut()
@@ -172,19 +182,27 @@ mod tests {
     async fn compression_static_index_file() {
         let opts = fixture_settings("toml/handler_fixtures.toml");
         let general = General {
+            #[cfg(any(
+                feature = "compression",
+                feature = "compression-gzip",
+                feature = "compression-brotli",
+                feature = "compression-zstd",
+                feature = "compression-deflate"
+            ))]
             compression: false,
             compression_static: true,
+            etag: true,
             directory_listing: true,
             directory_listing_format: DirListFmt::Html,
-            ignore_hidden_files: false,
-            disable_symlinks: false,
+            include_hidden: true,
+            follow_symlinks: true,
             index_files: "index.htm, index.html".to_owned(),
             ..opts.general
         };
         let req_handler_opts = fixture_req_handler_opts(general, opts.advanced);
         let req_handler = fixture_req_handler(req_handler_opts);
 
-        let mut req = Request::default();
+        let mut req = Request::new(());
         *req.method_mut() = hyper::Method::GET;
         *req.uri_mut() = "http://localhost".parse().unwrap();
         req.headers_mut()
@@ -218,14 +236,22 @@ mod tests {
 
         let opts = fixture_settings("toml/handler_fixtures.toml");
         let general = General {
+            #[cfg(any(
+                feature = "compression",
+                feature = "compression-gzip",
+                feature = "compression-brotli",
+                feature = "compression-zstd",
+                feature = "compression-deflate"
+            ))]
             compression: false,
             compression_static: true,
+            etag: true,
             ..opts.general
         };
         let req_handler_opts = fixture_req_handler_opts(general, opts.advanced);
         let req_handler = fixture_req_handler(req_handler_opts);
 
-        let mut req = Request::default();
+        let mut req = Request::new(());
         *req.method_mut() = hyper::Method::GET;
         *req.uri_mut() = "http://localhost/assets/main.css".parse().unwrap();
         req.headers_mut().insert(
@@ -235,7 +261,7 @@ mod tests {
 
         let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
         match req_handler.handle(&mut req, remote_addr).await {
-            Ok(mut res) => {
+            Ok(res) => {
                 let headers = res.headers();
 
                 assert_eq!(res.status(), 200);
@@ -249,9 +275,12 @@ mod tests {
                 );
                 assert_eq!(headers["vary"], "accept-encoding");
 
-                let body = hyper::body::to_bytes(res.body_mut())
+                let body = res
+                    .into_body()
+                    .collect()
                     .await
-                    .expect("unexpected bytes error during `body` conversion");
+                    .expect("unexpected bytes error during `body` conversion")
+                    .to_bytes();
 
                 assert_eq!(
                     body, archive_buf,
@@ -270,14 +299,22 @@ mod tests {
     async fn compression_static_missing_file_skips_precompressed_probes() {
         let opts = fixture_settings("toml/handler_fixtures.toml");
         let general = General {
+            #[cfg(any(
+                feature = "compression",
+                feature = "compression-gzip",
+                feature = "compression-brotli",
+                feature = "compression-zstd",
+                feature = "compression-deflate"
+            ))]
             compression: false,
             compression_static: true,
+            etag: true,
             ..opts.general
         };
         let req_handler_opts = fixture_req_handler_opts(general, opts.advanced);
         let req_handler = fixture_req_handler(req_handler_opts);
 
-        let mut req = Request::default();
+        let mut req = Request::new(());
         *req.method_mut() = hyper::Method::GET;
         *req.uri_mut() = "http://localhost/this-path-does-not-exist".parse().unwrap();
         req.headers_mut().insert(
@@ -310,8 +347,16 @@ mod tests {
 
         let opts = fixture_settings("toml/handler_fixtures.toml");
         let general = General {
+            #[cfg(any(
+                feature = "compression",
+                feature = "compression-gzip",
+                feature = "compression-brotli",
+                feature = "compression-zstd",
+                feature = "compression-deflate"
+            ))]
             compression: false,
             compression_static: true,
+            etag: true,
             ..opts.general
         };
         let req_handler_opts = fixture_req_handler_opts(general, opts.advanced);
@@ -320,7 +365,7 @@ mod tests {
         // Request `/404` (no extension): SWS appends `.html`, finds
         // `404.html`, and should then serve the pre-compressed
         // `404.html.br` sibling.
-        let mut req = Request::default();
+        let mut req = Request::new(());
         *req.method_mut() = hyper::Method::GET;
         *req.uri_mut() = "http://localhost/404".parse().unwrap();
         req.headers_mut().insert(
@@ -330,7 +375,7 @@ mod tests {
 
         let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
         match req_handler.handle(&mut req, remote_addr).await {
-            Ok(mut res) => {
+            Ok(res) => {
                 let headers = res.headers();
 
                 assert_eq!(res.status(), 200);
@@ -341,9 +386,12 @@ mod tests {
                     "content-type is not html"
                 );
 
-                let body = hyper::body::to_bytes(res.body_mut())
+                let body = res
+                    .into_body()
+                    .collect()
                     .await
-                    .expect("unexpected bytes error during `body` conversion");
+                    .expect("unexpected bytes error during `body` conversion")
+                    .to_bytes();
 
                 assert_eq!(body, archive_buf, "body must equal the .html.br archive");
             }
@@ -362,8 +410,16 @@ mod tests {
     async fn compression_static_missing_index_skips_precompressed_probes() {
         let opts = fixture_settings("toml/handler_fixtures.toml");
         let general = General {
+            #[cfg(any(
+                feature = "compression",
+                feature = "compression-gzip",
+                feature = "compression-brotli",
+                feature = "compression-zstd",
+                feature = "compression-deflate"
+            ))]
             compression: false,
             compression_static: true,
+            etag: true,
             // Use only an index name that does not exist in `assets/` so
             // SWS exercises the no-index-found branch.
             index_files: "missing-index.html".to_owned(),
@@ -372,7 +428,7 @@ mod tests {
         let req_handler_opts = fixture_req_handler_opts(general, opts.advanced);
         let req_handler = fixture_req_handler(req_handler_opts);
 
-        let mut req = Request::default();
+        let mut req = Request::new(());
         *req.method_mut() = hyper::Method::GET;
         *req.uri_mut() = "http://localhost/assets/".parse().unwrap();
         req.headers_mut().insert(

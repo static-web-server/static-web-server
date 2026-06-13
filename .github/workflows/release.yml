@@ -2,8 +2,8 @@ name: release
 on:
   push:
     tags:
-    - 'v2.[0-9]+.[0-9]+'
-    - 'v2.[0-9]+.[0-9]+-beta.[0-9]+'
+    - 'v3.[0-9]+.[0-9]+'
+    - 'v3.[0-9]+.[0-9]+-beta.[0-9]+'
 
 jobs:
   create-release:

@@ -16,7 +16,7 @@ env:
 
 jobs:
   build-release:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     env:
       CARGO_BIN: cargo
       # Emit backtraces on panics.
@@ -93,7 +93,7 @@ jobs:
   # If multiple targets are needed then refactor the workflow and the 'devel' Dockerfile to be Docker Multiarch.
   docker-image:
     needs: ['build-release']
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
       packages: write

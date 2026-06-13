@@ -8,6 +8,7 @@
 mod tests {
     use headers::HeaderMap;
     use http::{Method, StatusCode};
+    use http_body_util::BodyExt;
     use serde::{Deserialize, Serialize};
     use std::path::{Path, PathBuf};
 
@@ -17,7 +18,7 @@ mod tests {
     };
 
     #[cfg(feature = "directory-listing-download")]
-    use static_web_server::directory_listing_download::DirDownloadFmt;
+    use static_web_server::directory_listing::download::DirDownloadFmt;
 
     const METHODS: [Method; 8] = [
         Method::CONNECT,
@@ -46,15 +47,16 @@ mod tests {
                 base_path: &root_dir("tests/fixtures/public"),
                 uri_path: "/symlink",
                 uri_query: None,
-                #[cfg(feature = "experimental")]
+                #[cfg(feature = "mem-cache")]
                 memory_cache: None,
                 dir_listing: true,
                 dir_listing_order: 6,
                 dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: true,
                 compression_static: false,
-                ignore_hidden_files: false,
-                disable_symlinks: false,
+                etag: true,
+                include_hidden: true,
+                follow_symlinks: true,
                 index_files: &[],
                 #[cfg(feature = "directory-listing-download")]
                 dir_listing_download: &[],
@@ -83,15 +85,16 @@ mod tests {
                 base_path: &root_dir("docs/"),
                 uri_path: "/content/",
                 uri_query: None,
-                #[cfg(feature = "experimental")]
+                #[cfg(feature = "mem-cache")]
                 memory_cache: None,
                 dir_listing: true,
                 dir_listing_order: 6,
                 dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: true,
                 compression_static: false,
-                ignore_hidden_files: false,
-                disable_symlinks: false,
+                etag: true,
+                include_hidden: true,
+                follow_symlinks: true,
                 index_files: &[],
                 #[cfg(feature = "directory-listing-download")]
                 dir_listing_download: &[],
@@ -99,13 +102,16 @@ mod tests {
             .await
             {
                 Ok(result) => {
-                    let mut res = result.resp;
+                    let res = result.resp;
                     assert_eq!(res.status(), 200);
                     assert_eq!(res.headers()["content-type"], "text/html; charset=utf-8");
 
-                    let body = hyper::body::to_bytes(res.body_mut())
+                    let body = res
+                        .into_body()
+                        .collect()
                         .await
-                        .expect("unexpected bytes error during `body` conversion");
+                        .expect("unexpected bytes error during `body` conversion")
+                        .to_bytes();
                     let body_str = std::str::from_utf8(&body).unwrap();
                     // directory link should only contain "dir-name/" in a relative way
                     assert_eq!(
@@ -130,15 +136,16 @@ mod tests {
                 base_path: &root_dir("docs/"),
                 uri_path: "/content",
                 uri_query: None,
-                #[cfg(feature = "experimental")]
+                #[cfg(feature = "mem-cache")]
                 memory_cache: None,
                 dir_listing: true,
                 dir_listing_order: 6,
                 dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: false,
                 compression_static: false,
-                ignore_hidden_files: false,
-                disable_symlinks: false,
+                etag: true,
+                include_hidden: true,
+                follow_symlinks: true,
                 index_files: &[],
                 #[cfg(feature = "directory-listing-download")]
                 dir_listing_download: &[],
@@ -146,13 +153,16 @@ mod tests {
             .await
             {
                 Ok(result) => {
-                    let mut res = result.resp;
+                    let res = result.resp;
                     assert_eq!(res.status(), 200);
                     assert_eq!(res.headers()["content-type"], "text/html; charset=utf-8");
 
-                    let body = hyper::body::to_bytes(res.body_mut())
+                    let body = res
+                        .into_body()
+                        .collect()
                         .await
-                        .expect("unexpected bytes error during `body` conversion");
+                        .expect("unexpected bytes error during `body` conversion")
+                        .to_bytes();
                     let body_str = std::str::from_utf8(&body).unwrap();
                     // directory link should contain "parent/dir-name/" in a relative way
                     assert_eq!(
@@ -177,15 +187,16 @@ mod tests {
                 base_path: &root_dir("docs/"),
                 uri_path: "/README.md",
                 uri_query: None,
-                #[cfg(feature = "experimental")]
+                #[cfg(feature = "mem-cache")]
                 memory_cache: None,
                 dir_listing: true,
                 dir_listing_order: 6,
                 dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: false,
                 compression_static: false,
-                ignore_hidden_files: false,
-                disable_symlinks: false,
+                etag: true,
+                include_hidden: true,
+                follow_symlinks: true,
                 index_files: &[],
                 #[cfg(feature = "directory-listing-download")]
                 dir_listing_download: &[],
@@ -214,15 +225,16 @@ mod tests {
                 base_path: &root_dir("tests/fixtures/public/"),
                 uri_path: "/",
                 uri_query: None,
-                #[cfg(feature = "experimental")]
+                #[cfg(feature = "mem-cache")]
                 memory_cache: None,
                 dir_listing: true,
                 dir_listing_order: 6,
                 dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: true,
                 compression_static: false,
-                ignore_hidden_files: false,
-                disable_symlinks: false,
+                etag: true,
+                include_hidden: true,
+                follow_symlinks: true,
                 index_files: &[],
                 #[cfg(feature = "directory-listing-download")]
                 dir_listing_download: &[],
@@ -230,13 +242,16 @@ mod tests {
             .await
             {
                 Ok(result) => {
-                    let mut res = result.resp;
+                    let res = result.resp;
                     assert_eq!(res.status(), 200);
                     assert_eq!(res.headers()["content-type"], "text/html; charset=utf-8");
 
-                    let body = hyper::body::to_bytes(res.body_mut())
+                    let body = res
+                        .into_body()
+                        .collect()
                         .await
-                        .expect("unexpected bytes error during `body` conversion");
+                        .expect("unexpected bytes error during `body` conversion")
+                        .to_bytes();
                     let body_str = std::str::from_utf8(&body).unwrap();
 
                     assert_eq!(
@@ -272,15 +287,16 @@ mod tests {
                 base_path: &root_dir("tests/fixtures/public/"),
                 uri_path: "/",
                 uri_query: None,
-                #[cfg(feature = "experimental")]
+                #[cfg(feature = "mem-cache")]
                 memory_cache: None,
                 dir_listing: true,
                 dir_listing_order: 1,
                 dir_listing_format: &DirListFmt::Json,
                 redirect_trailing_slash: true,
                 compression_static: false,
-                ignore_hidden_files: true,
-                disable_symlinks: false,
+                etag: true,
+                include_hidden: false,
+                follow_symlinks: true,
                 index_files: &[],
                 #[cfg(feature = "directory-listing-download")]
                 dir_listing_download: &[],
@@ -288,13 +304,16 @@ mod tests {
             .await
             {
                 Ok(result) => {
-                    let mut res = result.resp;
+                    let res = result.resp;
                     assert_eq!(res.status(), 200);
                     assert_eq!(res.headers()["content-type"], "application/json");
 
-                    let body = hyper::body::to_bytes(res.body_mut())
+                    let body = res
+                        .into_body()
+                        .collect()
                         .await
-                        .expect("unexpected bytes error during `body` conversion");
+                        .expect("unexpected bytes error during `body` conversion")
+                        .to_bytes();
                     let body_str = std::str::from_utf8(&body).unwrap();
 
                     if method == Method::GET {
@@ -348,15 +367,16 @@ mod tests {
                 base_path: &root_dir(&empty_dir),
                 uri_path: "/",
                 uri_query: None,
-                #[cfg(feature = "experimental")]
+                #[cfg(feature = "mem-cache")]
                 memory_cache: None,
                 dir_listing: true,
                 dir_listing_order: 1,
                 dir_listing_format: &DirListFmt::Json,
                 redirect_trailing_slash: true,
                 compression_static: false,
-                ignore_hidden_files: false,
-                disable_symlinks: false,
+                etag: true,
+                include_hidden: true,
+                follow_symlinks: true,
                 index_files: &[],
                 #[cfg(feature = "directory-listing-download")]
                 dir_listing_download: &[],
@@ -364,13 +384,16 @@ mod tests {
             .await
             {
                 Ok(result) => {
-                    let mut res = result.resp;
+                    let res = result.resp;
                     assert_eq!(res.status(), 200);
                     assert_eq!(res.headers()["content-type"], "application/json");
 
-                    let body = hyper::body::to_bytes(res.body_mut())
+                    let body = res
+                        .into_body()
+                        .collect()
                         .await
-                        .expect("unexpected bytes error during `body` conversion");
+                        .expect("unexpected bytes error during `body` conversion")
+                        .to_bytes();
                     let body_str = std::str::from_utf8(&body).unwrap();
 
                     if method == Method::GET {
@@ -389,7 +412,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn dir_listing_ignore_hidden_files() {
+    async fn dir_listing_include_hidden() {
         for method in METHODS {
             match static_files::handle(&HandleOpts {
                 method: &method,
@@ -397,15 +420,16 @@ mod tests {
                 base_path: &root_dir("tests/fixtures/public"),
                 uri_path: "/",
                 uri_query: None,
-                #[cfg(feature = "experimental")]
+                #[cfg(feature = "mem-cache")]
                 memory_cache: None,
                 dir_listing: true,
                 dir_listing_order: 1,
                 dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: true,
                 compression_static: false,
-                ignore_hidden_files: true,
-                disable_symlinks: false,
+                etag: true,
+                include_hidden: false,
+                follow_symlinks: true,
                 index_files: &[],
                 #[cfg(feature = "directory-listing-download")]
                 dir_listing_download: &[],
@@ -413,13 +437,16 @@ mod tests {
             .await
             {
                 Ok(result) => {
-                    let mut res = result.resp;
+                    let res = result.resp;
                     assert_eq!(res.status(), 200);
                     assert_eq!(res.headers()["content-type"], "text/html; charset=utf-8");
 
-                    let body = hyper::body::to_bytes(res.body_mut())
+                    let body = res
+                        .into_body()
+                        .collect()
                         .await
-                        .expect("unexpected bytes error during `body` conversion");
+                        .expect("unexpected bytes error during `body` conversion")
+                        .to_bytes();
                     let body_str = std::str::from_utf8(&body).unwrap();
 
                     if method == Method::GET {
@@ -446,28 +473,32 @@ mod tests {
                 base_path: &root_dir("tests/fixtures/public"),
                 uri_path: "/",
                 uri_query: None,
-                #[cfg(feature = "experimental")]
+                #[cfg(feature = "mem-cache")]
                 memory_cache: None,
                 dir_listing: true,
                 dir_listing_order: 1,
                 dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: true,
                 compression_static: false,
-                ignore_hidden_files: true,
-                disable_symlinks: false,
+                etag: true,
+                include_hidden: false,
+                follow_symlinks: true,
                 index_files: &[],
                 dir_listing_download: &[DirDownloadFmt::Targz],
             })
             .await
             {
                 Ok(result) => {
-                    let mut res = result.resp;
+                    let res = result.resp;
                     assert_eq!(res.status(), 200);
                     assert_eq!(res.headers()["content-type"], "text/html; charset=utf-8");
 
-                    let body = hyper::body::to_bytes(res.body_mut())
+                    let body = res
+                        .into_body()
+                        .collect()
                         .await
-                        .expect("unexpected bytes error during `body` conversion");
+                        .expect("unexpected bytes error during `body` conversion")
+                        .to_bytes();
                     let body_str = std::str::from_utf8(&body).unwrap();
 
                     if method == Method::GET {
@@ -494,28 +525,32 @@ mod tests {
                 base_path: &root_dir("tests/fixtures/public"),
                 uri_path: "/",
                 uri_query: None,
-                #[cfg(feature = "experimental")]
+                #[cfg(feature = "mem-cache")]
                 memory_cache: None,
                 dir_listing: true,
                 dir_listing_order: 1,
                 dir_listing_format: &DirListFmt::Html,
                 redirect_trailing_slash: true,
                 compression_static: false,
-                ignore_hidden_files: true,
-                disable_symlinks: false,
+                etag: true,
+                include_hidden: false,
+                follow_symlinks: true,
                 index_files: &[],
                 dir_listing_download: &[],
             })
             .await
             {
                 Ok(result) => {
-                    let mut res = result.resp;
+                    let res = result.resp;
                     assert_eq!(res.status(), 200);
                     assert_eq!(res.headers()["content-type"], "text/html; charset=utf-8");
 
-                    let body = hyper::body::to_bytes(res.body_mut())
+                    let body = res
+                        .into_body()
+                        .collect()
                         .await
-                        .expect("unexpected bytes error during `body` conversion");
+                        .expect("unexpected bytes error during `body` conversion")
+                        .to_bytes();
                     let body_str = std::str::from_utf8(&body).unwrap();
 
                     if method == Method::GET {
@@ -530,5 +565,78 @@ mod tests {
                 }
             }
         }
+    }
+
+    /// SECURITY (XSS): regression test ensuring that filenames containing
+    /// HTML metacharacters are escaped, not reflected, in the autoindex
+    /// HTML output.
+    ///
+    /// We materialise a temp directory with a file whose name embeds a
+    /// `<script>` payload, render the listing, and assert that the
+    /// payload appears only in its escaped form. Disabled on Windows
+    /// because NTFS forbids `<` and `>` in filenames.
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn dir_listing_escapes_html_in_filenames() {
+        use std::fs;
+
+        let tmp = std::env::temp_dir().join(format!(
+            "sws-xss-{}",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        fs::create_dir_all(&tmp).unwrap();
+        // NOTE: filename intentionally avoids `/` (path separator) but
+        // contains other HTML metacharacters that must be escaped.
+        let evil_name = "<script>alert(1)<_script>.txt";
+        let evil = tmp.join(evil_name);
+        fs::write(&evil, b"x").unwrap();
+
+        let result = static_files::handle(&HandleOpts {
+            method: &Method::GET,
+            headers: &HeaderMap::new(),
+            base_path: &tmp,
+            uri_path: "/",
+            uri_query: None,
+            #[cfg(feature = "mem-cache")]
+            memory_cache: None,
+            dir_listing: true,
+            dir_listing_order: 6,
+            dir_listing_format: &DirListFmt::Html,
+            redirect_trailing_slash: true,
+            compression_static: false,
+            etag: true,
+            include_hidden: true,
+            follow_symlinks: true,
+            index_files: &[],
+            #[cfg(feature = "directory-listing-download")]
+            dir_listing_download: &[],
+        })
+        .await
+        .expect("handle should succeed for GET on a readable directory");
+
+        let body = result
+            .resp
+            .into_body()
+            .collect()
+            .await
+            .expect("body collect")
+            .to_bytes();
+        let body_str = std::str::from_utf8(&body).unwrap();
+
+        assert!(
+            !body_str.contains("<script>alert(1)<_script>"),
+            "raw <script> payload leaked into directory listing"
+        );
+        assert!(
+            body_str.contains("&lt;script&gt;alert(1)&lt;_script&gt;"),
+            "expected HTML-escaped filename in listing; body was: {body_str}"
+        );
+
+        // Cleanup
+        let _ = fs::remove_file(&evil);
+        let _ = fs::remove_dir(&tmp);
     }
 }

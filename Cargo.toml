@@ -38,20 +38,22 @@ doc = false
 
 [features]
 # All features enabled by default
-default = ["compression", "http2-ring", "directory-listing", "directory-listing-download", "basic-auth", "fallback-page", "metrics"]
+default = ["compression", "http2", "tls-ring", "directory-listing", "directory-listing-download", "basic-auth", "fallback-page", "metrics", "mem-cache"]
 # Include all features (used when building SWS binaries)
 all = ["default", "experimental"]
 # Default feature set with the FIPS crypto provider in place of ring.
-default-fips = ["compression", "http2-fips", "directory-listing", "directory-listing-download", "basic-auth", "fallback-page", "metrics"]
+default-fips = ["compression", "http2", "tls-fips", "directory-listing", "directory-listing-download", "basic-auth", "fallback-page", "metrics", "mem-cache"]
 # All features with the FIPS crypto provider (used when building FIPS SWS binaries).
 all-fips = ["default-fips", "experimental"]
-# HTTP2 base TLS plumbing -- gates all TLS code via cfg(feature = "http2").
+# TLS base plumbing -- gates all TLS code via cfg(feature = "tls").
 # Does not select a crypto provider on its own.
-http2 = ["tokio-rustls", "rustls-pki-types", "tokio-rustls/logging", "tokio-rustls/tls12"]
-# HTTP2 with ring crypto provider (default)
-http2-ring = ["http2", "tokio-rustls/ring"]
-# HTTP2 with FIPS-validated crypto via aws-lc-rs
-http2-fips = ["http2", "tokio-rustls/fips", "aws-lc-rs"]
+tls = ["tokio-rustls", "rustls-pki-types", "tokio-rustls/logging", "tokio-rustls/tls12"]
+# TLS with ring crypto provider (default)
+tls-ring = ["tls", "tokio-rustls/ring"]
+# TLS with FIPS-validated crypto via aws-lc-rs
+tls-fips = ["tls", "tokio-rustls/fips", "aws-lc-rs"]
+# HTTP2 (requires TLS)
+http2 = ["tls", "hyper-util/http2"]
 # Compression
 compression = ["compression-brotli", "compression-deflate", "compression-gzip", "compression-zstd"]
 compression-brotli = ["async-compression/brotli"]
@@ -68,8 +70,10 @@ basic-auth = ["bcrypt"]
 fallback-page = []
 # Metrics endpoint with Prometheus integration
 metrics = ["prometheus"]
+# In-memory file cache with LFU admission and LRU eviction
+mem-cache = ["compact_str", "mini-moka"]
 # Experimental features (requires: `RUSTFLAGS="--cfg tokio_unstable"`)
-experimental = ["metrics", "tokio-metrics-collector", "compact_str", "mini-moka"]
+experimental = ["metrics", "tokio-metrics-collector"]
 
 [dependencies]
 aho-corasick = "1.1.4"
@@ -86,10 +90,13 @@ compact_str = { version = "0.9.0", optional = true }
 form_urlencoded = "1.2"
 futures-util = { version = "0.3", default-features = false }
 globset = { version = "0.4.18", features = ["serde1"] }
-headers = "0.3"
-http = "0.2"
-http-serde = "1.1"
-hyper = { version = "0.14", features = ["stream", "http1", "http2", "tcp", "server"] }
+headers = "0.4"
+http = "1"
+http-body = "1"
+http-body-util = "0.1"
+http-serde = "2"
+hyper = { version = "1", default-features = false, features = ["http1", "http2", "server"] }
+hyper-util = { version = "0.1", default-features = false, features = ["tokio", "server", "server-auto", "server-graceful"] }
 listenfd = "1.0"
 maud = { version = "0.27" }
 mime_guess = "2.0"
@@ -104,12 +111,13 @@ serde_ignored = "0.1"
 serde_json = "1.0"
 serde_repr = "0.1"
 shadow-rs = "1.4.0"
-tokio = { version = "1", default-features = false, features = ["rt-multi-thread", "macros", "fs", "io-util", "signal"] }
+tokio = { version = "1", default-features = false, features = ["rt-multi-thread", "macros", "fs", "io-util", "net", "signal"] }
 tokio-rustls = { version = "0.26", optional = true, default-features = false }
-tokio-util = { version = "0.7", default-features = false, features = ["compat", "io"] }
+tokio-util = { version = "0.7", default-features = false, features = ["io", "compat"] }
 toml = "0.9"
 tracing = { version = "0.1", default-features = false, features = ["std"] }
-tracing-subscriber = { version = "0.3", default-features = false, features = ["smallvec", "registry", "parking_lot", "fmt", "ansi", "tracing-log", "local-time"] }
+tracing-appender = { version = "0.2", default-features = false }
+tracing-subscriber = { version = "0.3", default-features = false, features = ["smallvec", "registry", "parking_lot", "fmt", "ansi", "json", "tracing-log", "local-time"] }
 
 [target.'cfg(all(target_env = "musl", target_pointer_width = "64"))'.dependencies]
 mimalloc = { version = "0.1.48", features = ["v3"] }
@@ -125,6 +133,14 @@ windows-service = "0.8"
 [dev-dependencies]
 bytes = "1.11.1"
 serde_json = "1.0"
+hyper = { version = "1", default-features = false, features = ["http1", "http2", "client"] }
+hyper-util = { version = "0.1", default-features = false, features = ["tokio", "http2"] }
+http-body-util = "0.1"
+tokio-rustls = { version = "0.26", default-features = false }
+rustls-pki-types = "1.13"
+rustls-pemfile = "2"
+proptest = { version = "1.5", default-features = false, features = ["std"] }
+tempfile = "3"
 
 [build-dependencies]
 shadow-rs = "1.4.0"

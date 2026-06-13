@@ -1,6 +1,6 @@
 name: "Bug Report"
 description: "Create a bug report to help us improve."
-labels: ["bug", "v2"]
+labels: ["bug"]
 body:
   - type: markdown
     attributes:
@@ -95,6 +95,7 @@ body:
         - x86_64-unknown-linux-gnu
         - x86_64-unknown-linux-musl
         - x86_64-unknown-netbsd
+        - FIPS targets
         - Docker linux/386
         - Docker linux/amd64
         - Docker linux/arm/v6

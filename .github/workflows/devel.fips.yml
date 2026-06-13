@@ -1,0 +1,98 @@
+name: devel-fips
+
+on:
+  pull_request:
+    paths:
+      - Cargo.lock
+      - Cargo.toml
+      - src/**
+      - tests/**
+      - ".github/workflows/devel.fips.yml"
+  push:
+    branches:
+      - master
+    paths:
+      - Cargo.lock
+      - Cargo.toml
+      - src/**
+      - tests/**
+      - ".github/workflows/devel.fips.yml"
+
+jobs:
+  test:
+    name: FIPS build check
+    runs-on: ubuntu-24.04
+    env:
+      CARGO_FEATURES: "--no-default-features --features all-fips"
+      RUSTFLAGS: "--cfg tokio_unstable"
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        toolchain: stable
+        components: clippy
+
+    - name: Install FIPS build dependencies
+      run: sudo apt-get update && sudo apt-get install -y cmake golang libclang-dev
+
+    # http2-ring and http2-fips are mutually exclusive providers, so
+    # devel.yml's clippy job (which uses `--features all`, the ring
+    # provider) does not cover the FIPS code paths. Run clippy with the
+    # FIPS provider here so both providers are linted on every PR.
+    - name: Check via Clippy (FIPS)
+      run: cargo clippy ${{ env.CARGO_FEATURES }} -- -D warnings
+
+    - name: Check via Clippy (FIPS, tests)
+      run: cargo clippy ${{ env.CARGO_FEATURES }} --tests -- -D warnings
+
+    - name: Run tests
+      run: cargo test --verbose ${{ env.CARGO_FEATURES }}
+
+    - name: Build release binary
+      run: cargo build --bin static-web-server --release ${{ env.CARGO_FEATURES }}
+
+    - name: Verify binary has FIPS mode enabled
+      run: target/release/static-web-server -V | grep -i "fips"
+
+    - name: Verify binary is statically linked (no aws-lc shared objects)
+      run: |
+        echo "Checking linked libraries..."
+        ldd target/release/static-web-server
+        if ldd target/release/static-web-server | grep -q 'aws_lc'; then
+          echo "ERROR: aws-lc shared library detected -- FIPS module is not statically linked"
+          exit 1
+        fi
+        echo "OK: no aws-lc shared objects found"
+
+  rustdoc:
+    name: FIPS rustdoc check
+    runs-on: ubuntu-24.04
+    env:
+      CARGO_FEATURES: "--no-default-features --features all-fips"
+      RUSTFLAGS: "--cfg tokio_unstable"
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Install nightly toolchain
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        toolchain: nightly
+
+    - name: Install FIPS build dependencies
+      run: sudo apt-get update && sudo apt-get install -y cmake golang libclang-dev
+
+    # Same provider-mutual-exclusion reasoning as the clippy step above:
+    # devel.yml's rustdoc job exercises the ring provider via `--features
+    # all`, so we exercise the FIPS provider here.
+    - name: Rustdoc build (FIPS)
+      run: |
+        cargo +nightly rustdoc --lib -Zrustdoc-map ${{ env.CARGO_FEATURES }} \
+            --config "build.rustflags=[\"--cfg\", \"tokio_unstable\"]" \
+            -Zhost-config -Ztarget-applies-to-host \
+            --config "host.rustflags=[\"--cfg\", \"tokio_unstable\"]" \
+            --config "build.rustdocflags=[\"--cfg\", \"docsrs\", \"--cfg\", \"docsrs\", \"--cfg\", \"tokio_unstable\", \"-Z\", \"unstable-options\", \"--emit=invocation-specific\", \"--cap-lints\", \"warn\", \"--extern-html-root-takes-precedence\"]" \
+            -Zunstable-options -- --document-private-items
