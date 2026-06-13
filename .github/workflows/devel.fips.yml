@@ -7,7 +7,6 @@ on:
       - Cargo.toml
       - src/**
       - tests/**
-      - "Cross.fips.toml"
       - ".github/workflows/devel.fips.yml"
   push:
     branches:
@@ -17,13 +16,12 @@ on:
       - Cargo.toml
       - src/**
       - tests/**
-      - "Cross.fips.toml"
       - ".github/workflows/devel.fips.yml"
 
 jobs:
   test:
     name: FIPS build check
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     env:
       CARGO_FEATURES: "--no-default-features --features all-fips"
       RUSTFLAGS: "--cfg tokio_unstable"
@@ -71,7 +69,7 @@ jobs:
 
   rustdoc:
     name: FIPS rustdoc check
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     env:
       CARGO_FEATURES: "--no-default-features --features all-fips"
       RUSTFLAGS: "--cfg tokio_unstable"

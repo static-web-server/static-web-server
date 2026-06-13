@@ -6,7 +6,7 @@ on:
 
 jobs:
   docker-image-fips-alpine:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     if: contains(github.ref, 'v3.')
     steps:
       -
@@ -67,7 +67,7 @@ jobs:
 
   docker-image-fips-debian:
     needs: ['docker-image-fips-alpine']
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     if: contains(github.ref, 'v3.')
     steps:
       -
@@ -128,7 +128,7 @@ jobs:
 
   docker-image-fips-scratch:
     needs: ['docker-image-fips-alpine']
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
       -
         name: Checkout repository
