@@ -61,7 +61,7 @@ pub(crate) fn pre_process<T>(
         uri_host.push_str(&format!(":{uri_port}"));
     }
     let matched = get_redirection(&uri_host, uri_path, Some(redirects))?;
-    let dest = match replace_placeholders(
+    let mut dest = match replace_placeholders(
         uri_path,
         &matched.source,
         &matched.destination,
@@ -70,6 +70,12 @@ pub(crate) fn pre_process<T>(
         Ok(dest) => dest,
         Err(err) => return handle_error(err, opts, req),
     };
+    if let Some(query) = uri.query() {
+        if !dest.ends_with('?') && !dest.ends_with('&') {
+            dest.push(if dest.contains('?') { '&' } else { '?' });
+        }
+        dest.push_str(query);
+    }
 
     match HeaderValue::from_str(&dest) {
         Ok(loc) => {
@@ -191,6 +197,8 @@ mod tests {
         let r2 = build_placeholder_replacer(&s2);
         let s3 = Regex::new(r"/(prefix/)?(source3)/(.*)").unwrap();
         let r3 = build_placeholder_replacer(&s3);
+        let s4 = Regex::new(r"/source4/(.*)").unwrap();
+        let r4 = build_placeholder_replacer(&s4);
         vec![
             Redirects {
                 host: None,
@@ -212,6 +220,13 @@ mod tests {
                 destination: "/destination3/$2/$3".into(),
                 kind: StatusCode::MOVED_PERMANENTLY,
                 replacer: r3,
+            },
+            Redirects {
+                host: None,
+                source: s4,
+                destination: "/destination4?p=$1".into(),
+                kind: StatusCode::FOUND,
+                replacer: r4,
             },
         ]
     }
@@ -328,6 +343,88 @@ mod tests {
             Some((
                 StatusCode::MOVED_PERMANENTLY,
                 "/destination3/source3/whatever".into()
+            ))
+        );
+
+        assert_eq!(
+            is_redirect(pre_process(
+                &RequestHandlerOpts {
+                    advanced_opts: Some(Advanced {
+                        redirects: Some(get_redirects()),
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                },
+                &make_request("", "/source4/whatever")
+            )),
+            Some((StatusCode::FOUND, "/destination4?p=whatever".into()))
+        );
+    }
+
+    #[test]
+    fn test_query() {
+        assert_eq!(
+            is_redirect(pre_process(
+                &RequestHandlerOpts {
+                    advanced_opts: Some(Advanced {
+                        redirects: Some(get_redirects()),
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                },
+                &make_request("", "/source1?q=query-string")
+            )),
+            Some((StatusCode::FOUND, "/destination1?q=query-string".into()))
+        );
+
+        assert_eq!(
+            is_redirect(pre_process(
+                &RequestHandlerOpts {
+                    advanced_opts: Some(Advanced {
+                        redirects: Some(get_redirects()),
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                },
+                &make_request("example.com", "/source2?q=query-string")
+            )),
+            Some((
+                StatusCode::MOVED_PERMANENTLY,
+                "/destination2?q=query-string".into()
+            ))
+        );
+
+        assert_eq!(
+            is_redirect(pre_process(
+                &RequestHandlerOpts {
+                    advanced_opts: Some(Advanced {
+                        redirects: Some(get_redirects()),
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                },
+                &make_request("example.info", "/source3/whatever?q=query-string")
+            )),
+            Some((
+                StatusCode::MOVED_PERMANENTLY,
+                "/destination3/source3/whatever?q=query-string".into()
+            ))
+        );
+
+        assert_eq!(
+            is_redirect(pre_process(
+                &RequestHandlerOpts {
+                    advanced_opts: Some(Advanced {
+                        redirects: Some(get_redirects()),
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                },
+                &make_request("", "/source4/whatever?q=query-string")
+            )),
+            Some((
+                StatusCode::FOUND,
+                "/destination4?p=whatever&q=query-string".into()
             ))
         );
     }
