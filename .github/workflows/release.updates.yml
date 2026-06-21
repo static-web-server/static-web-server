@@ -34,7 +34,7 @@ jobs:
         with:
           token: ${{ secrets.DOCS_TOKEN }}
           repository: static-web-server/docs
-          event-type: event-docs-v2-update
+          event-type: event-docs-v3-update
           client-payload: '{"ref": "${{ github.ref }}", "sha": "${{ github.sha }}"}'
 
       - name: Post release installer updates
