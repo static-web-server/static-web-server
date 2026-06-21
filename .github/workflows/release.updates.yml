@@ -13,12 +13,12 @@ env:
 
 jobs:
   release_updates:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     if: contains(github.ref, 'v2.')
     environment: release-updates-static-web-server
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: master
 
@@ -29,7 +29,15 @@ jobs:
           echo "version is: ${{ env.SERVER_VERSION }}"
           echo "PR_BRANCH_NAME=release-docs-${{ env.SERVER_VERSION }}-$(date -u '+%d-%m-%Y')" >> $GITHUB_ENV
 
-      - name: Post release updates
+      - name: Dispatch docs update event
+        uses: peter-evans/repository-dispatch@v4
+        with:
+          token: ${{ secrets.DOCS_TOKEN }}
+          repository: static-web-server/docs
+          event-type: event-docs-v2-update
+          client-payload: '{"ref": "${{ github.ref }}", "sha": "${{ github.sha }}"}'
+
+      - name: Post release installer updates
         shell: bash
         env:
           UPLOAD_CHECKSUM: true
@@ -37,7 +45,7 @@ jobs:
         run: |
           scripts/ci/post_release_updates.sh
 
-      - name: Commit post release updates
+      - name: Commit post release installer updates
         shell: bash
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -46,19 +54,17 @@ jobs:
           git config --global user.email '41898282+github-actions[bot]@users.noreply.github.com'
 
           git add scripts/installer.sh
-          git add docs/content/download-and-install.md
-          git add docs/content/download-and-install.template.md
 
           git commit --verbose -m "docs: ${{ env.SERVER_VERSION }} [skip ci]"
           git checkout -b ${{ env.PR_BRANCH_NAME }}
           git push --set-upstream origin --verbose ${{ env.PR_BRANCH_NAME }}
 
-      - name: Create pull request for release updates
+      - name: Create pull request for release installer updates
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh pr create \
-            --title "Post release ${{ env.SERVER_VERSION }} updates" \
+            --title "Post release installer updates ${{ env.SERVER_VERSION }}" \
             --body "An automated PR containing documentation and script installer updates corresponding to the current release \`${{ env.SERVER_VERSION }}\`.<br>See https://static-web-server.net/download-and-install/ for more details." \
             --base "master" \
             --head "${{ env.PR_BRANCH_NAME }}" \
