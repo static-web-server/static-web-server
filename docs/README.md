@@ -1,3 +1,1 @@
-# Build or improve documentation
-
-To build or improve the documentation follow the [building documentation from source](https://static-web-server.net/building-from-source/#building-documentation-from-source) instructions.
+The documentation for this version was moved to [docs v2 repository](https://github.com/static-web-server/docs/tree/master/src/v2).
