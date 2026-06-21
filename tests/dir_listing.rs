@@ -80,8 +80,8 @@ mod tests {
             match static_files::handle(&HandleOpts {
                 method: &method,
                 headers: &HeaderMap::new(),
-                base_path: &root_dir("docs/"),
-                uri_path: "/content/",
+                base_path: &root_dir("tests/fixtures"),
+                uri_path: "/",
                 uri_query: None,
                 #[cfg(feature = "experimental")]
                 memory_cache: None,
@@ -109,7 +109,7 @@ mod tests {
                     let body_str = std::str::from_utf8(&body).unwrap();
                     // directory link should only contain "dir-name/" in a relative way
                     assert_eq!(
-                        body_str.contains(r#"href="features/""#),
+                        body_str.contains(r#"href="markdown/""#),
                         method == Method::GET
                     );
                 }
@@ -127,8 +127,8 @@ mod tests {
             match static_files::handle(&HandleOpts {
                 method: &method,
                 headers: &HeaderMap::new(),
-                base_path: &root_dir("docs/"),
-                uri_path: "/content",
+                base_path: &root_dir("tests/fixtures"),
+                uri_path: "/",
                 uri_query: None,
                 #[cfg(feature = "experimental")]
                 memory_cache: None,
@@ -156,7 +156,7 @@ mod tests {
                     let body_str = std::str::from_utf8(&body).unwrap();
                     // directory link should contain "parent/dir-name/" in a relative way
                     assert_eq!(
-                        body_str.contains(r#"href="content/features/""#),
+                        body_str.contains(r#"href="markdown/""#),
                         method == Method::GET
                     );
                 }
@@ -174,8 +174,8 @@ mod tests {
             match static_files::handle(&HandleOpts {
                 method: &method,
                 headers: &HeaderMap::new(),
-                base_path: &root_dir("docs/"),
-                uri_path: "/README.md",
+                base_path: &root_dir("tests/fixtures/markdown/"),
+                uri_path: "/article.html.md",
                 uri_query: None,
                 #[cfg(feature = "experimental")]
                 memory_cache: None,
