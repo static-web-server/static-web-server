@@ -18,12 +18,20 @@ Consider checking the [list of issues](https://github.com/static-web-server/stat
 - [Submitting a Pull Request](./docs/PULL_REQUESTS.md#submitting-a-pull-request)
 - [Commit Guidelines](./docs/COMMITS.md)
 
+## Using AI assistants
+
+Using an AI assistant to write code, issue descriptions, or PR descriptions is welcome. However, the human author is responsible for understanding the submitted code and defending it in review. A PR whose author cannot discuss the change gets closed.
+
+## Triage
+
+Maintainers close issues and PRs without detailed review when a change does not align with the project's direction, duplicates existing work, or is not worth the time to review. Closures are routine and carry no judgment of the contributor. If you have context that changes the picture, reopen, follow up in the thread, or ping a maintainer in Discord to continue the discussion.
+
 ## Documentation
 
 Improving SWS documentation greatly helps everyone trying to use it.
 
 - The main website documentation is hosted in the repository and can be improved by following [the documentation instructions](https://static-web-server.net/building-from-source/#building-documentation-from-source).
-- The API documentation (rendered at [docs.rs/static-web-server](https://docs.rs/static-web-serve)) is stored as rustdoc comments directly in the source.
+- The API documentation (rendered at [docs.rs/static-web-server](https://docs.rs/static-web-server)) is stored as rustdoc comments directly in the source.
 
 ## Help
 
