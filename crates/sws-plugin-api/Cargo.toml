@@ -1,0 +1,19 @@
+# SPDX-License-Identifier: MIT OR Apache-2.0
+# This file is part of Static Web Server.
+
+[package]
+name = "sws-plugin-api"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.88.0"
+authors = ["Jose Quintana <https://joseluisq.net>"]
+license = "MIT OR Apache-2.0"
+description = "Stable FFI contract and authoring SDK for Static Web Server native plugins."
+repository = "https://github.com/static-web-server/static-web-server"
+homepage = "https://static-web-server.net"
+keywords = ["static-web-server", "plugin", "ffi"]
+categories = ["network-programming", "web-programming::http-server"]
+
+[lib]
+# Plugins depend on this crate as a normal Rust library. It is not itself a
+# dynamic library; only plugin implementations are compiled as `cdylib`.

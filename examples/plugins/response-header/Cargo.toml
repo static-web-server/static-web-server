@@ -1,0 +1,17 @@
+# SPDX-License-Identifier: MIT OR Apache-2.0
+# This file is part of Static Web Server.
+
+[package]
+name = "sws-plugin-response-header"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.88.0"
+license = "MIT OR Apache-2.0"
+publish = false
+
+[lib]
+# Plugins are loaded by the server at runtime as native dynamic libraries.
+crate-type = ["cdylib"]
+
+[dependencies]
+sws-plugin-api = { version = "0.1.0", path = "../../../crates/sws-plugin-api" }
