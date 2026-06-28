@@ -1,0 +1,21 @@
+# SPDX-License-Identifier: MIT OR Apache-2.0
+# This file is part of Static Web Server.
+
+[package]
+name = "sws-plugin-loader"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.88.0"
+authors = ["Jose Quintana <https://joseluisq.net>"]
+license = "MIT OR Apache-2.0"
+description = "Native plugin loader for Static Web Server. Isolates all unsafe FFI from the server crate."
+repository = "https://github.com/static-web-server/static-web-server"
+homepage = "https://static-web-server.net"
+keywords = ["static-web-server", "plugin", "ffi"]
+categories = ["network-programming", "web-programming::http-server"]
+
+[dependencies]
+sws-plugin-api = { version = "0.1.0", path = "../sws-plugin-api" }
+http = "1"
+libloading = "0.8"
+tracing = { version = "0.1", default-features = false }

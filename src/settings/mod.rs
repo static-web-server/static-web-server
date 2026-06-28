@@ -93,6 +93,9 @@ pub struct Advanced {
     pub virtual_hosts: Option<Vec<VirtualHosts>>,
     /// In-memory cache configuration.
     pub memory_cache: Option<MemoryCache>,
+    /// Native plugins to load at startup.
+    #[cfg(feature = "plugins-native")]
+    pub plugins: Option<Vec<crate::plugins::PluginSpec>>,
 }
 
 /// Build an `AhoCorasick` automaton for the placeholder patterns `$0`, `$1`, ..., `$N`
@@ -661,6 +664,15 @@ impl Settings {
                     redirects: redirects_entries,
                     virtual_hosts: vhosts_entries,
                     memory_cache: advanced.memory_cache,
+                    #[cfg(feature = "plugins-native")]
+                    plugins: advanced.plugins.as_ref().map(|list| {
+                        list.iter()
+                            .map(|p| crate::plugins::PluginSpec {
+                                path: p.path.clone(),
+                                config: p.config.clone().unwrap_or_default(),
+                            })
+                            .collect()
+                    }),
                 });
             }
         } else if log_init {

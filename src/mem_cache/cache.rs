@@ -370,6 +370,8 @@ mod tests {
                 redirects: None,
                 virtual_hosts: None,
                 memory_cache: None,
+                #[cfg(feature = "plugins-native")]
+                plugins: None,
             }),
             ..Default::default()
         };
@@ -392,6 +394,8 @@ mod tests {
                     tti: None,
                     max_file_size: None,
                 }),
+                #[cfg(feature = "plugins-native")]
+                plugins: None,
             }),
             ..Default::default()
         };

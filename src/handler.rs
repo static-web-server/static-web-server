@@ -143,6 +143,10 @@ pub struct RequestHandlerOpts {
     /// Custom maintenance mode HTML file.
     pub maintenance_mode_file: PathBuf,
 
+    /// Loaded native plugins.
+    #[cfg(feature = "plugins-native")]
+    pub plugins: Option<crate::plugins::Plugins>,
+
     /// Advanced options from the config file.
     pub advanced_opts: Option<Advanced>,
 }
@@ -197,6 +201,8 @@ impl Default for RequestHandlerOpts {
             maintenance_mode: false,
             maintenance_mode_status: StatusCode::SERVICE_UNAVAILABLE,
             maintenance_mode_file: PathBuf::new(),
+            #[cfg(feature = "plugins-native")]
+            plugins: None,
             advanced_opts: None,
         }
     }
@@ -298,6 +304,12 @@ impl RequestHandler {
                     return result;
                 }
 
+                // Native plugins (pre-processing) may short-circuit the request
+                #[cfg(feature = "plugins-native")]
+                if let Some(result) = crate::plugins::pre_process(&self.opts, req) {
+                    return result;
+                }
+
                 // Advanced options
                 if let Some(advanced) = &self.opts.advanced_opts {
                     // If the "Host" header matches any virtual_host, change the root directory
@@ -391,6 +403,11 @@ impl RequestHandler {
 
                 // Add/update custom headers
                 let resp = custom_headers::post_process(&self.opts, req, resp, file_path.as_ref())?;
+
+                // Native plugins (post-processing) run last so they can amend
+                // the final response
+                #[cfg(feature = "plugins-native")]
+                let resp = crate::plugins::post_process(&self.opts, req, resp)?;
 
                 Ok(resp)
             }

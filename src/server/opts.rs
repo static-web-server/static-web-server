@@ -213,6 +213,19 @@ pub(super) fn init(general: &General, advanced: Option<Advanced>) -> Result<Hand
     #[cfg(feature = "mem-cache")]
     mem_cache::cache::init(&mut handler_opts)?;
 
+    // Native plugins (trusted code, loaded once at startup)
+    #[cfg(feature = "plugins-native")]
+    if let Some(advanced) = &handler_opts.advanced_opts
+        && let Some(specs) = &advanced.plugins
+        && !specs.is_empty()
+    {
+        tracing::warn!(
+            count = specs.len(),
+            "loading native plugins; these run as trusted code with full server privileges"
+        );
+        handler_opts.plugins = Some(crate::plugins::Plugins::load(specs)?);
+    }
+
     Ok(HandlerOptsResult {
         handler_opts,
         #[cfg(feature = "tls")]

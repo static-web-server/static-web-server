@@ -147,6 +147,8 @@ mod tests {
                 redirects: None,
                 virtual_hosts: None,
                 memory_cache,
+                #[cfg(feature = "plugins-native")]
+                plugins: None,
             }),
             ..Default::default()
         };

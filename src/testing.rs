@@ -112,6 +112,8 @@ pub mod fixtures {
             maintenance_mode_file: general.maintenance_mode_file,
             #[cfg(feature = "mem-cache")]
             memory_cache: None,
+            #[cfg(feature = "plugins-native")]
+            plugins: None,
             advanced_opts: advanced,
         }
     }
