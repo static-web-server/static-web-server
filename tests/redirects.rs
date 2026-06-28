@@ -55,6 +55,32 @@ pub mod tests {
     }
 
     #[tokio::test]
+    async fn redirects_query() {
+        let opts = fixture_settings("toml/redirects.toml");
+        let req_handler_opts = fixture_req_handler_opts(opts.general, opts.advanced);
+        let req_handler = fixture_req_handler(req_handler_opts);
+        let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
+
+        let mut req = Request::new(());
+        *req.uri_mut() = "http://localhost/pages/testing.html?q=query-string"
+            .parse()
+            .unwrap();
+
+        match req_handler.handle(&mut req, remote_addr).await {
+            Ok(res) => {
+                assert_eq!(res.status(), 301);
+                assert_eq!(
+                    res.headers()["location"],
+                    "http://localhost:1234/?p=testing&q=query-string"
+                );
+            }
+            Err(err) => {
+                panic!("unexpected error: {err}")
+            }
+        };
+    }
+
+    #[tokio::test]
     async fn redirects_glob_groups_1() {
         let opts = fixture_settings("toml/redirects.toml");
         let req_handler_opts = fixture_req_handler_opts(opts.general, opts.advanced);

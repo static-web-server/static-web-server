@@ -11,6 +11,12 @@ source = "/{*}"
 destination = "http://localhost:1234/$1"
 kind = 301
 
+# Query string tests
+[[advanced.redirects]]
+source = "/pages/{*}.html"
+destination = "http://localhost:1234/?p=$1"
+kind = 301
+
 # Glob groups 1
 [[advanced.redirects]]
 source = "**/main.{css}"
