@@ -70,11 +70,14 @@ pub mod fixtures {
         ))]
         let compression_static = general.compression_static;
 
+        let root_dir = if general.use_relative_root {
+            general.root.clone()
+        } else {
+            general.root.canonicalize().unwrap_or(general.root)
+        };
+
         RequestHandlerOpts {
-            // Canonicalize once for consistency with production startup
-            // (see `server.rs`). The path containment check expects
-            // an already-canonical base.
-            root_dir: general.root.canonicalize().unwrap_or(general.root),
+            root_dir,
             compression,
             compression_static,
             #[cfg(any(
@@ -111,6 +114,7 @@ pub mod fixtures {
             redirect_trailing_slash: general.redirect_trailing_slash,
             ignore_hidden_files: general.ignore_hidden_files,
             disable_symlinks: general.disable_symlinks,
+            use_relative_root: general.use_relative_root,
             accept_markdown: general.accept_markdown,
             text_charset: general.text_charset,
             index_files: general

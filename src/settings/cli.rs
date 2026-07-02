@@ -105,6 +105,19 @@ pub struct General {
     /// Root directory path of static files.
     pub root: PathBuf,
 
+    #[arg(
+        long,
+        default_value = "false",
+        default_missing_value("true"),
+        num_args(0..=1),
+        require_equals(false),
+        action = clap::ArgAction::Set,
+        env = "SERVER_USE_RELATIVE_ROOT",
+    )]
+    /// Resolve the web root directory at request time rather than at startup,
+    /// allowing symlinked root directories to be swapped at runtime.
+    pub use_relative_root: bool,
+
     #[arg(long, default_value = "./50x.html", env = "SERVER_ERROR_PAGE_50X")]
     /// HTML file path for 50x errors. If the path is not specified or simply doesn't exist
     /// then the server will use a generic HTML error message.
