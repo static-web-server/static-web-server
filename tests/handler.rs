@@ -153,4 +153,63 @@ pub mod tests {
             };
         }
     }
+
+    #[cfg(all(feature = "basic-auth", feature = "metrics"))]
+    #[tokio::test]
+    async fn metrics_requires_basic_auth_when_enabled() {
+        let opts = fixture_settings("toml/handler.toml");
+        let mut req_handler_opts = fixture_req_handler_opts(opts.general, opts.advanced);
+        req_handler_opts.basic_auth =
+            "jq:$2y$05$32zazJ1yzhlDHnt26L3MFOgY0HVqPmDUvG0KUx6cjf9RDiUGp/M9q".into();
+        req_handler_opts.metrics_enabled = true;
+        let req_handler = fixture_req_handler(req_handler_opts);
+        let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
+
+        let mut req = Request::default();
+        *req.method_mut() = Method::GET;
+        *req.uri_mut() = "http://localhost/metrics".parse().unwrap();
+
+        match req_handler.handle(&mut req, remote_addr).await {
+            Ok(res) => {
+                assert_eq!(res.status(), 401);
+                assert!(res.headers().get(hyper::header::WWW_AUTHENTICATE).is_some());
+            }
+            Err(err) => {
+                panic!("unexpected error: {err}")
+            }
+        };
+    }
+
+    #[cfg(all(feature = "basic-auth", feature = "metrics"))]
+    #[tokio::test]
+    async fn metrics_allows_valid_basic_auth_when_enabled() {
+        let opts = fixture_settings("toml/handler.toml");
+        let mut req_handler_opts = fixture_req_handler_opts(opts.general, opts.advanced);
+        req_handler_opts.basic_auth =
+            "jq:$2y$05$32zazJ1yzhlDHnt26L3MFOgY0HVqPmDUvG0KUx6cjf9RDiUGp/M9q".into();
+        req_handler_opts.metrics_enabled = true;
+        let req_handler = fixture_req_handler(req_handler_opts);
+        let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
+
+        let mut req = Request::default();
+        *req.method_mut() = Method::GET;
+        *req.uri_mut() = "http://localhost/metrics".parse().unwrap();
+        req.headers_mut().insert(
+            hyper::header::AUTHORIZATION,
+            HeaderValue::from_static("Basic anE6anE="),
+        );
+
+        match req_handler.handle(&mut req, remote_addr).await {
+            Ok(res) => {
+                assert_eq!(res.status(), 200);
+                assert_eq!(
+                    res.headers().get("content-type"),
+                    Some(&HeaderValue::from_static("text/plain; charset=utf-8"))
+                );
+            }
+            Err(err) => {
+                panic!("unexpected error: {err}")
+            }
+        };
+    }
 }
