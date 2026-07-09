@@ -14,7 +14,8 @@ use std::path::Path;
 
 use crate::body::Body;
 use crate::{
-    Error, exts::headers::Accept, fs::meta::try_markdown_variant, handler::RequestHandlerOpts,
+    Error, exts::headers::Accept, fs::meta::try_markdown_variant, fs::path::sanitize_path,
+    handler::RequestHandlerOpts,
 };
 
 /// Pre-process a request to check if a markdown variant URI should be used.
@@ -31,12 +32,8 @@ pub(crate) fn pre_process<T>(req: &Request<T>, base_path: &Path, uri_path: &str)
         return None;
     }
 
-    // Construct the full file path
-    let mut file_path = base_path.to_path_buf();
-    let sanitized_path = uri_path.trim_start_matches('/');
-    if !sanitized_path.is_empty() {
-        file_path.push(sanitized_path);
-    }
+    // Sanitize the URI path before touching the filesystem
+    let file_path = sanitize_path(base_path, uri_path).ok()?;
 
     // Try to find a markdown variant
     let md_path = try_markdown_variant(&file_path)?;
@@ -121,5 +118,31 @@ mod tests {
         let result = pre_process(&req, base_path, "/test");
 
         assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_markdown_pre_process_rejects_traversal() {
+        let tmp_dir = tempfile::tempdir().unwrap();
+        let base_dir = tmp_dir.path().join("base");
+        std::fs::create_dir(&base_dir).unwrap();
+
+        // Create a markdown file outside the base directory
+        let outside_md = tmp_dir.path().join("outside.md");
+        std::fs::write(&outside_md, "outside").unwrap();
+
+        let req = Request::builder()
+            .method("GET")
+            .uri("http://localhost/../outside")
+            .header("Accept", "text/markdown")
+            .body(crate::body::empty())
+            .unwrap();
+
+        // A request with `../` must not probe files outside the base directory
+        let result = pre_process(&req, &base_dir, "/../outside");
+        assert!(
+            result.is_none(),
+            "markdown pre_process should not resolve paths outside the base directory, got {:?}",
+            result
+        );
     }
 }
