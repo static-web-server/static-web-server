@@ -395,7 +395,7 @@ pub mod tests {
     }
 
     #[tokio::test]
-    async fn markdown_enabled_404_when_no_variant() {
+    async fn markdown_enabled_traversal_returns_404() {
         let opts = fixture_settings("toml/markdown_enabled.toml");
         let req_handler_opts = fixture_req_handler_opts(opts.general, opts.advanced);
         let req_handler = fixture_req_handler(req_handler_opts);
@@ -403,7 +403,8 @@ pub mod tests {
 
         let mut req = Request::new(());
         *req.method_mut() = hyper::Method::GET;
-        *req.uri_mut() = "http://localhost/nonexistent".parse().unwrap();
+        // Attempt to escape the document root and probe for a file outside it.
+        *req.uri_mut() = "http://localhost/../README.md".parse().unwrap();
         req.headers_mut().insert(
             hyper::header::ACCEPT,
             HeaderValue::from_static("text/markdown"),
@@ -411,7 +412,61 @@ pub mod tests {
 
         match req_handler.handle(&mut req, remote_addr).await {
             Ok(res) => {
-                // Should return 404 when no markdown variant exists
+                // The markdown pre-processor must sanitize the path; the
+                // request falls through to the static file handler and
+                // returns 404.
+                assert_eq!(res.status(), 404);
+            }
+            Err(err) => {
+                panic!("unexpected error: {err}")
+            }
+        };
+    }
+
+    #[tokio::test]
+    async fn markdown_enabled_percent_encoded_traversal_returns_404() {
+        let opts = fixture_settings("toml/markdown_enabled.toml");
+        let req_handler_opts = fixture_req_handler_opts(opts.general, opts.advanced);
+        let req_handler = fixture_req_handler(req_handler_opts);
+        let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
+
+        let mut req = Request::new(());
+        *req.method_mut() = hyper::Method::GET;
+        *req.uri_mut() = "http://localhost/%2e%2e/%2e%2e/CHANGELOG.md"
+            .parse()
+            .unwrap();
+        req.headers_mut().insert(
+            hyper::header::ACCEPT,
+            HeaderValue::from_static("text/markdown"),
+        );
+
+        match req_handler.handle(&mut req, remote_addr).await {
+            Ok(res) => {
+                assert_eq!(res.status(), 404);
+            }
+            Err(err) => {
+                panic!("unexpected error: {err}")
+            }
+        };
+    }
+
+    #[tokio::test]
+    async fn markdown_enabled_hidden_file_returns_404() {
+        let opts = fixture_settings("toml/markdown_enabled.toml");
+        let req_handler_opts = fixture_req_handler_opts(opts.general, opts.advanced);
+        let req_handler = fixture_req_handler(req_handler_opts);
+        let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
+
+        let mut req = Request::new(());
+        *req.method_mut() = hyper::Method::GET;
+        *req.uri_mut() = "http://localhost/.dotfile".parse().unwrap();
+        req.headers_mut().insert(
+            hyper::header::ACCEPT,
+            HeaderValue::from_static("text/markdown"),
+        );
+
+        match req_handler.handle(&mut req, remote_addr).await {
+            Ok(res) => {
                 assert_eq!(res.status(), 404);
             }
             Err(err) => {
