@@ -55,6 +55,37 @@ mod tests {
         std::os::unix::fs::symlink(target, link)
     }
 
+    #[cfg(windows)]
+    fn symlink_dir(target: &Path, link: &Path) -> std::io::Result<()> {
+        // Directory junctions do not require admin privileges or Developer Mode,
+        // making them a portable way to create directory links on Windows.
+        let output = std::process::Command::new("cmd")
+            .args([
+                "/c",
+                "mklink",
+                "/J",
+                &link.to_string_lossy(),
+                &target.to_string_lossy(),
+            ])
+            .output()?;
+        if !output.status.success() {
+            return Err(std::io::Error::other(String::from_utf8_lossy(
+                &output.stderr,
+            )));
+        }
+        Ok(())
+    }
+
+    #[cfg(unix)]
+    fn remove_symlink_dir(link: &Path) -> std::io::Result<()> {
+        fs::remove_file(link)
+    }
+
+    #[cfg(windows)]
+    fn remove_symlink_dir(link: &Path) -> std::io::Result<()> {
+        fs::remove_dir(link)
+    }
+
     fn write_index(dir: &Path, body: &str) {
         fs::create_dir_all(dir).unwrap();
         fs::write(dir.join("index.html"), body).unwrap();
@@ -143,7 +174,6 @@ mod tests {
     // Startup wiring: `root_dir` stays non-canonical when the flag is
     // enabled and is canonicalized when it is disabled.
 
-    #[cfg(unix)]
     #[test]
     fn root_dir_is_not_canonicalized_when_flag_is_on() {
         let tmp = TempDir::new("root-noncan");
@@ -175,7 +205,6 @@ mod tests {
         assert!(opts.use_relative_root, "flag must round-trip into opts");
     }
 
-    #[cfg(unix)]
     #[test]
     fn root_dir_is_canonicalized_when_flag_is_off() {
         let tmp = TempDir::new("root-can");
@@ -203,7 +232,6 @@ mod tests {
 
     // End-to-end serving through a symlinked root.
 
-    #[cfg(unix)]
     #[tokio::test]
     async fn serves_files_through_symlinked_root_when_flag_is_on() {
         let tmp = TempDir::new("serve-symlink");
@@ -240,7 +268,6 @@ mod tests {
     //   the root was canonicalized at startup and pinned to the
     //   original inode.
 
-    #[cfg(unix)]
     #[tokio::test]
     async fn runtime_symlink_swap_is_observed_when_flag_is_on() {
         let tmp = TempDir::new("swap-on");
@@ -270,7 +297,7 @@ mod tests {
         assert_eq!(&body[..], b"BLUE");
 
         // Atomic swap: replace the symlink so it points at `green`.
-        fs::remove_file(&link).unwrap();
+        remove_symlink_dir(&link).unwrap();
         symlink_dir(&green, &link).unwrap();
 
         let (status, body) = get(&handler, "http://localhost/index.html").await;
@@ -282,7 +309,6 @@ mod tests {
         );
     }
 
-    #[cfg(unix)]
     #[tokio::test]
     async fn runtime_symlink_swap_is_ignored_when_flag_is_off() {
         let tmp = TempDir::new("swap-off");
@@ -305,7 +331,7 @@ mod tests {
         assert_eq!(status, 200);
         assert_eq!(&body[..], b"BLUE");
 
-        fs::remove_file(&link).unwrap();
+        remove_symlink_dir(&link).unwrap();
         symlink_dir(&green, &link).unwrap();
 
         // The root was canonicalized at startup, so the pre-swap target
@@ -321,7 +347,6 @@ mod tests {
 
     // Path traversal defense against a non-canonical base.
 
-    #[cfg(unix)]
     #[tokio::test]
     async fn path_traversal_is_still_rejected_when_flag_is_on() {
         let tmp = TempDir::new("traversal");
