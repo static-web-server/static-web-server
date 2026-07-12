@@ -221,7 +221,13 @@ impl Server {
         // so further checks can compare against a precomputed canonical base
         // without paying a `canonicalize` syscall on every request.
         // Falls back to the validated path if canonicalization fails.
-        let root_dir = root_dir.canonicalize().unwrap_or(root_dir);
+        // NOTE: When `use_relative_root` is enabled, canonicalization is skipped
+        // so that symlinked root directories are resolved at request time.
+        let root_dir = if general.use_relative_root {
+            root_dir
+        } else {
+            root_dir.canonicalize().unwrap_or(root_dir)
+        };
 
         // Custom HTML error page files
         // NOTE: in the case of relative paths, they're joined to the root directory
@@ -273,6 +279,10 @@ impl Server {
         let disable_symlinks = general.disable_symlinks;
         tracing::info!("disable symlinks: enabled={}", disable_symlinks);
 
+        // Use relative root option
+        let use_relative_root = general.use_relative_root;
+        tracing::info!("use relative root: enabled={}", use_relative_root);
+
         // Default charset for text/* responses
         let default_text_charset = general.text_charset;
         tracing::info!("text charset: enabled={default_text_charset}");
@@ -304,6 +314,7 @@ impl Server {
             redirect_trailing_slash,
             ignore_hidden_files,
             disable_symlinks,
+            use_relative_root,
             accept_markdown: general.accept_markdown,
             text_charset: general.text_charset,
             index_files,

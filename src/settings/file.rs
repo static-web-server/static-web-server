@@ -368,6 +368,9 @@ pub struct General {
     /// Prevent following symbolic links of files or directories.
     pub disable_symlinks: Option<bool>,
 
+    /// Resolve the web root directory at request time rather than at startup.
+    pub use_relative_root: Option<bool>,
+
     /// Health endpoint feature.
     pub health: Option<bool>,
 
