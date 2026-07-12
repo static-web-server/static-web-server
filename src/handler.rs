@@ -123,6 +123,8 @@ pub struct RequestHandlerOpts {
     pub ignore_hidden_files: bool,
     /// Prevent following symlinks for files and directories.
     pub disable_symlinks: bool,
+    /// Resolve the web root directory at request time rather than at startup.
+    pub use_relative_root: bool,
     /// Accept markdown content negotiation feature.
     pub accept_markdown: bool,
     /// Default `charset=utf-8` parameter applied to certain `text` responses without one.
@@ -184,6 +186,7 @@ impl Default for RequestHandlerOpts {
             redirect_trailing_slash: true,
             ignore_hidden_files: false,
             disable_symlinks: false,
+            use_relative_root: false,
             accept_markdown: false,
             text_charset: true,
             health: false,

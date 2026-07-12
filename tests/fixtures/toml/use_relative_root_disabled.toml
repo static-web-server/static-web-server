@@ -1,0 +1,4 @@
+[general]
+
+root = "docker/public"
+use-relative-root = false
