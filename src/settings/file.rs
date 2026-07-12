@@ -391,6 +391,9 @@ pub struct General {
     /// Follow symbolic links when serving files or directories.
     pub follow_symlinks: Option<bool>,
 
+    /// Resolve the web root directory at request time rather than at startup.
+    pub use_relative_root: Option<bool>,
+
     /// Health endpoint feature.
     pub health: Option<bool>,
 

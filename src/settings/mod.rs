@@ -221,6 +221,7 @@ impl Settings {
         let mut redirect_trailing_slash = opts.redirect_trailing_slash;
         let mut include_hidden = opts.include_hidden;
         let mut follow_symlinks = opts.follow_symlinks;
+        let mut use_relative_root = opts.use_relative_root;
         let mut accept_markdown = opts.accept_markdown;
         let mut text_charset = opts.text_charset;
         let mut index_files = opts.index_files;
@@ -435,6 +436,9 @@ impl Settings {
                 if let Some(v) = general.follow_symlinks {
                     follow_symlinks = v
                 }
+                if let Some(v) = general.use_relative_root {
+                    use_relative_root = v
+                }
                 if let Some(v) = general.health {
                     health = v
                 }
@@ -502,7 +506,7 @@ impl Settings {
                                 .with_context(|| {
                                     format!(
                                         "can not compile glob pattern for header source: {}",
-                                        &headers_entry.source
+                                        headers_entry.source
                                     )
                                 })?
                                 .compile_matcher();
@@ -530,7 +534,7 @@ impl Settings {
                                 .with_context(|| {
                                     format!(
                                         "can not compile glob pattern for rewrite source: {}",
-                                        &rewrites_entry.source
+                                        rewrites_entry.source
                                     )
                                 })?
                                 .compile_matcher();
@@ -552,7 +556,7 @@ impl Settings {
                             let source = Regex::new(&pattern).with_context(|| {
                                     format!(
                                         "can not compile regex pattern equivalent for rewrite source: {}",
-                                        &pattern
+                                        pattern
                                     )
                                 })?;
 
@@ -582,7 +586,7 @@ impl Settings {
                                 .with_context(|| {
                                     format!(
                                         "can not compile glob pattern for redirect source: {}",
-                                        &redirects_entry.source
+                                        redirects_entry.source
                                     )
                                 })?
                                 .compile_matcher();
@@ -604,7 +608,7 @@ impl Settings {
                             let source = Regex::new(&pattern).with_context(|| {
                                     format!(
                                         "can not compile regex pattern equivalent for redirect source: {}",
-                                        &pattern
+                                        pattern
                                     )
                                 })?;
 
@@ -637,8 +641,13 @@ impl Settings {
                                     .with_context(|| "root directory for virtual host was not found or inaccessible")?;
                                 // Canonicalize once so the per-request
                                 // containment check can skip a `canonicalize`
-                                // syscall (see `static_files::security`).
-                                let root_dir = root_dir.canonicalize().unwrap_or(root_dir);
+                                // syscall (see `static_files::security`), unless
+                                // `use_relative_root` is enabled.
+                                let root_dir = if use_relative_root {
+                                    root_dir
+                                } else {
+                                    root_dir.canonicalize().unwrap_or(root_dir)
+                                };
                                 tracing::debug!(
                                     "added virtual host: {} -> {}",
                                     vhosts_entry.host,
@@ -777,6 +786,7 @@ impl Settings {
                 redirect_trailing_slash,
                 include_hidden,
                 follow_symlinks,
+                use_relative_root,
                 accept_markdown,
                 text_charset,
                 index_files,

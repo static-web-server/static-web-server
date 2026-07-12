@@ -65,7 +65,13 @@ pub(super) fn init(general: &General, advanced: Option<Advanced>) -> Result<Hand
     // so further checks can compare against a precomputed canonical base
     // without paying a `canonicalize` syscall on every request.
     // Falls back to the validated path if canonicalization fails.
-    let root_dir = root_dir.canonicalize().unwrap_or(root_dir);
+    // NOTE: When `use_relative_root` is enabled, canonicalization is skipped
+    // so that symlinked root directories are resolved at request time.
+    let root_dir = if general.use_relative_root {
+        root_dir
+    } else {
+        root_dir.canonicalize().unwrap_or(root_dir)
+    };
 
     // Resolve the 404 error page path relative to root when needed
     let mut page404 = general.page404.clone();
@@ -97,6 +103,7 @@ pub(super) fn init(general: &General, advanced: Option<Advanced>) -> Result<Hand
     );
     tracing::info!(enabled = general.include_hidden, "include hidden files");
     tracing::info!(enabled = general.follow_symlinks, "follow symlinks");
+    tracing::info!(enabled = general.use_relative_root, "use relative root");
 
     // Default charset for text/* responses
     let default_text_charset = general.text_charset;
@@ -124,6 +131,7 @@ pub(super) fn init(general: &General, advanced: Option<Advanced>) -> Result<Hand
         redirect_trailing_slash: general.redirect_trailing_slash,
         include_hidden: general.include_hidden,
         follow_symlinks: general.follow_symlinks,
+        use_relative_root: general.use_relative_root,
         accept_markdown: general.accept_markdown,
         text_charset: general.text_charset,
         index_files,
