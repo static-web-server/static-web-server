@@ -467,7 +467,7 @@ impl Settings {
                                 .with_context(|| {
                                     format!(
                                         "can not compile glob pattern for header source: {}",
-                                        &headers_entry.source
+                                        headers_entry.source
                                     )
                                 })?
                                 .compile_matcher();
@@ -495,7 +495,7 @@ impl Settings {
                                 .with_context(|| {
                                     format!(
                                         "can not compile glob pattern for rewrite source: {}",
-                                        &rewrites_entry.source
+                                        rewrites_entry.source
                                     )
                                 })?
                                 .compile_matcher();
@@ -517,7 +517,7 @@ impl Settings {
                             let source = Regex::new(&pattern).with_context(|| {
                                     format!(
                                         "can not compile regex pattern equivalent for rewrite source: {}",
-                                        &pattern
+                                        pattern
                                     )
                                 })?;
 
@@ -547,7 +547,7 @@ impl Settings {
                                 .with_context(|| {
                                     format!(
                                         "can not compile glob pattern for redirect source: {}",
-                                        &redirects_entry.source
+                                        redirects_entry.source
                                     )
                                 })?
                                 .compile_matcher();
@@ -569,7 +569,7 @@ impl Settings {
                             let source = Regex::new(&pattern).with_context(|| {
                                     format!(
                                         "can not compile regex pattern equivalent for redirect source: {}",
-                                        &pattern
+                                        pattern
                                     )
                                 })?;
 
