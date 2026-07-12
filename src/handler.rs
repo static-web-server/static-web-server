@@ -269,12 +269,6 @@ impl RequestHandler {
                     return result;
                 }
 
-                // Metrics endpoint check
-                #[cfg(feature = "metrics")]
-                if let Some(result) = metrics::pre_process(&self.opts, req) {
-                    return result;
-                }
-
                 // CORS
                 if let Some(result) = cors::pre_process(&self.opts, req) {
                     return result;
@@ -284,6 +278,12 @@ impl RequestHandler {
                 #[cfg(feature = "basic-auth")]
                 if let Some(response) = basic_auth::pre_process(&self.opts, req) {
                     return response;
+                }
+
+                // Metrics endpoint check
+                #[cfg(feature = "metrics")]
+                if let Some(result) = metrics::pre_process(&self.opts, req) {
+                    return result;
                 }
 
                 // Maintenance Mode
