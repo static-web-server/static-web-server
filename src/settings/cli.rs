@@ -320,7 +320,7 @@ pub struct General {
     /// Canonical host name or IP of the HTTPS server. It depends on "https_redirect" to be enabled.
     pub https_redirect_host: String,
 
-    #[arg(long, default_value = "80", env = "SERVER_HTTPS_REDIRECT_FROM_PORT")]
+    #[arg(long, default_value = "8787", env = "SERVER_HTTPS_REDIRECT_FROM_PORT")]
     #[cfg(feature = "tls")]
     #[cfg_attr(docsrs, doc(cfg(feature = "tls")))]
     /// HTTP host port where the redirect server will listen for requests to redirect them to HTTPS. It depends on "https_redirect" to be enabled.

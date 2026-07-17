@@ -9,7 +9,7 @@ LABEL version="${SERVER_VERSION}" \
 COPY ./docker/devel/static-web-server /
 COPY ./docker/public /public
 
-EXPOSE 80
+EXPOSE 8787
 
 STOPSIGNAL SIGQUIT
 
