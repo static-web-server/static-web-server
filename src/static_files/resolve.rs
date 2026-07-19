@@ -92,10 +92,20 @@ pub(super) fn file_metadata<'a>(
             // was never confirmed on disk wastes one `stat(2)` per
             // configured encoding on the request hot path
             // (see issue #617).
-            let precompressed_variant = (compression_static && resolved_exists)
+            let precompressed = (compression_static && resolved_exists)
                 .then(|| compression_static::precompressed_variant(file_path, headers))
-                .flatten()
-                .map(|p| (p.file_path, p.encoding));
+                .flatten();
+
+            // When a pre-compressed variant is selected, expose the VARIANT's
+            // metadata, as documented on `FileMetadata::metadata`. Otherwise
+            // the response body is bounded by the ORIGINAL file's length, and
+            // any variant larger than its original (typical for tiny files,
+            // where compression overhead dominates) gets truncated mid-stream
+            // (see issue #721).
+            if let Some(ref variant) = precompressed {
+                metadata = variant.metadata.clone();
+            }
+            let precompressed_variant = precompressed.map(|p| (p.file_path, p.encoding));
 
             // If we are going to serve a precompressed variant, the
             // pre-opened file points to the *original* file which won't be
@@ -133,14 +143,21 @@ pub(super) fn file_metadata<'a>(
 
             // The `.html` sibling exists. Only now is it worth probing for
             // its pre-compressed sibling (`/article.html.br`, etc.).
-            let precompressed_variant = compression_static
+            let precompressed = compression_static
                 .then(|| compression_static::precompressed_variant(file_path, headers))
-                .flatten()
-                .map(|p| (p.file_path, p.encoding));
+                .flatten();
+
+            // Same as above: honor the `FileMetadata::metadata` contract for
+            // pre-compressed variants (see issue #721).
+            let metadata = match precompressed {
+                Some(ref variant) => variant.metadata.clone(),
+                None => new_meta,
+            };
+            let precompressed_variant = precompressed.map(|p| (p.file_path, p.encoding));
 
             Ok(FileMetadata {
                 file_path,
-                metadata: new_meta,
+                metadata,
                 is_dir: false,
                 precompressed_variant,
                 file: None,
