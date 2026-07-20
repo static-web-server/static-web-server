@@ -448,4 +448,63 @@ mod tests {
             Err(err) => panic!("unexpected error: {err}"),
         }
     }
+
+    // Regression test for https://github.com/static-web-server/static-web-server/issues/721
+    // The response body must be the WHOLE pre-compressed variant, even when
+    // the variant is LARGER than the original file (typical for tiny files,
+    // where compression overhead dominates). The body used to be truncated
+    // to the original file's length.
+    #[tokio::test]
+    async fn compression_static_variant_larger_than_original() {
+        let archive_path = PathBuf::from("tests/fixtures/public/assets/tiny.js.br");
+        let archive_buf =
+            std::fs::read(&archive_path).expect("unexpected error when reading archive file");
+        let archive_buf = Bytes::from(archive_buf);
+
+        let original_len = std::fs::metadata("tests/fixtures/public/assets/tiny.js")
+            .expect("unexpected error when reading the original file metadata")
+            .len();
+        assert!(
+            archive_buf.len() as u64 > original_len,
+            "the fixture must keep the variant larger than the original"
+        );
+
+        let opts = fixture_settings("toml/handler_fixtures.toml");
+        let general = General {
+            compression_static: true,
+            etag: true,
+            ..opts.general
+        };
+        let req_handler_opts = fixture_req_handler_opts(general, opts.advanced);
+        let req_handler = fixture_req_handler(req_handler_opts);
+
+        let mut req = Request::new(());
+        *req.method_mut() = hyper::Method::GET;
+        *req.uri_mut() = "http://localhost/assets/tiny.js".parse().unwrap();
+        req.headers_mut().insert(
+            http::header::ACCEPT_ENCODING,
+            "gzip, deflate, br".parse().unwrap(),
+        );
+
+        let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
+        match req_handler.handle(&mut req, remote_addr).await {
+            Ok(res) => {
+                assert_eq!(res.status(), 200);
+                assert_eq!(res.headers()["content-encoding"], "br");
+
+                let body = res
+                    .into_body()
+                    .collect()
+                    .await
+                    .expect("unexpected bytes error during `body` conversion")
+                    .to_bytes();
+
+                assert_eq!(
+                    body, archive_buf,
+                    "body must be the complete pre-compressed variant"
+                );
+            }
+            Err(err) => panic!("unexpected error: {err}"),
+        };
+    }
 }
