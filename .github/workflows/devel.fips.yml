@@ -94,5 +94,5 @@ jobs:
             --config "build.rustflags=[\"--cfg\", \"tokio_unstable\"]" \
             -Zhost-config -Ztarget-applies-to-host \
             --config "host.rustflags=[\"--cfg\", \"tokio_unstable\"]" \
-            --config "build.rustdocflags=[\"--cfg\", \"docsrs\", \"--cfg\", \"docsrs\", \"--cfg\", \"tokio_unstable\", \"-Z\", \"unstable-options\", \"--emit=invocation-specific\", \"--cap-lints\", \"warn\", \"--extern-html-root-takes-precedence\"]" \
+            --config "build.rustdocflags=[\"--cfg\", \"docsrs\", \"--cfg\", \"docsrs\", \"--cfg\", \"tokio_unstable\", \"-Z\", \"unstable-options\", \"--cap-lints\", \"warn\", \"--extern-html-root-takes-precedence\"]" \
             -Zunstable-options -- --document-private-items
