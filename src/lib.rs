@@ -164,6 +164,9 @@ pub(crate) mod markdown;
 pub mod mem_cache;
 #[cfg(feature = "metrics")]
 pub(crate) mod metrics;
+#[cfg(feature = "plugins-native")]
+#[cfg_attr(docsrs, doc(cfg(feature = "plugins-native")))]
+pub mod plugins;
 pub mod redirects;
 pub(crate) mod response;
 pub mod rewrites;

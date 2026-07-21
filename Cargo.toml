@@ -40,11 +40,11 @@ doc = false
 # All features enabled by default
 default = ["compression", "http2", "tls-ring", "directory-listing", "directory-listing-download", "basic-auth", "fallback-page", "metrics", "mem-cache"]
 # Include all features (used when building SWS binaries)
-all = ["default", "experimental"]
+all = ["default", "experimental", "plugins-native"]
 # Default feature set with the FIPS crypto provider in place of ring.
 default-fips = ["compression", "http2", "tls-fips", "directory-listing", "directory-listing-download", "basic-auth", "fallback-page", "metrics", "mem-cache"]
 # All features with the FIPS crypto provider (used when building FIPS SWS binaries).
-all-fips = ["default-fips", "experimental"]
+all-fips = ["default-fips", "experimental", "plugins-native"]
 # TLS base plumbing -- gates all TLS code via cfg(feature = "tls").
 # Does not select a crypto provider on its own.
 tls = ["tokio-rustls", "rustls-pki-types", "tokio-rustls/logging", "tokio-rustls/tls12"]
@@ -72,6 +72,8 @@ fallback-page = []
 metrics = ["prometheus"]
 # In-memory file cache with LFU admission and LRU eviction
 mem-cache = ["compact_str", "mini-moka"]
+# Native dynamic-library plugins (trusted code, loaded at startup)
+plugins-native = ["dep:sws-plugin-loader"]
 # Experimental features (requires: `RUSTFLAGS="--cfg tokio_unstable"`)
 experimental = ["metrics", "tokio-metrics-collector"]
 
@@ -111,6 +113,7 @@ serde_ignored = "0.1"
 serde_json = "1.0"
 serde_repr = "0.1"
 shadow-rs = "1.4.0"
+sws-plugin-loader = { version = "0.1.0", path = "crates/sws-plugin-loader", optional = true }
 tokio = { version = "1", default-features = false, features = ["rt-multi-thread", "macros", "fs", "io-util", "net", "signal"] }
 tokio-rustls = { version = "0.26", optional = true, default-features = false }
 tokio-util = { version = "0.7", default-features = false, features = ["io", "compat"] }

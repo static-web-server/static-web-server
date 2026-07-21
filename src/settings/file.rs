@@ -179,6 +179,16 @@ pub struct MemoryCache {
     pub max_file_size: Option<u64>,
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "kebab-case")]
+/// Represents a native plugin to load at startup.
+pub struct Plugin {
+    /// Path to the plugin shared library (`.so`/`.dll`/`.dylib`).
+    pub path: PathBuf,
+    /// Optional opaque configuration string passed to the plugin.
+    pub config: Option<String>,
+}
+
 /// Advanced server options only available in configuration file mode.
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "kebab-case")]
@@ -193,6 +203,8 @@ pub struct Advanced {
     pub virtual_hosts: Option<Vec<VirtualHosts>>,
     /// In-memory cache feature.
     pub memory_cache: Option<MemoryCache>,
+    /// Native plugins to load at startup.
+    pub plugins: Option<Vec<Plugin>>,
 }
 
 /// General server options available in configuration file mode.
