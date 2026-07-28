@@ -359,7 +359,7 @@ impl Server {
 
         // `Basic` HTTP Authentication Schema option
         #[cfg(feature = "basic-auth")]
-        basic_auth::init(&general.basic_auth, &mut handler_opts);
+        basic_auth::init(&general.basic_auth, &mut handler_opts)?;
 
         // Maintenance mode option
         maintenance_mode::init(

@@ -6,19 +6,53 @@
 //! Basic HTTP Authorization Schema module.
 //!
 
-use bcrypt::verify as bcrypt_verify;
+use bcrypt::non_truncating_verify as bcrypt_verify;
 use headers::{Authorization, HeaderMap, HeaderMapExt, authorization::Basic};
 use hyper::{Body, Request, Response, StatusCode, header::WWW_AUTHENTICATE};
 
 use crate::{Error, error_page, handler::RequestHandlerOpts, http_ext::MethodExt};
 
+const BCRYPT_MAX_PASSWORD_BYTES: usize = 72;
+
 /// Initializes `Basic` HTTP Authorization handling
-pub(crate) fn init(credentials: &str, handler_opts: &mut RequestHandlerOpts) {
+pub(crate) fn init(credentials: &str, handler_opts: &mut RequestHandlerOpts) -> crate::Result<()> {
     credentials.trim().clone_into(&mut handler_opts.basic_auth);
     tracing::info!(
         "basic authentication: enabled={}",
         !handler_opts.basic_auth.is_empty()
     );
+
+    if handler_opts.basic_auth.is_empty() {
+        return Ok(());
+    }
+
+    let Some((user_id, password_hash)) = handler_opts.basic_auth.split_once(':') else {
+        bail!("basic authentication credentials must be in the form `user_id:password_hash`");
+    };
+
+    if user_id.is_empty() {
+        bail!("basic authentication user ID is empty");
+    }
+    if password_hash.is_empty() {
+        bail!("basic authentication password hash is empty");
+    }
+
+    if let Err(err) = validate_hash(password_hash) {
+        bail!("basic authentication configured bcrypt hash is invalid: {err}");
+    }
+
+    tracing::warn!(
+        "basic authentication: bcrypt is limited to {BCRYPT_MAX_PASSWORD_BYTES} bytes per password; \
+         use ASCII-only passwords of {BCRYPT_MAX_PASSWORD_BYTES} characters or fewer to avoid authentication failures"
+    );
+
+    Ok(())
+}
+
+/// Validates that a configured bcrypt hash is well-formed.
+fn validate_hash(hash: &str) -> bcrypt::BcryptResult<()> {
+    bcrypt::non_truncating_verify("", hash)?;
+    Ok(())
 }
 
 /// Handles `Basic` HTTP Authorization Schema
@@ -75,18 +109,28 @@ pub fn check_request(headers: &HeaderMap, userid: &str, password: &str) -> Resul
         .ok_or(StatusCode::UNAUTHORIZED)?;
 
     let user_match = credentials.0.username() == userid;
-    let password_match = bcrypt_verify(credentials.0.password(), password)
-        .inspect_err(|err| tracing::error!("bcrypt password verification error: {:?}", err))
-        .unwrap_or(false);
+    let password_match = match bcrypt_verify(credentials.0.password(), password) {
+        Ok(matched) => matched,
+        Err(bcrypt::BcryptError::Truncation(len)) => {
+            tracing::warn!(
+                "basic auth password exceeds the bcrypt {BCRYPT_MAX_PASSWORD_BYTES}-byte limit ({len} bytes), returning 401"
+            );
+            false
+        }
+        Err(err) => {
+            tracing::error!("bcrypt password verification error: {:?}", err);
+            false
+        }
+    };
     let valid = user_match && password_match;
     valid.then_some(()).ok_or(StatusCode::UNAUTHORIZED)
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{check_request, pre_process};
+    use super::{check_request, init, pre_process};
     use crate::{Error, handler::RequestHandlerOpts};
-    use headers::HeaderMap;
+    use headers::{Authorization, HeaderMap, HeaderMapExt};
     use hyper::{Body, Request, Response, StatusCode, header::WWW_AUTHENTICATE};
 
     fn make_request(method: &str, auth_header: &str) -> Request<Body> {
@@ -137,6 +181,22 @@ mod tests {
             },
             &make_request("GET", "Basic anE6anE=")
         )));
+    }
+
+    #[test]
+    fn test_init_with_valid_auth_configuration() {
+        let mut handler_opts = RequestHandlerOpts::default();
+        let hash = "$2y$05$32zazJ1yzhlDHnt26L3MFOgY0HVqPmDUvG0KUx6cjf9RDiUGp/M9q";
+
+        assert!(init(&format!("jq:{hash}"), &mut handler_opts).is_ok());
+        assert_eq!(handler_opts.basic_auth, format!("jq:{hash}"));
+    }
+
+    #[test]
+    fn test_init_with_invalid_auth_hash() {
+        let mut handler_opts = RequestHandlerOpts::default();
+
+        assert!(init("jq:not-a-bcrypt-hash", &mut handler_opts).is_err());
     }
 
     #[test]
@@ -300,5 +360,20 @@ mod tests {
             },
             &make_request("GET", "abcd")
         )));
+    }
+
+    #[test]
+    fn test_bcrypt_password_truncation_rejected() {
+        let password_71 = "a".repeat(71);
+        let password_72 = password_71.clone() + "x";
+        let hash = bcrypt::hash(&password_71, 4).unwrap();
+
+        let mut headers = HeaderMap::new();
+        headers.typed_insert(Authorization::basic("jq", &password_71));
+        assert!(check_request(&headers, "jq", &hash).is_ok());
+
+        let mut headers = HeaderMap::new();
+        headers.typed_insert(Authorization::basic("jq", &password_72));
+        assert!(check_request(&headers, "jq", &hash).is_err());
     }
 }
