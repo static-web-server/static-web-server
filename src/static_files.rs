@@ -77,7 +77,10 @@ thread_local! {
         RefCell::new(HashSet::with_capacity(64));
 }
 
-#[cfg(test)]
+// Setters and counters are only exercised by the Unix-only test module below.
+// Keep the run hooks and the counter increment on all `cfg(test)` builds so the
+// production paths still compile under `cargo test` on non-Unix hosts.
+#[cfg(all(test, unix))]
 fn set_file_open_race_hook(hook: impl FnOnce() + 'static) {
     FILE_OPEN_RACE_HOOK.with(|slot| *slot.borrow_mut() = Some(Box::new(hook)));
 }
@@ -91,7 +94,7 @@ fn run_file_open_race_hook() {
     });
 }
 
-#[cfg(test)]
+#[cfg(all(test, unix))]
 fn set_pre_file_open_race_hook(hook: impl FnOnce() + 'static) {
     PRE_FILE_OPEN_RACE_HOOK.with(|slot| *slot.borrow_mut() = Some(Box::new(hook)));
 }
@@ -113,12 +116,12 @@ thread_local! {
     static CANONICALIZE_CALLS: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
 }
 
-#[cfg(test)]
+#[cfg(all(test, unix))]
 fn reset_canonicalize_calls() {
     CANONICALIZE_CALLS.with(|counter| counter.set(0));
 }
 
-#[cfg(test)]
+#[cfg(all(test, unix))]
 fn canonicalize_calls() -> usize {
     CANONICALIZE_CALLS.with(std::cell::Cell::get)
 }
