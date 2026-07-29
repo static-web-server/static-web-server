@@ -306,7 +306,12 @@ impl RequestHandler {
 
                 // Check for markdown content negotiation (only if enabled)
                 let uri_path_md = if self.opts.accept_markdown {
-                    crate::markdown::pre_process(req, base_path, req.uri().path())
+                    crate::markdown::pre_process(
+                        req,
+                        base_path,
+                        req.uri().path(),
+                        self.opts.ignore_hidden_files,
+                    )
                 } else {
                     None
                 };
