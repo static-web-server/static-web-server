@@ -15,23 +15,22 @@ use crate::headers_ext::ContentCoding;
 
 /// It defines a composed file metadata structure containing the current file
 /// and its optional pre-compressed variant.
+///
+/// This structure intentionally carries no `Metadata` nor open `File` handle:
+/// the file that will be streamed must be opened only *after* the containment
+/// and symlink policies have been enforced, and from the canonical path they
+/// resolve. Its metadata is then obtained from that same file descriptor so the
+/// response headers always describe the bytes actually served.
 pub(crate) struct FileMetadata<'a> {
     /// The current file path reference.
     pub file_path: &'a PathBuf,
-    /// The metadata of current `file_path` by default.
-    /// Note that if `precompressed_variant` has some value
-    /// then the `metadata` value will correspond to the `precompressed_variant`.
-    pub metadata: Metadata,
     // If either `file_path` or `precompressed_variant` is a directory.
     pub is_dir: bool,
+    /// Whether `file_path` resolves to an existing file rather than a
+    /// directory-listing placeholder.
+    pub resolved_exists: bool,
     // The precompressed file variant for the current `file_path`.
     pub precompressed_variant: Option<(PathBuf, ContentCoding)>,
-    /// An optional pre-opened `File` handle for `file_path`. When `Some`,
-    /// the response pipeline can reuse it instead of issuing another
-    /// `open(2)` syscall (the metadata was already obtained from the FD).
-    /// `None` for directory responses or when the file has not been opened
-    /// yet (e.g. precompressed-only matches, html-suffix fallback).
-    pub file: Option<File>,
 }
 
 /// Try to find the file system metadata for the given file path or return a `Not Found` error.

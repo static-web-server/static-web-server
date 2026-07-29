@@ -9,8 +9,14 @@ mod tests {
     use headers::HeaderMap;
     use http::{Method, StatusCode};
     use static_web_server::http_ext::MethodExt;
+    use static_web_server::static_files::StaticFileResponse;
     use std::fs;
-    use std::path::PathBuf;
+    use std::path::{Path, PathBuf};
+    use std::sync::atomic::{AtomicU64, Ordering};
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    #[cfg(unix)]
+    use std::os::unix::fs::symlink;
 
     #[cfg(any(
         feature = "compression",
@@ -27,6 +33,37 @@ mod tests {
 
     fn root_dir() -> PathBuf {
         PathBuf::from("tests/fixtures/public/")
+    }
+
+    struct TempDir {
+        path: PathBuf,
+    }
+
+    impl TempDir {
+        fn new(tag: &str) -> Self {
+            static COUNTER: AtomicU64 = AtomicU64::new(0);
+            let seq = COUNTER.fetch_add(1, Ordering::Relaxed);
+            let nanos = SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .map(|duration| duration.as_nanos())
+                .unwrap_or(0);
+            let path = std::env::temp_dir().join(format!(
+                "sws-static-files-{tag}-{}-{nanos}-{seq}",
+                std::process::id(),
+            ));
+            fs::create_dir_all(&path).expect("unexpected error creating temporary directory");
+            Self { path }
+        }
+
+        fn path(&self) -> &Path {
+            &self.path
+        }
+    }
+
+    impl Drop for TempDir {
+        fn drop(&mut self) {
+            let _ = fs::remove_dir_all(&self.path);
+        }
     }
 
     #[cfg(any(
@@ -1620,6 +1657,239 @@ mod tests {
                     assert_eq!(status, StatusCode::NOT_FOUND);
                 }
             }
+        }
+    }
+
+    async fn request_precompressed_file(
+        root_dir: &PathBuf,
+        uri_path: &str,
+        encoding: &str,
+        disable_symlinks: bool,
+    ) -> Result<StaticFileResponse, StatusCode> {
+        let mut headers = HeaderMap::new();
+        headers.insert(
+            http::header::ACCEPT_ENCODING,
+            encoding.parse().expect("unexpected invalid encoding"),
+        );
+
+        static_files::handle(&HandleOpts {
+            method: &Method::GET,
+            headers: &headers,
+            base_path: root_dir,
+            uri_path,
+            uri_query: None,
+            #[cfg(feature = "experimental")]
+            memory_cache: None,
+            #[cfg(feature = "directory-listing")]
+            dir_listing: false,
+            #[cfg(feature = "directory-listing")]
+            dir_listing_order: 6,
+            #[cfg(feature = "directory-listing")]
+            dir_listing_format: &DirListFmt::Html,
+            #[cfg(feature = "directory-listing-download")]
+            dir_listing_download: &[],
+            redirect_trailing_slash: true,
+            compression_static: true,
+            ignore_hidden_files: false,
+            disable_symlinks,
+            index_files: &[],
+        })
+        .await
+    }
+
+    #[tokio::test]
+    async fn handle_precompressed_response_uses_selected_file_metadata() {
+        let temp_dir = TempDir::new("precompressed-metadata");
+        let root_dir = temp_dir.path().join("public");
+        fs::create_dir(&root_dir).expect("unexpected error creating web root");
+        fs::write(root_dir.join("app.js"), b"x").expect("unexpected error writing original file");
+        let precompressed_body = b"pre-compressed-response-body";
+        fs::write(root_dir.join("app.js.gz"), precompressed_body)
+            .expect("unexpected error writing pre-compressed file");
+
+        let mut response = request_precompressed_file(&root_dir, "app.js", "gzip", false)
+            .await
+            .expect("expected pre-compressed response")
+            .resp;
+
+        assert_eq!(response.status(), StatusCode::OK);
+        assert_eq!(response.headers()[http::header::CONTENT_ENCODING], "gzip");
+        let body = hyper::body::to_bytes(response.body_mut())
+            .await
+            .expect("unexpected bytes error during body conversion");
+        assert_eq!(body.as_ref(), precompressed_body);
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn handle_precompressed_symlinks_outside_root_are_rejected() {
+        let temp_dir = TempDir::new("precompressed-outside");
+        let root_dir = temp_dir.path().join("public");
+        fs::create_dir(&root_dir).expect("unexpected error creating web root");
+        let outside_marker = temp_dir.path().join("outside-marker");
+        fs::write(&outside_marker, "outside").expect("unexpected error writing outside marker");
+
+        for (extension, encoding) in [("gz", "gzip"), ("br", "br"), ("zst", "zstd")] {
+            for disable_symlinks in [false, true] {
+                let asset_name = format!("outside-{extension}-{disable_symlinks}.js");
+                fs::write(root_dir.join(&asset_name), "source")
+                    .expect("unexpected error writing asset");
+                symlink(
+                    &outside_marker,
+                    root_dir.join(format!("{asset_name}.{extension}")),
+                )
+                .expect("unexpected error creating precompressed symlink");
+
+                match request_precompressed_file(&root_dir, &asset_name, encoding, disable_symlinks)
+                    .await
+                {
+                    Ok(result) => panic!(
+                        "expected {encoding} symlink outside root to be rejected, got {}",
+                        result.resp.status()
+                    ),
+                    Err(status) => assert_eq!(
+                        status,
+                        StatusCode::NOT_FOUND,
+                        "unexpected status for {encoding} with disable_symlinks={disable_symlinks}"
+                    ),
+                }
+            }
+        }
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn handle_precompressed_symlinks_inside_root_are_rejected_when_disabled() {
+        let temp_dir = TempDir::new("precompressed-inside-blocked");
+        let root_dir = temp_dir.path().join("public");
+        fs::create_dir(&root_dir).expect("unexpected error creating web root");
+        let inside_marker = root_dir.join("inside-marker");
+        fs::write(&inside_marker, "inside").expect("unexpected error writing inside marker");
+
+        for (extension, encoding) in [("gz", "gzip"), ("br", "br"), ("zst", "zstd")] {
+            let asset_name = format!("inside-blocked-{extension}.js");
+            fs::write(root_dir.join(&asset_name), "source")
+                .expect("unexpected error writing asset");
+            symlink(
+                &inside_marker,
+                root_dir.join(format!("{asset_name}.{extension}")),
+            )
+            .expect("unexpected error creating precompressed symlink");
+
+            match request_precompressed_file(&root_dir, &asset_name, encoding, true).await {
+                Ok(result) => panic!(
+                    "expected {encoding} symlink to be rejected, got {}",
+                    result.resp.status()
+                ),
+                Err(status) => assert_eq!(
+                    status,
+                    StatusCode::FORBIDDEN,
+                    "unexpected status for {encoding}"
+                ),
+            }
+        }
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn handle_precompressed_symlinks_inside_root_are_served_when_enabled() {
+        let temp_dir = TempDir::new("precompressed-inside-allowed");
+        let root_dir = temp_dir.path().join("public");
+        fs::create_dir(&root_dir).expect("unexpected error creating web root");
+        let inside_marker = root_dir.join("inside-marker");
+        fs::write(&inside_marker, "inside").expect("unexpected error writing inside marker");
+
+        for (extension, encoding) in [("gz", "gzip"), ("br", "br"), ("zst", "zstd")] {
+            let asset_name = format!("inside-allowed-{extension}.js");
+            fs::write(root_dir.join(&asset_name), "source")
+                .expect("unexpected error writing asset");
+            symlink(
+                &inside_marker,
+                root_dir.join(format!("{asset_name}.{extension}")),
+            )
+            .expect("unexpected error creating precompressed symlink");
+
+            let result = request_precompressed_file(&root_dir, &asset_name, encoding, false)
+                .await
+                .expect("expected contained precompressed symlink to be served");
+            let mut response = result.resp;
+
+            assert_eq!(response.status(), StatusCode::OK);
+            assert_eq!(response.headers()[http::header::CONTENT_ENCODING], encoding);
+            let body = hyper::body::to_bytes(response.body_mut())
+                .await
+                .expect("unexpected bytes error during body conversion");
+            assert_eq!(body.as_ref(), b"inside");
+        }
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn handle_precompressed_symlinks_retargeted_outside_root_are_rejected() {
+        let temp_dir = TempDir::new("precompressed-retargeted");
+        let root_dir = temp_dir.path().join("public");
+        fs::create_dir(&root_dir).expect("unexpected error creating web root");
+        let inside_marker = root_dir.join("inside-marker");
+        fs::write(&inside_marker, "inside").expect("unexpected error writing inside marker");
+        let outside_marker = temp_dir.path().join("outside-marker");
+        fs::write(&outside_marker, "beyond").expect("unexpected error writing outside marker");
+
+        for (extension, encoding) in [("gz", "gzip"), ("br", "br"), ("zst", "zstd")] {
+            let asset_name = format!("retargeted-{extension}.js");
+            fs::write(root_dir.join(&asset_name), "source")
+                .expect("unexpected error writing asset");
+            let precompressed_path = root_dir.join(format!("{asset_name}.{extension}"));
+
+            symlink(&inside_marker, &precompressed_path)
+                .expect("unexpected error creating contained precompressed symlink");
+            request_precompressed_file(&root_dir, &asset_name, encoding, false)
+                .await
+                .expect("expected contained precompressed symlink to be served");
+
+            fs::remove_file(&precompressed_path)
+                .expect("unexpected error removing contained precompressed symlink");
+            symlink(&outside_marker, &precompressed_path)
+                .expect("unexpected error retargeting precompressed symlink");
+
+            match request_precompressed_file(&root_dir, &asset_name, encoding, false).await {
+                Ok(result) => panic!(
+                    "expected retargeted {encoding} symlink to be rejected, got {}",
+                    result.resp.status()
+                ),
+                Err(status) => assert_eq!(status, StatusCode::NOT_FOUND),
+            }
+        }
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn handle_requested_symlink_retargeted_outside_root_is_rejected() {
+        let temp_dir = TempDir::new("requested-retargeted");
+        let root_dir = temp_dir.path().join("public");
+        fs::create_dir(&root_dir).expect("unexpected error creating web root");
+        let inside_marker = root_dir.join("inside-marker");
+        fs::write(&inside_marker, "inside").expect("unexpected error writing inside marker");
+        let outside_marker = temp_dir.path().join("outside-marker");
+        fs::write(&outside_marker, "beyond").expect("unexpected error writing outside marker");
+        let requested_path = root_dir.join("app.js");
+
+        symlink(&inside_marker, &requested_path)
+            .expect("unexpected error creating contained requested symlink");
+        request_precompressed_file(&root_dir, "app.js", "identity", false)
+            .await
+            .expect("expected contained requested symlink to be served");
+
+        fs::remove_file(&requested_path)
+            .expect("unexpected error removing contained requested symlink");
+        symlink(&outside_marker, &requested_path)
+            .expect("unexpected error retargeting requested symlink");
+
+        match request_precompressed_file(&root_dir, "app.js", "identity", false).await {
+            Ok(result) => panic!(
+                "expected retargeted requested symlink to be rejected, got {}",
+                result.resp.status()
+            ),
+            Err(status) => assert_eq!(status, StatusCode::NOT_FOUND),
         }
     }
 
