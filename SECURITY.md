@@ -6,7 +6,8 @@ The following Static Web Server versions are currently being supported with secu
 
 | Version | Supported |
 | -- | -- |
-| 2.x.x | :white_check_mark: (current stable) |
+| 3.x.x | :white_check_mark: (development) |
+| 2.x.x | :white_check_mark: (LTS since 2026-07-31) |
 | 1.x.x | :x: (deprecated due to [End of Life](https://github.com/static-web-server/static-web-server/releases/tag/v1.19.4)) |
 
 ## Report a security issue

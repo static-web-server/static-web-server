@@ -5,6 +5,65 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v2.44.0 - 2026-07-31
+
+This new `v2.44.0` brings bug fixes and security updates. A fix for pre-compressed variant body truncation, a new `--use-relative-root` option to resolve the webroot at request time, query string preservation on URL redirects, a metrics endpoint authentication order fix as well as other improvements.
+
+**Security updates**
+
+This release includes security updates related to metrics, pre-compressed and basic authentication. Users are encouraged to update to this version. We will provide more details about the fixed security issues in the next few days.
+
+**v2 LTS transition**
+
+Today we announce that the [v2](https://github.com/static-web-server/static-web-server/tree/2.x) has transitioned to **LTS** (Long-term support) status. Meaning that `v2.44.0` (minor) will receive only bug fixes and security updates going forward.
+
+The project's current focus has now moved to [v3 (in progress)](https://github.com/static-web-server/static-web-server/releases/tag/v3.0.0-beta.1). We encourage users to give **v3** a try for new features, improvements and provide feedback.
+
+**Fixes**
+
+- [c928639][c928639] Update dependencies. PR [#728][728] by [@joseluisq][joseluisq]
+- [be585a6][be585a6] Update Alpine (3.23.5) & Debian (13.6) Docker images. PR [#729][729] by [@joseluisq][joseluisq]
+- [478fc6e][478fc6e] Pre-compressed variant body truncated to the original file's size (backport from v3). PR [#727][727] by [@joseluisq][joseluisq] (v3 PR [#722][722] by [@antoinemichea][antoinemichea]).
+- [b05bd25][b05bd25] Query string was not preserved on URL redirects. PR [#703][703] by [@urdh][urdh]
+- [a51444c][a51444c] Metrics endpoint authentication order bypass when basic auth is enabled. PR [#714][714] by [@T3pp31][T3pp31]
+
+[c928639]: https://github.com/static-web-server/static-web-server/commit/c928639
+[478fc6e]: https://github.com/static-web-server/static-web-server/commit/478fc6e
+[be585a6]: https://github.com/static-web-server/static-web-server/commit/be585a6
+[a51444c]: https://github.com/static-web-server/static-web-server/commit/a51444c
+[b05bd25]: https://github.com/static-web-server/static-web-server/commit/b05bd25
+
+**Features**
+
+- [e491202][e491202] New `--use-relative-root` option to resolve the webroot at request time. PR [#712][712] by [@joseluisq][joseluisq]. See [docs](https://static-web-server.net/v2/features/use-relative-root).
+
+[e491202]: https://github.com/static-web-server/static-web-server/commit/e491202
+
+**Refactorings**
+
+- [aa36d93][aa36d93] Move v2 docs to dedicated repository. PR [#704][704] by [@joseluisq][joseluisq]
+
+[b05bd25]: https://github.com/static-web-server/static-web-server/commit/b05bd25
+[aa36d93]: https://github.com/static-web-server/static-web-server/commit/aa36d93
+
+[722]: https://github.com/static-web-server/static-web-server/pull/722
+[727]: https://github.com/static-web-server/static-web-server/pull/727
+[728]: https://github.com/static-web-server/static-web-server/pull/728
+[729]: https://github.com/static-web-server/static-web-server/pull/729
+[714]: https://github.com/static-web-server/static-web-server/pull/714
+[712]: https://github.com/static-web-server/static-web-server/pull/712
+[703]: https://github.com/static-web-server/static-web-server/pull/703
+[704]: https://github.com/static-web-server/static-web-server/pull/704
+
+[T3pp31]: https://github.com/T3pp31
+[urdh]: https://github.com/urdh
+[antoinemichea]: https://github.com/antoinemichea
+
+For more details see the [v2.44.0 milestone][v2440-milestone] and the full changelog [v2.43.0...v2.44.0][v2440-diff].
+
+[v2440-diff]: https://github.com/static-web-server/static-web-server/compare/v2.43.0...v2.44.0
+[v2440-milestone]: https://github.com/static-web-server/static-web-server/milestone/40?closed=1
+
 ## v2.43.0 - 2026-06-10
 
 This new `v2.43.0` brings bug fixes, new features and improvements. A fix for unnecessary pre-compressed file lookups, FIPS-capable TLS support via a new Cargo feature and prebuilt binaries, several performance optimizations, hardening across several modules, better byte-range suffix detection and extract normalization coverage, CI workflow updates and other enhancements.
