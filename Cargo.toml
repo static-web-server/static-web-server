@@ -77,15 +77,15 @@ anyhow = "1.0"
 aws-lc-rs = { version = "1", optional = true, default-features = false }
 async-compression = { version = "0.4", default-features = false, optional = true, features = ["brotli", "deflate", "gzip", "zstd", "tokio"] }
 async-tar = { version = "0.5.1", optional = true }
-bcrypt = { version = "0.18.0", optional = true }
-bytes = "1.11.1"
+bcrypt = { version = "0.19.3", optional = true }
+bytes = "1.12.1"
 chrono = { version = "0.4", default-features = false, features = ["std", "clock"], optional = true }
 clap = { version = "4.5", features = ["derive", "env"] }
 clap_allgen = "0.2.1"
-compact_str = { version = "0.9.0", optional = true }
+compact_str = { version = "0.10.0", optional = true }
 form_urlencoded = "1.2"
 futures-util = { version = "0.3", default-features = false }
-globset = { version = "0.4.18", features = ["serde1"] }
+globset = { version = "0.4.19", features = ["serde1"] }
 headers = "0.3"
 http = "0.2"
 http-serde = "1.1"
@@ -97,13 +97,13 @@ mini-moka = { version = "0.10.3", optional = true }
 percent-encoding = "2.3"
 pin-project = "1.1"
 prometheus = { version = "0.14.0", default-features = false, optional = true }
-regex-lite = "0.1.8"
-rustls-pki-types = { version = "1.13.2", optional = true }
+regex-lite = "0.1.9"
+rustls-pki-types = { version = "1.15.1", optional = true }
 serde = { version = "1.0", default-features = false, features = ["derive"] }
 serde_ignored = "0.1"
 serde_json = "1.0"
 serde_repr = "0.1"
-shadow-rs = "1.4.0"
+shadow-rs = "2.0.0"
 tokio = { version = "1", default-features = false, features = ["rt-multi-thread", "macros", "fs", "io-util", "signal"] }
 tokio-rustls = { version = "0.26", optional = true, default-features = false }
 tokio-util = { version = "0.7", default-features = false, features = ["compat", "io"] }
@@ -112,10 +112,10 @@ tracing = { version = "0.1", default-features = false, features = ["std"] }
 tracing-subscriber = { version = "0.3", default-features = false, features = ["smallvec", "registry", "parking_lot", "fmt", "ansi", "tracing-log", "local-time"] }
 
 [target.'cfg(all(target_env = "musl", target_pointer_width = "64"))'.dependencies]
-mimalloc = { version = "0.1.48", features = ["v3"] }
+mimalloc = { version = "0.1.52" }
 
 [target.'cfg(unix)'.dependencies]
-signal-hook = { version = "0.4.1", features = ["extended-siginfo"] }
+signal-hook = { version = "0.4.4", features = ["extended-siginfo"] }
 signal-hook-tokio = { version = "0.4.0", features = ["futures-v0_3"], default-features = false }
 tokio-metrics-collector = { version = "0.3.1", optional = true }
 
@@ -123,13 +123,13 @@ tokio-metrics-collector = { version = "0.3.1", optional = true }
 windows-service = "0.8"
 
 [dev-dependencies]
-bytes = "1.11.1"
+bytes = "1.12.1"
 serde_json = "1.0"
 proptest = { version = "1.5", default-features = false, features = ["std"] }
 tempfile = "3"
 
 [build-dependencies]
-shadow-rs = "1.4.0"
+shadow-rs = "2.0.0"
 
 [profile.release]
 codegen-units = 1
