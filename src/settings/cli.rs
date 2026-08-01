@@ -410,7 +410,7 @@ pub struct General {
     #[arg(
         long,
         short = 'z',
-        default_value = "true",
+        default_value = "false",
         default_missing_value("true"),
         num_args(0..=1),
         require_equals(false),
@@ -791,7 +791,7 @@ mod default_tests {
         #[cfg(feature = "tls")]
         assert_eq!(general.https_redirect_from_port, 8080);
         #[cfg(feature = "directory-listing")]
-        assert!(general.directory_listing);
+        assert!(!general.directory_listing);
     }
 }
 
