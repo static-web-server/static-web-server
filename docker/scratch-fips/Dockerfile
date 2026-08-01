@@ -14,7 +14,7 @@ LABEL version="${SERVER_VERSION}" \
 COPY --from=build /usr/local/bin/static-web-server /
 COPY ./docker/public /public
 
-EXPOSE 8787
+EXPOSE 8080
 
 STOPSIGNAL SIGQUIT
 
