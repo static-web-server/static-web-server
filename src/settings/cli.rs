@@ -26,7 +26,7 @@ pub struct General {
     /// Host address (E.g 127.0.0.1 or ::1)
     pub host: String,
 
-    #[arg(long, short = 'p', default_value = "8787", env = "SERVER_PORT")]
+    #[arg(long, short = 'p', default_value = "8080", env = "SERVER_PORT")]
     /// Host port
     pub port: u16,
 
@@ -157,7 +157,7 @@ pub struct General {
     /// Maximum number of blocking threads
     pub max_blocking_threads: usize,
 
-    #[arg(long, short = 'd', default_value = "./public", env = "SERVER_ROOT")]
+    #[arg(long, short = 'd', default_value = ".", env = "SERVER_ROOT")]
     /// Root directory path of static files.
     pub root: PathBuf,
 
@@ -320,7 +320,7 @@ pub struct General {
     /// Canonical host name or IP of the HTTPS server. It depends on "https_redirect" to be enabled.
     pub https_redirect_host: String,
 
-    #[arg(long, default_value = "8787", env = "SERVER_HTTPS_REDIRECT_FROM_PORT")]
+    #[arg(long, default_value = "8080", env = "SERVER_HTTPS_REDIRECT_FROM_PORT")]
     #[cfg(feature = "tls")]
     #[cfg_attr(docsrs, doc(cfg(feature = "tls")))]
     /// HTTP host port where the redirect server will listen for requests to redirect them to HTTPS. It depends on "https_redirect" to be enabled.
@@ -773,6 +773,25 @@ fn value_parser_status_code(s: &str) -> Result<StatusCode, String> {
     match s.parse::<u16>() {
         Ok(code) => StatusCode::from_u16(code).map_err(|err| err.to_string()),
         Err(err) => Err(err.to_string()),
+    }
+}
+
+#[cfg(test)]
+mod default_tests {
+    use super::General;
+    use clap::Parser;
+    use std::path::PathBuf;
+
+    #[test]
+    fn uses_zero_configuration_defaults() {
+        let general = General::try_parse_from(["static-web-server"]).unwrap();
+
+        assert_eq!(general.port, 8080);
+        assert_eq!(general.root, PathBuf::from("."));
+        #[cfg(feature = "tls")]
+        assert_eq!(general.https_redirect_from_port, 8080);
+        #[cfg(feature = "directory-listing")]
+        assert!(!general.directory_listing);
     }
 }
 
