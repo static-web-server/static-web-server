@@ -65,6 +65,18 @@ source = "/crop-{[!0-9]}/{*}.{png,gif}"
 destination = "http://localhost/new-crop/$1/$2.$3"
 kind = 301
 
+# Glob groups recursive 1
+[[advanced.redirects]]
+source = "/recursive/{**}"
+destination = "http://localhost/new-recursive/$1"
+kind = 301
+
+# Glob groups recursive 2 (a `**` outside of a group stays within one path segment)
+[[advanced.redirects]]
+source = "/nocross/**-page"
+destination = "http://localhost/new-nocross/"
+kind = 301
+
 # Generic globs need to be at the end
 # Glob groups generic 1
 [[advanced.redirects]]
