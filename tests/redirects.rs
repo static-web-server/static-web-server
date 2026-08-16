@@ -339,4 +339,71 @@ pub mod tests {
             }
         };
     }
+
+    #[tokio::test]
+    async fn redirects_glob_groups_recursive_1() {
+        let opts = fixture_settings("toml/redirects.toml");
+        let req_handler_opts = fixture_req_handler_opts(opts.general, opts.advanced);
+        let req_handler = fixture_req_handler(req_handler_opts);
+
+        let mut req = Request::new(());
+        *req.uri_mut() = "http://localhost/recursive/nested/deep/page"
+            .parse()
+            .unwrap();
+
+        let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
+        match req_handler.handle(&mut req, remote_addr).await {
+            Ok(res) => {
+                assert_eq!(res.status(), 301);
+                assert_eq!(
+                    res.headers()["location"],
+                    "http://localhost/new-recursive/nested/deep/page"
+                );
+            }
+            Err(err) => {
+                panic!("unexpected error: {err}")
+            }
+        };
+    }
+
+    #[tokio::test]
+    async fn redirects_glob_groups_recursive_2() {
+        let opts = fixture_settings("toml/redirects.toml");
+        let req_handler_opts = fixture_req_handler_opts(opts.general, opts.advanced);
+        let req_handler = fixture_req_handler(req_handler_opts);
+
+        let mut req = Request::new(());
+        *req.uri_mut() = "http://localhost/nocross/some-page".parse().unwrap();
+
+        let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
+        match req_handler.handle(&mut req, remote_addr).await {
+            Ok(res) => {
+                assert_eq!(res.status(), 301);
+                assert_eq!(res.headers()["location"], "http://localhost/new-nocross/");
+            }
+            Err(err) => {
+                panic!("unexpected error: {err}")
+            }
+        };
+    }
+
+    #[tokio::test]
+    async fn redirects_glob_groups_recursive_2_literal_separator() {
+        let opts = fixture_settings("toml/redirects.toml");
+        let req_handler_opts = fixture_req_handler_opts(opts.general, opts.advanced);
+        let req_handler = fixture_req_handler(req_handler_opts);
+
+        let mut req = Request::new(());
+        *req.uri_mut() = "http://localhost/nocross/some/nested-page".parse().unwrap();
+
+        let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
+        match req_handler.handle(&mut req, remote_addr).await {
+            Ok(res) => {
+                assert_eq!(res.status(), 404);
+            }
+            Err(err) => {
+                panic!("unexpected error: {err}")
+            }
+        };
+    }
 }

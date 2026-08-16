@@ -546,6 +546,7 @@ impl Settings {
                                 .replace("?:.*", ".*")
                                 .replace("?:", "")
                                 .replace(".*.*", ".*")
+                                .replace("([^/]*[^/]*)", "(.*)")
                                 .to_owned();
                             tracing::debug!(
                                 "url rewrites glob pattern: {}",
@@ -598,6 +599,7 @@ impl Settings {
                                 .replace("?:.*", ".*")
                                 .replace("?:", "")
                                 .replace(".*.*", ".*")
+                                .replace("([^/]*[^/]*)", "(.*)")
                                 .to_owned();
                             tracing::debug!(
                                 "url redirects glob pattern: {}",

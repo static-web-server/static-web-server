@@ -156,6 +156,29 @@ pub mod tests {
     }
 
     #[tokio::test]
+    async fn rewrites_glob_groups_recursive_1() {
+        let opts = fixture_settings("toml/rewrites.toml");
+        let req_handler_opts = fixture_req_handler_opts(opts.general, opts.advanced);
+        let req_handler = fixture_req_handler(req_handler_opts);
+        let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
+
+        let mut req = Request::new(());
+        *req.uri_mut() = "http://localhost/recursive/assets/main.css"
+            .parse()
+            .unwrap();
+
+        match req_handler.handle(&mut req, remote_addr).await {
+            Ok(res) => {
+                assert_eq!(res.status(), 200);
+                assert_eq!(res.headers()["content-type"], "text/css");
+            }
+            Err(err) => {
+                panic!("unexpected error: {err}")
+            }
+        };
+    }
+
+    #[tokio::test]
     async fn rewrites_glob_groups_5() {
         let opts = fixture_settings("toml/rewrites.toml");
         let req_handler_opts = fixture_req_handler_opts(opts.general, opts.advanced);
