@@ -1,0 +1,52 @@
+name: codspeed
+on:
+  push:
+    branches:
+    - master
+  pull_request:
+    paths:
+      - .github/workflows/codspeed.yml
+      - .cargo/config.toml
+      - Cargo.lock
+      - Cargo.toml
+      - src/**
+      - benches/**
+  # `workflow_dispatch` allows CodSpeed to trigger backtest
+  # performance analysis in order to generate initial data.
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  # Required for the OpenID Connect authentication with CodSpeed
+  id-token: write
+
+jobs:
+  benchmarks:
+    name: Run benchmarks
+    runs-on: ubuntu-24.04
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 1
+
+    - name: Install stable toolchain, cache and cargo-codspeed binary
+      uses: moonrepo/setup-rust@v0
+      with:
+        channel: stable
+        cache-target: release
+        bins: cargo-codspeed
+
+    # NOTE: the benchmarks are a standalone crate that depends on the SWS
+    # library via a path dependency, so Cargo commands run from `benches`.
+    - name: Build the benchmark targets
+      working-directory: benches
+      run: cargo codspeed build
+
+    - name: Run the benchmarks
+      uses: CodSpeedHQ/action@v5
+      with:
+        mode: simulation
+        working-directory: benches
+        run: cargo codspeed run

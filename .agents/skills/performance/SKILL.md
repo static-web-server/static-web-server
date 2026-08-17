@@ -121,6 +121,27 @@ This emits AVX/SSE instructions optimal for the build machine, which can improve
 
 ## Benchmarking
 
+### Micro-benchmarks (CodSpeed)
+
+The `benches/` directory is a standalone crate with Criterion benchmarks for hot-path
+functions (path sanitization, header handling, redirects, basic auth). They run on every
+pull request via the `codspeed` workflow and are tracked on
+[CodSpeed](https://app.codspeed.io/static-web-server/static-web-server).
+
+```bash
+cd benches
+
+# Plain Criterion run (local timings only)
+cargo bench
+
+# Same suite measured with CodSpeed CPU simulation (deterministic, flamegraphs)
+cargo codspeed build
+codspeed run --mode simulation -- cargo codspeed run
+```
+
+Add a bench when a change touches the request hot path so a future regression is caught
+by CI instead of by users.
+
 ### Tools
 
 - **HTTP load generators**: `wrk`, `bombardier`, `oha`, `hey`
