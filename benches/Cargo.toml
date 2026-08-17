@@ -5,8 +5,8 @@ publish = false
 edition = "2021"
 
 [dependencies]
-static-web-server = { version = "2", path = "../", features = ["default", "basic-auth"] }
-criterion = "0.5"
+static-web-server = { version = "3.0.0-beta.1", path = "../", features = ["default", "basic-auth"] }
+criterion = { version = "5.0.1", package = "codspeed-criterion-compat" }
 hyper = { version = "1", default-features = false, features = ["http1", "http2", "server", "client"] }
 headers = "0.4"
 http = "1"
@@ -21,6 +21,11 @@ harness = false
 [[bench]]
 name = "static_files"
 path = "static_files.rs"
+harness = false
+
+[[bench]]
+name = "response_headers"
+path = "response_headers.rs"
 harness = false
 
 [[bench]]
