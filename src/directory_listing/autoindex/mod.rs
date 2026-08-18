@@ -39,6 +39,7 @@ pub fn auto_index(opts: DirListOpts<'_>) -> Result<Response<Body>, StatusCode> {
                 is_head: opts.method.is_head(),
                 order_code: opts.dir_listing_order,
                 content_format: opts.dir_listing_format,
+                accept: opts.accept,
                 include_hidden: opts.include_hidden,
                 follow_symlinks: opts.follow_symlinks,
                 #[cfg(feature = "directory-listing-download")]

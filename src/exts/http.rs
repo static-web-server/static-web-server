@@ -60,24 +60,37 @@ static VARY_ACCEPT_ENCODING: HeaderValue = HeaderValue::from_static("accept-enco
 /// Append `accept-encoding` to the response's `Vary` header, creating it if absent.
 /// Skips the update if `accept-encoding` is already listed.
 pub(crate) fn append_vary_accept_encoding<B>(resp: &mut Response<B>) {
-    let accept_enc = hyper::header::ACCEPT_ENCODING.as_str();
+    append_vary(resp, "accept-encoding", &VARY_ACCEPT_ENCODING);
+}
+
+/// Append `accept` to the response's `Vary` header, creating it if absent.
+/// Skips the update if `accept` is already listed.
+#[cfg(feature = "directory-listing")]
+pub(crate) fn append_vary_accept<B>(resp: &mut Response<B>) {
+    static VARY_ACCEPT: HeaderValue = HeaderValue::from_static("accept");
+    append_vary(resp, "accept", &VARY_ACCEPT);
+}
+
+/// Append a value to the response's `Vary` header, creating it if absent.
+/// Skips the update if the value is already listed.
+fn append_vary<B>(resp: &mut Response<B>, value: &str, static_value: &HeaderValue) {
     match resp.headers().get(hyper::header::VARY) {
         None => {
             resp.headers_mut()
-                .insert(hyper::header::VARY, VARY_ACCEPT_ENCODING.clone());
+                .insert(hyper::header::VARY, static_value.clone());
         }
         Some(existing) => {
             let s = existing.to_str().unwrap_or_default();
-            if s.contains(accept_enc) {
+            if s.contains(value) {
                 return;
             }
             // Append to existing value
-            let mut new_val = String::with_capacity(s.len() + 2 + accept_enc.len());
+            let mut new_val = String::with_capacity(s.len() + 2 + value.len());
             new_val.push_str(s);
             if !s.is_empty() {
                 new_val.push_str(", ");
             }
-            new_val.push_str(accept_enc);
+            new_val.push_str(value);
             if let Ok(val) = HeaderValue::from_str(&new_val) {
                 resp.headers_mut().insert(hyper::header::VARY, val);
             }

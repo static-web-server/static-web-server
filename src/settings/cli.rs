@@ -441,7 +441,7 @@ pub struct General {
         env = "SERVER_DIRECTORY_LISTING_FORMAT",
         ignore_case(true)
     )]
-    /// Specify a content format for directory listing entries. Formats supported: "html" or "json". Default "html".
+    /// Specify a content format for directory listing entries. Formats supported: "html", "json" or "auto". Default "html".
     pub directory_listing_format: DirListFmt,
 
     #[cfg(feature = "directory-listing-download")]
