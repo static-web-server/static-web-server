@@ -18,6 +18,7 @@
 **/*empty*
 **/*.json
 **/*.csv
+**/.DS_Store
 /benches/Cargo.lock
 release
 .vscode
@@ -31,4 +32,4 @@ docker/devel/static-web-server
 !/docs
 !/tests/fixtures/**/*
 !benchmark/sws_benchmarks*.csv
-**/.DS_Store
+!proptest-regressions/**/*.txt
