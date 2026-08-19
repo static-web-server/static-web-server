@@ -93,10 +93,36 @@ pub fn error_response(
     page404: &Path,
     page50x: &Path,
 ) -> Result<Response<Body>> {
-    tracing::warn!(
-        method = ?method, uri = ?uri, status = status_code.as_u16(),
-        error = status_code.canonical_reason().unwrap_or_default()
-    );
+    error_response_inner(uri, method, status_code, page404, page50x, true)
+}
+
+/// Builds an error response without emitting an operator-facing warning.
+///
+/// This is used when a later pipeline stage will replace the error response.
+pub(crate) fn error_response_without_logging(
+    uri: &Uri,
+    method: &Method,
+    status_code: &StatusCode,
+    page404: &Path,
+    page50x: &Path,
+) -> Result<Response<Body>> {
+    error_response_inner(uri, method, status_code, page404, page50x, false)
+}
+
+fn error_response_inner(
+    uri: &Uri,
+    method: &Method,
+    status_code: &StatusCode,
+    page404: &Path,
+    page50x: &Path,
+    log_warning: bool,
+) -> Result<Response<Body>> {
+    if log_warning {
+        tracing::warn!(
+            method = ?method, uri = ?uri, status = status_code.as_u16(),
+            error = status_code.canonical_reason().unwrap_or_default()
+        );
+    }
 
     // Check for 4xx/50x status codes and handle their corresponding HTML content
     let mut page_content = String::new();

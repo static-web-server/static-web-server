@@ -46,7 +46,10 @@ impl<'a> TryFrom<&'a str> for QualityMeta<'a> {
                 if let Some(value) = part.strip_prefix("q=")
                     && let Ok(parsed) = value.trim().parse::<f32>()
                 {
-                    quality = (parsed * 1000_f32) as u16;
+                    // Round (not truncate) so three-decimal q-values survive the
+                    // f32 round-trip (e.g. "0.502" parses just below 0.502 and
+                    // would truncate to 501), and clamp to the RFC 7231 maximum.
+                    quality = ((parsed * 1000_f32).round() as u16).min(1000);
                 }
             }
         }
@@ -239,6 +242,33 @@ mod tests {
         assert_eq!(values.next(), Some("deflate"));
         assert_eq!(values.next(), Some("br"));
         assert_eq!(values.next(), Some("*"));
+        assert_eq!(values.next(), None);
+    }
+
+    #[test]
+    fn three_decimal_qualities_are_not_truncated() {
+        // Regression test: "0.502" parses as an f32 slightly below 0.502;
+        // truncating `parsed * 1000.0` yielded 501, colliding with q=0.501
+        // and making the ordering of the two entries unstable.
+        let val = HeaderValue::from_static("a;q=0.501, b;q=0.502");
+        let qual = QualityValue::from(val);
+
+        let mut values = qual.iter();
+        assert_eq!(values.next(), Some("b"));
+        assert_eq!(values.next(), Some("a"));
+        assert_eq!(values.next(), None);
+    }
+
+    #[test]
+    fn quality_above_one_is_clamped() {
+        // RFC 7231: qvalue is at most 1. "q=5" must not outrank "q=1".
+        let val = HeaderValue::from_static("gzip;q=1, br;q=5");
+        let qual = QualityValue::from(val);
+
+        let mut values = qual.iter();
+        // Both clamp to 1000; tie broken by ContentCoding priority (br > gzip).
+        assert_eq!(values.next(), Some("br"));
+        assert_eq!(values.next(), Some("gzip"));
         assert_eq!(values.next(), None);
     }
 

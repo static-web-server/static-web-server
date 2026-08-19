@@ -210,4 +210,51 @@ pub mod tests {
             }
         };
     }
+
+    #[cfg(feature = "fallback-page")]
+    #[tokio::test]
+    async fn page_fallback_does_not_log_not_found_warning() {
+        use std::sync::{
+            Arc,
+            atomic::{AtomicUsize, Ordering},
+        };
+        use tracing::{Event, Level, Subscriber};
+        use tracing_subscriber::{Layer, layer::Context, prelude::*};
+
+        #[derive(Clone, Default)]
+        struct WarningCounter(Arc<AtomicUsize>);
+
+        impl<S> Layer<S> for WarningCounter
+        where
+            S: Subscriber,
+        {
+            fn on_event(&self, event: &Event<'_>, _ctx: Context<'_, S>) {
+                if *event.metadata().level() == Level::WARN {
+                    self.0.fetch_add(1, Ordering::Relaxed);
+                }
+            }
+        }
+
+        let opts = fixture_settings("toml/handler.toml");
+        let mut req_handler_opts = fixture_req_handler_opts(opts.general, opts.advanced);
+        req_handler_opts.page_fallback = b"fallback".to_vec();
+        let req_handler = fixture_req_handler(req_handler_opts);
+        let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
+
+        let warnings = WarningCounter::default();
+        let subscriber = tracing_subscriber::registry().with(warnings.clone());
+        let _guard = tracing::subscriber::set_default(subscriber);
+
+        let mut req = Request::new(());
+        *req.method_mut() = Method::GET;
+        *req.uri_mut() = "http://localhost/missing-route".parse().unwrap();
+
+        let resp = req_handler
+            .handle(&mut req, remote_addr)
+            .await
+            .expect("fallback request should succeed");
+
+        assert_eq!(resp.status(), 200);
+        assert_eq!(warnings.0.load(Ordering::Relaxed), 0);
+    }
 }
