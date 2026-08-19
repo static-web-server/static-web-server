@@ -142,8 +142,7 @@ pub(crate) fn handle_error<T>(
         req.uri(),
         req.method(),
         &StatusCode::INTERNAL_SERVER_ERROR,
-        &opts.page404,
-        &opts.page50x,
+        &opts.error_pages(),
     ))
 }
 

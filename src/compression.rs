@@ -100,8 +100,7 @@ pub(crate) fn post_process<T>(
                 req.uri(),
                 req.method(),
                 &StatusCode::INTERNAL_SERVER_ERROR,
-                &opts.page404,
-                &opts.page50x,
+                &opts.error_pages(),
             )
         }
     }

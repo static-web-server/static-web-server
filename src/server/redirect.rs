@@ -105,7 +105,15 @@ pub(super) fn spawn(
                             match https_redirect::redirect_to_https(&req, redirect_opts) {
                                 Ok(resp) => Ok(resp),
                                 Err(status) => error_page::error_response(
-                                    &uri, &method, &status, &page404, &page50x,
+                                    &uri,
+                                    &method,
+                                    &status,
+                                    &error_page::ErrorPages {
+                                        page401: PathBuf::new(),
+                                        page403: PathBuf::new(),
+                                        page404: page404.clone(),
+                                        page50x: page50x.clone(),
+                                    },
                                 ),
                             }
                         }
