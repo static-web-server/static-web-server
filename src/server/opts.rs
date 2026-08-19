@@ -73,6 +73,30 @@ pub(super) fn init(general: &General, advanced: Option<Advanced>) -> Result<Hand
         root_dir.canonicalize().unwrap_or(root_dir)
     };
 
+    // Resolve the 401 error page path relative to root when needed
+    let mut page401 = general.page401.clone();
+    if page401.is_relative() && !page401.starts_with(&root_dir) {
+        page401 = root_dir.join(&page401);
+    }
+    if !page401.is_file() {
+        tracing::debug!(
+            "401 file path not found or not a regular file: {}",
+            page401.display()
+        );
+    }
+
+    // Resolve the 403 error page path relative to root when needed
+    let mut page403 = general.page403.clone();
+    if page403.is_relative() && !page403.starts_with(&root_dir) {
+        page403 = root_dir.join(&page403);
+    }
+    if !page403.is_file() {
+        tracing::debug!(
+            "403 file path not found or not a regular file: {}",
+            page403.display()
+        );
+    }
+
     // Resolve the 404 error page path relative to root when needed
     let mut page404 = general.page404.clone();
     if page404.is_relative() && !page404.starts_with(&root_dir) {
@@ -122,6 +146,8 @@ pub(super) fn init(general: &General, advanced: Option<Advanced>) -> Result<Hand
 
     let mut handler_opts = RequestHandlerOpts {
         root_dir,
+        page401: page401.clone(),
+        page403: page403.clone(),
         page404: page404.clone(),
         page50x: page50x.clone(),
         log_remote_address: general.log_remote_address,
@@ -156,8 +182,10 @@ pub(super) fn init(general: &General, advanced: Option<Advanced>) -> Result<Hand
     #[cfg(feature = "fallback-page")]
     fallback_page::init(&general.page_fallback, &mut handler_opts);
 
-    // Pre-cache custom 404/50x bodies so error responses never touch disk
+    // Pre-cache custom 401/403/404/50x bodies so error responses never touch disk
     // on the async hot path. See `error_page::PAGE_CACHE`.
+    crate::error_page::cache_page(&handler_opts.page401);
+    crate::error_page::cache_page(&handler_opts.page403);
     crate::error_page::cache_page(&handler_opts.page404);
     crate::error_page::cache_page(&handler_opts.page50x);
 

@@ -180,6 +180,18 @@ pub struct General {
     /// If a relative path is used then it will be resolved under the root directory.
     pub page50x: PathBuf,
 
+    #[arg(long, default_value = "./401.html", env = "SERVER_ERROR_PAGE_401")]
+    /// HTML file path for 401 errors. If the path is not specified or simply doesn't exist
+    /// then the server will use a generic HTML error message.
+    /// If a relative path is used then it will be resolved under the root directory.
+    pub page401: PathBuf,
+
+    #[arg(long, default_value = "./403.html", env = "SERVER_ERROR_PAGE_403")]
+    /// HTML file path for 403 errors. If the path is not specified or simply doesn't exist
+    /// then the server will use a generic HTML error message.
+    /// If a relative path is used then it will be resolved under the root directory.
+    pub page403: PathBuf,
+
     #[arg(long, default_value = "./404.html", env = "SERVER_ERROR_PAGE_404")]
     /// HTML file path for 404 errors. If the path is not specified or simply doesn't exist
     /// then the server will use a generic HTML error message.

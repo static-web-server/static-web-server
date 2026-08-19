@@ -101,7 +101,11 @@ pub struct RequestHandlerOpts {
     pub etag: bool,
     /// Page for 404 errors.
     pub page404: PathBuf,
-    /// Page for 50x errors.
+    /// Error 401 page file path.
+    pub page401: PathBuf,
+    /// Error 403 page file path.
+    pub page403: PathBuf,
+    /// Error 50x page file path.
     pub page50x: PathBuf,
     /// Page fallback feature.
     #[cfg(feature = "fallback-page")]
@@ -149,6 +153,18 @@ pub struct RequestHandlerOpts {
     pub advanced_opts: Option<Advanced>,
 }
 
+impl RequestHandlerOpts {
+    /// Returns the custom error page paths for the current options.
+    pub(crate) fn error_pages(&self) -> error_page::ErrorPages {
+        error_page::ErrorPages {
+            page401: self.page401.clone(),
+            page403: self.page403.clone(),
+            page404: self.page404.clone(),
+            page50x: self.page50x.clone(),
+        }
+    }
+}
+
 impl Default for RequestHandlerOpts {
     fn default() -> Self {
         Self {
@@ -178,6 +194,8 @@ impl Default for RequestHandlerOpts {
             cache_control_headers: true,
             etag: true,
             page404: PathBuf::from("./404.html"),
+            page401: PathBuf::from("./401.html"),
+            page403: PathBuf::from("./403.html"),
             page50x: PathBuf::from("./50x.html"),
             #[cfg(feature = "fallback-page")]
             page_fallback: Vec::new(),
@@ -259,8 +277,7 @@ impl RequestHandler {
                         req.uri(),
                         req.method(),
                         &StatusCode::METHOD_NOT_ALLOWED,
-                        &self.opts.page404,
-                        &self.opts.page50x,
+                        &self.opts.error_pages(),
                     );
                 }
 
@@ -364,16 +381,14 @@ impl RequestHandler {
                                 req.uri(),
                                 req.method(),
                                 &status,
-                                &self.opts.page404,
-                                &self.opts.page50x,
+                                &self.opts.error_pages(),
                             )?
                         } else {
                             error_page::error_response(
                                 req.uri(),
                                 req.method(),
                                 &status,
-                                &self.opts.page404,
-                                &self.opts.page50x,
+                                &self.opts.error_pages(),
                             )?
                         };
 

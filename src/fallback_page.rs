@@ -64,7 +64,6 @@ mod tests {
     use crate::body::Body;
     use crate::{Error, error_page, handler::RequestHandlerOpts};
     use hyper::{Method, Request, Response, StatusCode, Uri};
-    use std::path::PathBuf;
 
     fn make_request(method: &str) -> Request<Body> {
         Request::builder()
@@ -79,8 +78,7 @@ mod tests {
             &Uri::try_from("/").unwrap(),
             &Method::GET,
             status,
-            &PathBuf::new(),
-            &PathBuf::new(),
+            &error_page::ErrorPages::default(),
         )
         .unwrap()
     }

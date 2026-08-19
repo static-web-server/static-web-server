@@ -162,6 +162,8 @@ impl Settings {
 
         let mut compression_static = opts.compression_static;
 
+        let mut page401 = opts.page401;
+        let mut page403 = opts.page403;
         let mut page404 = opts.page404;
         let mut page50x = opts.page50x;
 
@@ -306,6 +308,12 @@ impl Settings {
                 }
                 if let Some(v) = general.compression_static {
                     compression_static = v
+                }
+                if let Some(v) = general.page401 {
+                    page401 = v
+                }
+                if let Some(v) = general.page403 {
+                    page403 = v
                 }
                 if let Some(v) = general.page404 {
                     page404 = v
@@ -737,6 +745,8 @@ impl Settings {
                 ))]
                 compression_level,
                 compression_static,
+                page401,
+                page403,
                 page404,
                 page50x,
                 #[cfg(feature = "http2")]

@@ -468,8 +468,7 @@ pub(crate) fn pre_process<T>(
                 req.uri(),
                 req.method(),
                 &StatusCode::FORBIDDEN,
-                &opts.page404,
-                &opts.page50x,
+                &opts.error_pages(),
             ))
         }
     }

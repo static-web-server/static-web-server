@@ -85,15 +85,62 @@ pub(crate) fn build_html_response(
     resp
 }
 
-/// It returns a HTTP error response which also handles available `404` or `50x` HTML content.
+/// Load the custom error page body for `page` into `page_content`,
+/// preferring the process-wide cache and falling back to a one-time
+/// disk read that is then cached. Missing files keep the default body.
+fn load_custom_page(page: &Path, page_content: &mut String) {
+    if let Some(cached) = cached_page(page) {
+        page_content.clear();
+        page_content.push_str(&cached);
+    } else if page.is_file() {
+        // Cache miss — read disk once and remember.
+        cache_page(page);
+        helpers::read_text_default(page).clone_into(page_content);
+    } else {
+        tracing::debug!(
+            "error page file path not found or not a regular file: {}",
+            page.display()
+        );
+    }
+}
+
+/// Custom HTML error page paths, resolved at startup.
+#[derive(Clone, Default)]
+pub struct ErrorPages {
+    /// Page for 401 errors.
+    pub page401: PathBuf,
+    /// Page for 403 errors.
+    pub page403: PathBuf,
+    /// Page for 404 errors.
+    pub page404: PathBuf,
+    /// Page for 50x errors.
+    pub page50x: PathBuf,
+}
+
+impl ErrorPages {
+    /// Returns the custom page for a status code, or `None` when the code
+    /// has no dedicated page (generic HTML body is served instead).
+    fn page_for(&self, status: &StatusCode) -> Option<&Path> {
+        if status == &StatusCode::UNAUTHORIZED {
+            Some(&self.page401)
+        } else if status == &StatusCode::FORBIDDEN {
+            Some(&self.page403)
+        } else if status == &StatusCode::NOT_FOUND {
+            Some(&self.page404)
+        } else {
+            None
+        }
+    }
+}
+
+/// It returns a HTTP error response which also handles available `401`, `403`, `404` or `50x` HTML content.
 pub fn error_response(
     uri: &Uri,
     method: &Method,
     status_code: &StatusCode,
-    page404: &Path,
-    page50x: &Path,
+    pages: &ErrorPages,
 ) -> Result<Response<Body>> {
-    error_response_inner(uri, method, status_code, page404, page50x, true)
+    error_response_inner(uri, method, status_code, pages, true)
 }
 
 /// Builds an error response without emitting an operator-facing warning.
@@ -103,18 +150,16 @@ pub(crate) fn error_response_without_logging(
     uri: &Uri,
     method: &Method,
     status_code: &StatusCode,
-    page404: &Path,
-    page50x: &Path,
+    pages: &ErrorPages,
 ) -> Result<Response<Body>> {
-    error_response_inner(uri, method, status_code, page404, page50x, false)
+    error_response_inner(uri, method, status_code, pages, false)
 }
 
 fn error_response_inner(
     uri: &Uri,
     method: &Method,
     status_code: &StatusCode,
-    page404: &Path,
-    page50x: &Path,
+    pages: &ErrorPages,
     log_warning: bool,
 ) -> Result<Response<Body>> {
     if log_warning {
@@ -146,20 +191,10 @@ fn error_response_inner(
         | &StatusCode::UNSUPPORTED_MEDIA_TYPE
         | &StatusCode::RANGE_NOT_SATISFIABLE
         | &StatusCode::EXPECTATION_FAILED => {
-            // Extra check for 404 status code and its HTML content
-            if status_code == &StatusCode::NOT_FOUND {
-                if let Some(cached) = cached_page(page404) {
-                    page_content = cached.as_str().to_owned();
-                } else if page404.is_file() {
-                    // Cache miss \u2014 read disk once and remember.
-                    cache_page(page404);
-                    helpers::read_text_default(page404).clone_into(&mut page_content);
-                } else {
-                    tracing::debug!(
-                        "page404 file path not found or not a regular file: {}",
-                        page404.display()
-                    );
-                }
+            // Serve a dedicated custom page for 401, 403 and 404 status
+            // codes; other 4xx codes fall back to the generic HTML body.
+            if let Some(page) = pages.page_for(status_code) {
+                load_custom_page(page, &mut page_content);
             }
             status_code
         }
@@ -174,17 +209,7 @@ fn error_response_inner(
         | &StatusCode::INSUFFICIENT_STORAGE
         | &StatusCode::LOOP_DETECTED => {
             // HTML content check for status codes 50x
-            if let Some(cached) = cached_page(page50x) {
-                page_content = cached.as_str().to_owned();
-            } else if page50x.is_file() {
-                cache_page(page50x);
-                helpers::read_text_default(page50x).clone_into(&mut page_content);
-            } else {
-                tracing::debug!(
-                    "page50x file path not found or not a regular file: {}",
-                    page50x.display()
-                );
-            }
+            load_custom_page(&pages.page50x, &mut page_content);
             status_code
         }
         // other status codes
@@ -230,7 +255,22 @@ mod tests {
     use hyper::{Method, StatusCode};
     use std::path::Path;
 
-    use super::{build_html_response, error_response};
+    use super::{ErrorPages, build_html_response, error_response};
+
+    /// Builds `ErrorPages` from explicit paths for a single test call.
+    fn pages(
+        page401: impl AsRef<Path>,
+        page403: impl AsRef<Path>,
+        page404: impl AsRef<Path>,
+        page50x: impl AsRef<Path>,
+    ) -> ErrorPages {
+        ErrorPages {
+            page401: page401.as_ref().to_path_buf(),
+            page403: page403.as_ref().to_path_buf(),
+            page404: page404.as_ref().to_path_buf(),
+            page50x: page50x.as_ref().to_path_buf(),
+        }
+    }
 
     #[test]
     fn build_html_response_get_includes_body() {
@@ -266,8 +306,12 @@ mod tests {
             &uri,
             &Method::GET,
             &StatusCode::NOT_FOUND,
-            Path::new("/nonexistent/404.html"),
-            Path::new("/nonexistent/50x.html"),
+            &pages(
+                "/nonexistent/401.html",
+                "/nonexistent/403.html",
+                "/nonexistent/404.html",
+                "/nonexistent/50x.html",
+            ),
         )
         .unwrap();
         assert_eq!(resp.status(), StatusCode::NOT_FOUND);
@@ -282,12 +326,97 @@ mod tests {
             &uri,
             &Method::GET,
             &StatusCode::NOT_FOUND,
-            &page404,
-            Path::new("/nonexistent/50x.html"),
+            &pages(
+                "/nonexistent/401.html",
+                "/nonexistent/403.html",
+                page404.clone(),
+                "/nonexistent/50x.html",
+            ),
         )
         .unwrap();
         std::fs::remove_file(&page404).ok();
         assert_eq!(resp.status(), StatusCode::NOT_FOUND);
+    }
+
+    #[tokio::test]
+    async fn error_response_401_with_custom_page() {
+        let page401 = std::env::temp_dir().join("sws_error_page_401_test.html");
+        std::fs::write(&page401, b"<h1>Unauthorized</h1>").unwrap();
+        let uri = "/private".parse().unwrap();
+        let resp = error_response(
+            &uri,
+            &Method::GET,
+            &StatusCode::UNAUTHORIZED,
+            &pages(
+                page401.clone(),
+                "/nonexistent/403.html",
+                "/nonexistent/404.html",
+                "/nonexistent/50x.html",
+            ),
+        )
+        .unwrap();
+        std::fs::remove_file(&page401).ok();
+        assert_eq!(resp.status(), StatusCode::UNAUTHORIZED);
+        // The custom 401 page body must be served.
+        let body = resp.into_body();
+        let body = http_body_util::BodyExt::collect(body)
+            .await
+            .expect("unexpected bytes error during `body` conversion")
+            .to_bytes();
+        assert!(std::str::from_utf8(&body).unwrap().contains("Unauthorized"));
+    }
+
+    #[tokio::test]
+    async fn error_response_403_with_custom_page() {
+        let page403 = std::env::temp_dir().join("sws_error_page_403_test.html");
+        std::fs::write(&page403, b"<h1>Forbidden</h1>").unwrap();
+        let uri = "/restricted".parse().unwrap();
+        let resp = error_response(
+            &uri,
+            &Method::GET,
+            &StatusCode::FORBIDDEN,
+            &pages(
+                "/nonexistent/401.html",
+                page403.clone(),
+                "/nonexistent/404.html",
+                "/nonexistent/50x.html",
+            ),
+        )
+        .unwrap();
+        std::fs::remove_file(&page403).ok();
+        assert_eq!(resp.status(), StatusCode::FORBIDDEN);
+        // The custom 403 page body must be served.
+        let body = resp.into_body();
+        let body = http_body_util::BodyExt::collect(body)
+            .await
+            .expect("unexpected bytes error during `body` conversion")
+            .to_bytes();
+        assert!(std::str::from_utf8(&body).unwrap().contains("Forbidden"));
+    }
+
+    #[tokio::test]
+    async fn error_response_401_no_custom_page_falls_back_to_generic() {
+        let uri = "/private".parse().unwrap();
+        let resp = error_response(
+            &uri,
+            &Method::GET,
+            &StatusCode::UNAUTHORIZED,
+            &pages(
+                "/nonexistent/401.html",
+                "/nonexistent/403.html",
+                "/nonexistent/404.html",
+                "/nonexistent/50x.html",
+            ),
+        )
+        .unwrap();
+        assert_eq!(resp.status(), StatusCode::UNAUTHORIZED);
+        let body = resp.into_body();
+        let body = http_body_util::BodyExt::collect(body)
+            .await
+            .expect("unexpected bytes error during `body` conversion")
+            .to_bytes();
+        // Generic fallback body contains the status line, not a custom page.
+        assert!(std::str::from_utf8(&body).unwrap().contains("401"));
     }
 
     #[test]
@@ -297,8 +426,12 @@ mod tests {
             &uri,
             &Method::GET,
             &StatusCode::INTERNAL_SERVER_ERROR,
-            Path::new("/nonexistent/404.html"),
-            Path::new("/nonexistent/50x.html"),
+            &pages(
+                "/nonexistent/401.html",
+                "/nonexistent/403.html",
+                "/nonexistent/404.html",
+                "/nonexistent/50x.html",
+            ),
         )
         .unwrap();
         assert_eq!(resp.status(), StatusCode::INTERNAL_SERVER_ERROR);
@@ -311,8 +444,12 @@ mod tests {
             &uri,
             &Method::HEAD,
             &StatusCode::NOT_FOUND,
-            Path::new("/nonexistent/404.html"),
-            Path::new("/nonexistent/50x.html"),
+            &pages(
+                "/nonexistent/401.html",
+                "/nonexistent/403.html",
+                "/nonexistent/404.html",
+                "/nonexistent/50x.html",
+            ),
         )
         .unwrap();
         assert_eq!(resp.status(), StatusCode::NOT_FOUND);

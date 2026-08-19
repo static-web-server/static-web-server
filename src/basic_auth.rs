@@ -42,13 +42,8 @@ pub(crate) fn pre_process<T>(
     if let Some((user_id, password)) = opts.basic_auth.split_once(':') {
         let err = check_request(req.headers(), user_id, password).err()?;
         tracing::warn!("basic authentication failed {:?}", err);
-        let mut result = error_page::error_response(
-            uri,
-            method,
-            &StatusCode::UNAUTHORIZED,
-            &opts.page404,
-            &opts.page50x,
-        );
+        let mut result =
+            error_page::error_response(uri, method, &StatusCode::UNAUTHORIZED, &opts.error_pages());
         if let Ok(ref mut resp) = result {
             resp.headers_mut().insert(
                 WWW_AUTHENTICATE,
@@ -64,8 +59,7 @@ pub(crate) fn pre_process<T>(
             uri,
             method,
             &StatusCode::INTERNAL_SERVER_ERROR,
-            &opts.page404,
-            &opts.page50x,
+            &opts.error_pages(),
         ))
     }
 }
