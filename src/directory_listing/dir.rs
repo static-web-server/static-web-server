@@ -16,6 +16,8 @@ use std::path::Path;
 use crate::body::Body;
 use crate::directory_listing::autoindex::{html_auto_index, json_auto_index};
 use crate::directory_listing::file::{FileEntry, FileType};
+use crate::exts::headers::Accept;
+use crate::exts::http::append_vary_accept;
 use crate::{Context, Result};
 
 #[cfg(feature = "directory-listing-download")]
@@ -31,13 +33,16 @@ const PERCENT_ENCODE_SET: &AsciiSet = &NON_ALPHANUMERIC
     .remove(b'~');
 
 /// Directory listing output format for file entries.
-#[derive(Debug, Serialize, Deserialize, Clone, ValueEnum)]
+#[derive(Debug, PartialEq, Serialize, Deserialize, Clone, ValueEnum)]
 #[serde(rename_all = "lowercase")]
 pub enum DirListFmt {
     /// HTML format to display (default).
     Html,
     /// JSON format to display.
     Json,
+    /// Automatically choose the format via the request `Accept` header.
+    /// HTML is used by default when no supported media type is present.
+    Auto,
 }
 
 /// Directory listing options.
@@ -56,6 +61,9 @@ pub struct DirListOpts<'a> {
     pub dir_listing_order: u8,
     /// Directory listing format.
     pub dir_listing_format: &'a DirListFmt,
+    /// Request `Accept` header used to negotiate the listing format when
+    /// `dir_listing_format` is `DirListFmt::Auto`.
+    pub(crate) accept: Option<&'a Accept>,
     #[cfg(feature = "directory-listing-download")]
     /// Directory listing download.
     pub dir_listing_download: &'a [DirDownloadFmt],
@@ -74,6 +82,7 @@ pub(crate) struct DirEntryOpts<'a> {
     pub(crate) is_head: bool,
     pub(crate) order_code: u8,
     pub(crate) content_format: &'a DirListFmt,
+    pub(crate) accept: Option<&'a Accept>,
     pub(crate) include_hidden: bool,
     pub(crate) follow_symlinks: bool,
     #[cfg(feature = "directory-listing-download")]
@@ -219,8 +228,33 @@ pub(crate) fn read_dir_entries(mut opt: DirEntryOpts<'_>) -> Result<Response<Bod
 
     let mut resp = Response::new(crate::body::empty());
 
+    // When `Auto` is set, negotiate the listing format via the request
+    // `Accept` header (q-value order). HTML is the fallback when the header
+    // is absent or lists neither `text/html` nor `application/json`.
+    let content_format = if opt.content_format == &DirListFmt::Auto {
+        let format = opt
+            .accept
+            .and_then(|accept| {
+                accept
+                    .preferred_media_type(&["application/json", "text/html"])
+                    .map(|media_type| {
+                        if media_type == "application/json" {
+                            DirListFmt::Json
+                        } else {
+                            DirListFmt::Html
+                        }
+                    })
+            })
+            .unwrap_or(DirListFmt::Html);
+        // Let caches know the response depends on the `Accept` header.
+        append_vary_accept(&mut resp);
+        format
+    } else {
+        opt.content_format.clone()
+    };
+
     // Handle directory listing content format
-    let content = match opt.content_format {
+    let content = match &content_format {
         DirListFmt::Json => {
             // JSON
             resp.headers_mut()
