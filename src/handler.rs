@@ -353,16 +353,32 @@ impl RequestHandler {
                 .await
                 {
                     Ok(result) => (result.resp, Some(result.file_path)),
-                    Err(status) => (
-                        error_page::error_response(
-                            req.uri(),
-                            req.method(),
-                            &status,
-                            &self.opts.page404,
-                            &self.opts.page50x,
-                        )?,
-                        None,
-                    ),
+                    Err(status) => {
+                        #[cfg(feature = "fallback-page")]
+                        let will_serve_fallback = fallback_page::can_serve(&self.opts, req, status);
+                        #[cfg(not(feature = "fallback-page"))]
+                        let will_serve_fallback = false;
+
+                        let resp = if will_serve_fallback {
+                            error_page::error_response_without_logging(
+                                req.uri(),
+                                req.method(),
+                                &status,
+                                &self.opts.page404,
+                                &self.opts.page50x,
+                            )?
+                        } else {
+                            error_page::error_response(
+                                req.uri(),
+                                req.method(),
+                                &status,
+                                &self.opts.page404,
+                                &self.opts.page50x,
+                            )?
+                        };
+
+                        (resp, None)
+                    }
                 };
 
                 // Check for a fallback response

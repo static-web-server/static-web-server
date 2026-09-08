@@ -62,6 +62,17 @@ impl Accept {
     pub(crate) fn accepts_markdown(&self) -> bool {
         self.accepts("text/markdown")
     }
+
+    /// Returns the first listed media type among `candidates`, honoring the
+    /// media types q-value order. `None` when none of the candidates is listed.
+    pub(crate) fn preferred_media_type<'a>(&self, candidates: &[&'a str]) -> Option<&'a str> {
+        self.0.iter().find_map(|value| {
+            candidates
+                .iter()
+                .find(|candidate| value.eq_ignore_ascii_case(candidate))
+                .copied()
+        })
+    }
 }
 
 #[cfg(test)]
@@ -101,5 +112,56 @@ mod tests {
         let val = HeaderValue::from_static("text/html, application/json");
         let accept = Accept(val.into());
         assert!(!accept.accepts_markdown());
+    }
+
+    #[test]
+    fn preferred_media_type_json_first() {
+        let val = HeaderValue::from_static("application/json, text/html");
+        let accept = Accept(val.into());
+        assert_eq!(
+            accept.preferred_media_type(&["application/json", "text/html"]),
+            Some("application/json")
+        );
+    }
+
+    #[test]
+    fn preferred_media_type_html_first() {
+        let val = HeaderValue::from_static("text/html, application/json");
+        let accept = Accept(val.into());
+        assert_eq!(
+            accept.preferred_media_type(&["application/json", "text/html"]),
+            Some("text/html")
+        );
+    }
+
+    #[test]
+    fn preferred_media_type_respects_q_values() {
+        // JSON preferred via a higher q-value despite appearing second
+        let val = HeaderValue::from_static("text/html;q=0.8, application/json;q=0.9");
+        let accept = Accept(val.into());
+        assert_eq!(
+            accept.preferred_media_type(&["application/json", "text/html"]),
+            Some("application/json")
+        );
+    }
+
+    #[test]
+    fn preferred_media_type_none_when_absent() {
+        let val = HeaderValue::from_static("text/plain, */*");
+        let accept = Accept(val.into());
+        assert_eq!(
+            accept.preferred_media_type(&["application/json", "text/html"]),
+            None
+        );
+    }
+
+    #[test]
+    fn preferred_media_type_case_insensitive() {
+        let val = HeaderValue::from_static("Application/JSON");
+        let accept = Accept(val.into());
+        assert_eq!(
+            accept.preferred_media_type(&["application/json"]),
+            Some("application/json")
+        );
     }
 }

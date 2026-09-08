@@ -15,11 +15,13 @@
 
 #![cfg(feature = "directory-listing")]
 
+use headers::HeaderMapExt;
 use hyper::{Response, StatusCode};
 use std::path::Path;
 
 use crate::body::Body;
 use crate::directory_listing::{self, DirListOpts};
+use crate::exts::headers::Accept;
 
 #[cfg(feature = "directory-listing-download")]
 use crate::directory_listing::download::{DOWNLOAD_PARAM_KEY, DirDownloadOpts, archive_reply};
@@ -50,6 +52,7 @@ pub(super) fn try_listing(
         filepath: file_path,
         dir_listing_order: opts.dir_listing_order,
         dir_listing_format: opts.dir_listing_format,
+        accept: opts.headers.typed_get::<Accept>().as_ref(),
         include_hidden: opts.include_hidden,
         follow_symlinks: opts.follow_symlinks,
         #[cfg(feature = "directory-listing-download")]

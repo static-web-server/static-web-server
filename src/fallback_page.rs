@@ -35,16 +35,20 @@ pub(crate) fn post_process<T>(
     req: &Request<T>,
     resp: Response<Body>,
 ) -> Result<Response<Body>, Error> {
-    Ok(
-        if req.method().is_get()
-            && resp.status() == StatusCode::NOT_FOUND
-            && !opts.page_fallback.is_empty()
-        {
-            fallback_response(&opts.page_fallback)
-        } else {
-            resp
-        },
-    )
+    Ok(if can_serve(opts, req, resp.status()) {
+        fallback_response(&opts.page_fallback)
+    } else {
+        resp
+    })
+}
+
+/// Returns whether the request and status will be replaced by a fallback page.
+pub(crate) fn can_serve<T>(
+    opts: &RequestHandlerOpts,
+    req: &Request<T>,
+    status: StatusCode,
+) -> bool {
+    req.method().is_get() && status == StatusCode::NOT_FOUND && !opts.page_fallback.is_empty()
 }
 
 /// Checks if a fallback response can be generated, i.e. if it is a `GET` request

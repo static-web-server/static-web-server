@@ -639,4 +639,109 @@ mod tests {
         let _ = fs::remove_file(&evil);
         let _ = fs::remove_dir(&tmp);
     }
+
+    #[tokio::test]
+    async fn dir_listing_auto_format_via_accept_json() {
+        let mut headers = HeaderMap::new();
+        headers.insert("accept", "application/json".parse().unwrap());
+
+        let result = static_files::handle(&HandleOpts {
+            method: &Method::GET,
+            headers: &headers,
+            base_path: &root_dir("tests/fixtures/public"),
+            uri_path: "/",
+            uri_query: None,
+            #[cfg(feature = "mem-cache")]
+            memory_cache: None,
+            dir_listing: true,
+            dir_listing_order: 6,
+            dir_listing_format: &DirListFmt::Auto,
+            redirect_trailing_slash: true,
+            compression_static: false,
+            etag: true,
+            include_hidden: true,
+            follow_symlinks: true,
+            index_files: &[],
+            #[cfg(feature = "directory-listing-download")]
+            dir_listing_download: &[],
+        })
+        .await
+        .expect("handle should succeed for GET on a readable directory");
+
+        let res = result.resp;
+        assert_eq!(res.status(), 200);
+        assert_eq!(res.headers()["content-type"], "application/json");
+    }
+
+    #[tokio::test]
+    async fn dir_listing_auto_format_via_accept_html() {
+        let mut headers = HeaderMap::new();
+        headers.insert("accept", "text/html".parse().unwrap());
+
+        let result = static_files::handle(&HandleOpts {
+            method: &Method::GET,
+            headers: &headers,
+            base_path: &root_dir("tests/fixtures/public"),
+            uri_path: "/",
+            uri_query: None,
+            #[cfg(feature = "mem-cache")]
+            memory_cache: None,
+            dir_listing: true,
+            dir_listing_order: 6,
+            dir_listing_format: &DirListFmt::Auto,
+            redirect_trailing_slash: true,
+            compression_static: false,
+            etag: true,
+            include_hidden: true,
+            follow_symlinks: true,
+            index_files: &[],
+            #[cfg(feature = "directory-listing-download")]
+            dir_listing_download: &[],
+        })
+        .await
+        .expect("handle should succeed for GET on a readable directory");
+
+        let res = result.resp;
+        assert_eq!(res.status(), 200);
+        assert_eq!(res.headers()["content-type"], "text/html; charset=utf-8");
+    }
+
+    #[tokio::test]
+    async fn dir_listing_auto_format_defaults_to_html() {
+        // No `Accept` header and an unrelated media type must both fall back
+        // to the HTML listing.
+        for accept in [None, Some("text/plain")] {
+            let mut headers = HeaderMap::new();
+            if let Some(value) = accept {
+                headers.insert("accept", value.parse().unwrap());
+            }
+
+            let result = static_files::handle(&HandleOpts {
+                method: &Method::GET,
+                headers: &headers,
+                base_path: &root_dir("tests/fixtures/public"),
+                uri_path: "/",
+                uri_query: None,
+                #[cfg(feature = "mem-cache")]
+                memory_cache: None,
+                dir_listing: true,
+                dir_listing_order: 6,
+                dir_listing_format: &DirListFmt::Auto,
+                redirect_trailing_slash: true,
+                compression_static: false,
+                etag: true,
+                include_hidden: true,
+                follow_symlinks: true,
+                index_files: &[],
+                #[cfg(feature = "directory-listing-download")]
+                dir_listing_download: &[],
+            })
+            .await
+            .expect("handle should succeed for GET on a readable directory");
+
+            let res = result.resp;
+            assert_eq!(res.status(), 200);
+            assert_eq!(res.headers()["content-type"], "text/html; charset=utf-8");
+        }
+    }
 }
