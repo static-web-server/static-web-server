@@ -1,0 +1,13 @@
+# Cross: workaround for https://github.com/cross-rs/cross/issues/1345
+#
+# Rust's standard library links `libexecinfo` on NetBSD (backtraces), and
+# the cross image's sysroot does not ship it, so the release's own base
+# set supplies the library.
+[target.x86_64-unknown-netbsd]
+pre-build = [
+    "mkdir -p /tmp/netbsd",
+    "curl -fLo base.tar.xz https://cdn.netbsd.org/pub/NetBSD/NetBSD-9.5/amd64/binary/sets/base.tar.xz || curl -fLo base.tar.xz https://archive.netbsd.org/pub/NetBSD-archive/NetBSD-9.5/amd64/binary/sets/base.tar.xz",
+    "tar -C /tmp/netbsd -xJf base.tar.xz",
+    "cp /tmp/netbsd/usr/lib/libexecinfo.so /usr/local/x86_64-unknown-netbsd/lib",
+    "rm -rf base.tar.xz /tmp/netbsd",
+]

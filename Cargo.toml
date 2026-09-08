@@ -169,13 +169,3 @@ strip = false
 features = ["all"]
 rustdoc-args = ["--cfg", "docsrs", "--cfg", "tokio_unstable"]
 rustc-args = ["--cfg", "tokio_unstable"]
-
-# Cross: workaround for https://github.com/cross-rs/cross/issues/1345
-[package.metadata.cross.target.x86_64-unknown-netbsd]
-pre-build = [
-    "mkdir -p /tmp/netbsd",
-    "curl -fO https://ftp.uni-erlangen.de/netbsd/NetBSD-9.4/amd64/binary/sets/base.tar.xz",
-    "tar -C /tmp/netbsd -xJf base.tar.xz",
-    "cp /tmp/netbsd/usr/lib/libexecinfo.so /usr/local/x86_64-unknown-netbsd/lib",
-    "rm -rf base.tar.xz /tmp/netbsd",
-]
