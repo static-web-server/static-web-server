@@ -22,7 +22,6 @@ use std::task::Poll::{Pending, Ready};
 use tokio::fs;
 use tokio::io;
 use tokio::io::AsyncWriteExt;
-use tokio_util::compat::TokioAsyncWriteCompatExt;
 
 use crate::Result;
 use crate::handler::RequestHandlerOpts;
@@ -118,7 +117,7 @@ async fn archive(
     ignore_hidden: bool,
 ) -> Result {
     let gz = GzipEncoder::with_quality(cb, async_compression::Level::Default);
-    let mut a = Builder::new(gz.compat_write());
+    let mut a = Builder::new(gz);
     a.follow_symlinks(follow_symlinks);
 
     // NOTE: Since it is not possible to handle error gracefully, we will
@@ -155,7 +154,7 @@ async fn archive(
 
     a.finish().await?;
     // this is required to emit gzip CRC trailer
-    a.into_inner().await?.into_inner().shutdown().await?;
+    a.into_inner().await?.shutdown().await?;
 
     Ok(())
 }

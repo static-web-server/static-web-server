@@ -76,7 +76,7 @@ aho-corasick = "1.1.4"
 anyhow = "1.0"
 aws-lc-rs = { version = "1", optional = true, default-features = false }
 async-compression = { version = "0.4", default-features = false, optional = true, features = ["brotli", "deflate", "gzip", "zstd", "tokio"] }
-async-tar = { version = "0.5.1", optional = true }
+async-tar = { version = "0.6.1", optional = true, default-features = false, features = ["runtime-tokio", "xattr"] }
 bcrypt = { version = "0.19.3", optional = true }
 bytes = "1.12.1"
 chrono = { version = "0.4", default-features = false, features = ["std", "clock"], optional = true }
@@ -106,7 +106,7 @@ serde_repr = "0.1"
 shadow-rs = "2.0.0"
 tokio = { version = "1", default-features = false, features = ["rt-multi-thread", "macros", "fs", "io-util", "signal"] }
 tokio-rustls = { version = "0.26", optional = true, default-features = false }
-tokio-util = { version = "0.7", default-features = false, features = ["compat", "io"] }
+tokio-util = { version = "0.7", default-features = false, features = ["io"] }
 toml = "0.9"
 tracing = { version = "0.1", default-features = false, features = ["std"] }
 tracing-subscriber = { version = "0.3", default-features = false, features = ["smallvec", "registry", "parking_lot", "fmt", "ansi", "tracing-log", "local-time"] }

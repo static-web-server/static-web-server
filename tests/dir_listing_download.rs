@@ -17,7 +17,6 @@ mod tests {
         pin::Pin,
     };
     use tokio::{fs, io::AsyncReadExt};
-    use tokio_util::compat::{FuturesAsyncReadCompatExt, TokioAsyncReadCompatExt};
 
     use static_web_server::{
         directory_listing::DirListFmt,
@@ -50,15 +49,15 @@ mod tests {
         body: &[u8],
         validate: bool,
     ) -> HashSet<PathBuf> {
-        let reader = Archive::new(GzipDecoder::new(body).compat());
+        let reader = Archive::new(GzipDecoder::new(body));
 
         let mut content = HashSet::new();
         // adapted from async_tar::Archive::unpack
         let mut entries = reader.entries().unwrap();
         let mut pinned = Pin::new(&mut entries);
         while let Some(entry) = pinned.next().await {
-            let file = entry.unwrap();
-            let path: PathBuf = file.header().path().unwrap().to_path_buf().into();
+            let mut file = entry.unwrap();
+            let path: PathBuf = file.header().path().unwrap().to_path_buf();
 
             // validate content
             if validate
@@ -72,7 +71,7 @@ mod tests {
                 if !meta.is_dir() {
                     let on_disk = std::fs::read(&on_disk_path).unwrap();
                     let mut compressed = Vec::new();
-                    file.compat().read_to_end(&mut compressed).await.unwrap();
+                    file.read_to_end(&mut compressed).await.unwrap();
                     assert_eq!(on_disk, compressed);
                 }
             }

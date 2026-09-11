@@ -23,3 +23,11 @@ Downstream project maintainers and Static Web Server users can request participa
 ## Security advisories
 
 The project team is committed to transparency in the security issue disclosure process. The Static Web Server team announces security issues via [GitHub Release Notes](https://github.com/static-web-server/static-web-server/releases) and [GitHub Advisory Database](https://github.com/advisories).
+
+## Accepted risks
+
+The following advisories are known, assessed and accepted for the `2.x` (LTS) branch. They are listed in [`.cargo/audit.toml`](.cargo/audit.toml) so that dependency scanners have an explanation to point at.
+
+| Advisory | Crate | Reason |
+| -- | -- | -- |
+| [RUSTSEC-2026-0258](https://rustsec.org/advisories/RUSTSEC-2026-0258.html) | `h2 0.3.x` (via `hyper 0.14`) | Low-severity DoS with no fix available for `2.x`: the patch only exists in `h2 0.4.16+`, which requires `http 1.x` that `hyper 0.14` cannot use, and there is no upstream `0.3.x` backport. Mitigated in `2.x` by enforcing HTTP/1 on the plaintext listeners, so HTTP/2 is only reachable over TLS via `--http2`. Resolved by the `hyper 1.x` migration in `3.x`. |
