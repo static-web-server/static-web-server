@@ -552,9 +552,12 @@ impl Server {
                     allowed_hosts: redirect_allowed_hosts,
                 });
 
+                // NOTE: the redirect server is plaintext-only, so HTTP/1 is enforced
+                // to prevent HTTP/2 cleartext (h2c) prior-knowledge upgrades.
                 let server_redirect = HyperServer::from_tcp(tcp_listener)
                     .unwrap()
                     .tcp_nodelay(true)
+                    .http1_only(true)
                     .serve(make_service_fn(move |_: &AddrStream| {
                         let redirect_opts = redirect_opts.clone();
                         let page404 = page404.clone();
@@ -643,9 +646,13 @@ impl Server {
             .set_nonblocking(true)
             .with_context(|| "failed to set TCP non-blocking mode")?;
 
+        // NOTE: this server is plaintext-only, so HTTP/1 is enforced to prevent
+        // HTTP/2 cleartext (h2c) prior-knowledge upgrades.
+        // HTTP/2 is only served over TLS via the `--http2` option.
         let http1_server = HyperServer::from_tcp(tcp_listener)
             .unwrap()
             .tcp_nodelay(true)
+            .http1_only(true)
             .serve(router_service);
 
         #[cfg(unix)]

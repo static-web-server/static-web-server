@@ -1,1 +1,7 @@
 [advisories]
+ignore = [
+    # NOTE: h2 0.3.27 via hyper 0.14. No upstream 0.3.x backport exists and h2 0.4.16+
+    # requires http 1.x, which hyper 0.14 cannot use. Low severity DoS; SWS does
+    # not read request bodies. Resolved by the hyper 1.x migration in SWS 3.0.
+    "RUSTSEC-2026-0258",
+]
