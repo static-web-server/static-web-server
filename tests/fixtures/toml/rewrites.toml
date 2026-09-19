@@ -24,6 +24,11 @@ destination = "/$1x.html"
 source = "/scripts/{*}.{js,mjs}"
 destination = "/assets/$1.$2"
 
+# Glob groups recursive 1
+[[advanced.rewrites]]
+source = "/recursive/{**}"
+destination = "/$1"
+
 # Glob groups 5 (redirect)
 [[advanced.rewrites]]
 source = "**/{*}.{ico}"
