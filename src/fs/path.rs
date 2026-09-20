@@ -110,9 +110,33 @@ pub(crate) fn sanitize_path(base: &Path, tail: &str) -> Result<PathBuf, StatusCo
     Ok(full_path)
 }
 
+/// Returns `true` if `path` resolves inside `base_path` after canonicalization.
+///
+/// Fail-closed: I/O or canonicalize errors yield `false`, so dangling
+/// symlinks are rejected as well.
+/// Mirrors `static_files::enforce_containment` without the request cache.
+///
+/// Note: this is a check-then-use test — a symlink retargeted between this
+/// check and a subsequent open can still resolve outside `base_path`, the
+/// same known limitation as `enforce_containment`.
+#[doc(hidden)]
+#[must_use]
+pub fn is_path_within_base(path: &Path, base_path: &Path) -> bool {
+    let Ok(resolved) = path.canonicalize() else {
+        return false;
+    };
+    if resolved.starts_with(base_path) {
+        return true;
+    }
+    let Ok(base_resolved) = base_path.canonicalize() else {
+        return false;
+    };
+    resolved.starts_with(base_resolved)
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{PathExt, sanitize_path};
+    use super::{PathExt, is_path_within_base, sanitize_path};
     use std::path::PathBuf;
 
     fn root_dir() -> PathBuf {
@@ -153,6 +177,32 @@ mod tests {
         assert_eq!(
             sanitize_path(base_dir, "/C:\\/foo.html").unwrap(),
             expected_path
+        );
+    }
+
+    #[test]
+    fn is_path_within_base_rejects_outside_symlink() {
+        // Given: fixtures/public/readme.md points outside the public root
+        let base = PathBuf::from("tests/fixtures/public");
+        let outside = base.join("readme.md");
+
+        // When/Then: resolved target is not within the public root
+        assert!(
+            !is_path_within_base(&outside, &base),
+            "outside-root symlink must not be treated as within base"
+        );
+    }
+
+    #[test]
+    fn is_path_within_base_accepts_inside_file() {
+        // Given: fixtures/public/index.htm lives inside the public root
+        let base = PathBuf::from("tests/fixtures/public");
+        let inside = base.join("index.htm");
+
+        // When/Then: path resolves within base
+        assert!(
+            is_path_within_base(&inside, &base),
+            "in-root file must be treated as within base"
         );
     }
 

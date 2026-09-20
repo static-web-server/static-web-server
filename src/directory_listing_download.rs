@@ -48,6 +48,8 @@ impl Display for DirDownloadFmt {
 pub struct DirDownloadOpts<'a> {
     /// Request method.
     pub method: &'a Method,
+    /// Root directory that archive entries must remain within.
+    pub base_path: &'a Path,
     /// Prevent following symlinks for files and directories.
     pub disable_symlinks: bool,
     /// Ignore hidden files (dotfiles).
@@ -112,6 +114,7 @@ impl tokio::io::AsyncWrite for ChannelBuffer {
 async fn archive(
     path: PathBuf,
     src_path: PathBuf,
+    base_path: PathBuf,
     cb: ChannelBuffer,
     follow_symlinks: bool,
     ignore_hidden: bool,
@@ -125,9 +128,21 @@ async fn archive(
     // sender.abort() as it is protected behind the Builder to ensure
     // finish() is successfully called.
 
+    // Resolve the base once so the per-entry containment check takes the
+    // fast path instead of re-canonicalizing the base for every entry.
+    let base_path = base_path.canonicalize().unwrap_or(base_path);
+
     // adapted from async_tar::Builder::append_dir_all
     let mut stack = vec![(src_path.to_path_buf(), true, false)];
     while let Some((src, is_dir, is_symlink)) = stack.pop() {
+        if !crate::fs::path::is_path_within_base(&src, &base_path) {
+            tracing::warn!(
+                path = %src.display(),
+                "skipping archive entry outside base path"
+            );
+            continue;
+        }
+
         let dest = path.join(src.strip_prefix(&src_path)?);
 
         // In case of a symlink pointing to a directory, is_dir is false, but src.is_dir() will return true
@@ -205,6 +220,7 @@ where
     tokio::task::spawn(archive(
         path.as_ref().into(),
         src_path.as_ref().into(),
+        opts.base_path.to_path_buf(),
         ChannelBuffer { s: tx },
         !opts.disable_symlinks,
         opts.ignore_hidden_files,

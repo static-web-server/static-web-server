@@ -529,6 +529,7 @@ pub async fn handle(opts: &HandleOpts<'_>) -> Result<StaticFileResponse, StatusC
                     &fp,
                     DirDownloadOpts {
                         method,
+                        base_path: opts.base_path,
                         disable_symlinks: opts.disable_symlinks,
                         ignore_hidden_files: opts.ignore_hidden_files,
                     },
