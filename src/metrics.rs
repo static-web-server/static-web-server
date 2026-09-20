@@ -15,6 +15,7 @@ use prometheus::{
     default_registry,
 };
 
+use crate::settings::VirtualHosts;
 use crate::{Error, handler::RequestHandlerOpts, http_ext::MethodExt};
 
 // Histogram buckets tuned for static file serving (50µs to 10s).
@@ -23,6 +24,10 @@ const LATENCY_BUCKETS: &[f64] = &[
     0.00005, 0.0001, 0.00025, 0.0005, 0.001, 0.0025, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0,
     2.5, 5.0, 10.0,
 ];
+
+/// Label used when a request label is not in an allowlist (unknown host or
+/// unsupported method). Keeps Prometheus cardinality bounded (CWE-770).
+const OTHER_LABEL: &str = "other";
 
 static HTTP_REQUESTS_TOTAL: LazyLock<IntCounterVec> = LazyLock::new(|| {
     IntCounterVec::new(
@@ -87,6 +92,12 @@ static HTTP_CONNECTIONS_ACTIVE: LazyLock<IntGauge> = LazyLock::new(|| {
 /// to trusted scrapers; otherwise an unauthenticated client could
 /// enumerate vhost names, request volumes, and latency distributions
 /// (information disclosure).
+///
+/// HTTP metric labels taken from the request are allowlisted. The `host`
+/// label is only a name listed under `[advanced.virtual-hosts]`; anything
+/// else is `other`. The `method` label is only GET, HEAD, or OPTIONS
+/// (the methods SWS serves); anything else is `other`. This bounds series
+/// cardinality when `--metrics=true`.
 pub fn init(enabled: bool, handler_opts: &mut RequestHandlerOpts) {
     handler_opts.metrics_enabled = enabled;
     tracing::info!("metrics endpoint: enabled={enabled}");
@@ -175,16 +186,21 @@ pub fn pre_process<T>(
 }
 
 /// Records HTTP request metrics after a response is produced.
-pub fn record_request<T>(req: &Request<T>, status: StatusCode, bytes: u64, elapsed: f64) {
+///
+/// `virtual_hosts` is the configured name-based vhost list (same source
+/// as request routing). Unlisted or missing hosts collapse to `other`.
+pub fn record_request<T>(
+    req: &Request<T>,
+    status: StatusCode,
+    bytes: u64,
+    elapsed: f64,
+    virtual_hosts: Option<&[VirtualHosts]>,
+) {
     if req.uri().path() == "/metrics" {
         return;
     }
-    let m = req.method().as_str();
-    let host = req
-        .headers()
-        .get(hyper::header::HOST)
-        .and_then(|v| v.to_str().ok())
-        .unwrap_or("");
+    let m = method_label(req);
+    let host = host_label(req, virtual_hosts);
     let sc = status_class(status.as_u16());
     HTTP_REQUESTS_TOTAL.with_label_values(&[m, sc, host]).inc();
     HTTP_REQUEST_DURATION_SECONDS
@@ -227,11 +243,44 @@ fn status_class(code: u16) -> &'static str {
     }
 }
 
+/// Method used as the Prometheus `method` label: GET, HEAD, or OPTIONS,
+/// or `other`. Custom/unsupported methods are collapsed so 405 responses
+/// cannot mint unbounded series.
+fn method_label<T>(req: &Request<T>) -> &str {
+    let method = req.method();
+    if method.is_allowed() {
+        method.as_str()
+    } else {
+        OTHER_LABEL
+    }
+}
+
+/// Host used as the Prometheus `host` label: a configured virtual host,
+/// or `other`. Matches `virtual_hosts::get_real_root` host extraction
+/// (HTTP/2 `:authority`, otherwise `Host` with a trailing port stripped).
+fn host_label<'a, T>(req: &Request<T>, virtual_hosts: Option<&'a [VirtualHosts]>) -> &'a str {
+    let Some(vhosts) = virtual_hosts.filter(|v| !v.is_empty()) else {
+        return OTHER_LABEL;
+    };
+    let Some(host) = crate::virtual_hosts::request_host(req) else {
+        return OTHER_LABEL;
+    };
+    vhosts
+        .iter()
+        .find(|v| v.host == host)
+        .map(|v| v.host.as_str())
+        .unwrap_or(OTHER_LABEL)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::handler::RequestHandlerOpts;
     use hyper::{Body, Request};
+    use std::path::PathBuf;
+    use std::sync::Mutex;
+
+    static METRICS_TEST_LOCK: Mutex<()> = Mutex::new(());
 
     fn make_request(method: &str, uri: &str) -> Request<Body> {
         Request::builder()
@@ -239,6 +288,13 @@ mod tests {
             .uri(uri)
             .body(Body::empty())
             .unwrap()
+    }
+
+    fn make_vhost(host: &str) -> VirtualHosts {
+        VirtualHosts {
+            host: host.to_string(),
+            root: PathBuf::from("/"),
+        }
     }
 
     #[test]
@@ -308,12 +364,51 @@ mod tests {
     }
 
     #[test]
+    fn test_host_label_collapses_when_no_vhosts() {
+        let req = Request::builder()
+            .method("GET")
+            .uri("/index.html")
+            .header(hyper::header::HOST, "poc-000001.invalid")
+            .body(Body::empty())
+            .unwrap();
+        assert_eq!(host_label(&req, None), OTHER_LABEL);
+        assert_eq!(host_label(&req, Some(&[])), OTHER_LABEL);
+    }
+
+    #[test]
+    fn test_host_label_allows_configured_vhost() {
+        let vhosts = [make_vhost("example.com")];
+        let allowed = Request::builder()
+            .method("GET")
+            .uri("/index.html")
+            .header(hyper::header::HOST, "example.com")
+            .body(Body::empty())
+            .unwrap();
+        let allowed_port = Request::builder()
+            .method("GET")
+            .uri("/index.html")
+            .header(hyper::header::HOST, "example.com:8080")
+            .body(Body::empty())
+            .unwrap();
+        let unknown = Request::builder()
+            .method("GET")
+            .uri("/index.html")
+            .header(hyper::header::HOST, "poc-000002.invalid")
+            .body(Body::empty())
+            .unwrap();
+        assert_eq!(host_label(&allowed, Some(&vhosts)), "example.com");
+        assert_eq!(host_label(&allowed_port, Some(&vhosts)), "example.com");
+        assert_eq!(host_label(&unknown, Some(&vhosts)), OTHER_LABEL);
+    }
+
+    #[test]
     fn test_record_request() {
+        let _guard = METRICS_TEST_LOCK.lock().unwrap();
         let before = HTTP_REQUESTS_TOTAL
-            .with_label_values(&["GET", "2xx", "example.com"])
+            .with_label_values(&["GET", "2xx", OTHER_LABEL])
             .get();
         let bytes_before = HTTP_RESPONSE_BYTES_TOTAL
-            .with_label_values(&["GET", "2xx", "example.com"])
+            .with_label_values(&["GET", "2xx", OTHER_LABEL])
             .get();
 
         let req = Request::builder()
@@ -322,36 +417,138 @@ mod tests {
             .header(hyper::header::HOST, "example.com")
             .body(Body::empty())
             .unwrap();
-        record_request(&req, StatusCode::OK, 1024, 0.005);
+        record_request(&req, StatusCode::OK, 1024, 0.005, None);
 
         assert_eq!(
             HTTP_REQUESTS_TOTAL
-                .with_label_values(&["GET", "2xx", "example.com"])
+                .with_label_values(&["GET", "2xx", OTHER_LABEL])
                 .get(),
             before + 1
         );
         assert_eq!(
             HTTP_RESPONSE_BYTES_TOTAL
-                .with_label_values(&["GET", "2xx", "example.com"])
+                .with_label_values(&["GET", "2xx", OTHER_LABEL])
                 .get(),
             bytes_before + 1024
         );
     }
 
     #[test]
-    fn test_record_request_skips_metrics_path() {
+    fn test_record_request_unknown_hosts_share_other_label() {
+        let _guard = METRICS_TEST_LOCK.lock().unwrap();
         let before = HTTP_REQUESTS_TOTAL
-            .with_label_values(&["GET", "2xx", ""])
+            .with_label_values(&["GET", "2xx", OTHER_LABEL])
             .get();
 
-        let req = make_request("GET", "/metrics");
-        record_request(&req, StatusCode::OK, 0, 0.001);
+        for host in ["poc-a.invalid", "poc-b.invalid", "poc-c.invalid"] {
+            let req = Request::builder()
+                .method("GET")
+                .uri("/index.html")
+                .header(hyper::header::HOST, host)
+                .body(Body::empty())
+                .unwrap();
+            record_request(&req, StatusCode::OK, 0, 0.001, None);
+        }
 
         assert_eq!(
             HTTP_REQUESTS_TOTAL
-                .with_label_values(&["GET", "2xx", ""])
+                .with_label_values(&["GET", "2xx", OTHER_LABEL])
+                .get(),
+            before + 3
+        );
+    }
+
+    #[test]
+    fn test_record_request_keeps_allowed_vhost_label() {
+        let _guard = METRICS_TEST_LOCK.lock().unwrap();
+        let vhosts = [make_vhost("example.com")];
+        let before_ex = HTTP_REQUESTS_TOTAL
+            .with_label_values(&["GET", "2xx", "example.com"])
+            .get();
+        let before_other = HTTP_REQUESTS_TOTAL
+            .with_label_values(&["GET", "2xx", OTHER_LABEL])
+            .get();
+
+        let allowed = Request::builder()
+            .method("GET")
+            .uri("/index.html")
+            .header(hyper::header::HOST, "example.com")
+            .body(Body::empty())
+            .unwrap();
+        record_request(&allowed, StatusCode::OK, 0, 0.001, Some(&vhosts));
+
+        let unknown = Request::builder()
+            .method("GET")
+            .uri("/index.html")
+            .header(hyper::header::HOST, "poc-d.invalid")
+            .body(Body::empty())
+            .unwrap();
+        record_request(&unknown, StatusCode::OK, 0, 0.001, Some(&vhosts));
+
+        assert_eq!(
+            HTTP_REQUESTS_TOTAL
+                .with_label_values(&["GET", "2xx", "example.com"])
+                .get(),
+            before_ex + 1
+        );
+        assert_eq!(
+            HTTP_REQUESTS_TOTAL
+                .with_label_values(&["GET", "2xx", OTHER_LABEL])
+                .get(),
+            before_other + 1
+        );
+    }
+
+    #[test]
+    fn test_record_request_skips_metrics_path() {
+        let _guard = METRICS_TEST_LOCK.lock().unwrap();
+        let before = HTTP_REQUESTS_TOTAL
+            .with_label_values(&["GET", "2xx", OTHER_LABEL])
+            .get();
+
+        let req = make_request("GET", "/metrics");
+        record_request(&req, StatusCode::OK, 0, 0.001, None);
+
+        assert_eq!(
+            HTTP_REQUESTS_TOTAL
+                .with_label_values(&["GET", "2xx", OTHER_LABEL])
                 .get(),
             before
+        );
+    }
+
+    #[test]
+    fn test_method_label_allows_supported_methods() {
+        for method in ["GET", "HEAD", "OPTIONS"] {
+            let req = make_request(method, "/index.html");
+            assert_eq!(method_label(&req), method);
+        }
+    }
+
+    #[test]
+    fn test_method_label_collapses_unsupported_methods() {
+        for method in ["POST", "PUT", "PATCH", "DELETE", "FOO"] {
+            let req = make_request(method, "/index.html");
+            assert_eq!(method_label(&req), OTHER_LABEL);
+        }
+    }
+
+    #[test]
+    fn test_record_request_unknown_methods_share_other_label() {
+        let before = HTTP_REQUESTS_TOTAL
+            .with_label_values(&[OTHER_LABEL, "4xx", OTHER_LABEL])
+            .get();
+
+        for method in ["POST", "FOO", "BAR"] {
+            let req = make_request(method, "/index.html");
+            record_request(&req, StatusCode::METHOD_NOT_ALLOWED, 0, 0.001, None);
+        }
+
+        assert_eq!(
+            HTTP_REQUESTS_TOTAL
+                .with_label_values(&[OTHER_LABEL, "4xx", OTHER_LABEL])
+                .get(),
+            before + 3
         );
     }
 

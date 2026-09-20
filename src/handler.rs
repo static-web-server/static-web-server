@@ -409,6 +409,10 @@ impl RequestHandler {
                         resp.status(),
                         bytes,
                         req_start.elapsed().as_secs_f64(),
+                        self.opts
+                            .advanced_opts
+                            .as_ref()
+                            .and_then(|opts| opts.virtual_hosts.as_deref()),
                     );
                 }
             }

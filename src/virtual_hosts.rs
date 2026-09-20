@@ -22,24 +22,7 @@ pub(crate) fn get_real_root<'a, T>(
         return None;
     }
 
-    let request_host_str = if let Some(authority) = req.uri().authority() {
-        // HTTP2
-        authority.host()
-    } else {
-        // HTTP1 - fall back to host header
-        let host_header = req.headers().get(HOST)?.to_str().ok()?;
-
-        // host header can include the port -> remove it
-        host_header
-            .rsplit_once(":")
-            .and_then(|(potential_host, potential_port)| {
-                potential_port
-                    .parse::<u16>()
-                    .is_ok()
-                    .then_some(potential_host)
-            })
-            .unwrap_or(host_header)
-    };
+    let request_host_str = request_host(req)?;
 
     for vhost in vhosts {
         if vhost.host == request_host_str {
@@ -54,6 +37,30 @@ pub(crate) fn get_real_root<'a, T>(
         }
     }
     None
+}
+
+/// Extracts the request host: the HTTP/2 `:authority`, otherwise the
+/// `Host` header with a trailing port stripped.
+pub(crate) fn request_host<T>(req: &Request<T>) -> Option<&str> {
+    if let Some(authority) = req.uri().authority() {
+        // HTTP2
+        return Some(authority.host());
+    }
+    // HTTP1: fall back to host header
+    let host_header = req.headers().get(HOST)?.to_str().ok()?;
+
+    // host header can include the port, then remove it
+    Some(
+        host_header
+            .rsplit_once(':')
+            .and_then(|(potential_host, potential_port)| {
+                potential_port
+                    .parse::<u16>()
+                    .is_ok()
+                    .then_some(potential_host)
+            })
+            .unwrap_or(host_header),
+    )
 }
 
 #[cfg(test)]
