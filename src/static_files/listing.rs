@@ -94,6 +94,7 @@ fn try_archive_download(
         &dir_path,
         DirDownloadOpts {
             method: opts.method,
+            base_path: opts.base_path,
             follow_symlinks: opts.follow_symlinks,
             include_hidden: opts.include_hidden,
         },

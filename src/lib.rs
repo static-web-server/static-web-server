@@ -196,3 +196,7 @@ pub mod testing;
 pub use error::*;
 pub use server::Server;
 pub use settings::Settings;
+// Exposed for integration tests so they exercise the production
+// containment predicate rather than a local copy.
+#[doc(hidden)]
+pub use fs::path::is_path_within_base;
