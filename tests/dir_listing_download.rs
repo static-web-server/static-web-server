@@ -40,6 +40,7 @@ mod tests {
 
     const OUTSIDE_ROOT_MARKER: &str = "outside-root-marker\n";
     const OUTSIDE_DIR_MARKER: &str = "outside-dir-marker\n";
+    #[cfg(unix)]
     const INSIDE_OK_MARKER: &str = "inside-ok\n";
 
     fn root_dir<P: AsRef<Path>>(dir: P) -> PathBuf
