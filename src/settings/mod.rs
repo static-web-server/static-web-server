@@ -135,6 +135,8 @@ impl Settings {
         let mut host = opts.host;
         let mut port = opts.port;
         let mut root = opts.root;
+        let mut open = opts.open;
+        let mut path = opts.path;
         let mut log_level = opts.log_level;
         let mut log_with_ansi = opts.log_with_ansi;
         let mut log_format = opts.log_format;
@@ -265,6 +267,12 @@ impl Settings {
                 }
                 if let Some(v) = general.root {
                     root = v
+                }
+                if let Some(value) = general.open {
+                    open = value;
+                }
+                if let Some(value) = general.path {
+                    path = Some(value);
                 }
                 if let Some(ref v) = general.log_level {
                     log_level = v.name().to_lowercase();
@@ -684,6 +692,23 @@ impl Settings {
             )?;
         }
 
+        // Runtime validation: --open cannot be used with --unix-socket
+        #[cfg(unix)]
+        if open && unix_socket.is_some() {
+            bail!("--open cannot be used with --unix-socket");
+        }
+
+        // Runtime validation: --path only applies when --open is enabled
+        if path.is_some() && !open {
+            bail!("--path requires --open");
+        }
+
+        // Runtime validation: --open cannot be used with --windows-service
+        #[cfg(windows)]
+        if open && windows_service {
+            bail!("--open cannot be used with --windows-service");
+        }
+
         // Runtime validation: HTTP/2 requires TLS
         #[cfg(all(feature = "http2", feature = "tls"))]
         if http2 && !tls {
@@ -713,6 +738,8 @@ impl Settings {
                 host,
                 port,
                 root,
+                open,
+                path,
                 log_level,
                 log_with_ansi,
                 log_format,
@@ -822,4 +849,53 @@ fn read_file_settings(config_file: &Path) -> Result<Option<(FileSettings, PathBu
         return Ok(Some((settings, file_path_resolved)));
     }
     Ok(None)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Settings;
+
+    #[cfg(unix)]
+    #[test]
+    fn open_rejects_unix_socket() {
+        let error = Settings::get_unparsed(
+            false,
+            &[
+                "static-web-server",
+                "--open",
+                "--unix-socket",
+                "/tmp/sws-open-test.sock",
+            ],
+        )
+        .err()
+        .expect("open with a Unix socket should be rejected");
+
+        assert_eq!(
+            error.to_string(),
+            "--open cannot be used with --unix-socket"
+        );
+    }
+
+    #[test]
+    fn path_requires_open() {
+        let error = Settings::get_unparsed(false, &["static-web-server", "--path", "/docs"])
+            .err()
+            .expect("path without open should be rejected");
+
+        assert_eq!(error.to_string(), "--path requires --open");
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn open_rejects_windows_service() {
+        let error =
+            Settings::get_unparsed(false, &["static-web-server", "--open", "--windows-service"])
+                .err()
+                .expect("open in Windows Service mode should be rejected");
+
+        assert_eq!(
+            error.to_string(),
+            "--open cannot be used with --windows-service"
+        );
+    }
 }

@@ -207,6 +207,11 @@ pub struct General {
     /// Root directory path.
     pub root: Option<PathBuf>,
 
+    /// Open the server URL in the system default web browser after startup.
+    pub open: Option<bool>,
+    /// URL path opened in the browser.
+    pub path: Option<String>,
+
     /// Logging level.
     pub log_level: Option<LogLevel>,
     /// Enable/disable ANSI escape codes for log output.
