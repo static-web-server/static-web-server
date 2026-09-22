@@ -19,14 +19,13 @@ use crate::{Context, Result};
 #[cfg(any(unix, windows))]
 use crate::signals;
 
-use super::{ShutdownCtx, TlsConfig, redirect};
+use super::{ServerRunConfig, ShutdownCtx, TlsConfig, browser, redirect};
 
 /// Run the HTTP/1 + TLS accept loop with an optional HTTP to HTTPS redirect server.
 pub(super) async fn run<F: FnOnce()>(
     tcp_listener: TcpListener,
     router: RouterService,
-    addr_str: &str,
-    threads: usize,
+    run_cfg: ServerRunConfig<'_>,
     cfg: TlsConfig,
     ctx: ShutdownCtx,
     _cancel_fn: F,
@@ -82,6 +81,11 @@ pub(super) async fn run<F: FnOnce()>(
     )?
     .unwrap_or_else(|| tokio::spawn(async { Ok::<_, crate::Error>(()) }));
 
+    let browser_url = if run_cfg.open {
+        browser::listener_url("https", &listener, run_cfg.path)
+    } else {
+        None
+    };
     let http1_task = tokio::spawn({
         let router = router.clone();
         async move {
@@ -99,7 +103,6 @@ pub(super) async fn run<F: FnOnce()>(
             };
             #[cfg(windows)]
             tokio::pin!(shutdown);
-
             loop {
                 tokio::select! {
                     result = listener.accept() => {
@@ -138,11 +141,18 @@ pub(super) async fn run<F: FnOnce()>(
     });
 
     tracing::info!(
-        parent: tracing::info_span!("Server::start_server", ?addr_str, ?threads),
+        parent: tracing::info_span!(
+            "Server::start_server",
+            addr_str = ?run_cfg.addr_str,
+            threads = ?run_cfg.threads
+        ),
         "http1 tls server is listening on https://{}",
-        addr_str
+        run_cfg.addr_str
     );
     tracing::info!("press ctrl+c to shut down the server");
+    if let Some(url) = browser_url {
+        browser::open(url);
+    }
 
     #[cfg(windows)]
     {

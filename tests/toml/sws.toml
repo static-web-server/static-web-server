@@ -5,6 +5,10 @@ host = "::"
 port = 4433
 root = "docker/public"
 
+#### Open browser after startup
+open = true
+path = "/docs"
+
 #### Logging
 log-level = "trace"
 

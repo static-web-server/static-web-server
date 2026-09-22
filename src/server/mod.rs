@@ -13,18 +13,31 @@ use crate::handler::RequestHandler;
 use crate::service::RouterService;
 use crate::{Context, Result, Settings};
 
+mod browser;
 mod http1;
-mod listener;
-mod opts;
-
 #[cfg(feature = "tls")]
 mod http1_tls;
 #[cfg(feature = "http2")]
 mod http2;
+mod listener;
+mod opts;
 #[cfg(feature = "tls")]
 mod redirect;
 #[cfg(unix)]
 mod uds;
+
+/// Settings shared by the TCP server implementations.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) struct ServerRunConfig<'a> {
+    /// Listener address displayed in startup logs.
+    pub addr_str: &'a str,
+    /// Number of Tokio worker threads.
+    pub threads: usize,
+    /// Whether to open the listener URL in the default browser.
+    pub open: bool,
+    /// Optional URL path opened in the browser.
+    pub path: Option<&'a str>,
+}
 
 /// TLS configuration shared by the HTTP/1+TLS and HTTP/2+TLS server modes.
 #[cfg(feature = "tls")]
@@ -315,6 +328,13 @@ impl Server {
         // is `Some` by construction above.
         let (tcp_listener, addr_str) = tcp_listener_info.unwrap();
 
+        let run_cfg = ServerRunConfig {
+            addr_str: &addr_str,
+            threads: self.worker_threads,
+            open: general.open,
+            path: general.path.as_deref(),
+        };
+
         // Dispatch to a TLS-enabled server (HTTP/1+TLS or HTTP/2+TLS) when --tls is set
         #[cfg(feature = "tls")]
         if general.tls {
@@ -344,8 +364,7 @@ impl Server {
                 return http2::run(
                     tcp_listener,
                     router_service,
-                    &addr_str,
-                    self.worker_threads,
+                    run_cfg,
                     tls_cfg,
                     ctx,
                     cancel_fn,
@@ -357,8 +376,7 @@ impl Server {
             return http1_tls::run(
                 tcp_listener,
                 router_service,
-                &addr_str,
-                self.worker_threads,
+                run_cfg,
                 tls_cfg,
                 ctx,
                 cancel_fn,
@@ -367,14 +385,6 @@ impl Server {
         }
 
         // Plain HTTP/1 (no TLS by default)
-        http1::run(
-            tcp_listener,
-            router_service,
-            &addr_str,
-            self.worker_threads,
-            ctx,
-            cancel_fn,
-        )
-        .await
+        http1::run(tcp_listener, router_service, run_cfg, ctx, cancel_fn).await
     }
 }

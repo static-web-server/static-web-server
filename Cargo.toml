@@ -118,6 +118,7 @@ toml = "0.9"
 tracing = { version = "0.1", default-features = false, features = ["std"] }
 tracing-appender = { version = "0.2", default-features = false }
 tracing-subscriber = { version = "0.3", default-features = false, features = ["smallvec", "registry", "parking_lot", "fmt", "ansi", "json", "tracing-log", "local-time"] }
+open = "5.4.4"
 
 [target.'cfg(all(target_env = "musl", target_pointer_width = "64"))'.dependencies]
 mimalloc = { version = "0.1.52" }

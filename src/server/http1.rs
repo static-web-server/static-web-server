@@ -18,14 +18,13 @@ use crate::{Context, Result};
 #[cfg(any(unix, windows))]
 use crate::signals;
 
-use super::ShutdownCtx;
+use super::{ServerRunConfig, ShutdownCtx, browser};
 
 /// Run the HTTP/1 accept loop until a shutdown signal is received.
 pub(super) async fn run<F: FnOnce()>(
     tcp_listener: TcpListener,
     router: RouterService,
-    addr_str: &str,
-    threads: usize,
+    run_cfg: ServerRunConfig<'_>,
     ctx: ShutdownCtx,
     _cancel_fn: F,
 ) -> Result {
@@ -66,12 +65,21 @@ pub(super) async fn run<F: FnOnce()>(
     tokio::pin!(shutdown);
 
     tracing::info!(
-        parent: tracing::info_span!("Server::start_server", ?addr_str, ?threads),
+        parent: tracing::info_span!(
+            "Server::start_server",
+            addr_str = ?run_cfg.addr_str,
+            threads = ?run_cfg.threads
+        ),
         "http1 server is listening on http://{}",
-        addr_str
+        run_cfg.addr_str
     );
-    tracing::info!("press ctrl+c to shut down the server");
 
+    tracing::info!("press ctrl+c to shut down the server");
+    if run_cfg.open
+        && let Some(url) = browser::listener_url("http", &listener, run_cfg.path)
+    {
+        browser::open(url);
+    }
     loop {
         tokio::select! {
             result = listener.accept() => {

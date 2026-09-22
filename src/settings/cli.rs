@@ -30,6 +30,22 @@ pub struct General {
     /// Host port
     pub port: u16,
 
+    #[arg(
+        long,
+        default_value = "false",
+        default_missing_value("true"),
+        num_args(0..=1),
+        require_equals(false),
+        action = clap::ArgAction::Set,
+        env = "SERVER_OPEN",
+    )]
+    /// Open the server URL in the system default web browser after startup.
+    pub open: bool,
+
+    #[arg(long, env = "SERVER_PATH")]
+    /// URL path opened in the browser. Requires the open option.
+    pub path: Option<String>,
+
     #[cfg_attr(
         feature = "tls",
         arg(
@@ -779,8 +795,8 @@ fn value_parser_status_code(s: &str) -> Result<StatusCode, String> {
 #[cfg(test)]
 mod default_tests {
     use super::General;
-    use clap::Parser;
-    use std::path::PathBuf;
+    use clap::{CommandFactory, Parser};
+    use std::{ffi::OsStr, path::PathBuf};
 
     #[test]
     fn uses_zero_configuration_defaults() {
@@ -788,10 +804,54 @@ mod default_tests {
 
         assert_eq!(general.port, 8080);
         assert_eq!(general.root, PathBuf::from("."));
+        assert!(!general.open);
+        assert_eq!(general.path, None);
         #[cfg(feature = "tls")]
         assert_eq!(general.https_redirect_from_port, 8080);
         #[cfg(feature = "directory-listing")]
         assert!(!general.directory_listing);
+    }
+
+    #[test]
+    fn open_flag_enables_browser_launch() {
+        let general = General::try_parse_from(["static-web-server", "--open"]).unwrap();
+        assert!(general.open);
+    }
+
+    #[test]
+    fn open_flag_accepts_explicit_false() {
+        let general = General::try_parse_from(["static-web-server", "--open=false"]).unwrap();
+        assert!(!general.open);
+    }
+
+    #[test]
+    fn path_flag_sets_browser_url_path() {
+        let general =
+            General::try_parse_from(["static-web-server", "--open", "--path", "/docs"]).unwrap();
+
+        assert_eq!(general.path.as_deref(), Some("/docs"));
+    }
+
+    #[test]
+    fn open_flag_uses_server_open_environment_variable() {
+        let command = General::command();
+        let argument = command
+            .get_arguments()
+            .find(|argument| argument.get_id() == "open")
+            .unwrap();
+
+        assert_eq!(argument.get_env(), Some(OsStr::new("SERVER_OPEN")));
+    }
+
+    #[test]
+    fn path_flag_uses_server_path_environment_variable() {
+        let command = General::command();
+        let argument = command
+            .get_arguments()
+            .find(|argument| argument.get_id() == "path")
+            .unwrap();
+
+        assert_eq!(argument.get_env(), Some(OsStr::new("SERVER_PATH")));
     }
 }
 
