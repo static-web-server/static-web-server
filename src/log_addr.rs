@@ -6,7 +6,7 @@
 //! A module to log remote and real IP addresses.
 //!
 
-use hyper::Request;
+use hyper::{Request, StatusCode};
 use std::net::{IpAddr, SocketAddr};
 
 use crate::{handler::RequestHandlerOpts, health};
@@ -86,5 +86,73 @@ pub(crate) fn pre_process<T>(
         x_real_ip = x_real_ip.as_ref().map(tracing::field::display),
         real_remote_ip = real_remote_ip.as_ref().map(tracing::field::display),
         "incoming request"
+    );
+}
+
+/// Logs a completed request summary including the response status code.
+///
+/// This provides a single, unified log line that correlates the request
+/// method/URI with the response status and remote address information,
+/// making logs much easier to analyze in production (e.g. with grep, jq,
+/// or a log aggregator).
+pub(crate) fn post_process<T>(
+    opts: &RequestHandlerOpts,
+    req: &Request<T>,
+    remote_addr: Option<SocketAddr>,
+    status: StatusCode,
+) {
+    let remote_ip = if opts.log_remote_address {
+        remote_addr.map(|addr| addr.ip())
+    } else {
+        None
+    };
+
+    let trusted = opts.trusted_proxies.is_empty()
+        || remote_addr.is_some_and(|addr| opts.trusted_proxies.contains(&addr.ip()));
+
+    let x_real_ip = if opts.log_x_real_ip && trusted {
+        req.headers()
+            .get("X-Real-IP")
+            .and_then(|h| h.to_str().ok())
+            .and_then(|s| s.trim().parse::<IpAddr>().ok())
+    } else {
+        None
+    };
+
+    let real_remote_ip = if opts.log_forwarded_for && trusted {
+        req.headers()
+            .get("X-Forwarded-For")
+            .and_then(|h| h.to_str().ok())
+            .and_then(|s| s.split(',').next())
+            .and_then(|s| s.trim().parse::<IpAddr>().ok())
+    } else {
+        None
+    };
+
+    let method = req.method();
+    let uri = req.uri();
+
+    // Health endpoints are logged at debug level to avoid noise
+    if opts.health && health::is_health_endpoint(req) {
+        tracing::debug!(
+            method = %method,
+            uri = %uri,
+            status = status.as_u16(),
+            remote_addr = remote_ip.as_ref().map(tracing::field::display),
+            x_real_ip = x_real_ip.as_ref().map(tracing::field::display),
+            real_remote_ip = real_remote_ip.as_ref().map(tracing::field::display),
+            "response"
+        );
+        return;
+    }
+
+    tracing::info!(
+        method = %method,
+        uri = %uri,
+        status = status.as_u16(),
+        remote_addr = remote_ip.as_ref().map(tracing::field::display),
+        x_real_ip = x_real_ip.as_ref().map(tracing::field::display),
+        real_remote_ip = real_remote_ip.as_ref().map(tracing::field::display),
+        "response"
     );
 }
