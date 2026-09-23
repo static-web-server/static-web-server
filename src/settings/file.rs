@@ -379,6 +379,9 @@ pub struct General {
     /// Log the X-Forwarded-For header.
     pub log_forwarded_for: Option<bool>,
 
+    /// Log the User-Agent header.
+    pub log_user_agent: Option<bool>,
+
     /// Trusted IPs for remote addresses.
     pub trusted_proxies: Option<Vec<IpAddr>>,
 
