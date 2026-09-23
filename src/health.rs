@@ -13,9 +13,12 @@ use crate::body::Body;
 use crate::{Error, handler::RequestHandlerOpts};
 
 /// Initializes the health endpoint.
+///
+/// When enabled, the following paths respond with `200 OK` (text/plain):
+/// `/health`, `/livez` and `/readyz` (Kubernetes-style probes).
 pub fn init(enabled: bool, handler_opts: &mut RequestHandlerOpts) {
     handler_opts.health = enabled;
-    tracing::info!(enabled, "health endpoint");
+    tracing::info!(enabled, "health endpoint (/health, /livez, /readyz)");
 }
 
 /// Handles health requests.
@@ -48,7 +51,7 @@ pub fn pre_process<T>(
 }
 
 pub(crate) fn is_health_endpoint<T>(req: &Request<T>) -> bool {
-    req.uri().path() == "/health"
+    matches!(req.uri().path(), "/health" | "/livez" | "/readyz")
 }
 
 #[cfg(test)]
@@ -119,6 +122,62 @@ mod tests {
                 &make_request("GET", "/health"),
             )
             .is_some()
+        );
+    }
+
+    #[test]
+    fn test_livez_endpoint() {
+        assert!(
+            pre_process(
+                &RequestHandlerOpts {
+                    health: true,
+                    ..Default::default()
+                },
+                &make_request("GET", "/livez"),
+            )
+            .is_some()
+        );
+    }
+
+    #[test]
+    fn test_readyz_endpoint() {
+        assert!(
+            pre_process(
+                &RequestHandlerOpts {
+                    health: true,
+                    ..Default::default()
+                },
+                &make_request("GET", "/readyz"),
+            )
+            .is_some()
+        );
+    }
+
+    #[test]
+    fn test_livez_head() {
+        assert!(
+            pre_process(
+                &RequestHandlerOpts {
+                    health: true,
+                    ..Default::default()
+                },
+                &make_request("HEAD", "/livez"),
+            )
+            .is_some()
+        );
+    }
+
+    #[test]
+    fn test_readyz_wrong_method() {
+        assert!(
+            pre_process(
+                &RequestHandlerOpts {
+                    health: true,
+                    ..Default::default()
+                },
+                &make_request("POST", "/readyz"),
+            )
+            .is_none()
         );
     }
 }
