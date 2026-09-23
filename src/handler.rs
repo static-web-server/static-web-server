@@ -119,6 +119,8 @@ pub struct RequestHandlerOpts {
     pub log_x_real_ip: bool,
     /// Log the X-Forwarded-For header.
     pub log_forwarded_for: bool,
+    /// Log the User-Agent header.
+    pub log_user_agent: bool,
     /// Trusted IPs for remote addresses.
     pub trusted_proxies: Vec<IpAddr>,
     /// Redirect trailing slash feature.
@@ -187,6 +189,7 @@ impl Default for RequestHandlerOpts {
             log_remote_address: false,
             log_x_real_ip: false,
             log_forwarded_for: false,
+            log_user_agent: false,
             trusted_proxies: Vec::new(),
             redirect_trailing_slash: true,
             include_hidden: true,

@@ -579,6 +579,18 @@ pub struct General {
 
     #[arg(
         long,
+        default_value = "false",
+        default_missing_value("true"),
+        num_args(0..=1),
+        require_equals(false),
+        action = clap::ArgAction::Set,
+        env = "SERVER_LOG_USER_AGENT",
+    )]
+    /// Log the User-Agent request header.
+    pub log_user_agent: bool,
+
+    #[arg(
+        long,
         require_equals(false),
         value_delimiter(','),
         action = clap::ArgAction::Set,

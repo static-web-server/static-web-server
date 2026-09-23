@@ -217,6 +217,7 @@ impl Settings {
         let mut log_remote_address = opts.log_remote_address;
         let mut log_x_real_ip = opts.log_x_real_ip;
         let mut log_forwarded_for = opts.log_forwarded_for;
+        let mut log_user_agent = opts.log_user_agent;
         let mut trusted_proxies = opts.trusted_proxies;
         let mut redirect_trailing_slash = opts.redirect_trailing_slash;
         let mut include_hidden = opts.include_hidden;
@@ -423,6 +424,9 @@ impl Settings {
                 }
                 if let Some(v) = general.log_forwarded_for {
                     log_forwarded_for = v
+                }
+                if let Some(v) = general.log_user_agent {
+                    log_user_agent = v
                 }
                 if let Some(v) = general.trusted_proxies {
                     trusted_proxies = v
@@ -784,6 +788,7 @@ impl Settings {
                 log_remote_address,
                 log_x_real_ip,
                 log_forwarded_for,
+                log_user_agent,
                 trusted_proxies,
                 redirect_trailing_slash,
                 include_hidden,
