@@ -38,7 +38,9 @@ mod tests {
         Method::TRACE,
     ];
 
+    #[cfg(unix)]
     const OUTSIDE_ROOT_MARKER: &str = "outside-root-marker\n";
+    #[cfg(unix)]
     const OUTSIDE_DIR_MARKER: &str = "outside-dir-marker\n";
     #[cfg(unix)]
     const INSIDE_OK_MARKER: &str = "inside-ok\n";
@@ -169,6 +171,7 @@ mod tests {
         (tmp, webroot)
     }
 
+    #[cfg(unix)]
     async fn download_directory(
         webroot: &PathBuf,
         follow_symlinks: bool,
@@ -202,6 +205,7 @@ mod tests {
         (status, body)
     }
 
+    #[cfg(unix)]
     fn assert_no_outside_leak(paths: &HashSet<PathBuf>, contents: &[u8]) {
         let contents_str = String::from_utf8_lossy(contents);
         assert!(
