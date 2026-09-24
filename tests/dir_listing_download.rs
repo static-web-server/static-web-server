@@ -38,8 +38,11 @@ mod tests {
         Method::TRACE,
     ];
 
+    #[cfg(unix)]
     const OUTSIDE_ROOT_MARKER: &str = "outside-root-marker\n";
+    #[cfg(unix)]
     const OUTSIDE_DIR_MARKER: &str = "outside-dir-marker\n";
+    #[cfg(unix)]
     const INSIDE_OK_MARKER: &str = "inside-ok\n";
 
     fn root_dir<P: AsRef<Path>>(dir: P) -> PathBuf
@@ -88,18 +91,18 @@ mod tests {
 
     /// Inspect archive member paths and concatenate regular-file contents.
     async fn inspect_tarball_paths_and_contents(body: &[u8]) -> (HashSet<PathBuf>, Vec<u8>) {
-        let reader = Archive::new(GzipDecoder::new(body).compat());
+        let reader = Archive::new(GzipDecoder::new(body));
         let mut paths = HashSet::new();
         let mut contents = Vec::new();
         let mut entries = reader.entries().unwrap();
         let mut pinned = Pin::new(&mut entries);
         while let Some(entry) = pinned.next().await {
-            let file = entry.unwrap();
-            let path: PathBuf = file.header().path().unwrap().to_path_buf().into();
+            let mut file = entry.unwrap();
+            let path: PathBuf = file.header().path().unwrap().to_path_buf();
             paths.insert(path);
             if file.header().entry_type() == async_tar::EntryType::Regular {
                 let mut buf = Vec::new();
-                file.compat().read_to_end(&mut buf).await.unwrap();
+                file.read_to_end(&mut buf).await.unwrap();
                 contents.extend_from_slice(&buf);
             }
         }
@@ -168,6 +171,7 @@ mod tests {
         (tmp, webroot)
     }
 
+    #[cfg(unix)]
     async fn download_directory(
         webroot: &PathBuf,
         follow_symlinks: bool,
@@ -201,6 +205,7 @@ mod tests {
         (status, body)
     }
 
+    #[cfg(unix)]
     fn assert_no_outside_leak(paths: &HashSet<PathBuf>, contents: &[u8]) {
         let contents_str = String::from_utf8_lossy(contents);
         assert!(
