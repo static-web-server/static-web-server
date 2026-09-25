@@ -269,6 +269,10 @@ pub struct General {
     pub page404: Option<PathBuf>,
     /// Error 50x pages.
     pub page50x: Option<PathBuf>,
+    /// Error 401 pages.
+    pub page401: Option<PathBuf>,
+    /// Error 403 pages.
+    pub page403: Option<PathBuf>,
 
     /// TLS support.
     #[cfg(feature = "tls")]
