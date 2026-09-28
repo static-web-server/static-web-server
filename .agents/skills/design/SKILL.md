@@ -128,6 +128,7 @@ Validate in `settings/` or `server/opts.rs`; fail startup with `bail!`/`with_con
 | `--health` / `--metrics` / `--accept-markdown` / `--open` / `--maintenance-mode` | `false` |
 | `--log-remote-address` / `--log-x-real-ip` / `--log-forwarded-for` | `false`; proxy headers only from `--trusted-proxies` (default: none) |
 | `--access-log-format` | empty (structured fields) |
+| `--log-trace-context` | `false`; requires `--log-format json` |
 | `--threads-multiplier` / `--max-blocking-threads` | `1` / `512` (`2` / `20` on wasm) |
 | `--grace-period` / `--idle-timeout` / `--max-header-size` | `0` / `30` s (`0` disables) / `16384` bytes (431 when exceeded) |
 | `--page404` / `--page50x` / `--page-fallback` | `./404.html` / `./50x.html` / unset |
