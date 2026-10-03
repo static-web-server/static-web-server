@@ -58,7 +58,7 @@ http2 = ["tls", "hyper-util/http2"]
 compression = ["compression-brotli", "compression-deflate", "compression-gzip", "compression-zstd"]
 compression-brotli = ["async-compression/brotli"]
 compression-deflate = ["async-compression/deflate"]
-compression-gzip = ["async-compression/deflate"]
+compression-gzip = ["async-compression/gzip"]
 compression-zstd = ["async-compression/zstd"]
 # Directory listing
 directory-listing = ["chrono"]
