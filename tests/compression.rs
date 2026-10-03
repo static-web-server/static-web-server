@@ -84,4 +84,61 @@ pub mod tests {
             Err(err) => panic!("unexpected error: {err}"),
         };
     }
+
+    // A `206 Partial Content` response carries a byte range of the identity
+    // representation (its `Content-Range` counts identity bytes), so it must not
+    // be compressed afterwards.
+    #[tokio::test]
+    async fn compression_skips_partial_content() {
+        use http_body_util::BodyExt;
+
+        let codings = [
+            #[cfg(any(feature = "compression", feature = "compression-deflate"))]
+            "deflate",
+            #[cfg(any(feature = "compression", feature = "compression-gzip"))]
+            "gzip",
+            #[cfg(any(feature = "compression", feature = "compression-brotli"))]
+            "br",
+            #[cfg(any(feature = "compression", feature = "compression-zstd"))]
+            "zstd",
+        ];
+        let file = std::fs::read("tests/fixtures/public/assets/index.html").unwrap();
+
+        for coding in codings {
+            let opts = fixture_settings("toml/handler_fixtures.toml");
+            let general = General {
+                compression: true,
+                compression_static: false,
+                ..opts.general
+            };
+            let req_handler_opts = fixture_req_handler_opts(general, opts.advanced);
+            let req_handler = fixture_req_handler(req_handler_opts);
+            let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
+
+            let mut req = Request::new(());
+            *req.method_mut() = hyper::Method::GET;
+            *req.uri_mut() = "http://localhost/assets/index.html".parse().unwrap();
+            req.headers_mut()
+                .insert(http::header::ACCEPT_ENCODING, coding.parse().unwrap());
+            req.headers_mut()
+                .insert(http::header::RANGE, "bytes=0-399".parse().unwrap());
+
+            let res = req_handler.handle(&mut req, remote_addr).await.unwrap();
+            assert_eq!(res.status(), 206, "{coding}");
+            assert_eq!(
+                res.headers().get("content-encoding"),
+                None,
+                "a 206 response must not be compressed ({coding})"
+            );
+            assert_eq!(
+                res.headers()["content-range"],
+                format!("bytes 0-399/{}", file.len()),
+                "{coding}"
+            );
+            assert_eq!(res.headers()["content-length"], "400", "{coding}");
+
+            let body = res.into_body().collect().await.unwrap().to_bytes();
+            assert_eq!(body, file[..400], "{coding}");
+        }
+    }
 }

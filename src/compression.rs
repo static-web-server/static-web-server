@@ -21,7 +21,7 @@ use headers::{ContentType, HeaderMap, HeaderMapExt, HeaderValue};
 use http_body_util::BodyExt as _;
 use hyper::{
     Method, Request, Response, StatusCode,
-    header::{CONTENT_ENCODING, CONTENT_LENGTH},
+    header::{CONTENT_ENCODING, CONTENT_LENGTH, CONTENT_RANGE},
 };
 use mime_guess::Mime;
 use tokio_util::io::{ReaderStream, StreamReader};
@@ -119,6 +119,12 @@ pub fn auto(
 ) -> Result<Response<Body>> {
     // Skip compression for HEAD and OPTIONS request methods
     if method.is_head() || method.is_options() {
+        return Ok(resp);
+    }
+
+    // Skip compression for partial content: `Content-Range` counts bytes of the
+    // identity representation, so the selected range must be sent unencoded
+    if resp.status() == StatusCode::PARTIAL_CONTENT || resp.headers().contains_key(CONTENT_RANGE) {
         return Ok(resp);
     }
 
