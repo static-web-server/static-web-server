@@ -186,6 +186,18 @@ pub struct General {
     /// If a relative path is used then it will be resolved under the root directory.
     pub page404: PathBuf,
 
+    #[arg(long, env = "SERVER_ERROR_PAGE_401")]
+    /// HTML file path for 401 Unauthorized errors. If the path is not specified or
+    /// simply doesn't exist then the server will use a generic HTML error message.
+    /// If a relative path is used then it will be resolved under the root directory.
+    pub page401: Option<PathBuf>,
+
+    #[arg(long, env = "SERVER_ERROR_PAGE_403")]
+    /// HTML file path for 403 Forbidden errors. If the path is not specified or
+    /// simply doesn't exist then the server will use a generic HTML error message.
+    /// If a relative path is used then it will be resolved under the root directory.
+    pub page403: Option<PathBuf>,
+
     #[cfg(feature = "fallback-page")]
     #[cfg_attr(docsrs, doc(cfg(feature = "fallback-page")))]
     #[arg(long, default_value = "", value_parser = value_parser_pathbuf, env = "SERVER_FALLBACK_PAGE")]

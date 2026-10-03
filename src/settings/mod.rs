@@ -167,6 +167,8 @@ impl Settings {
 
         let mut page404 = opts.page404;
         let mut page50x = opts.page50x;
+        let mut page401 = opts.page401;
+        let mut page403 = opts.page403;
 
         #[cfg(feature = "tls")]
         let mut tls = opts.tls;
@@ -315,6 +317,12 @@ impl Settings {
                 }
                 if let Some(v) = general.page50x {
                     page50x = v
+                }
+                if let Some(v) = general.page401 {
+                    page401 = Some(v)
+                }
+                if let Some(v) = general.page403 {
+                    page403 = Some(v)
                 }
                 #[cfg(feature = "tls")]
                 if let Some(v) = general.tls {
@@ -749,6 +757,8 @@ impl Settings {
                 compression_static,
                 page404,
                 page50x,
+                page401,
+                page403,
                 #[cfg(feature = "http2")]
                 http2,
                 #[cfg(feature = "tls")]

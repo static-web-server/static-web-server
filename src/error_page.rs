@@ -28,8 +28,16 @@ use crate::{Result, exts::http::MethodExt, helpers};
 /// disk I/O entirely.
 static PAGE_CACHE: OnceLock<RwLock<HashMap<PathBuf, Arc<String>>>> = OnceLock::new();
 
+/// Maps HTTP status codes to custom error page paths.
+/// Populated at startup by [`register_status_page`].
+static STATUS_PAGE_MAP: OnceLock<RwLock<HashMap<u16, PathBuf>>> = OnceLock::new();
+
 fn page_cache() -> &'static RwLock<HashMap<PathBuf, Arc<String>>> {
     PAGE_CACHE.get_or_init(|| RwLock::new(HashMap::new()))
+}
+
+fn status_page_map() -> &'static RwLock<HashMap<u16, PathBuf>> {
+    STATUS_PAGE_MAP.get_or_init(|| RwLock::new(HashMap::new()))
 }
 
 /// Pre-load the given page file into the in-memory cache. Missing files are
@@ -49,6 +57,33 @@ pub fn cache_page(path: &Path) {
     if let Ok(mut guard) = page_cache().write() {
         guard.insert(path.to_path_buf(), Arc::new(body));
     }
+}
+
+/// Register a custom error page for a specific HTTP status code.
+///
+/// The page file is pre-loaded into the page cache. When an error response
+/// is built for the given status code, the cached content will be used
+/// instead of the default HTML template.
+pub fn register_status_page(status_code: u16, path: &Path) {
+    if path.as_os_str().is_empty() {
+        return;
+    }
+    cache_page(path);
+    if let Ok(mut guard) = status_page_map().write() {
+        guard.insert(status_code, path.to_path_buf());
+        tracing::info!(
+            status = status_code,
+            path = %path.display(),
+            "registered custom error page"
+        );
+    }
+}
+
+/// Returns the cached body for a registered status code page.
+fn cached_status_page(status_code: u16) -> Option<Arc<String>> {
+    let map = status_page_map().read().ok()?;
+    let path = map.get(&status_code)?;
+    cached_page(path)
 }
 
 /// Returns the cached body for `path`, or `None` if no entry exists.
@@ -146,8 +181,13 @@ fn error_response_inner(
         | &StatusCode::UNSUPPORTED_MEDIA_TYPE
         | &StatusCode::RANGE_NOT_SATISFIABLE
         | &StatusCode::EXPECTATION_FAILED => {
+            // Check for a custom page registered for this specific status code
+            // (e.g. 401, 403 via `register_status_page`).
+            if let Some(cached) = cached_status_page(status_code.as_u16()) {
+                page_content = cached.as_str().to_owned();
+            }
             // Extra check for 404 status code and its HTML content
-            if status_code == &StatusCode::NOT_FOUND {
+            else if status_code == &StatusCode::NOT_FOUND {
                 if let Some(cached) = cached_page(page404) {
                     page_content = cached.as_str().to_owned();
                 } else if page404.is_file() {
