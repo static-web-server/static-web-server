@@ -1,0 +1,14 @@
+[general]
+
+root = "tests/fixtures/public"
+
+[advanced]
+
+[[advanced.headers]]
+source = "/assets/**"
+headers = { Cache-Control = "no-store" }
+
+[[advanced.headers]]
+source = "/assets/**"
+status = [200, 206, 304]
+headers = { Cache-Control = "public, max-age=31536000, immutable" }

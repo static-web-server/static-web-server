@@ -42,6 +42,9 @@ pub use file::CompressionLevel;
 pub struct Headers {
     /// Source pattern glob matcher
     pub source: GlobMatcher,
+    /// Optional list of response status codes the headers apply to.
+    /// If `None`, the headers apply to any response status.
+    pub status: Option<Vec<StatusCode>>,
     /// Map of custom HTTP headers
     pub headers: HeaderMap,
 }
@@ -511,8 +514,15 @@ impl Settings {
                                 })?
                                 .compile_matcher();
 
+                            let status = headers_entry
+                                .status
+                                .as_deref()
+                                .map(|codes| parse_header_status(codes, &headers_entry.source))
+                                .transpose()?;
+
                             headers_vec.push(Headers {
                                 source,
+                                status,
                                 headers: headers_entry.headers.to_owned(),
                             });
                         }
@@ -822,4 +832,18 @@ fn read_file_settings(config_file: &Path) -> Result<Option<(FileSettings, PathBu
         return Ok(Some((settings, file_path_resolved)));
     }
     Ok(None)
+}
+
+/// Parses the optional `status` list of a custom headers entry.
+fn parse_header_status(codes: &[u16], source: &str) -> Result<Vec<StatusCode>> {
+    if codes.is_empty() {
+        bail!("empty status list for header source: {source}");
+    }
+    codes
+        .iter()
+        .map(|code| {
+            StatusCode::from_u16(*code)
+                .with_context(|| format!("invalid status code {code} for header source: {source}"))
+        })
+        .collect()
 }

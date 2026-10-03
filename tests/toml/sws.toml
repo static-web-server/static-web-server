@@ -101,6 +101,12 @@ Strict-Transport-Security = "max-age=63072000; includeSubDomains; preload"
 source = "**/*.{jpg,jpeg,png,ico,gif}"
 headers.Strict-Transport-Security = "max-age=63072000; includeSubDomains; preload"
 
+#### d. Limited to specific response status codes (optional `status`)
+[[advanced.headers]]
+source = "/assets/**"
+status = [200, 206, 304]
+headers = { Cache-Control = "public, max-age=31536000, immutable" }
+
 
 ### URL Redirects
 [[advanced.redirects]]

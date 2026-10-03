@@ -114,6 +114,9 @@ impl CompressionLevel {
 pub struct Headers {
     /// Header source.
     pub source: String,
+    /// Optional list of HTTP response status codes the headers apply to.
+    /// If not specified, the headers apply to any response status.
+    pub status: Option<Vec<u16>>,
     #[serde(rename(deserialize = "headers"), with = "http_serde::header_map")]
     /// headers list.
     pub headers: HeaderMap,
