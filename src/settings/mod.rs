@@ -221,6 +221,7 @@ impl Settings {
         let mut log_x_real_ip = opts.log_x_real_ip;
         let mut log_forwarded_for = opts.log_forwarded_for;
         let mut trusted_proxies = opts.trusted_proxies;
+        let mut log_trace_context = opts.log_trace_context;
         let mut redirect_trailing_slash = opts.redirect_trailing_slash;
         let mut include_hidden = opts.include_hidden;
         let mut follow_symlinks = opts.follow_symlinks;
@@ -429,6 +430,9 @@ impl Settings {
                 }
                 if let Some(v) = general.trusted_proxies {
                     trusted_proxies = v
+                }
+                if let Some(v) = general.log_trace_context {
+                    log_trace_context = v
                 }
                 if let Some(v) = general.redirect_trailing_slash {
                     redirect_trailing_slash = v
@@ -705,6 +709,11 @@ impl Settings {
             bail!("--log-with-ansi requires --log-format=pretty");
         }
 
+        // Runtime validation: trace context fields are only added to JSON log lines
+        if log_trace_context && log_format != logger::LogFormat::Json {
+            bail!("--log-trace-context requires --log-format=json");
+        }
+
         // Runtime validation: HTTPS redirect requires TLS
         #[cfg(feature = "tls")]
         if https_redirect && !tls {
@@ -795,6 +804,7 @@ impl Settings {
                 log_x_real_ip,
                 log_forwarded_for,
                 trusted_proxies,
+                log_trace_context,
                 redirect_trailing_slash,
                 include_hidden,
                 follow_symlinks,
