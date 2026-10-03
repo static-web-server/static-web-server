@@ -84,4 +84,65 @@ pub mod tests {
             Err(err) => panic!("unexpected error: {err}"),
         };
     }
+
+    // A HEAD response carries the header fields of the GET response
+    // (RFC 9110, section 9.3.2), including `Content-Encoding`.
+    #[tokio::test]
+    async fn compression_head_matches_get_headers() {
+        let codings = [
+            #[cfg(any(feature = "compression", feature = "compression-deflate"))]
+            "deflate",
+            #[cfg(any(feature = "compression", feature = "compression-gzip"))]
+            "gzip",
+            #[cfg(any(feature = "compression", feature = "compression-brotli"))]
+            "br",
+            #[cfg(any(feature = "compression", feature = "compression-zstd"))]
+            "zstd",
+        ];
+
+        for coding in codings {
+            let opts = fixture_settings("toml/handler_fixtures.toml");
+            let general = General {
+                compression: true,
+                compression_static: false,
+                ..opts.general
+            };
+            let req_handler_opts = fixture_req_handler_opts(general, opts.advanced);
+            let req_handler = fixture_req_handler(req_handler_opts);
+            let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
+
+            let mut responses = Vec::new();
+            for method in [hyper::Method::GET, hyper::Method::HEAD] {
+                let mut req = Request::new(());
+                *req.method_mut() = method;
+                *req.uri_mut() = "http://localhost/assets/index.html".parse().unwrap();
+                req.headers_mut()
+                    .insert(http::header::ACCEPT_ENCODING, coding.parse().unwrap());
+                let res = req_handler.handle(&mut req, remote_addr).await.unwrap();
+                assert_eq!(res.status(), 200, "{coding}");
+                responses.push(res);
+            }
+            let (get, head) = (&responses[0], &responses[1]);
+
+            assert_eq!(
+                get.headers().get("content-encoding"),
+                Some(&HeaderValue::from_static(coding))
+            );
+            assert_eq!(
+                head.headers().get("content-encoding"),
+                get.headers().get("content-encoding"),
+                "HEAD must send the content-encoding of GET ({coding})"
+            );
+            assert_eq!(
+                head.headers().get("vary"),
+                get.headers().get("vary"),
+                "{coding}"
+            );
+            assert_eq!(
+                head.headers().get("content-length"),
+                None,
+                "HEAD must not send the identity content-length ({coding})"
+            );
+        }
+    }
 }
