@@ -5,19 +5,74 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v2.44.1 - 2026-10-07
+
+This new `v2.44.1` brings bug fixes, security improvements and dependency updates.
+
+**Security updates**
+
+This release includes security updates related to the metrics and directory listing download features.
+We encourage users to update to this version. We will provide more details about the fixed security issues in the next few days.
+
+**Fixes**
+
+- [aa604b6][aa604b6] Update dependencies, fix security issue with `async-std` (RUSTSEC-2025-0052), restrict HTTP/2 to TLS connections & fix directory download tests on Windows. PR [#745][745], [#746][746] by [@joseluisq][joseluisq]
+- [2b76d6f][2b76d6f] Apply file type cache headers only to `2xx` and `304` responses; use `no-cache` otherwise. PR [#772][772] by [@joseluisq][joseluisq]
+- [cd518fc][cd518fc] Fix rounding errors when parsing HTTP `Accept-Encoding` header quality values. PR [#755][755] by [@joseluisq][joseluisq]
+- [bb0f878][bb0f878] Advanced: Restore nested path matching for `{**}` captures in URL Rewrites and Redirects. PR [#742][742] by [@joseluisq][joseluisq]
+- [8dc36bf][8dc36bf] CI: Fix NetBSD builds by fetching the available NetBSD 9.5 base archive. PR [#744][744] by [@joseluisq][joseluisq]
+- [9d4e850][9d4e850] CI: Use the `2.x` branch in the release-updates CI workflow. PR [#732][732] by [@joseluisq][joseluisq]
+
+[2b76d6f]: https://github.com/static-web-server/static-web-server/commit/2b76d6f
+[cd518fc]: https://github.com/static-web-server/static-web-server/commit/cd518fc
+[dccde7d]: https://github.com/static-web-server/static-web-server/commit/dccde7d
+[e1a354f]: https://github.com/static-web-server/static-web-server/commit/e1a354f
+[321554e]: https://github.com/static-web-server/static-web-server/commit/321554e
+[bb0f878]: https://github.com/static-web-server/static-web-server/commit/bb0f878
+[aa604b6]: https://github.com/static-web-server/static-web-server/commit/aa604b6
+[8dc36bf]: https://github.com/static-web-server/static-web-server/commit/8dc36bf
+[9d4e850]: https://github.com/static-web-server/static-web-server/commit/9d4e850
+
+**Refactorings**
+
+- [21b0705][21b0705] Suppress unnecessary `404` warnings when serving a fallback page. PR [#754][754] by [@joseluisq][joseluisq]
+
+[21b0705]: https://github.com/static-web-server/static-web-server/commit/21b0705
+
+[772]: https://github.com/static-web-server/static-web-server/pull/772
+[755]: https://github.com/static-web-server/static-web-server/pull/755
+[746]: https://github.com/static-web-server/static-web-server/pull/746
+[742]: https://github.com/static-web-server/static-web-server/pull/742
+[745]: https://github.com/static-web-server/static-web-server/pull/745
+[744]: https://github.com/static-web-server/static-web-server/pull/744
+[732]: https://github.com/static-web-server/static-web-server/pull/732
+[754]: https://github.com/static-web-server/static-web-server/pull/754
+
+For more details see the [v2.44.1 milestone][v2441-milestone] and the full changelog [v2.44.0...v2.44.1][v2441-diff].
+
+[v2441-diff]: https://github.com/static-web-server/static-web-server/compare/v2.44.0...v2.44.1
+[v2441-milestone]: https://github.com/static-web-server/static-web-server/milestone/41?closed=1
+
 ## v2.44.0 - 2026-07-31
 
 This new `v2.44.0` brings bug fixes and security updates. A fix for pre-compressed variant body truncation, a new `--use-relative-root` option to resolve the webroot at request time, query string preservation on URL redirects, a metrics endpoint authentication order fix as well as other improvements.
 
 **Security updates**
 
-This release includes security updates related to metrics, pre-compressed and basic authentication. Users are encouraged to update to this version. We will provide more details about the fixed security issues in the next few days.
+This release includes security updates related to metrics, pre-compressed, markdown, and basic authentication features. Users are encouraged to update to this version. Below are the advisories published and ordered by severity.
 
-**v2 LTS transition**
+- Pre-compressed (Moderate): [GHSA-cg27-w6jh-934r](https://github.com/static-web-server/static-web-server/security/advisories/GHSA-cg27-w6jh-934r)
+- Metrics (Moderate): [GHSA-97q6-jph8-rxgm](https://github.com/static-web-server/static-web-server/security/advisories/GHSA-97q6-jph8-rxgm)
+- Basic authentication (Low): [GHSA-cx3m-fg6q-xf3v](https://github.com/static-web-server/static-web-server/security/advisories/GHSA-cx3m-fg6q-xf3v)
+- Markdown (Low): [GHSA-4wf2-76p9-xrmx](https://github.com/static-web-server/static-web-server/security/advisories/GHSA-4wf2-76p9-xrmx)
 
-Today we announce that the [v2](https://github.com/static-web-server/static-web-server/tree/2.x) has transitioned to **LTS** (Long-term support) status. Meaning that `v2.44.0` (minor) will receive only bug fixes and security updates going forward.
+Thanks to [@T3pp31][T3pp31] for reporting and working on this.
 
-The project's current focus has now moved to [v3 (in progress)](https://github.com/static-web-server/static-web-server/releases/tag/v3.0.0-beta.1). We encourage users to give **v3** a try for new features, improvements and provide feedback.
+**v2 is now LTS**
+
+Today, we announce that [v2](https://github.com/static-web-server/static-web-server/tree/2.x) has transitioned to **LTS** (Long-term support) status. Meaning that `v2.44.0` (minor) will receive only bug fixes and security updates going forward.
+
+The project's current focus has now moved to **v3** (in progress). We encourage users to give **v3** a try for new features, improvements and provide feedback. More details in the [v3.0.0-beta.1](https://github.com/static-web-server/static-web-server/releases/tag/v3.0.0-beta.1) release.
 
 **Fixes**
 
