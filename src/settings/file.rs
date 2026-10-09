@@ -114,6 +114,9 @@ impl CompressionLevel {
 pub struct Headers {
     /// Header source.
     pub source: String,
+    /// Optional list of HTTP response status codes the headers apply to.
+    /// If not specified, the headers apply to any response status.
+    pub status: Option<Vec<u16>>,
     #[serde(rename(deserialize = "headers"), with = "http_serde::header_map")]
     /// headers list.
     pub headers: HeaderMap,
@@ -206,6 +209,11 @@ pub struct General {
     pub port: Option<u16>,
     /// Root directory path.
     pub root: Option<PathBuf>,
+
+    /// Open the server URL in the system default web browser after startup.
+    pub open: Option<bool>,
+    /// URL path opened in the browser.
+    pub open_path: Option<String>,
 
     /// Logging level.
     pub log_level: Option<LogLevel>,
