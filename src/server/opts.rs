@@ -161,6 +161,24 @@ pub(super) fn init(general: &General, advanced: Option<Advanced>) -> Result<Hand
     crate::error_page::cache_page(&handler_opts.page404);
     crate::error_page::cache_page(&handler_opts.page50x);
 
+    // Register custom error pages for specific status codes (401, 403).
+    // These are looked up by status code in `error_response_inner` without
+    // changing the function signature.
+    {
+        if let Some(mut p401) = general.page401.clone() {
+            if p401.is_relative() && !p401.starts_with(&handler_opts.root_dir) {
+                p401 = handler_opts.root_dir.join(&p401);
+            }
+            crate::error_page::register_status_page(401, &p401);
+        }
+        if let Some(mut p403) = general.page403.clone() {
+            if p403.is_relative() && !p403.starts_with(&handler_opts.root_dir) {
+                p403 = handler_opts.root_dir.join(&p403);
+            }
+            crate::error_page::register_status_page(403, &p403);
+        }
+    }
+
     // Health endpoint
     health::init(general.health, &mut handler_opts);
 
