@@ -390,6 +390,9 @@ pub struct General {
     /// Trusted IPs for remote addresses.
     pub trusted_proxies: Option<Vec<IpAddr>>,
 
+    /// Log the trace context of the `traceparent` header.
+    pub log_trace_context: Option<bool>,
+
     /// Redirect trailing slash feature.
     pub redirect_trailing_slash: Option<bool>,
 
