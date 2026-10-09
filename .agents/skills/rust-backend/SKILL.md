@@ -1,95 +1,140 @@
 ---
 name: rust-backend
-description: Write or review Rust backend code for the Static Web Server (SWS) project — crates, modules, functions, types, error handling, and async code
+description: Write or modify Rust code in the Static Web Server (SWS) project — modules, types, error handling, async code, hyper responses, feature-gated code, and the local commands that mirror CI. Use when editing anything under src/, adding a module or dependency, or getting clippy/fmt/test/rustdoc to pass.
 ---
 
 # Rust Backend Coding Standards
 
-Load this skill when writing, reviewing, or refactoring Rust code in the SWS project.
+Load this skill before editing Rust source. For architecture, pipeline order, and the config-option recipe, see `design/SKILL.md`. For review criteria, see `code-quality/SKILL.md`.
 
-**When to load**: editing any file under `src/`, adding a new module, changing error handling, touching async code, or reviewing a PR that modifies Rust source.
+**When to load**: editing any file under `src/`, adding a module or dependency, changing error handling or async code, or fixing a CI failure in lint, fmt, tests, or docs.
 
-## Mandatory Tools
+## Verify Like CI
 
-**Always** use the following commands to maintain code quality and consistency:
+Run these before declaring a change done. They match `.github/workflows/devel.yml`.
 
-### Linting
+```bash
+# Format (CI runs exactly this)
+cargo fmt --all -- --check tests/*.rs
 
-1. `cargo clippy --features all -- -D warnings`
-2. `cargo clippy --features all --tests -- -D warnings`
+# Clippy: lib/bin, then tests. Repeat for each feature set CI checks
+cargo clippy --features all -- -D warnings
+cargo clippy --features all --tests -- -D warnings
+cargo clippy --no-default-features -- -D warnings
+cargo clippy --no-default-features --tests -- -D warnings
 
-### Formatting
+# Tests
+cargo test --features all
+cargo test --no-default-features
 
-1. `cargo fmt --all -- --check tests/*.rs`
-
-### Testing
-
-1. `cargo test -v --features all`
-2. `cargo test -v --no-default-features`
-
-### Cargo docs lint
-
-```
+# Rustdoc (nightly) — catches broken intra-doc links and missing docs
 cargo +nightly rustdoc --lib -Zrustdoc-map --features all \
     --config "build.rustflags=[\"--cfg\", \"tokio_unstable\"]" \
     -Zhost-config -Ztarget-applies-to-host \
     --config "host.rustflags=[\"--cfg\", \"tokio_unstable\"]" \
-    --config "build.rustdocflags=[\"--cfg\", \"docsrs\", \"--cfg\", \"docsrs\", \"--cfg\", \"tokio_unstable\", \"-Z\", \"unstable-options\", \"--emit=invocation-specific\", \"--cap-lints\", \"warn\", \"--extern-html-root-takes-precedence\"]" \
+    --config "build.rustdocflags=[\"--cfg\", \"docsrs\", \"--cfg\", \"docsrs\", \"--cfg\", \"tokio_unstable\", \"-Z\", \"unstable-options\", \"--cap-lints\", \"warn\", \"--extern-html-root-takes-precedence\"]" \
     -Zunstable-options -- --document-private-items
 ```
 
-## Code Quality
+FIPS (`--no-default-features --features all-fips`) needs `cmake`, `golang`, and `libclang`; run it only when touching TLS provider code.
 
-- **All clippy commands in Mandatory Tools must pass with zero warnings before committing**
-- **`unsafe` is forbidden at the crate level**: SWS uses `#![forbid(unsafe_code)]`. Consider refactoring to avoid `unsafe` entirely
-- **Prefer `&Path` over `&PathBuf`** in function parameters. Accept `impl AsRef<Path>` for public APIs
-- **Use `#[must_use]`** on pure functions whose return value should not be silently discarded
-- **Derive common traits explicitly**: `Debug`, `Clone`, `PartialEq`, `Eq` on all public types unless there is a reason not to
-- **No commented-out code**: Delete it. Git history preserves it
+### Tooling Pitfalls
+
+- **Never use `--all-features`**: it enables `tls-ring` and `tls-fips` together and `src/tls.rs` fails with `compile_error!`. Use `--features all`. (`make lint` still uses `--all-features`; do not rely on it)
+- **`RUSTFLAGS` replaces `.cargo/config.toml` flags**: the config sets `--cfg tokio_unstable`. If the shell exports `RUSTFLAGS` (e.g. `-L native=...` for musl), `--features all` fails with `cannot find function default_runtime_collector in crate tokio_metrics_collector`. Fix: `RUSTFLAGS="$RUSTFLAGS --cfg tokio_unstable" cargo ...`. Changing `RUSTFLAGS` also forces a full rebuild
+- **`--no-default-features` is the strict build**: unused imports, dead code, and unused variables that only exist under a feature surface here. Run it whenever you add `#[cfg(feature = ...)]`
+
+## Crate-Level Lints
+
+`src/lib.rs` sets:
+
+```rust
+#![deny(missing_docs)]       // every pub item, field, and variant needs a `///` doc comment
+#![forbid(unsafe_code)]
+#![deny(warnings)]
+#![deny(rust_2018_idioms)]
+#![deny(dead_code)]
+```
+
+Integration test files under `tests/` repeat `forbid(unsafe_code)`, `deny(warnings)`, `deny(rust_2018_idioms)`, and `deny(dead_code)`.
+
+Source files begin with the SPDX header:
+
+```rust
+// SPDX-License-Identifier: MIT OR Apache-2.0
+// This file is part of Static Web Server.
+// See https://static-web-server.net/ for more information
+// Copyright (C) 2019-present Jose Quintana <joseluisq.net>
+```
 
 ## Error Handling
 
-- **Use the crate's `Result<T>` and `Error` types**: Defined in `src/error.rs`. All fallible functions return `Result<T>` or `Result<T, StatusCode>` for HTTP-level errors
-- **Use `anyhow::Context` for wrapping**: `fallible_op().with_context(|| "failed to parse config")?`
-- **No `unwrap()` or `expect()` in production code**: Use `?` or match. Allow `expect` only for values guaranteed by prior validation (e.g., a regex that is known to compile, a lock that should never be poisoned). Add an inline comment explaining the invariant
-- **Log errors at the boundary**: Module code returns errors. The HTTP handler (`handler.rs`) logs them and converts to HTTP status codes
-- **Distinguish HTTP status codes from internal errors**: `StatusCode` (hyper) for HTTP semantics; `Error` (anyhow) for internal failures. Functions use `Result<T, StatusCode>` when the only possible failures are HTTP-level
+- **Types**: `crate::Result<T>` (`anyhow::Result`) and `crate::Error` (`anyhow::Error`) from `src/error.rs`, which also re-exports `Context`, `anyhow!`, and `bail!`
+- **HTTP-level failures**: file-serving functions return `Result<T, StatusCode>`. `static_files::handle()` returns `Result<StaticFileResponse, StatusCode>`; `handler.rs` turns the status into an error page via `error_page::error_response()`
+- **Context on startup errors**: `fallible().with_context(|| format!("unable to read {}", path.display()))?`. Startup errors abort with a readable message; request-path errors become status codes
+- **No `unwrap()` / `expect()` in production code**: use `?`, `ok_or_else`, or a match. Tests may unwrap
+- **Log at the boundary**: modules return errors; `handler.rs` and `error_page.rs` log them. Use `tracing` macros (`error!`, `warn!`, `debug!`, `trace!`), not `println!`
+- **Avoid**: `String` as an error type, `Box<dyn Error>`, silently discarding a `Result`
 
-## Async Code
+## Async and HTTP
 
-- **Use `tokio` as the runtime**: All async code targets `tokio` (multi-threaded, `rt-multi-thread` feature)
-- **No `block_on` in async context**: Never call `tokio::runtime::Handle::block_on` inside an async function
-- **Prefer `spawn_blocking` for CPU-bound work**: Offload file hashing, compression dictionary building, etc.
-- **Use `hyper` as the HTTP framework**: SWS is built on `hyper` v1 with `http-body-util`. `src/service.rs` defines `RouterService` and `RequestService`, which implement `hyper::service::Service` and delegate to `RequestHandler::handle()`
+- **Runtime**: `tokio` multi-threaded. Never call `block_on` in async context. Use `tokio::task::spawn_blocking` for CPU-heavy or blocking work
+- **HTTP**: `hyper` v1 + `hyper-util` + `http-body-util`. `service.rs` adapts `RequestHandler` to `hyper::service::Service`
+- **Bodies**: `crate::body::Body` is `BoxBody<Bytes, io::Error>`. Build with `body::empty()`, `body::full(bytes)`, or `body::stream(s)`. Stream files; buffer only small generated responses (health, error pages, listings)
+- **Static header values**: define `static NAME: HeaderValue = HeaderValue::from_static("...")` and `.clone()` it (see `control_headers.rs`, `security_headers.rs`)
+- **Method helpers**: use `MethodExt` (`is_allowed`, `is_head`, `is_options`) from `crate::exts::http`
 
-## HTTP & Request Handling
+## Feature Module Pattern
 
-- **Request pipeline ordering**: `handler.rs` orchestrates the request flow in a fixed order with three phases:
-  - **Pre-processing** (may short-circuit with a response): method check → health/metrics → CORS → basic auth → maintenance mode → redirects → rewrites → virtual hosts → markdown negotiation
-  - **Core**: static file resolution and serving
-  - **Post-processing** (additive, runs on every response): fallback page → CORS headers → text charset → static compression → dynamic compression → cache-control → security headers → custom headers
-- **Post-processing is additive**: Each post-processing step appends or modifies headers. No step removes headers set by a previous step unless explicitly documented
-- **Response body type**: `crate::body::Body` is a type alias for `BoxBody<Bytes, std::io::Error>` (defined in `src/body.rs`). Use the constructors `crate::body::empty()`, `crate::body::full(impl Into<Bytes>)`, or `crate::body::stream<S>(s)`
-- **Static file serving is the core**: `static_files.rs` handles path resolution, index files, directory listing, pre-compressed variants, and byte-range requests
+Each feature module follows the same shape so `server/opts.rs` and `handler.rs` stay uniform:
 
-## Settings & Configuration
+```rust
+/// Initializes <feature>.
+pub(crate) fn init(enabled: bool, handler_opts: &mut RequestHandlerOpts) {
+    handler_opts.my_feature = enabled;
+    tracing::info!(enabled, "my feature");
+}
 
-- **Three equivalent channels**: CLI arguments (`clap`), environment variables, and TOML config file. Defined in `src/settings/`
-- **Precedence (lowest to highest)**: compiled defaults → TOML config file → environment variables → CLI arguments. Runtime validation runs after merging
-- **Feature-gated settings**: Settings that require Cargo features (e.g., `compression`, `directory-listing`) are conditionally compiled with `#[cfg(feature = "...")]`
-- **Validation at startup, not per-request**: Canonicalize paths, validate TLS certificates, parse index files once at startup in `server/opts.rs`
+/// Pre-processing: return `Some` to short-circuit the request.
+pub(crate) fn pre_process<T>(
+    opts: &RequestHandlerOpts,
+    req: &Request<T>,
+) -> Option<Result<Response<Body>, Error>> { /* ... */ }
+
+/// Post-processing: always return the (possibly modified) response.
+pub(crate) fn post_process<T>(
+    opts: &RequestHandlerOpts,
+    req: &Request<T>,
+    resp: Response<Body>,
+) -> Result<Response<Body>, Error> { /* ... */ }
+```
+
+Keep the testable logic in a plain function (e.g. `append_headers(uri, &mut resp)`, `auto(method, headers, level, resp)`) that unit tests and `benches/` call directly.
+
+## Feature-Gated Code
+
+- Gate the module in `lib.rs` with `#[cfg(feature = "x")]` and `#[cfg_attr(docsrs, doc(cfg(feature = "x")))]`
+- Gate every field, constructor entry, and use site. `RequestHandlerOpts` is built in three places: its `Default` impl (`handler.rs`), `server/opts.rs`, and `testing.rs`
+- Compression code gates on `any(feature = "compression", feature = "compression-gzip", feature = "compression-brotli", feature = "compression-zstd", feature = "compression-deflate")` — copy the existing block
+- Provide a `#[cfg(not(feature = "x"))]` fallback value when a caller needs one (see `will_serve_fallback` in `handler.rs`)
 
 ## File System
 
-- **Canonicalize paths once at startup**: The root directory is canonicalized in `server/opts.rs`. Per-request path resolution reuses this canonical base
-- **Path traversal prevention**: `sanitize_path()` (in `src/fs/path.rs`) strips `..`, root prefixes, and other traversal components. `resolve_and_contain()` (in `src/static_files/security.rs`) verifies the resolved path stays within the base directory
-- **Symlink policy**: When `--follow-symlinks` is disabled (default), `enforce_symlink_policy()` (in `src/static_files/security.rs`) walks each path component checking for symlinks via `symlink_metadata()`. This is a syscall per component — check cheaper guards (hidden files) first
-- **File metadata operations**: `try_metadata()` and `try_metadata_with_html_suffix()` (in `src/fs/meta.rs`) encapsulate filesystem access with proper error mapping to HTTP status codes
+- The root is canonicalized once in `server/opts.rs` (unless `--use-relative-root`); virtual-host roots are canonicalized in `settings/`. Never canonicalize the base per request
+- Request paths pass through `fs::path::sanitize_path()` then `static_files::security::enforce()`. See `security/SKILL.md` before touching either
+- `fs/meta.rs` (`try_metadata`, `try_file_open`, `try_metadata_with_html_suffix`) maps any metadata or open failure to `StatusCode::NOT_FOUND` and logs the cause at `debug`/`trace`
+- Prefer `&Path` over `&PathBuf` in new signatures, and `impl AsRef<Path>` for new public APIs
 
-## Patterns to Avoid
+## Code Style
 
-- **No `String` as an error type**: Use structured errors or `StatusCode`
-- **No `Box<dyn Error>`**: Use `anyhow::Error`
-- **No global mutable state**: No `static mut` or `lazy_static!` with `Mutex`. SWS uses `Arc<RequestHandlerOpts>` for shared read-only config
-- **No deep nesting**: Extract nested conditionals into named functions or match guards
-- **No per-request canonicalize or alloc when avoidable**: Cache canonical paths, reuse buffers, avoid `clone()` in the hot path
+- `rustfmt` defaults. No commented-out code; git keeps history
+- Derive `Debug` and `Clone` on config/option types; `#[must_use]` on pure functions whose result must be used
+- No global mutable state (`static mut`, `Mutex` in a `static`). Shared config is `Arc<RequestHandlerOpts>`; per-thread caches use `thread_local!` (see the containment cache in `static_files/security.rs`)
+- Regex: the crate uses `regex-lite`, not `regex`. Globs use `globset`. Placeholder replacement uses `aho-corasick`
+- Extract nested conditionals into named functions; prefer `let ... else` and `if let ... &&` chains (edition 2024) over deep nesting
+
+## Dependencies
+
+- Check binary-size impact before adding a crate: `cargo build --release --features all` before/after, compare `target/release/static-web-server`. Over 100KB requires a feature flag or replacing existing functionality
+- Use `default-features = false` and enable only needed features
+- `cargo audit` runs in CI (`.github/workflows/audit.yml`)
