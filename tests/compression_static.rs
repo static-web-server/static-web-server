@@ -507,4 +507,156 @@ mod tests {
             Err(err) => panic!("unexpected error: {err}"),
         };
     }
+
+    // Regression test for https://github.com/static-web-server/static-web-server/issues/761
+    // A `.gz` file is not a valid `deflate` body, so a client that accepts
+    // only `deflate` must get the original file instead of the `.gz` variant.
+    #[tokio::test]
+    async fn compression_static_deflate_only_skips_gzip_variant() {
+        let file_buf = std::fs::read("tests/fixtures/public/assets/index.html")
+            .expect("unexpected error when reading the original file");
+        let file_buf = Bytes::from(file_buf);
+
+        let opts = fixture_settings("toml/handler_fixtures.toml");
+        let general = General {
+            #[cfg(any(
+                feature = "compression",
+                feature = "compression-gzip",
+                feature = "compression-brotli",
+                feature = "compression-zstd",
+                feature = "compression-deflate"
+            ))]
+            compression: false,
+            compression_static: true,
+            ..opts.general
+        };
+        let req_handler_opts = fixture_req_handler_opts(general, opts.advanced);
+        let req_handler = fixture_req_handler(req_handler_opts);
+
+        let mut req = Request::new(());
+        *req.method_mut() = hyper::Method::GET;
+        *req.uri_mut() = "http://localhost/assets/index.html".parse().unwrap();
+        req.headers_mut()
+            .insert(http::header::ACCEPT_ENCODING, "deflate".parse().unwrap());
+
+        let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
+        match req_handler.handle(&mut req, remote_addr).await {
+            Ok(res) => {
+                assert_eq!(res.status(), 200);
+                assert!(!res.headers().contains_key("content-encoding"));
+                assert_eq!(res.headers()["vary"], "accept-encoding");
+
+                let body = res
+                    .into_body()
+                    .collect()
+                    .await
+                    .expect("unexpected bytes error during `body` conversion")
+                    .to_bytes();
+
+                assert_eq!(body, file_buf, "body must be the original file");
+            }
+            Err(err) => panic!("unexpected error: {err}"),
+        }
+    }
+
+    // When `deflate` is preferred over `gzip`, negotiation must fall through
+    // to `gzip` and serve the `.gz` variant labelled as `gzip`.
+    #[tokio::test]
+    async fn compression_static_deflate_preferred_serves_gzip_variant() {
+        let archive_buf = std::fs::read("tests/fixtures/public/assets/index.html.gz")
+            .expect("unexpected error when reading archive file");
+        let archive_buf = Bytes::from(archive_buf);
+
+        let opts = fixture_settings("toml/handler_fixtures.toml");
+        let general = General {
+            #[cfg(any(
+                feature = "compression",
+                feature = "compression-gzip",
+                feature = "compression-brotli",
+                feature = "compression-zstd",
+                feature = "compression-deflate"
+            ))]
+            compression: false,
+            compression_static: true,
+            ..opts.general
+        };
+        let req_handler_opts = fixture_req_handler_opts(general, opts.advanced);
+        let req_handler = fixture_req_handler(req_handler_opts);
+        let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
+
+        for accept_encoding in ["deflate, gzip", "deflate, gzip;q=0.5"] {
+            let mut req = Request::new(());
+            *req.method_mut() = hyper::Method::GET;
+            *req.uri_mut() = "http://localhost/assets/index.html".parse().unwrap();
+            req.headers_mut().insert(
+                http::header::ACCEPT_ENCODING,
+                accept_encoding.parse().unwrap(),
+            );
+
+            match req_handler.handle(&mut req, remote_addr).await {
+                Ok(res) => {
+                    assert_eq!(res.status(), 200);
+                    assert_eq!(res.headers()["content-encoding"], "gzip");
+                    assert_eq!(res.headers()["vary"], "accept-encoding");
+
+                    let body = res
+                        .into_body()
+                        .collect()
+                        .await
+                        .expect("unexpected bytes error during `body` conversion")
+                        .to_bytes();
+
+                    assert_eq!(body, archive_buf, "body must be the .gz variant");
+                }
+                Err(err) => panic!("unexpected error: {err}"),
+            }
+        }
+    }
+
+    // With on-the-fly compression enabled, a client that accepts only
+    // `deflate` must get a body compressed on the fly, not the `.gz` variant.
+    #[tokio::test]
+    #[cfg(any(feature = "compression", feature = "compression-deflate"))]
+    async fn compression_static_deflate_only_compresses_on_the_fly() {
+        let archive_buf = std::fs::read("tests/fixtures/public/assets/index.html.gz")
+            .expect("unexpected error when reading archive file");
+
+        let opts = fixture_settings("toml/handler_fixtures.toml");
+        let general = General {
+            compression: true,
+            compression_static: true,
+            ..opts.general
+        };
+        let req_handler_opts = fixture_req_handler_opts(general, opts.advanced);
+        let req_handler = fixture_req_handler(req_handler_opts);
+
+        let mut req = Request::new(());
+        *req.method_mut() = hyper::Method::GET;
+        *req.uri_mut() = "http://localhost/assets/index.html".parse().unwrap();
+        req.headers_mut()
+            .insert(http::header::ACCEPT_ENCODING, "deflate".parse().unwrap());
+
+        let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
+        match req_handler.handle(&mut req, remote_addr).await {
+            Ok(res) => {
+                assert_eq!(res.status(), 200);
+                assert_eq!(res.headers()["content-encoding"], "deflate");
+
+                let body = res
+                    .into_body()
+                    .collect()
+                    .await
+                    .expect("unexpected bytes error during `body` conversion")
+                    .to_bytes();
+
+                assert!(!body.is_empty(), "body must not be empty");
+                assert!(
+                    !body.starts_with(&[0x1f, 0x8b]),
+                    "body must not be gzip data"
+                );
+                assert_ne!(body, archive_buf, "body must not be the .gz variant");
+            }
+            Err(err) => panic!("unexpected error: {err}"),
+        }
+    }
 }

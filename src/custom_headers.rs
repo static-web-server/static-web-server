@@ -54,7 +54,16 @@ fn append_headers(
             _ => uri_path,
         };
 
+        let status = resp.status();
         for headers_entry in headers_vec {
+            // Skip the entry if it is limited to other response status codes
+            if headers_entry
+                .status
+                .as_deref()
+                .is_some_and(|codes| !codes.contains(&status))
+            {
+                continue;
+            }
             // Match header glob pattern against request uri
             if headers_entry.source.is_match(uri_path) {
                 // Add/update headers if uri matches

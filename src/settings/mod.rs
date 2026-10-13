@@ -42,6 +42,9 @@ pub use file::CompressionLevel;
 pub struct Headers {
     /// Source pattern glob matcher
     pub source: GlobMatcher,
+    /// Optional list of response status codes the headers apply to.
+    /// If `None`, the headers apply to any response status.
+    pub status: Option<Vec<StatusCode>>,
     /// Map of custom HTTP headers
     pub headers: HeaderMap,
 }
@@ -135,6 +138,8 @@ impl Settings {
         let mut host = opts.host;
         let mut port = opts.port;
         let mut root = opts.root;
+        let mut open = opts.open;
+        let mut open_path = opts.open_path;
         let mut log_level = opts.log_level;
         let mut log_with_ansi = opts.log_with_ansi;
         let mut log_format = opts.log_format;
@@ -265,6 +270,12 @@ impl Settings {
                 }
                 if let Some(v) = general.root {
                     root = v
+                }
+                if let Some(value) = general.open {
+                    open = value;
+                }
+                if let Some(value) = general.open_path {
+                    open_path = Some(value);
                 }
                 if let Some(ref v) = general.log_level {
                     log_level = v.name().to_lowercase();
@@ -511,8 +522,15 @@ impl Settings {
                                 })?
                                 .compile_matcher();
 
+                            let status = headers_entry
+                                .status
+                                .as_deref()
+                                .map(|codes| parse_header_status(codes, &headers_entry.source))
+                                .transpose()?;
+
                             headers_vec.push(Headers {
                                 source,
+                                status,
                                 headers: headers_entry.headers.to_owned(),
                             });
                         }
@@ -684,6 +702,23 @@ impl Settings {
             )?;
         }
 
+        // Runtime validation: --open cannot be used with --unix-socket
+        #[cfg(unix)]
+        if open && unix_socket.is_some() {
+            bail!("--open cannot be used with --unix-socket");
+        }
+
+        // Runtime validation: --open-path only applies when --open is enabled
+        if open_path.is_some() && !open {
+            bail!("--open-path requires --open");
+        }
+
+        // Runtime validation: --open cannot be used with --windows-service
+        #[cfg(windows)]
+        if open && windows_service {
+            bail!("--open cannot be used with --windows-service");
+        }
+
         // Runtime validation: HTTP/2 requires TLS
         #[cfg(all(feature = "http2", feature = "tls"))]
         if http2 && !tls {
@@ -713,6 +748,8 @@ impl Settings {
                 host,
                 port,
                 root,
+                open,
+                open_path,
                 log_level,
                 log_with_ansi,
                 log_format,
@@ -822,4 +859,67 @@ fn read_file_settings(config_file: &Path) -> Result<Option<(FileSettings, PathBu
         return Ok(Some((settings, file_path_resolved)));
     }
     Ok(None)
+}
+
+/// Parses the optional `status` list of a custom headers entry.
+fn parse_header_status(codes: &[u16], source: &str) -> Result<Vec<StatusCode>> {
+    if codes.is_empty() {
+        bail!("empty status list for header source: {source}");
+    }
+    codes
+        .iter()
+        .map(|code| {
+            StatusCode::from_u16(*code)
+                .with_context(|| format!("invalid status code {code} for header source: {source}"))
+        })
+        .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Settings;
+
+    #[cfg(unix)]
+    #[test]
+    fn open_rejects_unix_socket() {
+        let error = Settings::get_unparsed(
+            false,
+            &[
+                "static-web-server",
+                "--open",
+                "--unix-socket",
+                "/tmp/sws-open-test.sock",
+            ],
+        )
+        .err()
+        .expect("open with a Unix socket should be rejected");
+
+        assert_eq!(
+            error.to_string(),
+            "--open cannot be used with --unix-socket"
+        );
+    }
+
+    #[test]
+    fn open_path_requires_open() {
+        let error = Settings::get_unparsed(false, &["static-web-server", "--open-path", "/docs"])
+            .err()
+            .expect("open path without open should be rejected");
+
+        assert_eq!(error.to_string(), "--open-path requires --open");
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn open_rejects_windows_service() {
+        let error =
+            Settings::get_unparsed(false, &["static-web-server", "--open", "--windows-service"])
+                .err()
+                .expect("open in Windows Service mode should be rejected");
+
+        assert_eq!(
+            error.to_string(),
+            "--open cannot be used with --windows-service"
+        );
+    }
 }
