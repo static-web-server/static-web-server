@@ -10,10 +10,10 @@
 
 #[cfg(any(feature = "compression", feature = "compression-brotli"))]
 use async_compression::tokio::bufread::BrotliEncoder;
-#[cfg(any(feature = "compression", feature = "compression-deflate"))]
-use async_compression::tokio::bufread::DeflateEncoder;
 #[cfg(any(feature = "compression", feature = "compression-gzip"))]
 use async_compression::tokio::bufread::GzipEncoder;
+#[cfg(any(feature = "compression", feature = "compression-deflate"))]
+use async_compression::tokio::bufread::ZlibEncoder;
 #[cfg(any(feature = "compression", feature = "compression-zstd"))]
 use async_compression::tokio::bufread::ZstdEncoder;
 
@@ -212,7 +212,8 @@ pub fn gzip(
 }
 
 /// Create a wrapping handler that compresses the Body of a [`Response`].
-/// using deflate, adding `content-encoding: deflate` to the Response's [`HeaderMap`].
+/// using the zlib format (the HTTP deflate coding, RFC 1950), adding `content-encoding: deflate`
+/// to the Response's [`HeaderMap`].
 #[cfg(any(feature = "compression", feature = "compression-deflate"))]
 #[cfg_attr(
     docsrs,
@@ -225,10 +226,10 @@ pub fn deflate(
 ) -> Response<Body> {
     const DEFAULT_COMPRESSION_LEVEL: i32 = 4;
 
-    tracing::trace!("compressing response body on the fly using DEFLATE");
+    tracing::trace!("compressing response body on the fly using DEFLATE (zlib)");
 
     let level = level.into_algorithm_level(DEFAULT_COMPRESSION_LEVEL);
-    let body = crate::body::stream(ReaderStream::new(DeflateEncoder::with_quality(
+    let body = crate::body::stream(ReaderStream::new(ZlibEncoder::with_quality(
         StreamReader::new(body.into_data_stream()),
         level,
     )));
