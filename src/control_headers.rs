@@ -6,9 +6,12 @@
 //! It provides an arbitrary `Cache-Control` headers functionality
 //! for incoming requests based on a set of file types.
 //!
+//! For responses served by the static-file handler (including its error pages),
+//! file type values apply only to `2xx` and `304`; any other status gets `no-cache`.
+//!
 
 use hyper::{
-    Request, Response,
+    Request, Response, StatusCode,
     header::{CACHE_CONTROL, HeaderValue},
 };
 
@@ -47,7 +50,14 @@ pub(crate) fn post_process<T>(
 
 /// It appends a `Cache-Control` header to a response if that one is part of a set of file types.
 pub fn append_headers(uri: &str, resp: &mut Response<Body>) {
-    let header_value = get_cache_control_header(uri);
+    let status = resp.status();
+    // File type values describe a successful representation: only `2xx` and `304` use them
+    // (a `304` repeats the `200`'s `Cache-Control`, RFC 9110 §15.4.5), others get `no-cache`.
+    let header_value = if status.is_success() || status == StatusCode::NOT_MODIFIED {
+        get_cache_control_header(uri)
+    } else {
+        &CACHE_CONTROL_DEFAULT
+    };
     resp.headers_mut()
         .insert(CACHE_CONTROL, header_value.clone());
 }
@@ -166,6 +176,50 @@ mod tests {
             resp.headers().get(CACHE_CONTROL).unwrap().to_str().unwrap(),
             "no-cache"
         );
+    }
+
+    #[test]
+    fn headers_non_success_status_default_fallback() {
+        let statuses = [
+            StatusCode::PERMANENT_REDIRECT,
+            StatusCode::FORBIDDEN,
+            StatusCode::NOT_FOUND,
+            StatusCode::PRECONDITION_FAILED,
+            StatusCode::RANGE_NOT_SATISFIABLE,
+            StatusCode::INTERNAL_SERVER_ERROR,
+        ];
+        for status in statuses {
+            for uri in ["/missing.css", "/feed.rss", "/missing.html"] {
+                let mut resp = Response::new(crate::body::empty());
+                *resp.status_mut() = status;
+                append_headers(uri, &mut resp);
+                assert_eq!(
+                    resp.headers().get(CACHE_CONTROL).unwrap().to_str().unwrap(),
+                    "no-cache",
+                    "status {status} for {uri}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn headers_success_and_not_modified_status() {
+        let statuses = [
+            StatusCode::OK,
+            StatusCode::NO_CONTENT,
+            StatusCode::PARTIAL_CONTENT,
+            StatusCode::NOT_MODIFIED,
+        ];
+        for status in statuses {
+            let mut resp = Response::new(crate::body::empty());
+            *resp.status_mut() = status;
+            append_headers("/assets/main.css", &mut resp);
+            assert_eq!(
+                resp.headers().get(CACHE_CONTROL).unwrap().to_str().unwrap(),
+                "max-age=31536000",
+                "status {status}"
+            );
+        }
     }
 
     #[test]

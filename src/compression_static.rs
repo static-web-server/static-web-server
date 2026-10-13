@@ -64,8 +64,9 @@ pub fn precompressed_variant(
         for encoding in accept_encoding.sorted_encodings() {
             // Determine preferred-encoding extension if available
             let comp_ext = match encoding {
+                // `deflate` has no variant: a `.gz` file is not a valid `deflate` body.
                 // https://zlib.net/zlib_faq.html#faq39
-                ContentCoding::GZIP | ContentCoding::DEFLATE => "gz",
+                ContentCoding::GZIP => "gz",
                 // https://peazip.github.io/brotli-compressed-file-format.html
                 ContentCoding::BROTLI => "br",
                 // https://datatracker.ietf.org/doc/html/rfc8878

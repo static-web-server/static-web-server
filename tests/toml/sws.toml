@@ -5,6 +5,10 @@ host = "::"
 port = 4433
 root = "docker/public"
 
+#### Open browser after startup
+open = true
+open-path = "/docs"
+
 #### Logging
 log-level = "trace"
 
@@ -100,6 +104,12 @@ Strict-Transport-Security = "max-age=63072000; includeSubDomains; preload"
 [[advanced.headers]]
 source = "**/*.{jpg,jpeg,png,ico,gif}"
 headers.Strict-Transport-Security = "max-age=63072000; includeSubDomains; preload"
+
+#### d. Limited to specific response status codes (optional `status`)
+[[advanced.headers]]
+source = "/assets/**"
+status = [200, 206, 304]
+headers = { Cache-Control = "public, max-age=31536000, immutable" }
 
 
 ### URL Redirects

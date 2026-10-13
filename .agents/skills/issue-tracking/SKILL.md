@@ -1,115 +1,105 @@
 ---
 name: issue-tracking
-description: Triage, debug, fix, and document issues for the Static Web Server (SWS) project — bug reports, root cause analysis, fix implementation, and regression prevention
+description: Triage, reproduce, debug, and fix issues in the Static Web Server (SWS) project — bug reports, regressions, root-cause analysis, minimal fixes with regression tests, v2 backports, and security reports. Use when investigating a bug report or failing behavior, writing a fix, or reviewing a bug-fix PR.
 ---
 
-# Issue Tracking & Debugging
+# Issue Triage and Debugging
 
-Load this skill when triaging bug reports, investigating issues, implementing fixes, or writing post-mortem documentation for SWS.
+**When to load**: a bug report or regression arrives, behavior differs from the docs, a fix is being written, or a bug-fix PR is under review.
 
-**When to load**: triaging a new issue report, investigating a regression, writing a fix for a bug, drafting a post-mortem, or reviewing a bug-fix PR.
+## Triage
 
-## Issue Triage
+1. **Security first**: if the report involves path traversal, file disclosure, auth bypass, header injection, or a crash from request input, treat it as a vulnerability. Follow `SECURITY.md`: private channels and a GitHub Security Advisory, no public issue or descriptive commit until disclosure. See `security/SKILL.md`
+2. **Version and branch**: v3 is `master` (development); v2 is the LTS line. Note which versions are affected; v2 fixes are backported separately and titled `(v2 backport)`
+3. **Gather**: SWS version (`static-web-server -V`), OS/arch, install method (binary, Docker image, cargo), full command line, env vars, `sws.toml`, request (`curl -v`), and logs at `-g trace`
+4. **Check defaults**: many reports come from changed defaults. v3 defaults: port `8080`, root `.`, index `index.html`, `--compression-static` on, directory listing off. A TOML `[general]` value overrides the CLI flag, which surprises users
 
-### Reproducibility First
+Bug reports use `.github/ISSUE_TEMPLATE/bug_report.yml`; ask for the missing fields rather than guessing.
 
-- **Can you reproduce it?** Follow the exact steps in the report. If unreproducible, ask the reporter for environment details (OS, architecture, SWS version, config file, TLS setup)
-- **Minimal reproduction**: Reduce the scenario to the smallest config + file structure that triggers the bug. Strip unrelated features
-- **Write a failing test first**: Before fixing, write a test that reproduces the bug. Use the fixture infrastructure in `tests/` and `src/testing.rs`
+## Reproduce
 
-### Severity Classification
+Reproduce before theorizing. Reduce to the smallest root and config that still fails.
 
-| Severity | Definition | Response |
-|----------|-----------|----------|
-| **P0 - Critical** | Security vulnerability, data exposure, path traversal | Drop everything. Fix immediately. Security release |
-| **P1 - High** | Broken core feature (file serving, TLS), crash on start | Fix in current sprint. Patch release |
-| **P2 - Medium** | Broken non-core feature, workaround exists | Schedule in next sprint |
-| **P3 - Low** | Cosmetic, log message, doc typo | Backlog. Fix when touching related code |
+```bash
+# Debug build against a fixture root with full tracing
+cargo run --features all -- -d tests/fixtures/public -p 8080 -g trace
 
-## Root Cause Analysis
-
-### Debugging Process
-
-1. **Gather evidence**: Logs (`-g trace`), stack traces, HTTP response headers, request URIs, config file
-2. **Form a hypothesis**: Based on the evidence, propose what might cause the bug
-3. **Test the hypothesis**: Add tracing, run reproduction, or step through with a debugger
-4. **Identify the root cause**: Find the exact line or condition that triggers the bug. Don't stop at symptoms
-5. **Verify the fix**: The reproduction test now passes. The original scenario works
-
-### Rust Debugging
-
-- **Use `tracing` crate for structured logs**: SWS uses `tracing-subscriber`. Run with `-g trace` for maximum detail. Log levels: ERROR (actionable), WARN (unexpected but handled), INFO (key events), DEBUG (detailed), TRACE (noisy)
-- **Use `dbg!()` for quick inspection**: Temporary, remove before committing
-- **Enable backtraces**: `RUST_BACKTRACE=1` for panic backtraces, `RUST_LIB_BACKTRACE=1` for error backtraces
-
-### HTTP Debugging
-
-- **Inspect response headers**: Use `curl -v http://localhost:8787/path` to see full request/response exchange
-- **Test with specific Accept-Encoding headers**: `curl -H "Accept-Encoding: br" ...` to test compression variant selection
-- **Check security headers**: `curl -I http://localhost:8787/ | grep -i 'x-\|strict\|csp\|referrer'`
-- **Test byte-range requests**: `curl -H "Range: bytes=0-99" http://localhost:8787/file`
-- **CORS preflight debugging**: `curl -X OPTIONS -H "Origin: https://example.com" -H "Access-Control-Request-Method: GET" http://localhost:8787/`
-- **TLS verification**: `openssl s_client -connect localhost:8787 -servername localhost`
-
-### File-Serving Debugging
-
-- **Path resolution issues**: Check if the file exists at the resolved path. SWS logs the resolved path at `trace` level
-- **Hidden file / symlink blocking**: Verify `--include-hidden` and `--follow-symlinks` settings (both default to `false`). Hidden files return 404 (stealth), symlinks return 403
-- **Index file resolution**: If a directory returns 404 instead of an index, check `--index-files` list and file existence
-- **MIME type issues**: SWS uses `mime_guess` from file extension. If the wrong `Content-Type` is served, check the file extension
-
-## Fix Implementation
-
-### Before Writing the Fix
-
-- [ ] Is there a failing test that reproduces the bug?
-- [ ] Is the root cause identified (not just the symptom)?
-- [ ] Does the fix address the root cause?
-- [ ] Are there other places in the codebase with the same bug pattern?
-
-### Writing the Fix
-
-- **Minimal change**: Fix the bug with the smallest possible code change. Do not refactor unrelated code in the same PR
-- **Add a regression test**: The reproduction test becomes a permanent regression test
-- **Update documentation**: If the fix changes behavior, update the relevant feature doc in `docs/content/features/`
-
-### Commit Message Format
-
-```
-fix(scope): brief description of the fix
-
-Detailed explanation of the root cause and the fix.
-Include steps to reproduce, expected behavior, and actual behavior.
-
-Fixes #123
+# Or with a config file
+cargo run --features all -- -w ./repro.toml -g trace
 ```
 
-`scope` is the affected module or feature (e.g., `compression`, `tls`, `static-files`). See `COMMITS.md` for the full convention.
+### HTTP probes
+
+```bash
+curl -sv http://localhost:8080/path -o /dev/null                       # status + headers
+curl -sI -H 'Accept-Encoding: br, gzip' http://localhost:8080/app.js    # compression variant
+curl -s -H 'Range: bytes=0-99' -D - http://localhost:8080/file -o /dev/null
+curl -sI -H 'If-None-Match: W/"..."' http://localhost:8080/index.html  # expect 304
+curl -sv -X OPTIONS -H 'Origin: https://example.com' \
+     -H 'Access-Control-Request-Method: GET' http://localhost:8080/   # CORS preflight
+curl -sI -H 'Accept: text/markdown' http://localhost:8080/article     # markdown negotiation
+curl --path-as-is -sI 'http://localhost:8080/../../etc/passwd'         # traversal must 404
+openssl s_client -connect localhost:8080 -servername localhost         # TLS
+```
+
+Use `--path-as-is`; plain `curl` normalizes `..` client-side and hides traversal bugs.
+
+### Logs
+
+- `-g` / `SERVER_LOG_LEVEL`: `error` (default), `warn`, `info`, `debug`, `trace`
+- `info` logs effective settings at startup (each feature's `init()`); compare them with what the user believes they configured
+- `trace` shows path resolution, pre-compressed variant selection, and compression decisions
+- `--log-format pretty` gives human-readable output (default is single-line `json`); `--log-remote-address` adds client addresses
+
+### Common Symptom → Cause
+
+| Symptom | Check |
+|---------|-------|
+| 404 for a file that exists | Hidden component (`.well-known`) without `--include-hidden`; symlinked path; wrong root (default is `.`); `--index-files` value |
+| 403 | A path component is a symlink and `--follow-symlinks` is off |
+| Setting ignored | Same key set in `sws.toml` `[general]` (overrides CLI/env); feature not compiled in; `./config.toml` picked up with a deprecation warning |
+| Wrong `Content-Type` | Extension unknown to `mime_guess`; fix with an `[[advanced.headers]]` rule |
+| Not compressed | Body under 200 bytes, MIME not compressible, `HEAD` request, or a pre-compressed variant already applied |
+| Asset cached for a year after a 404 | Fixed in v3.0.0-beta.2: file-type `Cache-Control` applies only to 2xx/304 |
+| Header missing | Step order: custom headers override, CORS headers only when an origin matched, security headers only with `--security-headers` (auto with `--tls`) |
+| Rewrite `$1` empty | Capture numbering follows pattern order; `{*}` stays within one segment, `{**}` spans segments |
+
+## Fix
+
+1. **Write the failing test first**: handler test in `tests/<feature>.rs` or unit test beside the code (`testing/SKILL.md`). Confirm it fails for the reported reason
+2. **Find the root cause**: the exact line or condition, not the symptom. Explain it in the commit body
+3. **Minimal fix**: change only what the root cause requires. No unrelated refactors
+4. **Search for siblings**: `rg` for the same pattern elsewhere (another pipeline step, the v2 branch, `directory_listing` vs `static_files`)
+5. **Run the full suite** for both feature sets (`rust-backend/SKILL.md`). Any new failure is yours to explain
+6. **Record it**: CHANGELOG entry under **Bug Fixes**, and a docs-repo follow-up if documented behavior changes
+
+### Commit
+
+Per `docs/COMMITS.md` (lines ≤ 100 chars, imperative, lowercase subject, no trailing period):
+
+```
+fix(control_headers): apply file type cache-control only to 2xx and 304
+
+Error responses for asset URLs inherited the one-year max-age of the
+requested extension, so browsers cached a missing asset as a 404.
+Use `no-cache` for any status other than 2xx and 304.
+
+Fixes #757
+```
+
+Scope is the module touched (`server`, `tls`, `compression`, `fs`, `handler`, `static_files`, `cors`, `rewrites`, `directory_listing`, ...).
 
 ## Regression Prevention
 
-- **The reproduction test stays**: Every bug fix adds a test that prevents the same bug from returning
-- **Check similar code paths**: Search the codebase for patterns that could cause the same class of bug
-- **Add a lint rule if applicable**: If a pattern caused the bug and can be detected statically, add a clippy or ESLint rule
-
-## Post-Mortem (P0/P1 only)
-
-For critical and high-severity issues, write a brief post-mortem:
-
-1. **What happened**: Timeline of the incident
-2. **Root cause**: The specific code or configuration that caused it
-3. **Impact**: What users were affected and how
-4. **Fix**: What change resolved the issue
-5. **Prevention**: What process, tooling, or test prevents recurrence
-
-Store post-mortems in `docs/post-mortems/YYYY-MM-DD-title.md`.
+- The reproduction test stays as a regression test
+- Parsers that failed on unexpected input get a proptest; commit any `proptest-regressions/` file it produces
+- Hot-path fixes get a bench so the fix doesn't regress performance unnoticed
 
 ## Checklist
 
-- [ ] Bug is reproduced and understood
-- [ ] Root cause identified (not just symptom)
-- [ ] Failing test written before the fix
-- [ ] Fix is minimal and addresses root cause
-- [ ] Regression test added
-- [ ] Similar code paths checked for the same bug pattern
-- [ ] Commit message follows format
+- [ ] Security implications assessed first
+- [ ] Reproduced, with a failing test
+- [ ] Root cause identified and explained in the commit body
+- [ ] Minimal fix; sibling code paths checked
+- [ ] Tests pass for `--features all` and `--no-default-features`
+- [ ] CHANGELOG entry; v2 backport noted if affected

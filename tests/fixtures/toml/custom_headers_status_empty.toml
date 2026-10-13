@@ -1,0 +1,10 @@
+[general]
+
+root = "tests/fixtures/public"
+
+[advanced]
+
+[[advanced.headers]]
+source = "/assets/**"
+status = []
+headers = { X-Custom-Header = "never" }
