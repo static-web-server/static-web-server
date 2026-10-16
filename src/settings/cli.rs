@@ -468,13 +468,14 @@ pub struct General {
         value_enum,
         requires_ifs([
             ("targz", "directory_listing"),
+            ("tarzst", "directory_listing"),
         ]),
         require_equals(true),
         action = clap::ArgAction::Set,
         env = "SERVER_DIRECTORY_LISTING_DOWNLOAD",
         ignore_case(true)
     )]
-    /// Specify list of enabled format(s) for directory download. Format supported: `targz`. Default to empty list (disabled).
+    /// Specify list of enabled format(s) for directory download. Formats supported: `targz`, `tarzst`. Default to empty list (disabled).
     pub directory_listing_download: Vec<DirDownloadFmt>,
 
     #[cfg_attr(

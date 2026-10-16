@@ -8,6 +8,47 @@ mod tests {
     use static_web_server::settings::file::Settings;
     use std::path::{Path, PathBuf};
 
+    #[cfg(feature = "directory-listing-download")]
+    #[test]
+    fn directory_download_tarzst_cli_and_toml() {
+        use clap::Parser;
+        use static_web_server::settings::cli::General;
+
+        let cli = General::try_parse_from([
+            "static-web-server",
+            "--directory-listing",
+            "--directory-listing-download=targz,tarzst",
+        ])
+        .unwrap();
+        assert_eq!(cli.directory_listing_download.len(), 2);
+        assert!(
+            General::try_parse_from(["static-web-server", "--directory-listing-download=tarzst",])
+                .is_err()
+        );
+
+        let config = tempfile::Builder::new().suffix(".toml").tempfile().unwrap();
+        std::fs::write(
+            config.path(),
+            "[general]\ndirectory-listing = true\ndirectory-listing-download = ['tarzst']\n",
+        )
+        .unwrap();
+        let settings = static_web_server::settings::Settings::get_unparsed(
+            false,
+            &[
+                "static-web-server",
+                "--directory-listing",
+                "--directory-listing-download=targz",
+                "--config-file",
+                config.path().to_str().unwrap(),
+            ],
+        )
+        .unwrap();
+        assert_eq!(
+            serde_json::to_value(settings.general.directory_listing_download).unwrap(),
+            serde_json::json!(["tarzst"])
+        );
+    }
+
     #[test]
     fn toml_file_parsing() {
         let config_path = Path::new("tests/toml/sws.toml");

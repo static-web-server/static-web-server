@@ -6,7 +6,7 @@
 #[cfg(feature = "directory-listing-download")]
 #[cfg(test)]
 mod tests {
-    use async_compression::tokio::bufread::GzipDecoder;
+    use async_compression::tokio::bufread::{GzipDecoder, ZstdDecoder};
     use async_tar::Archive;
     use futures_util::StreamExt;
     use headers::HeaderMap;
@@ -38,6 +38,76 @@ mod tests {
         Method::PUT,
         Method::TRACE,
     ];
+
+    #[tokio::test]
+    async fn dir_listing_download_tarzst() {
+        let root = tempfile::tempdir().unwrap();
+        fs::write(root.path().join("hello.txt"), b"hello from zstd\n")
+            .await
+            .unwrap();
+        fs::write(root.path().join(".hidden"), b"hidden")
+            .await
+            .unwrap();
+        let base_path = root.path().to_path_buf();
+        let formats: Vec<DirDownloadFmt> = serde_json::from_str(r#"["targz","tarzst"]"#).unwrap();
+
+        for method in [Method::GET, Method::HEAD] {
+            let response = static_files::handle(&HandleOpts {
+                method: &method,
+                headers: &HeaderMap::new(),
+                base_path: &base_path,
+                uri_path: "/",
+                uri_query: Some("download=tarzst"),
+                #[cfg(feature = "mem-cache")]
+                memory_cache: None,
+                dir_listing: true,
+                dir_listing_order: 1,
+                dir_listing_format: &DirListFmt::Html,
+                redirect_trailing_slash: true,
+                compression_static: false,
+                etag: false,
+                include_hidden: false,
+                follow_symlinks: false,
+                index_files: &[],
+                dir_listing_download: &formats,
+            })
+            .await
+            .unwrap()
+            .resp;
+            assert_eq!(response.status(), StatusCode::OK);
+            assert_eq!(response.headers()["content-type"], "application/zstd");
+            assert!(
+                response.headers()["content-disposition"]
+                    .to_str()
+                    .unwrap()
+                    .contains(".tar.zst\"")
+            );
+            assert!(!response.headers().contains_key("content-encoding"));
+            let body = response.into_body().collect().await.unwrap().to_bytes();
+            if method == Method::HEAD {
+                assert!(body.is_empty());
+                continue;
+            }
+            let mut tar = Vec::new();
+            ZstdDecoder::new(body.as_ref())
+                .read_to_end(&mut tar)
+                .await
+                .unwrap();
+            let archive = Archive::new(tar.as_slice());
+            let mut entries = archive.entries().unwrap();
+            let mut files = Vec::new();
+            while let Some(entry) = entries.next().await {
+                let mut entry = entry.unwrap();
+                if entry.header().entry_type() == async_tar::EntryType::Regular {
+                    assert_eq!(entry.path().unwrap().file_name().unwrap(), "hello.txt");
+                    let mut content = String::new();
+                    entry.read_to_string(&mut content).await.unwrap();
+                    files.push(content);
+                }
+            }
+            assert_eq!(files, ["hello from zstd\n"]);
+        }
+    }
 
     #[cfg(unix)]
     const OUTSIDE_ROOT_MARKER: &str = "outside-root-marker\n";
@@ -92,7 +162,14 @@ mod tests {
 
     /// Inspect archive member paths and concatenate regular-file contents.
     async fn inspect_tarball_paths_and_contents(body: &[u8]) -> (HashSet<PathBuf>, Vec<u8>) {
-        let reader = Archive::new(GzipDecoder::new(body));
+        inspect_tar_paths_and_contents(GzipDecoder::new(body)).await
+    }
+
+    async fn inspect_tar_paths_and_contents<R>(reader: R) -> (HashSet<PathBuf>, Vec<u8>)
+    where
+        R: tokio::io::AsyncRead + Send + Sync + Unpin,
+    {
+        let reader = Archive::new(reader);
         let mut paths = HashSet::new();
         let mut contents = Vec::new();
         let mut entries = reader.entries().unwrap();
@@ -188,6 +265,7 @@ mod tests {
     async fn download_directory(
         webroot: &PathBuf,
         follow_symlinks: bool,
+        format: DirDownloadFmt,
     ) -> (StatusCode, bytes::Bytes) {
         let result = static_files::handle(&HandleOpts {
             method: &Method::GET,
@@ -206,7 +284,7 @@ mod tests {
             include_hidden: true,
             follow_symlinks,
             index_files: &[],
-            dir_listing_download: &[DirDownloadFmt::Targz],
+            dir_listing_download: &[format],
         })
         .await
         .expect("download handle");
@@ -522,7 +600,7 @@ mod tests {
         let (_tmp, webroot) = create_escape_fixture();
 
         // When: directory download is requested
-        let (status, body) = download_directory(&webroot, true).await;
+        let (status, body) = download_directory(&webroot, true, DirDownloadFmt::Targz).await;
 
         // Then: 200 OK and outside-dir content/path must be absent
         assert_eq!(status, StatusCode::OK);
@@ -543,7 +621,7 @@ mod tests {
         let (_tmp, webroot) = create_escape_fixture();
 
         // When: directory download is requested
-        let (status, body) = download_directory(&webroot, true).await;
+        let (status, body) = download_directory(&webroot, true, DirDownloadFmt::Targz).await;
 
         // Then: 200 OK and outside-root secret must be absent
         assert_eq!(status, StatusCode::OK);
@@ -565,7 +643,7 @@ mod tests {
         let (_tmp, webroot) = create_escape_fixture();
 
         // When: directory download is requested
-        let (status, body) = download_directory(&webroot, false).await;
+        let (status, body) = download_directory(&webroot, false, DirDownloadFmt::Targz).await;
 
         // Then: 200 OK and outside markers/paths remain absent
         assert_eq!(status, StatusCode::OK);
@@ -580,7 +658,7 @@ mod tests {
         let (_tmp, webroot) = create_escape_fixture();
 
         // When: directory download is requested
-        let (status, body) = download_directory(&webroot, true).await;
+        let (status, body) = download_directory(&webroot, true, DirDownloadFmt::Targz).await;
 
         // Then: inside content is present (via safe.txt and/or followed ok_link)
         assert_eq!(status, StatusCode::OK);
@@ -598,5 +676,20 @@ mod tests {
             "archive must include safe.txt or ok_link: {paths:?}"
         );
         assert_no_outside_leak(&paths, &contents);
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn download_tarzst_keeps_inside_files_and_skips_outside_symlinks() {
+        let (_tmp, webroot) = create_escape_fixture();
+        for follow_symlinks in [false, true] {
+            let (status, body) =
+                download_directory(&webroot, follow_symlinks, DirDownloadFmt::Tarzst).await;
+            assert_eq!(status, StatusCode::OK);
+            let (paths, contents) =
+                inspect_tar_paths_and_contents(ZstdDecoder::new(body.as_ref())).await;
+            assert_no_outside_leak(&paths, &contents);
+            assert!(String::from_utf8_lossy(&contents).contains(INSIDE_OK_MARKER));
+        }
     }
 }

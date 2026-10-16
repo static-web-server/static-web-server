@@ -27,13 +27,12 @@ pub(crate) fn html_auto_index<'a>(
     let current_path = percent_decode_str(base_path).decode_utf8_lossy();
 
     #[cfg(feature = "directory-listing-download")]
-    let download_directory_elem = match download.is_empty() {
-        true => html! {},
-        false => html! {
-            ", " a href={ "?" (DOWNLOAD_PARAM_KEY) } {
-                "download tar.gz"
+    let download_directory_elem = html! {
+        @for format in download {
+            ", " a href={ "?" (DOWNLOAD_PARAM_KEY) "=" (format.as_str()) } {
+                "download " (format.extension())
             }
-        },
+        }
     };
     #[cfg(not(feature = "directory-listing-download"))]
     let download_directory_elem = html! {};
@@ -163,6 +162,28 @@ impl std::fmt::Display for FileSize {
 #[cfg(test)]
 mod tests {
     use super::FileSize;
+
+    #[cfg(feature = "directory-listing-download")]
+    #[test]
+    fn download_links_match_enabled_formats() {
+        use super::{DirDownloadFmt, html_auto_index};
+
+        for formats in [
+            vec![],
+            vec![DirDownloadFmt::Tarzst],
+            vec![DirDownloadFmt::Targz, DirDownloadFmt::Tarzst],
+        ] {
+            let html = html_auto_index("/", 0, 0, &mut [], 6, &formats);
+            assert_eq!(
+                html.contains("href=\"?download=targz\">download tar.gz"),
+                formats.contains(&DirDownloadFmt::Targz)
+            );
+            assert_eq!(
+                html.contains("href=\"?download=tarzst\">download tar.zst"),
+                formats.contains(&DirDownloadFmt::Tarzst)
+            );
+        }
+    }
 
     /// Formats the file size in bytes to a human-readable string.
     fn format_file_size(size: u64) -> String {

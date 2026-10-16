@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+### New Features
+
+- **Zstd directory downloads.** Enable `tarzst` with `--directory-listing-download`, `SERVER_DIRECTORY_LISTING_DOWNLOAD`, or the `directory-listing-download` TOML key to download directories as `.tar.zst` archives. HTML listings provide a link for each enabled format. Use `?download=tarzst` to select Zstd; `?download` uses the first enabled format.
+
 ## v3.0.0-beta.1 - 2026-07-21
 
 We are excited to announce our first `v3.0.0-beta.1` release for the upcoming major `v3.0.0` which is a significant milestone in the evolution of **SWS** bringing new features, performance improvements, security hardening, among other enhancements.
