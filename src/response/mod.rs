@@ -74,12 +74,15 @@ fn insert_raw(headers: &mut hyper::HeaderMap, name: HeaderName, value: HeaderVal
 
 #[cfg(feature = "mem-cache")]
 use crate::mem_cache::{
-    cache::{MemCacheOpts, MemFileTempOpts},
+    cache::{MemCacheOpts, MemFileTempOpts, Representation},
     stream::MemCacheFileStream,
 };
 
 /// It converts a file object into a corresponding HTTP response or
 /// returns an error holding an HTTP status code otherwise.
+///
+/// `representation` describes the bytes in `file` (the file at `path` itself
+/// or one of its pre-compressed variants) for the cache entry.
 pub(crate) fn response_body(
     mut file: File,
     path: &Path,
@@ -87,6 +90,7 @@ pub(crate) fn response_body(
     conditionals: ConditionalHeaders,
     etag_enabled: bool,
     #[cfg(feature = "mem-cache")] memory_cache: Option<&MemCacheOpts>,
+    #[cfg(feature = "mem-cache")] representation: Representation,
 ) -> Result<Response<Body>, StatusCode> {
     let mut len = meta.len();
     // If the file's modified time is the UNIX epoch, then it's likely not valid and should
@@ -153,6 +157,12 @@ pub(crate) fn response_body(
                                     content_type.clone(),
                                     modified,
                                     etag_value.cloned(),
+                                    representation.content_encoding,
+                                    if representation.compression_static {
+                                        crate::compression_static::precompressed_variants(path)
+                                    } else {
+                                        Box::default()
+                                    },
                                 ))
                             }
                             _ => None,

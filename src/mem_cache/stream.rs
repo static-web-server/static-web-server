@@ -113,8 +113,10 @@ fn try_insert(
         opts.content_type,
         opts.last_modified,
         opts.etag,
+        opts.content_encoding,
+        opts.variants,
     ));
     if let Some(store) = CACHE_STORE.get() {
-        store.insert(file_path.into(), mem_file);
+        store.insert((file_path.into(), opts.content_encoding), mem_file);
     }
 }

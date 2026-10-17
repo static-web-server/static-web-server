@@ -13,7 +13,7 @@
 use bytes::Bytes;
 use compact_str::CompactString;
 use headers::{AcceptRanges, ContentLength, ContentRange, HeaderMap, HeaderMapExt, LastModified};
-use hyper::header::{CONTENT_TYPE, ETAG, HeaderName, HeaderValue};
+use hyper::header::{CONTENT_ENCODING, CONTENT_TYPE, ETAG, HeaderName, HeaderValue};
 use hyper::{Response, StatusCode};
 use mini_moka::sync::Cache;
 use std::path::Path;
@@ -23,12 +23,18 @@ use std::time::Duration;
 use crate::Result;
 use crate::body::{self, Body};
 use crate::conditional_headers::{ConditionalBody, ConditionalHeaders, Validators};
+use crate::exts::headers::{AcceptEncoding, ContentCoding};
 use crate::handler::RequestHandlerOpts;
 use crate::response::range::{BadRangeError, bytes_range};
 
+/// Cache key: the requested file path and the content coding of the stored
+/// representation, so a pre-compressed variant never answers for the
+/// original file (or for another coding) and vice versa.
+pub(crate) type CacheKey = (CompactString, ContentCoding);
+
 /// Global cache that stores all files in memory.
 /// It provides expiration policies like Time to live (TTL) and Time to idle (TTI) support.
-pub(crate) static CACHE_STORE: OnceLock<Cache<CompactString, Arc<MemFile>>> = OnceLock::new();
+pub(crate) static CACHE_STORE: OnceLock<Cache<CacheKey, Arc<MemFile>>> = OnceLock::new();
 
 /// Standard `X-Cache` header to indicate whether a response was served from cache.
 pub(crate) static X_CACHE: HeaderName = HeaderName::from_static("x-cache");
@@ -120,6 +126,12 @@ pub fn init(handler_opts: &mut RequestHandlerOpts) -> Result {
 
 /// Try to get a cached response for the given file path.
 ///
+/// Without `compression-static`, the entry of the file itself is served. With
+/// `compression-static`, the entry is the one in the content coding that
+/// [`crate::compression_static::precompressed_variant`] would select for the
+/// request's `Accept-Encoding`, decided from the variants recorded in the
+/// cached entries of the file, without touching the disk (see [`negotiate`]).
+///
 /// Returns `Some(result)` on a cache hit (the result itself may be an error
 /// status, e.g. for a malformed `Range` header) or `None` when the cache is
 /// disabled, the path is non-UTF-8, or there is no entry yet (cache miss).
@@ -131,11 +143,16 @@ pub fn init(handler_opts: &mut RequestHandlerOpts) -> Result {
 pub(crate) fn lookup(
     file_path: &Path,
     headers_opt: &HeaderMap,
+    compression_static: bool,
 ) -> Option<Result<Response<Body>, StatusCode>> {
     let file_path_str = file_path.to_str()?;
     let store = CACHE_STORE.get()?;
-    let key = CompactString::from(file_path_str);
-    let mem_file = store.get(&key)?;
+    let mut key = (CompactString::from(file_path_str), ContentCoding::IDENTITY);
+    let mem_file = if compression_static {
+        negotiate(store, &mut key, headers_opt)?
+    } else {
+        store.get(&key)?
+    };
     tracing::debug!("file `{file_path_str}` served from the in-memory cache store");
     // Tag the response with `X-Cache: HIT` so clients and tooling can
     // identify that it was served from the in-memory cache.
@@ -144,6 +161,58 @@ pub(crate) fn lookup(
             .insert(X_CACHE.clone(), X_CACHE_HIT.clone());
         resp
     }))
+}
+
+/// Picks the cached entry of the file `key.0` in the content coding that
+/// [`crate::compression_static::precompressed_variant`] would select for the
+/// `Accept-Encoding` of `headers`: the most preferred coding among the
+/// pre-compressed variants recorded in the entries of the file, or
+/// `IDENTITY` when none is accepted.
+///
+/// The variants are taken from the first entry of the file found, trying
+/// the accepted codings in order of preference and then `IDENTITY`. Returns
+/// `None` when the file has no entry or the selected representation has no
+/// entry yet, so the caller reads it from disk.
+fn negotiate(
+    store: &Cache<CacheKey, Arc<MemFile>>,
+    key: &mut CacheKey,
+    headers: &HeaderMap,
+) -> Option<Arc<MemFile>> {
+    let accepted: Vec<ContentCoding> = headers
+        .typed_get::<AcceptEncoding>()
+        .map(|accept_encoding| accept_encoding.sorted_encodings().collect())
+        .unwrap_or_default();
+
+    let found = accepted
+        .iter()
+        .copied()
+        .chain(std::iter::once(ContentCoding::IDENTITY))
+        .find_map(|coding| {
+            key.1 = coding;
+            store.get(key)
+        })?;
+
+    let coding = accepted
+        .into_iter()
+        .find(|coding| found.variants.contains(coding))
+        .unwrap_or(ContentCoding::IDENTITY);
+    if coding == key.1 {
+        return Some(found);
+    }
+    key.1 = coding;
+    store.get(key)
+}
+
+/// The representation of a file that a response serves, as the in-memory
+/// cache stores it.
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct Representation {
+    /// Content coding of the bytes served: `IDENTITY` for the file itself,
+    /// otherwise the coding of its pre-compressed variant. Part of the cache key.
+    pub(crate) content_encoding: ContentCoding,
+    /// Whether pre-compressed variants are served (`compression-static`).
+    /// The cache entry then records which variants of the file exist on disk.
+    pub(crate) compression_static: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -157,6 +226,12 @@ pub(crate) struct MemFileTempOpts {
     /// Pre-built weak `ETag` value. Built once on the disk path and
     /// reused on every cache hit (refcount-clone only).
     pub(crate) etag: Option<HeaderValue>,
+    /// Content coding of the bytes read (`IDENTITY` unless a pre-compressed
+    /// variant is served). Part of the cache key.
+    pub(crate) content_encoding: ContentCoding,
+    /// Content codings of the pre-compressed variants of the file on disk
+    /// (empty without `compression-static`).
+    pub(crate) variants: Box<[ContentCoding]>,
 }
 
 impl MemFileTempOpts {
@@ -165,12 +240,16 @@ impl MemFileTempOpts {
         content_type: HeaderValue,
         last_modified: Option<LastModified>,
         etag: Option<HeaderValue>,
+        content_encoding: ContentCoding,
+        variants: Box<[ContentCoding]>,
     ) -> Self {
         Self {
             file_path,
             content_type,
             last_modified,
             etag,
+            content_encoding,
+            variants,
         }
     }
 }
@@ -194,6 +273,13 @@ pub(crate) struct MemFile {
     /// present it is both emitted on the response and used for
     /// `If-None-Match` / `If-Match` / `If-Range` evaluation.
     etag: Option<HeaderValue>,
+    /// Content coding of `data`, emitted as `Content-Encoding` unless it is
+    /// `IDENTITY`.
+    content_encoding: ContentCoding,
+    /// Content codings of the pre-compressed variants of the file that
+    /// existed on disk when the entry was cached. A cache hit selects the
+    /// variant from them (see [`negotiate`]); they are as fresh as the entry.
+    variants: Box<[ContentCoding]>,
 }
 
 impl MemFile {
@@ -203,12 +289,16 @@ impl MemFile {
         content_type: HeaderValue,
         last_modified: Option<LastModified>,
         etag: Option<HeaderValue>,
+        content_encoding: ContentCoding,
+        variants: Box<[ContentCoding]>,
     ) -> Self {
         Self {
             data,
             content_type,
             last_modified,
             etag,
+            content_encoding,
+            variants,
         }
     }
 
@@ -292,6 +382,9 @@ impl MemFile {
                         }
                         if let Some(etag) = self.etag.as_ref() {
                             h.insert(ETAG, etag.clone());
+                        }
+                        if self.content_encoding != ContentCoding::IDENTITY {
+                            h.insert(CONTENT_ENCODING, self.content_encoding.into());
                         }
 
                         Ok(resp)
@@ -432,7 +525,7 @@ mod tests {
         // tests context. If another test in this module ever initializes the
         // global store, this assertion becomes a hit/miss check instead.
         if CACHE_STORE.get().is_none() {
-            assert!(lookup(path, &headers).is_none());
+            assert!(lookup(path, &headers, false).is_none());
         }
     }
 

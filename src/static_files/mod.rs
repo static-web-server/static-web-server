@@ -59,6 +59,8 @@ pub async fn handle(opts: &HandleOpts<'_>) -> Result<StaticFileResponse, StatusC
     // In-memory file cache lookup. A hit short-circuits the pipeline.
     // On miss, the file is read from disk and the streaming pipeline
     // populates the cache opportunistically (see `mem_cache::stream`).
+    // With `compression-static`, the cached representation is negotiated
+    // from the pre-compressed variants recorded in the cache entries.
     #[cfg(feature = "mem-cache")]
     if let Some(resp) = try_memory_cache(opts, &mut file_path) {
         return Ok(resp);
@@ -126,7 +128,7 @@ fn try_memory_cache(
         file_path.push("index.html");
     }
 
-    let result = cache::lookup(file_path.as_path(), opts.headers)?;
+    let result = cache::lookup(file_path.as_path(), opts.headers, opts.compression_static)?;
     match result {
         Ok(resp) => Some(StaticFileResponse::new(resp, file_path.clone())),
         // Hit, but the cached entry returned an error status (e.g. malformed Range).
