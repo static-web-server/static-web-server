@@ -457,6 +457,7 @@ mod live_http1_tls_tests {
     use hyper::Request;
     use hyper_util::rt::TokioIo;
     use rustls_pki_types::ServerName;
+    use tokio::io::AsyncReadExt;
     use tokio_rustls::TlsConnector;
 
     use super::test_helpers::*;
@@ -573,6 +574,26 @@ mod live_http1_tls_tests {
             "server with mismatched cert/key should fail to start"
         );
     }
+
+    #[tokio::test]
+    async fn idle_timeout_closes_connection_without_handshake() {
+        let (port, cancel_tx, handle) = spawn_server(&["--idle-timeout", "1"]);
+        let mut stream = tokio::net::TcpStream::connect(("127.0.0.1", port))
+            .await
+            .expect("TCP connect");
+
+        // The client never starts the TLS handshake, so the server must close the connection.
+        let mut buf = [0u8; 1];
+        let read = tokio::time::timeout(TIMEOUT, stream.read(&mut buf))
+            .await
+            .expect("connection without a handshake was not closed");
+        assert!(
+            matches!(read, Ok(0) | Err(_)),
+            "server sent data instead of closing the connection"
+        );
+
+        shutdown_server(cancel_tx, handle).await;
+    }
 }
 
 #[cfg(all(feature = "tls", feature = "http2"))]
@@ -583,6 +604,7 @@ mod live_http2_tls_tests {
     use hyper::Request;
     use hyper_util::rt::{TokioExecutor, TokioIo};
     use rustls_pki_types::ServerName;
+    use tokio::io::AsyncReadExt;
     use tokio_rustls::TlsConnector;
 
     use super::test_helpers::*;
@@ -659,6 +681,75 @@ mod live_http2_tls_tests {
             result.is_ok() && result.unwrap().is_ok(),
             "TLS handshake with h2 ALPN should succeed"
         );
+
+        shutdown_server(cancel_tx, handle).await;
+    }
+
+    #[tokio::test]
+    async fn idle_timeout_closes_connection_without_preface() {
+        let (port, cancel_tx, handle) = spawn_server(&["--http2", "--idle-timeout", "1"]);
+        wait_for_server(port).await;
+
+        let connector = TlsConnector::from(tls_client_config(&["h2"]));
+        let stream = tokio::net::TcpStream::connect(("127.0.0.1", port))
+            .await
+            .expect("TCP connect");
+        let domain = ServerName::try_from("localhost").unwrap().to_owned();
+        let mut tls_stream = connector
+            .connect(domain, stream)
+            .await
+            .expect("TLS handshake");
+
+        // The client never sends the HTTP/2 preface, so the server must close the connection.
+        let mut buf = [0u8; 1024];
+        let read = tokio::time::timeout(TIMEOUT, async {
+            loop {
+                match tls_stream.read(&mut buf).await {
+                    Ok(0) | Err(_) => break,
+                    Ok(_) => {}
+                }
+            }
+        })
+        .await;
+        assert!(read.is_ok(), "connection without a preface was not closed");
+
+        shutdown_server(cancel_tx, handle).await;
+    }
+
+    #[tokio::test]
+    async fn idle_timeout_closes_idle_connection() {
+        let (port, cancel_tx, handle) = spawn_server(&["--http2", "--idle-timeout", "1"]);
+        wait_for_server(port).await;
+
+        let connector = TlsConnector::from(tls_client_config(&["h2"]));
+        let stream = tokio::net::TcpStream::connect(("127.0.0.1", port))
+            .await
+            .expect("TCP connect");
+        let domain = ServerName::try_from("localhost").unwrap().to_owned();
+        let tls_stream = connector
+            .connect(domain, stream)
+            .await
+            .expect("TLS handshake");
+        let (mut sender, conn) =
+            hyper::client::conn::http2::handshake(TokioExecutor::new(), TokioIo::new(tls_stream))
+                .await
+                .expect("HTTP/2 handshake");
+        let conn = tokio::spawn(conn);
+
+        let req = Request::builder()
+            .uri(format!("https://localhost:{port}/index.htm"))
+            .body(Empty::<bytes::Bytes>::new())
+            .unwrap();
+        let status = sender
+            .send_request(req)
+            .await
+            .expect("send request")
+            .status();
+        assert_eq!(status, StatusCode::OK);
+
+        // The connection stays idle after the response, so the server must close it.
+        let closed = tokio::time::timeout(TIMEOUT, conn).await;
+        assert!(closed.is_ok(), "idle connection was not closed");
 
         shutdown_server(cancel_tx, handle).await;
     }

@@ -373,6 +373,9 @@ pub struct General {
     /// Grace period feature.
     pub grace_period: Option<u8>,
 
+    /// Connection idle timeout in seconds.
+    pub idle_timeout: Option<u16>,
+
     /// Page fallback feature.
     #[cfg(feature = "fallback-page")]
     #[cfg_attr(docsrs, doc(cfg(feature = "fallback-page")))]
