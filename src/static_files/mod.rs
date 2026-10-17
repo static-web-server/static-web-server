@@ -79,7 +79,18 @@ pub async fn handle(opts: &HandleOpts<'_>) -> Result<StaticFileResponse, StatusC
         opts.index_files,
     )?;
 
-    security::enforce(file_path, is_dir, opts)?;
+    // A directory request is served from its index file (or `.html` sibling)
+    // when one was resolved, so that file is checked. Only a directory
+    // listing, where `metadata` still describes the directory, checks the
+    // directory itself.
+    let is_dir_listing = is_dir && metadata.is_dir();
+    security::enforce(file_path, is_dir_listing, opts)?;
+
+    // A pre-compressed variant is served instead of `file_path`, so it must
+    // pass the same checks before it is opened.
+    if let Some((precomp_path, _)) = &precompressed_variant {
+        security::enforce(precomp_path, false, opts)?;
+    }
 
     let resp_file_path = file_path.to_owned();
 
