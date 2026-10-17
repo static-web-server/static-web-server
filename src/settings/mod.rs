@@ -215,6 +215,7 @@ impl Settings {
         let mut threads_multiplier = opts.threads_multiplier;
         let mut max_blocking_threads = opts.max_blocking_threads;
         let mut grace_period = opts.grace_period;
+        let mut idle_timeout = opts.idle_timeout;
 
         #[cfg(feature = "fallback-page")]
         let mut page_fallback = opts.page_fallback;
@@ -421,6 +422,9 @@ impl Settings {
                 }
                 if let Some(v) = general.grace_period {
                     grace_period = v
+                }
+                if let Some(v) = general.idle_timeout {
+                    idle_timeout = v
                 }
                 #[cfg(feature = "fallback-page")]
                 if let Some(v) = general.page_fallback {
@@ -816,6 +820,7 @@ impl Settings {
                 threads_multiplier,
                 max_blocking_threads,
                 grace_period,
+                idle_timeout,
                 #[cfg(feature = "fallback-page")]
                 page_fallback,
                 log_remote_address,

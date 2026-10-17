@@ -5,12 +5,17 @@
 
 //! Server module to construct a multi-threaded HTTP or HTTP/2 web server.
 
+use hyper::server::conn::http1::Builder as Http1Builder;
+use hyper_util::rt::{TokioIo, TokioTimer};
 use std::net::TcpListener;
 use std::sync::Arc;
+use std::time::Duration;
 use tokio::sync::watch::Receiver;
 
+use self::idle_timeout::IdleTimeout;
 use crate::handler::RequestHandler;
 use crate::service::RouterService;
+use crate::settings::cli::General;
 use crate::{Context, Result, Settings};
 
 mod browser;
@@ -19,6 +24,7 @@ mod http1;
 mod http1_tls;
 #[cfg(feature = "http2")]
 mod http2;
+mod idle_timeout;
 mod listener;
 mod opts;
 #[cfg(feature = "tls")]
@@ -37,6 +43,44 @@ pub(crate) struct ServerRunConfig<'a> {
     pub open: bool,
     /// Optional URL path opened in the browser.
     pub open_path: Option<&'a str>,
+    /// Connection settings.
+    pub conn: ConnConfig,
+}
+
+/// Connection settings shared by all accept loops.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[cfg_attr(test, derive(Default))]
+pub(crate) struct ConnConfig {
+    /// Time without read or write progress after which a connection is closed, or `None` for no limit.
+    /// HTTP/1 request headers must also arrive within this time.
+    pub idle_timeout: Option<Duration>,
+}
+
+impl ConnConfig {
+    /// Create the connection settings from the general settings.
+    fn new(general: &General) -> Self {
+        Self {
+            idle_timeout: (general.idle_timeout > 0)
+                .then(|| Duration::from_secs(general.idle_timeout.into())),
+        }
+    }
+
+    /// Create an HTTP/1 connection builder with these settings.
+    ///
+    /// The idle timeout alone doesn't limit a request header that arrives a byte at a time,
+    /// so Hyper's header read timeout is set to the same value. It requires a timer.
+    fn http1_builder(&self) -> Http1Builder {
+        let mut builder = Http1Builder::new();
+        builder
+            .timer(TokioTimer::new())
+            .header_read_timeout(self.idle_timeout);
+        builder
+    }
+
+    /// Wrap an accepted connection's IO for Hyper, applying the idle timeout.
+    fn io<T>(&self, io: T) -> TokioIo<IdleTimeout<T>> {
+        TokioIo::new(IdleTimeout::new(io, self.idle_timeout))
+    }
 }
 
 /// TLS configuration shared by the HTTP/1+TLS and HTTP/2+TLS server modes.
@@ -80,6 +124,31 @@ pub(crate) struct ShutdownCtx {
     #[cfg(windows)]
     /// Background task that listens for Ctrl+C and signals the watch channel.
     pub ctrlc_task: tokio::task::JoinHandle<crate::Result<()>>,
+}
+
+/// Time to wait before accepting again after an accept error that isn't about a single connection.
+const ACCEPT_ERROR_DELAY: Duration = Duration::from_secs(1);
+
+/// Wait before the next `accept` if `err` isn't about a single connection.
+///
+/// Errors such as running out of file descriptors (`EMFILE`) leave the pending connection in the listen backlog,
+/// so accepting again right away fails the same way and spins the accept loop.
+/// Like Hyper 0.14's `AddrIncoming`, wait for [`ACCEPT_ERROR_DELAY`] after such errors.
+async fn accept_error_backoff(err: &std::io::Error) {
+    if let Some(delay) = accept_error_delay(err) {
+        tokio::time::sleep(delay).await;
+    }
+}
+
+/// Return how long to wait before the next `accept` after `err`, if at all.
+fn accept_error_delay(err: &std::io::Error) -> Option<Duration> {
+    use std::io::ErrorKind;
+    match err.kind() {
+        ErrorKind::ConnectionRefused
+        | ErrorKind::ConnectionAborted
+        | ErrorKind::ConnectionReset => None,
+        _ => Some(ACCEPT_ERROR_DELAY),
+    }
 }
 
 /// A multi-threaded HTTP or HTTP/2 web server.
@@ -269,6 +338,11 @@ impl Server {
             grace_period_seconds = general.grace_period,
             "grace period before graceful shutdown"
         );
+        tracing::info!(
+            idle_timeout_seconds = general.idle_timeout,
+            "connection idle timeout"
+        );
+        let conn = ConnConfig::new(&general);
 
         // Initialize request handler options from configuration
         let opts_result = opts::init(&general, advanced)?;
@@ -312,12 +386,18 @@ impl Server {
         // below when a UDS listener is present.
         #[cfg(unix)]
         if let Some((unix_listener, socket_path, addr_str)) = unix_listener_info {
+            let run_cfg = ServerRunConfig {
+                addr_str: &addr_str,
+                threads: self.worker_threads,
+                open: false,
+                open_path: None,
+                conn,
+            };
             return uds::run(
                 unix_listener,
                 socket_path,
                 router_service,
-                &addr_str,
-                self.worker_threads,
+                run_cfg,
                 ctx,
                 cancel_fn,
             )
@@ -333,6 +413,7 @@ impl Server {
             threads: self.worker_threads,
             open: general.open,
             open_path: general.open_path.as_deref(),
+            conn,
         };
 
         // Dispatch to a TLS-enabled server (HTTP/1+TLS or HTTP/2+TLS) when --tls is set
@@ -386,5 +467,49 @@ impl Server {
 
         // Plain HTTP/1 (no TLS by default)
         http1::run(tcp_listener, router_service, run_cfg, ctx, cancel_fn).await
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{ACCEPT_ERROR_DELAY, ConnConfig, accept_error_delay};
+    use std::io::{Error, ErrorKind};
+    use std::time::Duration;
+
+    /// Create the connection settings from the given command line arguments.
+    fn conn_config(args: &[&str]) -> ConnConfig {
+        let settings = crate::Settings::get_unparsed(false, args).expect("settings parse");
+        ConnConfig::new(&settings.general)
+    }
+
+    #[test]
+    fn conn_config_idle_timeout_defaults_to_30_seconds() {
+        let conn = conn_config(&["static-web-server"]);
+        assert_eq!(conn.idle_timeout, Some(Duration::from_secs(30)));
+    }
+
+    #[test]
+    fn conn_config_idle_timeout_zero_disables_it() {
+        // `None` also disables Hyper's header read timeout instead of keeping its default.
+        let conn = conn_config(&["static-web-server", "--idle-timeout", "0"]);
+        assert_eq!(conn.idle_timeout, None);
+    }
+
+    #[test]
+    fn accept_error_delay_skips_per_connection_errors() {
+        for kind in [
+            ErrorKind::ConnectionRefused,
+            ErrorKind::ConnectionAborted,
+            ErrorKind::ConnectionReset,
+        ] {
+            assert_eq!(accept_error_delay(&Error::from(kind)), None);
+        }
+    }
+
+    #[test]
+    fn accept_error_delay_waits_on_other_errors() {
+        // EMFILE on Unix: the process ran out of file descriptors.
+        let emfile = Error::from_raw_os_error(24);
+        assert_eq!(accept_error_delay(&emfile), Some(ACCEPT_ERROR_DELAY));
     }
 }

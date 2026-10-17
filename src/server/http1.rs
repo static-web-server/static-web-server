@@ -5,8 +5,6 @@
 
 //! HTTP/1 server accept-loop.
 
-use hyper::server::conn::http1;
-use hyper_util::rt::TokioIo;
 use hyper_util::server::graceful::GracefulShutdown;
 use std::net::TcpListener;
 use std::sync::Arc;
@@ -35,7 +33,7 @@ pub(super) async fn run<F: FnOnce()>(
         .with_context(|| "failed to create tokio::net::TcpListener")?;
 
     let graceful = GracefulShutdown::new();
-    let builder = http1::Builder::new();
+    let builder = run_cfg.conn.http1_builder();
 
     #[cfg(unix)]
     let signals =
@@ -85,6 +83,7 @@ pub(super) async fn run<F: FnOnce()>(
                     Ok(v) => v,
                     Err(e) => {
                         tracing::error!("failed to accept TCP connection: {:?}", e);
+                        super::accept_error_backoff(&e).await;
                         continue;
                     }
                 };
@@ -92,7 +91,7 @@ pub(super) async fn run<F: FnOnce()>(
                     tracing::warn!("failed to enable TCP_NODELAY for {}: {:?}", addr, e);
                 }
                 let svc = router.build(Some(addr));
-                let conn = builder.serve_connection(TokioIo::new(stream), svc);
+                let conn = builder.serve_connection(run_cfg.conn.io(stream), svc);
                 tokio::spawn(graceful.watch(conn));
             }
             _ = &mut shutdown => { break; }

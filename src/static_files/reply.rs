@@ -21,6 +21,8 @@ use crate::body::Body;
 use crate::conditional_headers::ConditionalHeaders;
 use crate::exts::headers::ContentCoding;
 use crate::exts::http::HTTP_SUPPORTED_METHODS;
+#[cfg(feature = "mem-cache")]
+use crate::mem_cache::cache::Representation;
 use crate::response::response_body;
 
 use super::opts::HandleOpts;
@@ -94,7 +96,13 @@ fn precompressed_reply(
     precomp_path: PathBuf,
     precomp_encoding: ContentCoding,
 ) -> Result<Response<Body>, StatusCode> {
-    let mut resp = file_reply(opts, file_path, metadata, Some(precomp_path), None)?;
+    let mut resp = file_reply(
+        opts,
+        file_path,
+        metadata,
+        Some((precomp_path, precomp_encoding)),
+        None,
+    )?;
 
     resp.headers_mut().remove(CONTENT_LENGTH);
     let encoding = HeaderValue::from_str(precomp_encoding.as_str()).map_err(|err| {
@@ -109,7 +117,7 @@ fn precompressed_reply(
     Ok(resp)
 }
 
-/// Opens `file_path` (or `path_precompressed` when present), wires up
+/// Opens `file_path` (or the `precompressed` variant when present), wires up
 /// conditional headers, and produces a streaming response body.
 ///
 /// When `pre_opened` is `Some(file)` and no precompressed variant is being
@@ -118,10 +126,18 @@ fn file_reply(
     opts: &HandleOpts<'_>,
     path: &Path,
     meta: &Metadata,
-    path_precompressed: Option<PathBuf>,
+    precompressed: Option<(PathBuf, ContentCoding)>,
     pre_opened: Option<File>,
 ) -> Result<Response<Body>, StatusCode> {
     let conditionals = ConditionalHeaders::new(opts.headers);
+    #[cfg(feature = "mem-cache")]
+    let representation = Representation {
+        content_encoding: precompressed
+            .as_ref()
+            .map_or(ContentCoding::IDENTITY, |(_, encoding)| *encoding),
+        compression_static: opts.compression_static,
+    };
+    let path_precompressed = precompressed.map(|(precomp_path, _)| precomp_path);
 
     // Reuse the pre-opened handle when serving the original file. For
     // precompressed variants the open target differs, so the helper opens
@@ -138,7 +154,15 @@ fn file_reply(
             #[cfg(feature = "mem-cache")]
             {
                 let _ = open_path;
-                response_body(file, path, meta, conditionals, opts.etag, opts.memory_cache)
+                response_body(
+                    file,
+                    path,
+                    meta,
+                    conditionals,
+                    opts.etag,
+                    opts.memory_cache,
+                    representation,
+                )
             }
 
             #[cfg(not(feature = "mem-cache"))]

@@ -5,8 +5,6 @@
 
 //! Shared HTTP to HTTPS redirect server used by both the HTTP/1+TLS and HTTP/2+TLS modes.
 
-use hyper::server::conn::http1;
-use hyper_util::rt::TokioIo;
 use hyper_util::server::graceful::GracefulShutdown;
 use std::net::{SocketAddr, TcpListener};
 use std::path::PathBuf;
@@ -29,6 +27,8 @@ pub(super) struct RedirectConfig {
     pub page50x: PathBuf,
     /// Grace period in seconds.
     pub grace_period: u8,
+    /// Connection settings.
+    pub conn: super::ConnConfig,
     /// Programmatic cancel receiver shared with the main TLS server.
     pub cancel_recv: Arc<Mutex<Option<Receiver<()>>>>,
     #[cfg(windows)]
@@ -58,7 +58,7 @@ pub(super) fn spawn(
         let redirect_listener = tokio::net::TcpListener::from_std(tcp_listener)
             .with_context(|| "failed to create redirect TcpListener")?;
         let graceful = GracefulShutdown::new();
-        let http = http1::Builder::new();
+        let http = cfg.conn.http1_builder();
 
         let grace_period = cfg.grace_period;
         let cancel_recv = cfg.cancel_recv;
@@ -86,6 +86,7 @@ pub(super) fn spawn(
                             tracing::error!(
                                 "failed to accept redirect TCP connection: {:?}", e
                             );
+                            super::accept_error_backoff(&e).await;
                             continue;
                         }
                     };
@@ -110,7 +111,7 @@ pub(super) fn spawn(
                             }
                         }
                     });
-                    let conn = http.serve_connection(TokioIo::new(stream), svc);
+                    let conn = http.serve_connection(cfg.conn.io(stream), svc);
                     tokio::spawn(graceful.watch(conn));
                 }
                 _ = &mut shutdown => { break; }
@@ -136,6 +137,7 @@ pub(super) fn maybe_spawn(
     cancel_recv: Arc<Mutex<Option<Receiver<()>>>>,
     #[cfg(windows)] ctrl_c_recv: Arc<Mutex<Option<Receiver<()>>>>,
     grace_period: u8,
+    conn: super::ConnConfig,
 ) -> Result<Option<tokio::task::JoinHandle<crate::Result<()>>>> {
     if !cfg.https_redirect {
         return Ok(None);
@@ -175,6 +177,7 @@ pub(super) fn maybe_spawn(
             page404: cfg.page404.clone(),
             page50x: cfg.page50x.clone(),
             grace_period,
+            conn,
             cancel_recv,
             #[cfg(windows)]
             ctrl_c_recv,

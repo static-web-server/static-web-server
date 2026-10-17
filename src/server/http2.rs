@@ -6,7 +6,7 @@
 //! HTTP/2 + TLS server accept-loop with optional HTTP to HTTPS redirect.
 
 use hyper::server::conn::http2;
-use hyper_util::rt::{TokioExecutor, TokioIo};
+use hyper_util::rt::TokioExecutor;
 use hyper_util::server::graceful::GracefulShutdown;
 use std::net::TcpListener;
 use std::sync::Arc;
@@ -79,9 +79,11 @@ pub(super) async fn run<F: FnOnce()>(
         #[cfg(windows)]
         redirect_ctrl_c_recv,
         grace_period,
+        run_cfg.conn,
     )?
     .unwrap_or_else(|| tokio::spawn(async { Ok::<_, crate::Error>(()) }));
     let browser_url = browser::listener_url("https", &listener, &run_cfg);
+    let conn_cfg = run_cfg.conn;
     // HTTP/2 + TLS accept-loop task
     let http2_task = tokio::spawn({
         let router = router.clone();
@@ -107,6 +109,7 @@ pub(super) async fn run<F: FnOnce()>(
                             Ok(v) => v,
                             Err(e) => {
                                 tracing::error!("failed to accept TCP connection: {:?}", e);
+                                super::accept_error_backoff(&e).await;
                                 continue;
                             }
                         };
@@ -117,7 +120,7 @@ pub(super) async fn run<F: FnOnce()>(
                         let svc = router.build(Some(addr));
                         match tls_acceptor.accept(stream).await {
                             Ok(tls_stream) => {
-                                let conn = builder.serve_connection(TokioIo::new(tls_stream), svc);
+                                let conn = builder.serve_connection(conn_cfg.io(tls_stream), svc);
                                 tokio::spawn(graceful.watch(conn));
                             }
                             Err(e) => {
