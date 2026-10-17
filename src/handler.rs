@@ -13,6 +13,7 @@ use std::{
     path::PathBuf,
     sync::Arc,
 };
+use tracing::Instrument;
 
 use crate::body::Body;
 
@@ -45,7 +46,7 @@ use crate::{
     health, log_addr, maintenance_mode, redirects, rewrites, security_headers,
     settings::Advanced,
     static_files::{self, HandleOpts},
-    text_charset, virtual_hosts,
+    text_charset, trace_context, virtual_hosts,
 };
 
 #[cfg(feature = "directory-listing")]
@@ -121,6 +122,8 @@ pub struct RequestHandlerOpts {
     pub log_forwarded_for: bool,
     /// Trusted IPs for remote addresses.
     pub trusted_proxies: Vec<IpAddr>,
+    /// Log the trace context of the `traceparent` header.
+    pub log_trace_context: bool,
     /// Redirect trailing slash feature.
     pub redirect_trailing_slash: bool,
     /// Ignore hidden files feature.
@@ -188,6 +191,7 @@ impl Default for RequestHandlerOpts {
             log_x_real_ip: false,
             log_forwarded_for: false,
             trusted_proxies: Vec::new(),
+            log_trace_context: false,
             redirect_trailing_slash: true,
             include_hidden: true,
             follow_symlinks: true,
@@ -239,7 +243,8 @@ impl RequestHandler {
         #[cfg(feature = "mem-cache")]
         let memory_cache = self.opts.memory_cache.as_ref();
 
-        log_addr::pre_process(&self.opts, req, remote_addr);
+        let span = trace_context::span(&self.opts, req.headers());
+        span.in_scope(|| log_addr::pre_process(&self.opts, req, remote_addr));
 
         async move {
             #[cfg(feature = "metrics")]
@@ -441,5 +446,6 @@ impl RequestHandler {
 
             result
         }
+        .instrument(span)
     }
 }
