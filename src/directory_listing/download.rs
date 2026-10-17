@@ -6,18 +6,15 @@
 //! Compress content of a directory into a tarball
 //!
 
-use async_compression::tokio::write::GzipEncoder;
+use async_compression::tokio::write::{GzipEncoder, ZstdEncoder};
 use async_tar::Builder;
 use clap::ValueEnum;
-use headers::{ContentType, HeaderMapExt};
 use http::{HeaderValue, Method, Response};
-use mime_guess::Mime;
 use std::fmt::Display;
 use std::path::Path;
 use std::path::PathBuf;
-use std::str::FromStr;
 use tokio::fs;
-use tokio::io::AsyncWriteExt;
+use tokio::io::{AsyncWrite, AsyncWriteExt};
 use tokio_util::io::ReaderStream;
 
 use crate::Result;
@@ -25,15 +22,33 @@ use crate::body::Body;
 use crate::exts::http::MethodExt;
 use crate::handler::RequestHandlerOpts;
 
-/// query parameter key to download directory as tar.gz
+/// Query parameter key to download a directory as a compressed tarball.
 pub const DOWNLOAD_PARAM_KEY: &str = "download";
 
 /// Download format for directory
 #[derive(Debug, Serialize, Deserialize, Clone, ValueEnum, Eq, Hash, PartialEq)]
 #[serde(rename_all = "lowercase")]
 pub enum DirDownloadFmt {
-    /// Gunzip-compressed tarball (.tar.gz)
+    /// Gzip-compressed tarball (.tar.gz).
     Targz,
+    /// Zstd-compressed tarball (.tar.zst).
+    Tarzst,
+}
+
+impl DirDownloadFmt {
+    pub(crate) fn as_str(&self) -> &'static str {
+        match self {
+            Self::Targz => "targz",
+            Self::Tarzst => "tarzst",
+        }
+    }
+
+    pub(crate) fn extension(&self) -> &'static str {
+        match self {
+            Self::Targz => "tar.gz",
+            Self::Tarzst => "tar.zst",
+        }
+    }
 }
 
 impl Display for DirDownloadFmt {
@@ -69,7 +84,7 @@ pub fn init(formats: &Vec<DirDownloadFmt>, handler_opts: &mut RequestHandlerOpts
     );
 }
 
-/// It implements `AsyncWrite` backed by a Tokio duplex writer used as the `GzipEncoder` write target.
+/// Implements `AsyncWrite` backed by a Tokio duplex writer for the compression encoder.
 pub struct ChannelBuffer {
     writer: tokio::io::DuplexStream,
 }
@@ -105,9 +120,13 @@ async fn archive(
     cb: ChannelBuffer,
     follow_symlinks: bool,
     ignore_hidden: bool,
+    format: DirDownloadFmt,
 ) -> Result {
-    let gz = GzipEncoder::with_quality(cb, async_compression::Level::Default);
-    let mut a = Builder::new(gz);
+    let encoder: Box<dyn AsyncWrite + Send + Sync + Unpin> = match format {
+        DirDownloadFmt::Targz => Box::new(GzipEncoder::new(cb)),
+        DirDownloadFmt::Tarzst => Box::new(ZstdEncoder::new(cb)),
+    };
+    let mut a = Builder::new(encoder);
     a.follow_symlinks(follow_symlinks);
 
     // NOTE: Since it is not possible to handle error gracefully, we will
@@ -155,7 +174,7 @@ async fn archive(
     }
 
     a.finish().await?;
-    // this is required to emit gzip CRC trailer
+    // Finalize the compressed stream, including the gzip CRC trailer or Zstd frame.
     a.into_inner().await?.shutdown().await?;
 
     Ok(())
@@ -171,12 +190,31 @@ where
     P: AsRef<Path>,
     Q: AsRef<Path>,
 {
-    let archive_name = path.as_ref().with_extension("tar.gz");
+    archive_reply_with_format(path, src_path, opts, &DirDownloadFmt::Targz)
+}
+
+/// Reply with a streaming archive in the selected download format.
+pub(crate) fn archive_reply_with_format<P, Q>(
+    path: P,
+    src_path: Q,
+    opts: DirDownloadOpts<'_>,
+    format: &DirDownloadFmt,
+) -> Response<Body>
+where
+    P: AsRef<Path>,
+    Q: AsRef<Path>,
+{
+    let archive_name = path.as_ref().with_extension(format.extension());
     let mut resp = Response::new(crate::body::empty());
 
-    resp.headers_mut().typed_insert(ContentType::from(
-        Mime::from_str("application/gzip").unwrap_or(mime_guess::mime::APPLICATION_OCTET_STREAM),
-    ));
+    let content_type = match format {
+        DirDownloadFmt::Targz => "application/gzip",
+        DirDownloadFmt::Tarzst => "application/zstd",
+    };
+    resp.headers_mut().insert(
+        hyper::header::CONTENT_TYPE,
+        HeaderValue::from_static(content_type),
+    );
     // SECURITY: Build a safe `Content-Disposition` value that combines an
     // ASCII-safe quoted-string `filename=...` (for legacy user agents) and
     // an RFC 5987 `filename*=UTF-8''<percent-encoded>` (for modern UAs).
@@ -217,6 +255,7 @@ where
         ChannelBuffer { writer: write_half },
         opts.follow_symlinks,
         !opts.include_hidden,
+        format.clone(),
     ));
     *resp.body_mut() = body;
 

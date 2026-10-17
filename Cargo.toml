@@ -63,7 +63,7 @@ compression-zstd = ["async-compression/zstd"]
 # Directory listing
 directory-listing = ["chrono"]
 # Directory listing download
-directory-listing-download = ["async-tar",  "compression-gzip", "directory-listing"]
+directory-listing-download = ["async-tar", "compression-gzip", "compression-zstd", "directory-listing"]
 # Basic HTTP Authorization
 basic-auth = ["bcrypt"]
 # Fallback Page

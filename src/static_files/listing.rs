@@ -24,7 +24,9 @@ use crate::directory_listing::{self, DirListOpts};
 use crate::exts::headers::Accept;
 
 #[cfg(feature = "directory-listing-download")]
-use crate::directory_listing::download::{DOWNLOAD_PARAM_KEY, DirDownloadOpts, archive_reply};
+use crate::directory_listing::download::{
+    DOWNLOAD_PARAM_KEY, DirDownloadFmt, DirDownloadOpts, archive_reply_with_format,
+};
 
 use super::opts::HandleOpts;
 
@@ -69,15 +71,10 @@ fn try_archive_download(
     file_path: &Path,
     opts: &HandleOpts<'_>,
 ) -> Result<Option<Response<Body>>, StatusCode> {
-    if opts.dir_listing_download.is_empty() {
+    let Some(format) = download_format(opts.uri_query.unwrap_or(""), opts.dir_listing_download)
+    else {
         return Ok(None);
-    }
-
-    let download_requested = form_urlencoded::parse(opts.uri_query.unwrap_or("").as_bytes())
-        .any(|(k, _)| k == DOWNLOAD_PARAM_KEY);
-    if !download_requested {
-        return Ok(None);
-    }
+    };
 
     // `file_path` points to the (non-existing) `<dir>/index.html`. Strip
     // the appended index segment to recover the directory path.
@@ -89,7 +86,7 @@ fn try_archive_download(
         return Err(StatusCode::INTERNAL_SERVER_ERROR);
     };
 
-    let resp = archive_reply(
+    let resp = archive_reply_with_format(
         filename,
         &dir_path,
         DirDownloadOpts {
@@ -98,6 +95,68 @@ fn try_archive_download(
             follow_symlinks: opts.follow_symlinks,
             include_hidden: opts.include_hidden,
         },
+        format,
     );
     Ok(Some(resp))
+}
+
+/// Bare or unrecognized download values retain the first enabled format.
+#[cfg(feature = "directory-listing-download")]
+fn download_format<'a>(query: &str, formats: &'a [DirDownloadFmt]) -> Option<&'a DirDownloadFmt> {
+    let (_, value) =
+        form_urlencoded::parse(query.as_bytes()).find(|(key, _)| key == DOWNLOAD_PARAM_KEY)?;
+    formats
+        .iter()
+        .find(|format| format.as_str() == value)
+        .or_else(|| formats.first())
+}
+
+#[cfg(all(test, feature = "directory-listing-download"))]
+mod tests {
+    use super::{DirDownloadFmt, download_format};
+
+    #[test]
+    fn download_format_selects_only_enabled_formats() {
+        let formats = [DirDownloadFmt::Targz, DirDownloadFmt::Tarzst];
+        for query in [
+            "download",
+            "download=",
+            "download=unknown",
+            "sort=1&download=targz",
+        ] {
+            assert_eq!(
+                download_format(query, &formats),
+                Some(&DirDownloadFmt::Targz)
+            );
+        }
+        assert_eq!(
+            download_format("download=tarzst", &formats),
+            Some(&DirDownloadFmt::Tarzst)
+        );
+        assert_eq!(
+            download_format("download=tar%7Ast", &formats),
+            Some(&DirDownloadFmt::Tarzst)
+        );
+        assert_eq!(
+            download_format("download=tarzst", &formats[..1]),
+            Some(&DirDownloadFmt::Targz)
+        );
+        assert_eq!(
+            download_format("download", &formats[1..]),
+            Some(&DirDownloadFmt::Tarzst)
+        );
+        assert_eq!(download_format("download=tarzst", &[]), None);
+        assert_eq!(download_format("sort=1", &formats), None);
+    }
+
+    proptest::proptest! {
+        #[test]
+        fn download_format_never_selects_a_disabled_format(query in ".*") {
+            let formats = [DirDownloadFmt::Tarzst];
+            if let Some(format) = download_format(&query, &formats) {
+                proptest::prop_assert!(formats.contains(format));
+            }
+            proptest::prop_assert_eq!(download_format(&query, &[]), None);
+        }
+    }
 }
