@@ -101,6 +101,7 @@ pub mod fixtures {
             log_x_real_ip: general.log_x_real_ip,
             log_forwarded_for: general.log_forwarded_for,
             trusted_proxies: general.trusted_proxies,
+            log_trace_context: general.log_trace_context,
             redirect_trailing_slash: general.redirect_trailing_slash,
             include_hidden: general.include_hidden,
             follow_symlinks: general.follow_symlinks,
