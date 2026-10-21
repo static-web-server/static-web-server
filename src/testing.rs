@@ -100,6 +100,7 @@ pub mod fixtures {
             log_remote_address: general.log_remote_address,
             log_x_real_ip: general.log_x_real_ip,
             log_forwarded_for: general.log_forwarded_for,
+            log_user_agent: general.log_user_agent,
             trusted_proxies: general.trusted_proxies,
             redirect_trailing_slash: general.redirect_trailing_slash,
             include_hidden: general.include_hidden,

@@ -26,6 +26,10 @@ pub(crate) fn init(enabled: bool, handler_opts: &mut RequestHandlerOpts) {
         enabled = handler_opts.log_forwarded_for,
         "log X-Forwarded-For header"
     );
+    tracing::info!(
+        enabled = handler_opts.log_user_agent,
+        "log User-Agent header"
+    );
     tracing::info!(trusted_proxies = %trusted, "trusted IPs for X-Forwarded-For");
 }
 
@@ -63,6 +67,15 @@ pub(crate) fn pre_process<T>(
         None
     };
 
+    let user_agent = if opts.log_user_agent {
+        req.headers()
+            .get(hyper::header::USER_AGENT)
+            .and_then(|h| h.to_str().ok())
+            .map(|s| s.to_owned())
+    } else {
+        None
+    };
+
     let method = req.method();
     let uri = req.uri();
 
@@ -74,6 +87,7 @@ pub(crate) fn pre_process<T>(
             remote_addr = remote_ip.as_ref().map(tracing::field::display),
             x_real_ip = x_real_ip.as_ref().map(tracing::field::display),
             real_remote_ip = real_remote_ip.as_ref().map(tracing::field::display),
+            user_agent = user_agent.as_deref(),
             "incoming request"
         );
         return;
@@ -85,6 +99,7 @@ pub(crate) fn pre_process<T>(
         remote_addr = remote_ip.as_ref().map(tracing::field::display),
         x_real_ip = x_real_ip.as_ref().map(tracing::field::display),
         real_remote_ip = real_remote_ip.as_ref().map(tracing::field::display),
+        user_agent = user_agent.as_deref(),
         "incoming request"
     );
 }
