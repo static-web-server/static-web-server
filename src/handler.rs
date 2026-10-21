@@ -439,6 +439,11 @@ impl RequestHandler {
                 }
             }
 
+            // Log unified response summary (method + URI + status + remote addr)
+            if let Ok(ref resp) = result {
+                log_addr::post_process(&self.opts, req, remote_addr, resp.status());
+            }
+
             result
         }
     }
