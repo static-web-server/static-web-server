@@ -69,7 +69,7 @@ bin/server.rs → settings/ → server/ (mod.rs, opts.rs) → service.rs → han
 | 11 | `static_files::handle()` (mem-cache lookup, sanitize, resolve, security, listing, conditional/range reply) | Core | Errors become error pages |
 | 12 | Fallback page | Post | — |
 | 13 | CORS response headers | Post | — |
-| 14 | Markdown `Content-Type` | Post | — |
+| 14 | Markdown `Vary: Accept` (when enabled) and `Content-Type` (variant only) | Post | — |
 | 15 | Text charset (`charset=utf-8` on `text/*`) | Post | — |
 | 16 | Static compression `Vary` | Post | — |
 | 17 | Dynamic compression | Post | — |
