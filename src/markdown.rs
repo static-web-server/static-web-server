@@ -14,6 +14,7 @@ use percent_encoding::{AsciiSet, CONTROLS, utf8_percent_encode};
 use std::path::Path;
 
 use crate::body::Body;
+use crate::exts::http::append_vary_accept;
 use crate::fs::path::{PathExt, sanitize_path};
 use crate::{
     Error, exts::headers::Accept, fs::meta::try_markdown_variant, handler::RequestHandlerOpts,
@@ -78,12 +79,24 @@ pub(crate) fn pre_process<T>(
 }
 
 /// Post-process the response to set the correct Content-Type for markdown files.
+///
+/// When the feature is enabled, the responses that reach this step get
+/// `Vary: Accept` since the same URI may resolve to either the HTML or the
+/// markdown variant depending on the `Accept` request header. Both
+/// representations must carry it, otherwise a shared cache could serve the
+/// first cached one to every client. Custom headers can still override it.
 pub(crate) fn post_process(
     is_markdown_variant: bool,
     opts: &RequestHandlerOpts,
     mut resp: Response<Body>,
 ) -> Result<Response<Body>, Error> {
-    if !is_markdown_variant || !opts.accept_markdown {
+    if !opts.accept_markdown {
+        return Ok(resp);
+    }
+
+    append_vary_accept(&mut resp);
+
+    if !is_markdown_variant {
         return Ok(resp);
     }
 
