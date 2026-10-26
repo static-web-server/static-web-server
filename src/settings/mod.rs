@@ -223,6 +223,7 @@ impl Settings {
         #[cfg(feature = "fallback-page")]
         let mut page_fallback = opts.page_fallback;
 
+        let mut access_log_format = opts.access_log_format;
         let mut log_remote_address = opts.log_remote_address;
         let mut log_x_real_ip = opts.log_x_real_ip;
         let mut log_forwarded_for = opts.log_forwarded_for;
@@ -432,6 +433,9 @@ impl Settings {
                 #[cfg(feature = "fallback-page")]
                 if let Some(v) = general.page_fallback {
                     page_fallback = v
+                }
+                if let Some(ref v) = general.access_log_format {
+                    v.clone_into(&mut access_log_format)
                 }
                 if let Some(v) = general.log_remote_address {
                     log_remote_address = v
@@ -827,6 +831,7 @@ impl Settings {
                 idle_timeout,
                 #[cfg(feature = "fallback-page")]
                 page_fallback,
+                access_log_format,
                 log_remote_address,
                 log_x_real_ip,
                 log_forwarded_for,
