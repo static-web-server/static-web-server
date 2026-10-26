@@ -245,16 +245,9 @@ impl RequestHandler {
         #[cfg(feature = "mem-cache")]
         let memory_cache = self.opts.memory_cache.as_ref();
 
-        if self.opts.access_log_format.is_none() {
-            log_addr::pre_process(&self.opts, req, remote_addr);
-        }
         // Rewrites replace the request URI and `Host`, so keep the ones the client sent for the
-        // access log
-        let client_req = self
-            .opts
-            .access_log_format
-            .as_ref()
-            .map(|_| access_logs::ClientRequest::new(req));
+        // per-request log line
+        let client_req = access_logs::ClientRequest::new(req);
 
         async move {
             let req_start = std::time::Instant::now();
@@ -440,18 +433,28 @@ impl RequestHandler {
                 custom_headers::post_process(&self.opts, req, resp, file_path.as_ref(), early)
             });
 
-            if let (Some(format), Some(client_req), Ok(resp)) =
-                (&self.opts.access_log_format, &client_req, &result)
-            {
-                access_logs::log_response(
-                    format,
+            // One line per request, once the response exists
+            match &self.opts.access_log_format {
+                Some(format) => {
+                    if let Ok(resp) = &result {
+                        access_logs::log_response(
+                            format,
+                            &self.opts,
+                            req,
+                            &client_req,
+                            remote_addr,
+                            resp,
+                            req_start.elapsed(),
+                        );
+                    }
+                }
+                None => log_addr::log_response(
                     &self.opts,
                     req,
-                    client_req,
+                    client_req.uri(),
                     remote_addr,
-                    resp,
-                    req_start.elapsed(),
-                );
+                    result.as_ref().ok().map(|resp| resp.status()),
+                ),
             }
 
             #[cfg(feature = "metrics")]
@@ -471,11 +474,6 @@ impl RequestHandler {
                         req_start.elapsed().as_secs_f64(),
                     );
                 }
-            }
-
-            // Log unified response summary (method + URI + status + remote addr)
-            if let Ok(ref resp) = result {
-                log_addr::post_process(&self.opts, req, remote_addr, resp.status());
             }
 
             result
