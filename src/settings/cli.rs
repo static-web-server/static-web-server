@@ -570,7 +570,7 @@ pub struct General {
         action = clap::ArgAction::Set,
         env = "SERVER_LOG_REMOTE_ADDRESS",
     )]
-    /// Log incoming requests information along with its remote address if available using the `info` log level.
+    /// Log each request and its response status along with its remote address if available using the `info` log level.
     pub log_remote_address: bool,
 
     #[arg(
