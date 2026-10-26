@@ -22,6 +22,8 @@ pub mod tests {
 
     const STATUS_TOML: &str = "toml/custom_headers_status.toml";
     const ORDER_TOML: &str = "toml/custom_headers_status_order.toml";
+    const EARLY_TOML: &str = "toml/custom_headers_early.toml";
+    const MAINTENANCE_TOML: &str = "toml/custom_headers_maintenance.toml";
     const IMMUTABLE: &str = "public, max-age=31536000, immutable";
 
     async fn request(
@@ -151,6 +153,43 @@ pub mod tests {
         let res = get(ORDER_TOML, "/assets/missing.css").await;
         assert_eq!(res.status(), StatusCode::NOT_FOUND);
         assert_eq!(res.headers()[CACHE_CONTROL], "no-store");
+    }
+
+    #[tokio::test]
+    async fn custom_headers_apply_to_redirects() {
+        let res = get(EARLY_TOML, "/old").await;
+        assert_eq!(res.status(), StatusCode::MOVED_PERMANENTLY);
+        assert_eq!(res.headers()[CACHE_CONTROL], "public, max-age=86400");
+        assert_eq!(res.headers()["x-custom-header"], "every-response");
+    }
+
+    #[tokio::test]
+    async fn custom_headers_apply_to_rewrite_redirects() {
+        let res = get(EARLY_TOML, "/moved").await;
+        assert_eq!(res.status(), StatusCode::FOUND);
+        assert_eq!(res.headers()["x-custom-header"], "every-response");
+    }
+
+    #[tokio::test]
+    async fn custom_headers_apply_to_method_not_allowed() {
+        let res = request(EARLY_TOML, Method::POST, "/old", HeaderMap::new()).await;
+        assert_eq!(res.status(), StatusCode::METHOD_NOT_ALLOWED);
+        assert_eq!(res.headers()["x-custom-header"], "every-response");
+        assert!(res.headers().get(CACHE_CONTROL).is_none());
+    }
+
+    #[tokio::test]
+    async fn custom_headers_apply_to_health() {
+        let res = get(EARLY_TOML, "/health").await;
+        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(res.headers()["x-custom-header"], "every-response");
+    }
+
+    #[tokio::test]
+    async fn custom_headers_apply_to_maintenance() {
+        let res = get(MAINTENANCE_TOML, "/assets/main.css").await;
+        assert_eq!(res.status(), StatusCode::SERVICE_UNAVAILABLE);
+        assert_eq!(res.headers()["retry-after"], "120");
     }
 
     #[test]

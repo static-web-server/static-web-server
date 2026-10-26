@@ -252,7 +252,8 @@ impl RequestHandler {
                 metrics::inc_requests_inflight();
             }
 
-            let result: Result<Response<Body>, Error> = async {
+            // Early responses serve no file; they still get the custom headers below
+            let result: Result<(Response<Body>, Option<PathBuf>), Error> = async {
                 // Reject if the HTTP request method is not allowed
                 if !req.method().is_allowed() {
                     return error_page::error_response(
@@ -261,44 +262,45 @@ impl RequestHandler {
                         &StatusCode::METHOD_NOT_ALLOWED,
                         &self.opts.page404,
                         &self.opts.page50x,
-                    );
+                    )
+                    .map(without_file);
                 }
 
                 // Health endpoint check
                 if let Some(result) = health::pre_process(&self.opts, req) {
-                    return result;
+                    return result.map(without_file);
                 }
 
                 // CORS
                 if let Some(result) = cors::pre_process(&self.opts, req) {
-                    return result;
+                    return result.map(without_file);
                 }
 
                 // `Basic` HTTP Authorization Schema
                 #[cfg(feature = "basic-auth")]
                 if let Some(response) = basic_auth::pre_process(&self.opts, req) {
-                    return response;
+                    return response.map(without_file);
                 }
 
                 // Metrics endpoint check
                 #[cfg(feature = "metrics")]
                 if let Some(result) = metrics::pre_process(&self.opts, req) {
-                    return result;
+                    return result.map(without_file);
                 }
 
                 // Maintenance Mode
                 if let Some(response) = maintenance_mode::pre_process(&self.opts, req) {
-                    return response;
+                    return response.map(without_file);
                 }
 
                 // Redirects
                 if let Some(result) = redirects::pre_process(&self.opts, req) {
-                    return result;
+                    return result.map(without_file);
                 }
 
                 // Rewrites
                 if let Some(result) = rewrites::pre_process(&self.opts, req) {
-                    return result;
+                    return result.map(without_file);
                 }
 
                 // Advanced options
@@ -413,12 +415,14 @@ impl RequestHandler {
                 // Append security headers
                 let resp = security_headers::post_process(&self.opts, req, resp)?;
 
-                // Add/update custom headers
-                let resp = custom_headers::post_process(&self.opts, req, resp, file_path.as_ref())?;
-
-                Ok(resp)
+                Ok((resp, file_path))
             }
             .await;
+
+            // Add/update custom headers
+            let result = result.and_then(|(resp, file_path)| {
+                custom_headers::post_process(&self.opts, req, resp, file_path.as_ref())
+            });
 
             #[cfg(feature = "metrics")]
             if metrics_enabled {
@@ -442,4 +446,9 @@ impl RequestHandler {
             result
         }
     }
+}
+
+/// Pairs a response that serves no file with an empty file path.
+fn without_file(resp: Response<Body>) -> (Response<Body>, Option<PathBuf>) {
+    (resp, None)
 }

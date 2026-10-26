@@ -1,0 +1,25 @@
+[general]
+
+root = "tests/fixtures/public"
+health = true
+
+[advanced]
+
+[[advanced.redirects]]
+source = "/old"
+destination = "/assets/main.css"
+kind = 301
+
+[[advanced.rewrites]]
+source = "/moved"
+destination = "/assets/main.css"
+redirect = 302
+
+[[advanced.headers]]
+source = "**"
+headers = { X-Custom-Header = "every-response" }
+
+[[advanced.headers]]
+source = "/old"
+status = [301]
+headers = { Cache-Control = "public, max-age=86400" }

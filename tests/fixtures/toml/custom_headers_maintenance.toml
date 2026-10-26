@@ -1,0 +1,11 @@
+[general]
+
+root = "tests/fixtures/public"
+maintenance-mode = true
+
+[advanced]
+
+[[advanced.headers]]
+source = "**"
+status = [503]
+headers = { Retry-After = "120" }
