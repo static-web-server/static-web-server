@@ -245,6 +245,12 @@ impl RequestHandler {
         if self.opts.access_log_format.is_none() {
             log_addr::pre_process(&self.opts, req, remote_addr);
         }
+        // Rewrites replace the request URI, so keep the one the client sent for the access log
+        let req_uri = self
+            .opts
+            .access_log_format
+            .as_ref()
+            .map(|_| req.uri().clone());
 
         async move {
             let req_start = std::time::Instant::now();
@@ -428,11 +434,14 @@ impl RequestHandler {
                 custom_headers::post_process(&self.opts, req, resp, file_path.as_ref(), early)
             });
 
-            if let (Some(fmt), Ok(resp)) = (&self.opts.access_log_format, &result) {
-                access_logs::post_process(
-                    fmt,
+            if let (Some(format), Some(uri), Ok(resp)) =
+                (&self.opts.access_log_format, &req_uri, &result)
+            {
+                access_logs::log_response(
+                    format,
                     &self.opts,
                     req,
+                    uri,
                     remote_addr,
                     resp,
                     req_start.elapsed(),

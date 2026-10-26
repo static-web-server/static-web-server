@@ -7,13 +7,17 @@
 //!
 //! Supports a `%{token}` syntax for user-defined log formats.
 //! When no format is configured, `log_addr` logs requests as before.
+//!
+//! Values taken from the request (URI, `Host`, `User-Agent`, `Referer`) are client-controlled.
+//! Bytes outside printable ASCII, `"` and `\` in them are written as `\xHH`, so a client cannot
+//! end a quoted field, start a new log line or inject terminal escape sequences.
 
-use hyper::{Request, Response};
+use hyper::{HeaderMap, Request, Response, Uri, header::HeaderName};
 use std::fmt::Write;
 use std::net::{IpAddr, SocketAddr};
 use std::time::Duration;
 
-use crate::{body::Body, handler::RequestHandlerOpts, health};
+use crate::{body::Body, handler::RequestHandlerOpts, health, log_addr};
 
 /// A compiled access log format, parsed once at startup.
 #[derive(Debug)]
@@ -71,54 +75,43 @@ impl AccessLogFormat {
     /// Parses a format string into a compiled representation.
     ///
     /// Tokens use `%{name}` syntax. Use `%%` for a literal `%`.
-    pub(crate) fn parse(format: &str) -> crate::Result<Self> {
+    pub fn parse(format: &str) -> crate::Result<Self> {
         let mut segments = Vec::new();
         let mut literal = String::new();
-        let bytes = format.as_bytes();
-        let len = bytes.len();
-        let mut i = 0;
+        let mut chars = format.chars();
 
-        while i < len {
-            if bytes[i] == b'%' {
-                if i + 1 >= len {
-                    bail!("access log format: trailing '%' at end of string");
+        while let Some(c) = chars.next() {
+            if c != '%' {
+                literal.push(c);
+                continue;
+            }
+            match chars.next() {
+                Some('%') => literal.push('%'),
+                Some('{') => {
+                    let mut name = String::new();
+                    let mut closed = false;
+                    for ch in chars.by_ref() {
+                        if ch == '}' {
+                            closed = true;
+                            break;
+                        }
+                        name.push(ch);
+                    }
+                    if !closed {
+                        bail!("access log format: unclosed '%{{{name}'");
+                    }
+                    let token = Token::from_name(&name)
+                        .ok_or_else(|| anyhow!("access log format: unknown token '%{{{name}}}'"))?;
+                    if !literal.is_empty() {
+                        segments.push(Segment::Literal(std::mem::take(&mut literal)));
+                    }
+                    segments.push(Segment::Token(token));
                 }
-                match bytes[i + 1] {
-                    b'%' => {
-                        literal.push('%');
-                        i += 2;
-                    }
-                    b'{' => {
-                        // Flush accumulated literal
-                        if !literal.is_empty() {
-                            segments.push(Segment::Literal(std::mem::take(&mut literal)));
-                        }
-                        i += 2; // skip '%{'
-                        let start = i;
-                        while i < len && bytes[i] != b'}' {
-                            i += 1;
-                        }
-                        if i >= len {
-                            bail!("access log format: unclosed '%{{' starting at position {start}");
-                        }
-                        let name = &format[start..i];
-                        let token = Token::from_name(name).ok_or_else(|| {
-                            anyhow::anyhow!("access log format: unknown token '%{{{name}}}'")
-                        })?;
-                        segments.push(Segment::Token(token));
-                        i += 1; // skip '}'
-                    }
-                    _ => {
-                        bail!(
-                            "access log format: unexpected character '{}' after '%' at position {}; use %{{name}} for tokens or %%%% for literal %%",
-                            bytes[i + 1] as char,
-                            i
-                        );
-                    }
-                }
-            } else {
-                literal.push(bytes[i] as char);
-                i += 1;
+                Some(other) => bail!(
+                    "access log format: unexpected character '{other}' after '%'; \
+                     use %{{name}} for tokens or %% for a literal %"
+                ),
+                None => bail!("access log format: trailing '%' at end of string"),
             }
         }
 
@@ -135,7 +128,7 @@ impl AccessLogFormat {
         for seg in &self.segments {
             match seg {
                 Segment::Literal(s) => buf.push_str(s),
-                Segment::Token(token) => render_token(&mut buf, token, ctx),
+                Segment::Token(token) => render_token(&mut buf, *token, ctx),
             }
         }
         buf
@@ -145,81 +138,88 @@ impl AccessLogFormat {
 /// All data available for access log rendering.
 struct LogContext<'a> {
     method: &'a str,
-    uri: &'a str,
+    uri: &'a Uri,
     version: &'a str,
     status: u16,
     bytes: u64,
     duration_secs: f64,
     remote_addr: Option<SocketAddr>,
-    host: &'a str,
-    user_agent: &'a str,
-    referer: &'a str,
+    headers: &'a HeaderMap,
     x_real_ip: Option<IpAddr>,
     forwarded_for: Option<IpAddr>,
 }
 
-fn render_token(buf: &mut String, token: &Token, ctx: &LogContext<'_>) {
+fn render_token(buf: &mut String, token: Token, ctx: &LogContext<'_>) {
     match token {
         Token::Method => buf.push_str(ctx.method),
-        Token::Uri => buf.push_str(ctx.uri),
+        Token::Uri => {
+            let _ = write!(Escaped(buf), "{}", ctx.uri);
+        }
         Token::Version => buf.push_str(ctx.version),
         Token::Status => {
             let _ = write!(buf, "{}", ctx.status);
         }
-        Token::Bytes => {
-            if ctx.bytes > 0 {
-                let _ = write!(buf, "{}", ctx.bytes);
-            } else {
-                buf.push('-');
+        Token::Bytes => match ctx.bytes {
+            0 => buf.push('-'),
+            bytes => {
+                let _ = write!(buf, "{bytes}");
             }
-        }
+        },
         Token::Duration => {
             let _ = write!(buf, "{:.6}", ctx.duration_secs);
         }
-        Token::RemoteAddr => match ctx.remote_addr {
-            Some(addr) => {
-                let _ = write!(buf, "{}", addr.ip());
-            }
-            None => buf.push('-'),
-        },
-        Token::XRealIp => match ctx.x_real_ip {
-            Some(ip) => {
-                let _ = write!(buf, "{ip}");
-            }
-            None => buf.push('-'),
-        },
-        Token::ForwardedFor => match ctx.forwarded_for {
-            Some(ip) => {
-                let _ = write!(buf, "{ip}");
-            }
-            None => buf.push('-'),
-        },
-        Token::Host => {
-            if ctx.host.is_empty() {
-                buf.push('-');
-            } else {
-                buf.push_str(ctx.host);
-            }
-        }
-        Token::UserAgent => {
-            if ctx.user_agent.is_empty() {
-                buf.push('-');
-            } else {
-                buf.push_str(ctx.user_agent);
-            }
-        }
-        Token::Referer => {
-            if ctx.referer.is_empty() {
-                buf.push('-');
-            } else {
-                buf.push_str(ctx.referer);
-            }
-        }
+        Token::RemoteAddr => push_ip(buf, ctx.remote_addr.map(|addr| addr.ip())),
+        Token::XRealIp => push_ip(buf, ctx.x_real_ip),
+        Token::ForwardedFor => push_ip(buf, ctx.forwarded_for),
+        Token::Host => push_header(buf, ctx.headers, hyper::header::HOST),
+        Token::UserAgent => push_header(buf, ctx.headers, hyper::header::USER_AGENT),
+        Token::Referer => push_header(buf, ctx.headers, hyper::header::REFERER),
         Token::Timestamp => {
             // Uses local time, respecting the TZ environment variable
             let now = chrono::Local::now();
             let _ = write!(buf, "{}", now.format("%d/%b/%Y:%H:%M:%S %z"));
         }
+    }
+}
+
+fn push_ip(buf: &mut String, ip: Option<IpAddr>) {
+    match ip {
+        Some(ip) => {
+            let _ = write!(buf, "{ip}");
+        }
+        None => buf.push('-'),
+    }
+}
+
+fn push_header(buf: &mut String, headers: &HeaderMap, name: HeaderName) {
+    match headers.get(name).map(|v| v.as_bytes()) {
+        Some(value) if !value.is_empty() => push_escaped(buf, value),
+        _ => buf.push('-'),
+    }
+}
+
+/// Appends a client-controlled value, writing bytes outside printable ASCII, `"` and `\` as `\xHH`.
+fn push_escaped(buf: &mut String, value: &[u8]) {
+    for &b in value {
+        match b {
+            b'"' | b'\\' => {
+                let _ = write!(buf, "\\x{b:02X}");
+            }
+            0x20..=0x7e => buf.push(b as char),
+            _ => {
+                let _ = write!(buf, "\\x{b:02X}");
+            }
+        }
+    }
+}
+
+/// Writes formatted text through [`push_escaped`], without an intermediate `String`.
+struct Escaped<'a>(&'a mut String);
+
+impl Write for Escaped<'_> {
+    fn write_str(&mut self, s: &str) -> std::fmt::Result {
+        push_escaped(self.0, s.as_bytes());
+        Ok(())
     }
 }
 
@@ -234,88 +234,43 @@ fn http_version_str(version: hyper::Version) -> &'static str {
     }
 }
 
-// --- Trusted proxy helpers (same rules as log_addr.rs) ---
-
-fn is_trusted_proxy(opts: &RequestHandlerOpts, remote_addr: Option<SocketAddr>) -> bool {
-    opts.trusted_proxies.is_empty()
-        || remote_addr.is_some_and(|addr| opts.trusted_proxies.contains(&addr.ip()))
-}
-
-fn extract_x_real_ip<T>(
-    req: &Request<T>,
-    opts: &RequestHandlerOpts,
-    remote_addr: Option<SocketAddr>,
-) -> Option<IpAddr> {
-    if !opts.log_x_real_ip || !is_trusted_proxy(opts, remote_addr) {
-        return None;
-    }
-    req.headers()
-        .get("X-Real-IP")
-        .and_then(|h| h.to_str().ok())
-        .and_then(|s| s.trim().parse::<IpAddr>().ok())
-}
-
-fn extract_forwarded_for<T>(
-    req: &Request<T>,
-    opts: &RequestHandlerOpts,
-    remote_addr: Option<SocketAddr>,
-) -> Option<IpAddr> {
-    if !opts.log_forwarded_for || !is_trusted_proxy(opts, remote_addr) {
-        return None;
-    }
-    req.headers()
-        .get("X-Forwarded-For")
-        .and_then(|h| h.to_str().ok())
-        .and_then(|s| s.split(',').next())
-        .and_then(|s| s.trim().parse::<IpAddr>().ok())
-}
-
-fn header_str<T>(req: &Request<T>, name: hyper::header::HeaderName) -> &str {
-    req.headers()
-        .get(name)
-        .and_then(|v| v.to_str().ok())
-        .unwrap_or("")
-}
-
-// --- Public API ---
-
-/// Post-response logging using the configured access log format.
-pub(crate) fn post_process<T>(
+/// Logs the request with the configured access log format, once the response exists.
+///
+/// It only logs, unlike the `post_process` steps that take and return the response. `uri` is
+/// the URI the client sent: rewrites replace the request URI during the pipeline.
+pub(crate) fn log_response<T>(
     format: &AccessLogFormat,
     opts: &RequestHandlerOpts,
     req: &Request<T>,
+    uri: &Uri,
     remote_addr: Option<SocketAddr>,
     resp: &Response<Body>,
     elapsed: Duration,
 ) {
-    // Skip custom format logging for health endpoints at debug level
-    let is_health = opts.health && health::is_health_endpoint(req);
-
     let bytes = resp
         .headers()
         .get(hyper::header::CONTENT_LENGTH)
         .and_then(|v| v.to_str().ok())
         .and_then(|v| v.parse::<u64>().ok())
-        .unwrap_or(0);
+        .unwrap_or_default();
 
     let ctx = LogContext {
         method: req.method().as_str(),
-        uri: &req.uri().to_string(),
+        uri,
         version: http_version_str(req.version()),
         status: resp.status().as_u16(),
         bytes,
         duration_secs: elapsed.as_secs_f64(),
         remote_addr,
-        host: header_str(req, hyper::header::HOST),
-        user_agent: header_str(req, hyper::header::USER_AGENT),
-        referer: header_str(req, hyper::header::REFERER),
-        x_real_ip: extract_x_real_ip(req, opts, remote_addr),
-        forwarded_for: extract_forwarded_for(req, opts, remote_addr),
+        headers: req.headers(),
+        x_real_ip: log_addr::x_real_ip(opts, req, remote_addr),
+        forwarded_for: log_addr::forwarded_for(opts, req, remote_addr),
     };
 
     let line = format.render(&ctx);
 
-    if is_health {
+    // Log health check requests in debug mode only, as `log_addr` does
+    if opts.health && health::is_health_endpoint(uri) {
         tracing::debug!("{line}");
     } else {
         tracing::info!("{line}");
@@ -325,40 +280,26 @@ pub(crate) fn post_process<T>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::handler::RequestHandlerOpts;
-    use hyper::{Request, Response, StatusCode};
-    use std::net::{IpAddr, Ipv4Addr, SocketAddr};
-    use std::time::Duration;
+    use hyper::Method;
+    use proptest::prelude::*;
+    use std::net::Ipv4Addr;
 
-    fn make_request(method: &str, uri: &str) -> Request<()> {
-        Request::builder().method(method).uri(uri).body(()).unwrap()
-    }
-
-    fn make_request_with_headers(
-        method: &str,
-        uri: &str,
-        headers: Vec<(&str, &str)>,
-    ) -> Request<()> {
-        let mut builder = Request::builder().method(method).uri(uri);
-        for (k, v) in headers {
-            builder = builder.header(k, v);
+    fn context<'a>(uri: &'a Uri, headers: &'a HeaderMap) -> LogContext<'a> {
+        LogContext {
+            method: Method::GET.as_str(),
+            uri,
+            version: "HTTP/1.1",
+            status: 200,
+            bytes: 0,
+            duration_secs: 0.0,
+            remote_addr: None,
+            headers,
+            x_real_ip: None,
+            forwarded_for: None,
         }
-        builder.body(()).unwrap()
     }
 
-    fn make_response(status: u16, content_length: u64) -> Response<Body> {
-        let mut resp = Response::new(crate::body::empty());
-        *resp.status_mut() = StatusCode::from_u16(status).unwrap();
-        if content_length > 0 {
-            resp.headers_mut().insert(
-                hyper::header::CONTENT_LENGTH,
-                content_length.to_string().parse().unwrap(),
-            );
-        }
-        resp
-    }
-
-    // --- Parsing tests ---
+    // Parsing tests
 
     #[test]
     fn parse_empty() {
@@ -371,6 +312,13 @@ mod tests {
         let fmt = AccessLogFormat::parse("hello world").unwrap();
         assert_eq!(fmt.segments.len(), 1);
         assert!(matches!(&fmt.segments[0], Segment::Literal(s) if s == "hello world"));
+    }
+
+    #[test]
+    fn parse_keeps_non_ascii_literals() {
+        let fmt = AccessLogFormat::parse("→ %{status} ✓").unwrap();
+        assert!(matches!(&fmt.segments[0], Segment::Literal(s) if s == "→ "));
+        assert!(matches!(&fmt.segments[2], Segment::Literal(s) if s == " ✓"));
     }
 
     #[test]
@@ -420,14 +368,25 @@ mod tests {
     #[test]
     fn parse_unknown_token_fails() {
         let result = AccessLogFormat::parse("%{bogus}");
-        assert!(result.is_err());
         assert!(result.unwrap_err().to_string().contains("bogus"));
+    }
+
+    #[test]
+    fn parse_empty_token_fails() {
+        let result = AccessLogFormat::parse("%{}");
+        assert!(result.unwrap_err().to_string().contains("unknown token"));
     }
 
     #[test]
     fn parse_unclosed_brace_fails() {
         let result = AccessLogFormat::parse("%{method");
-        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("unclosed"));
+    }
+
+    #[test]
+    fn parse_unclosed_brace_after_a_closed_one_fails() {
+        let result = AccessLogFormat::parse("%{method} %{method");
+        assert!(result.unwrap_err().to_string().contains("unclosed"));
     }
 
     #[test]
@@ -442,27 +401,20 @@ mod tests {
         assert!(result.is_err());
     }
 
-    // --- Rendering tests ---
+    // Rendering tests
 
     #[test]
     fn render_basic_format() {
         let fmt = AccessLogFormat::parse("%{method} %{uri} %{status} %{bytes}").unwrap();
+        let uri = Uri::from_static("/index.html");
+        let headers = HeaderMap::new();
         let ctx = LogContext {
-            method: "GET",
-            uri: "/index.html",
-            version: "HTTP/1.1",
-            status: 200,
             bytes: 1024,
-            duration_secs: 0.005,
             remote_addr: Some(SocketAddr::new(
                 IpAddr::V4(Ipv4Addr::new(192, 168, 1, 1)),
                 54321,
             )),
-            host: "example.com",
-            user_agent: "curl/8.0",
-            referer: "",
-            x_real_ip: None,
-            forwarded_for: None,
+            ..context(&uri, &headers)
         };
         assert_eq!(fmt.render(&ctx), "GET /index.html 200 1024");
     }
@@ -470,112 +422,108 @@ mod tests {
     #[test]
     fn render_missing_values_show_dash() {
         let fmt = AccessLogFormat::parse(
-            "%{remote_addr} %{x_real_ip} %{forwarded_for} %{referer} %{bytes}",
+            "%{remote_addr} %{x_real_ip} %{forwarded_for} %{host} %{user_agent} %{referer} %{bytes}",
         )
         .unwrap();
-        let ctx = LogContext {
-            method: "GET",
-            uri: "/",
-            version: "HTTP/1.1",
-            status: 200,
-            bytes: 0,
-            duration_secs: 0.0,
-            remote_addr: None,
-            host: "",
-            user_agent: "",
-            referer: "",
-            x_real_ip: None,
-            forwarded_for: None,
-        };
-        assert_eq!(fmt.render(&ctx), "- - - - -");
-    }
-
-    #[test]
-    fn render_version() {
-        assert_eq!(http_version_str(hyper::Version::HTTP_11), "HTTP/1.1");
-        assert_eq!(http_version_str(hyper::Version::HTTP_2), "HTTP/2");
+        let uri = Uri::from_static("/");
+        let headers = HeaderMap::new();
+        assert_eq!(fmt.render(&context(&uri, &headers)), "- - - - - - -");
     }
 
     #[test]
     fn render_percent_literal() {
         let fmt = AccessLogFormat::parse("100%% %{method}").unwrap();
+        let uri = Uri::from_static("/");
+        let headers = HeaderMap::new();
+        assert_eq!(fmt.render(&context(&uri, &headers)), "100% GET");
+    }
+
+    #[test]
+    fn render_escapes_client_controlled_values() {
+        let fmt = AccessLogFormat::parse("\"%{user_agent}\" \"%{referer}\"").unwrap();
+        let uri = Uri::from_static("/");
+        let mut headers = HeaderMap::new();
+        headers.insert(
+            hyper::header::USER_AGENT,
+            "curl\" 200 \\ \tx".parse().unwrap(),
+        );
+        headers.insert(
+            hyper::header::REFERER,
+            hyper::header::HeaderValue::from_bytes(b"caf\xc3\xa9").unwrap(),
+        );
+        assert_eq!(
+            fmt.render(&context(&uri, &headers)),
+            r#""curl\x22 200 \x5C \x09x" "caf\xC3\xA9""#
+        );
+    }
+
+    #[test]
+    fn render_all_tokens() {
+        let fmt = AccessLogFormat::parse(
+            "%{method}|%{uri}|%{version}|%{status}|%{bytes}|%{duration}|%{remote_addr}|\
+             %{x_real_ip}|%{forwarded_for}|%{host}|%{user_agent}|%{referer}",
+        )
+        .unwrap();
+        let uri = Uri::from_static("/a/b.css?v=1");
+        let mut headers = HeaderMap::new();
+        headers.insert(hyper::header::HOST, "example.com".parse().unwrap());
+        headers.insert(hyper::header::USER_AGENT, "curl/8.0".parse().unwrap());
+        headers.insert(
+            hyper::header::REFERER,
+            "https://example.com/".parse().unwrap(),
+        );
         let ctx = LogContext {
-            method: "GET",
-            uri: "/",
-            version: "HTTP/1.1",
-            status: 200,
-            bytes: 0,
-            duration_secs: 0.0,
-            remote_addr: None,
-            host: "",
-            user_agent: "",
-            referer: "",
-            x_real_ip: None,
-            forwarded_for: None,
+            version: http_version_str(hyper::Version::HTTP_2),
+            status: 304,
+            bytes: 1024,
+            duration_secs: 0.0012345,
+            remote_addr: Some("[2001:db8::1]:443".parse().unwrap()),
+            x_real_ip: Some(IpAddr::V4(Ipv4Addr::new(203, 0, 113, 7))),
+            forwarded_for: Some(IpAddr::V4(Ipv4Addr::new(203, 0, 113, 195))),
+            ..context(&uri, &headers)
         };
-        assert_eq!(fmt.render(&ctx), "100% GET");
-    }
-
-    // --- IP extraction tests ---
-
-    #[test]
-    fn extract_x_real_ip_trusted() {
-        let req = make_request_with_headers("GET", "/", vec![("X-Real-IP", "10.0.0.1")]);
-        let opts = RequestHandlerOpts {
-            log_x_real_ip: true,
-            trusted_proxies: vec![],
-            ..Default::default()
-        };
-        let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(192, 168, 1, 1)), 1234);
-        let ip = extract_x_real_ip(&req, &opts, Some(addr));
-        assert_eq!(ip, Some(IpAddr::V4(Ipv4Addr::new(10, 0, 0, 1))));
+        assert_eq!(
+            fmt.render(&ctx),
+            "GET|/a/b.css?v=1|HTTP/2|304|1024|0.001234|2001:db8::1|\
+             203.0.113.7|203.0.113.195|example.com|curl/8.0|https://example.com/"
+        );
     }
 
     #[test]
-    fn extract_x_real_ip_untrusted() {
-        let req = make_request_with_headers("GET", "/", vec![("X-Real-IP", "10.0.0.1")]);
-        let opts = RequestHandlerOpts {
-            log_x_real_ip: true,
-            trusted_proxies: vec![IpAddr::V4(Ipv4Addr::new(172, 16, 0, 1))],
-            ..Default::default()
-        };
-        let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(192, 168, 1, 1)), 1234);
-        let ip = extract_x_real_ip(&req, &opts, Some(addr));
-        assert_eq!(ip, None);
+    fn render_timestamp_uses_the_common_log_format() {
+        let fmt = AccessLogFormat::parse("[%{timestamp}]").unwrap();
+        let uri = Uri::from_static("/");
+        let headers = HeaderMap::new();
+        let line = fmt.render(&context(&uri, &headers));
+        // e.g. `[29/May/2026:23:43:47 +0200]`
+        let parsed =
+            chrono::DateTime::parse_from_str(line.trim_matches(['[', ']']), "%d/%b/%Y:%H:%M:%S %z");
+        assert!(parsed.is_ok(), "{line}");
     }
 
-    #[test]
-    fn extract_forwarded_for_first_ip() {
-        let req =
-            make_request_with_headers("GET", "/", vec![("X-Forwarded-For", "10.0.0.1, 10.0.0.2")]);
-        let opts = RequestHandlerOpts {
-            log_forwarded_for: true,
-            trusted_proxies: vec![],
-            ..Default::default()
-        };
-        let ip = extract_forwarded_for(&req, &opts, None);
-        assert_eq!(ip, Some(IpAddr::V4(Ipv4Addr::new(10, 0, 0, 1))));
-    }
+    proptest! {
+        /// Escaped values never contain a byte that could end a quoted field, start a new line or
+        /// form a terminal escape sequence, and they decode back to the original bytes.
+        #[test]
+        fn prop_push_escaped_is_printable_and_lossless(value in proptest::collection::vec(any::<u8>(), 0..64)) {
+            let mut buf = String::new();
+            push_escaped(&mut buf, &value);
 
-    #[test]
-    fn extract_disabled_returns_none() {
-        let req = make_request_with_headers("GET", "/", vec![("X-Real-IP", "10.0.0.1")]);
-        let opts = RequestHandlerOpts {
-            log_x_real_ip: false,
-            ..Default::default()
-        };
-        assert_eq!(extract_x_real_ip(&req, &opts, None), None);
-    }
-
-    // --- post_process integration test ---
-
-    #[test]
-    fn post_process_renders_log_line() {
-        let fmt = AccessLogFormat::parse("%{method} %{uri} %{status}").unwrap();
-        let opts = RequestHandlerOpts::default();
-        let req = make_request("GET", "/test");
-        let resp = make_response(200, 512);
-        // Just verify it doesn't panic; actual log output goes through tracing
-        post_process(&fmt, &opts, &req, None, &resp, Duration::from_millis(5));
+            let mut decoded = Vec::new();
+            let mut rest = buf.as_bytes();
+            while let Some((&b, tail)) = rest.split_first() {
+                prop_assert!((0x20..=0x7e).contains(&b) && b != b'"', "{buf}");
+                if b == b'\\' {
+                    prop_assert_eq!(tail.first(), Some(&b'x'), "{}", buf);
+                    let hex = std::str::from_utf8(&tail[1..3]).unwrap();
+                    decoded.push(u8::from_str_radix(hex, 16).unwrap());
+                    rest = &tail[3..];
+                } else {
+                    decoded.push(b);
+                    rest = tail;
+                }
+            }
+            prop_assert_eq!(decoded, value);
+        }
     }
 }

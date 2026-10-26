@@ -244,3 +244,32 @@ pub(super) fn init(general: &General, advanced: Option<Advanced>) -> Result<Hand
         page50x,
     })
 }
+
+#[cfg(test)]
+mod tests {
+    use super::init;
+    use crate::Settings;
+
+    #[test]
+    fn access_log_format_invalid_fails_at_startup() {
+        let settings = Settings::get_unparsed(
+            false,
+            &[
+                "static-web-server",
+                "--root",
+                "tests/fixtures/public",
+                "--access-log-format",
+                "%{method} %{bogus}",
+            ],
+        )
+        .unwrap();
+
+        let err = init(&settings.general, None)
+            .err()
+            .expect("startup must fail");
+
+        let err = format!("{err:#}");
+        assert!(err.contains("invalid access log format"), "{err}");
+        assert!(err.contains("%{bogus}"), "{err}");
+    }
+}

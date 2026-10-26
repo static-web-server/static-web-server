@@ -67,7 +67,8 @@ page-fallback = ""
 ####         %{x_real_ip}, %{forwarded_for}, %{host}, %{user_agent}, %{referer},
 ####         %{timestamp}, %{version}. Use %% for literal %.
 ####         %{timestamp} uses local time, honoring the TZ environment variable.
-# access-log-format = '%{remote_addr} - [%{timestamp}] "%{method} %{uri} %{version}" %{status} %{bytes} "%{referer}" "%{user_agent}"'
+#### e.g. '%{remote_addr} - [%{timestamp}] "%{method} %{uri} %{version}" %{status} %{bytes} "%{referer}" "%{user_agent}"'
+access-log-format = ""
 
 #### Log request Remote Address if available
 log-remote-address = false
