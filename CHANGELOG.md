@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **Custom headers for every response.** Added an optional `scope` to `[[advanced.headers]]` rules: `files` (default, static file responses only) or `all`, which also covers redirects, rewrites, `/health`, metrics, CORS preflight, Basic auth challenges, maintenance mode and the method check. ([#784](https://github.com/static-web-server/static-web-server/pull/784) by [@frenzzy](https://github.com/frenzzy))
+- **Custom headers for every response.** Added an optional `scope` to `[[advanced.headers]]` rules: `files` (default, static file responses only) or `all`, which also covers redirects, rewrites, `/health`, metrics, rejected CORS requests, Basic auth challenges, maintenance mode and the method check. ([#784](https://github.com/static-web-server/static-web-server/pull/784) by [@frenzzy](https://github.com/frenzzy))
 
 ## [v3.0.0-beta.2] - 2026-10-18
 

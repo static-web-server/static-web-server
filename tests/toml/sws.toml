@@ -114,6 +114,15 @@ source = "/assets/**"
 status = [200, 206, 304]
 headers = { Cache-Control = "public, max-age=31536000, immutable" }
 
+#### e. Also applied to early responses (optional `scope`)
+# By default (`scope = "files"`) headers apply to static file responses only.
+# `scope = "all"` also covers redirects, rewrite redirects, `/health`, rejected
+# CORS requests, `/metrics`, `405` and Basic auth challenges. It can be combined with `status`.
+[[advanced.headers]]
+source = "**"
+scope = "all"
+headers = { X-Content-Type-Options = "nosniff" }
+
 
 ### URL Redirects
 [[advanced.redirects]]

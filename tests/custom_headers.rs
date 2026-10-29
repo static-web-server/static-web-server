@@ -48,6 +48,45 @@ pub mod tests {
             .expect("handler must succeed")
     }
 
+    async fn request_with_opts(
+        fixture_toml: &str,
+        method: Method,
+        uri: &str,
+        headers: HeaderMap,
+        configure: impl FnOnce(&mut static_web_server::handler::RequestHandlerOpts),
+    ) -> Response<Body> {
+        let opts = fixture_settings(fixture_toml);
+        let mut req_handler_opts = fixture_req_handler_opts(opts.general, opts.advanced);
+        configure(&mut req_handler_opts);
+        let req_handler = fixture_req_handler(req_handler_opts);
+        let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
+
+        let mut req = Request::new(());
+        *req.method_mut() = method;
+        *req.uri_mut() = ["http://localhost", uri].concat().parse().unwrap();
+        *req.headers_mut() = headers;
+
+        req_handler
+            .handle(&mut req, remote_addr)
+            .await
+            .expect("handler must succeed")
+    }
+
+    /// A CORS preflight from an origin that is not allowed: rejected before the file handler.
+    async fn cors_rejected_preflight(fixture_toml: &str) -> Response<Body> {
+        let mut headers = HeaderMap::new();
+        headers.insert("origin", "http://localhost".parse().unwrap());
+        headers.insert("access-control-request-method", "GET".parse().unwrap());
+        request_with_opts(
+            fixture_toml,
+            Method::OPTIONS,
+            "/assets/main.css",
+            headers,
+            |opts| opts.cors = static_web_server::cors::new("https://allowed.example", "", ""),
+        )
+        .await
+    }
+
     async fn get(fixture_toml: &str, uri: &str) -> Response<Body> {
         request(fixture_toml, Method::GET, uri, HeaderMap::new()).await
     }
@@ -250,6 +289,52 @@ pub mod tests {
         let res = get(EARLY_TOML, "/moved").await;
         assert_eq!(res.status(), StatusCode::FOUND);
         assert!(res.headers().get(CACHE_CONTROL).is_none());
+    }
+
+    #[tokio::test]
+    async fn custom_headers_all_scope_applies_to_cors_rejection() {
+        let res = cors_rejected_preflight(EARLY_TOML).await;
+        assert_eq!(res.status(), StatusCode::FORBIDDEN);
+        assert_eq!(res.headers()["x-custom-header"], "every-response");
+    }
+
+    #[tokio::test]
+    async fn custom_headers_default_scope_skips_cors_rejection() {
+        let res = cors_rejected_preflight(EARLY_TOML).await;
+        assert_eq!(res.status(), StatusCode::FORBIDDEN);
+        assert!(res.headers().get("x-default-scope").is_none());
+        assert!(res.headers().get("x-files-scope").is_none());
+    }
+
+    #[cfg(feature = "metrics")]
+    #[tokio::test]
+    async fn custom_headers_all_scope_applies_to_metrics() {
+        let res = request_with_opts(
+            EARLY_TOML,
+            Method::GET,
+            "/metrics",
+            HeaderMap::new(),
+            |opts| opts.metrics_enabled = true,
+        )
+        .await;
+        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(res.headers()["x-custom-header"], "every-response");
+    }
+
+    #[cfg(feature = "metrics")]
+    #[tokio::test]
+    async fn custom_headers_default_scope_skips_metrics() {
+        let res = request_with_opts(
+            EARLY_TOML,
+            Method::GET,
+            "/metrics",
+            HeaderMap::new(),
+            |opts| opts.metrics_enabled = true,
+        )
+        .await;
+        assert_eq!(res.status(), StatusCode::OK);
+        assert!(res.headers().get("x-default-scope").is_none());
+        assert!(res.headers().get("x-files-scope").is_none());
     }
 
     #[cfg(feature = "basic-auth")]
