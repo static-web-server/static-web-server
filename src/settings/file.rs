@@ -108,6 +108,18 @@ impl CompressionLevel {
     }
 }
 
+#[derive(Debug, Default, Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
+#[serde(rename_all = "kebab-case")]
+/// Represents which responses a custom headers entry applies to.
+pub enum HeadersScope {
+    /// Responses of the static file handler only (default).
+    #[default]
+    Files,
+    /// Every response, including redirects, rewrites, `/health`, metrics, CORS preflight,
+    /// Basic auth challenges, maintenance mode and the method check.
+    All,
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "kebab-case")]
 /// Represents an HTTP headers map.
@@ -117,6 +129,9 @@ pub struct Headers {
     /// Optional list of HTTP response status codes the headers apply to.
     /// If not specified, the headers apply to any response status.
     pub status: Option<Vec<u16>>,
+    /// Which responses the headers apply to. Defaults to `files`.
+    #[serde(default)]
+    pub scope: HeadersScope,
     #[serde(rename(deserialize = "headers"), with = "http_serde::header_map")]
     /// headers list.
     pub headers: HeaderMap,

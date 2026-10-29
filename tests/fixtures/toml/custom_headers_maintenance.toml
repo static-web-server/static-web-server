@@ -7,5 +7,10 @@ maintenance-mode = true
 
 [[advanced.headers]]
 source = "**"
+scope = "all"
 status = [503]
 headers = { Retry-After = "120" }
+
+[[advanced.headers]]
+source = "**"
+headers = { X-Default-Scope = "1" }

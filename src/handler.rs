@@ -252,8 +252,8 @@ impl RequestHandler {
                 metrics::inc_requests_inflight();
             }
 
-            // Early responses serve no file; they still get the custom headers below
-            let result: Result<(Response<Body>, Option<PathBuf>), Error> = async {
+            // Early responses serve no file; custom headers with `scope = "all"` still reach them
+            let result: Result<Early, Error> = async {
                 // Reject if the HTTP request method is not allowed
                 if !req.method().is_allowed() {
                     return error_page::error_response(
@@ -263,44 +263,44 @@ impl RequestHandler {
                         &self.opts.page404,
                         &self.opts.page50x,
                     )
-                    .map(without_file);
+                    .map(early);
                 }
 
                 // Health endpoint check
                 if let Some(result) = health::pre_process(&self.opts, req) {
-                    return result.map(without_file);
+                    return result.map(early);
                 }
 
                 // CORS
                 if let Some(result) = cors::pre_process(&self.opts, req) {
-                    return result.map(without_file);
+                    return result.map(early);
                 }
 
                 // `Basic` HTTP Authorization Schema
                 #[cfg(feature = "basic-auth")]
                 if let Some(response) = basic_auth::pre_process(&self.opts, req) {
-                    return response.map(without_file);
+                    return response.map(early);
                 }
 
                 // Metrics endpoint check
                 #[cfg(feature = "metrics")]
                 if let Some(result) = metrics::pre_process(&self.opts, req) {
-                    return result.map(without_file);
+                    return result.map(early);
                 }
 
                 // Maintenance Mode
                 if let Some(response) = maintenance_mode::pre_process(&self.opts, req) {
-                    return response.map(without_file);
+                    return response.map(early);
                 }
 
                 // Redirects
                 if let Some(result) = redirects::pre_process(&self.opts, req) {
-                    return result.map(without_file);
+                    return result.map(early);
                 }
 
                 // Rewrites
                 if let Some(result) = rewrites::pre_process(&self.opts, req) {
-                    return result.map(without_file);
+                    return result.map(early);
                 }
 
                 // Advanced options
@@ -415,13 +415,13 @@ impl RequestHandler {
                 // Append security headers
                 let resp = security_headers::post_process(&self.opts, req, resp)?;
 
-                Ok((resp, file_path))
+                Ok((resp, file_path, false))
             }
             .await;
 
             // Add/update custom headers
-            let result = result.and_then(|(resp, file_path)| {
-                custom_headers::post_process(&self.opts, req, resp, file_path.as_ref())
+            let result = result.and_then(|(resp, file_path, early)| {
+                custom_headers::post_process(&self.opts, req, resp, file_path.as_ref(), early)
             });
 
             #[cfg(feature = "metrics")]
@@ -448,7 +448,10 @@ impl RequestHandler {
     }
 }
 
-/// Pairs a response that serves no file with an empty file path.
-fn without_file(resp: Response<Body>) -> (Response<Body>, Option<PathBuf>) {
-    (resp, None)
+/// A response together with the served file path and whether it was returned early.
+type Early = (Response<Body>, Option<PathBuf>, bool);
+
+/// Marks a response that was returned before the static file handler ran.
+fn early(resp: Response<Body>) -> Early {
+    (resp, None, true)
 }

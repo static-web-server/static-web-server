@@ -17,9 +17,21 @@ redirect = 302
 
 [[advanced.headers]]
 source = "**"
+scope = "all"
 headers = { X-Custom-Header = "every-response" }
 
 [[advanced.headers]]
 source = "/old"
+scope = "all"
 status = [301]
 headers = { Cache-Control = "public, max-age=86400" }
+
+# Default scope: static file responses only
+[[advanced.headers]]
+source = "**"
+headers = { X-Default-Scope = "1" }
+
+[[advanced.headers]]
+source = "**"
+scope = "files"
+headers = { X-Files-Scope = "1" }
