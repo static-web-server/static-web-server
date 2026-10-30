@@ -474,4 +474,67 @@ pub mod tests {
             }
         };
     }
+
+    #[tokio::test]
+    async fn markdown_enabled_vary_accept_on_both_representations() {
+        let opts = fixture_settings("toml/markdown_enabled.toml");
+        let req_handler_opts = fixture_req_handler_opts(opts.general, opts.advanced);
+        let req_handler = fixture_req_handler(req_handler_opts);
+        let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
+
+        // The same URI must vary on `Accept` whether it resolves to markdown or HTML
+        for accept in [Some("text/markdown"), Some("text/html"), None] {
+            let mut req = Request::new(());
+            *req.method_mut() = hyper::Method::GET;
+            *req.uri_mut() = "http://localhost/article".parse().unwrap();
+            if let Some(accept) = accept {
+                req.headers_mut()
+                    .insert(hyper::header::ACCEPT, HeaderValue::from_static(accept));
+            }
+
+            match req_handler.handle(&mut req, remote_addr).await {
+                Ok(res) => {
+                    assert_eq!(res.status(), 200);
+                    let vary = res.headers().get("vary").and_then(|v| v.to_str().ok());
+                    assert!(
+                        vary.is_some_and(|v| v.split(',').any(|n| n.trim() == "accept")),
+                        "missing `Vary: Accept` for Accept {accept:?}, got {vary:?}"
+                    );
+                }
+                Err(err) => {
+                    panic!("unexpected error: {err}")
+                }
+            };
+        }
+    }
+
+    #[tokio::test]
+    async fn markdown_disabled_no_vary_accept() {
+        let opts = fixture_settings("toml/markdown_disabled.toml");
+        let req_handler_opts = fixture_req_handler_opts(opts.general, opts.advanced);
+        let req_handler = fixture_req_handler(req_handler_opts);
+        let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
+
+        let mut req = Request::new(());
+        *req.method_mut() = hyper::Method::GET;
+        *req.uri_mut() = "http://localhost/article".parse().unwrap();
+        req.headers_mut().insert(
+            hyper::header::ACCEPT,
+            HeaderValue::from_static("text/markdown"),
+        );
+
+        match req_handler.handle(&mut req, remote_addr).await {
+            Ok(res) => {
+                assert_eq!(res.status(), 200);
+                let vary = res.headers().get("vary").and_then(|v| v.to_str().ok());
+                assert!(
+                    !vary.is_some_and(|v| v.split(',').any(|n| n.trim() == "accept")),
+                    "unexpected `Vary: Accept` when the feature is disabled, got {vary:?}"
+                );
+            }
+            Err(err) => {
+                panic!("unexpected error: {err}")
+            }
+        };
+    }
 }
