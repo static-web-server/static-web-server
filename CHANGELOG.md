@@ -7,10 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
-
-- **Custom headers for every response.** Added an optional `scope` to `[[advanced.headers]]` rules: `files` (default, static file responses only) or `all`, which also covers redirects, rewrites, `/health`, metrics, rejected CORS requests, Basic auth challenges, maintenance mode and the method check. ([#784](https://github.com/static-web-server/static-web-server/pull/784) by [@frenzzy](https://github.com/frenzzy))
-
 ## [v3.0.0-beta.2] - 2026-10-18
 
 This beta adds browser launch, status-based custom headers and automatic directory listing formats, alongside compression fixes and container image updates. It also includes security fixes. The related advisories will be published separately soon.

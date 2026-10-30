@@ -115,8 +115,8 @@ pub enum HeadersScope {
     /// Responses of the static file handler only (default).
     #[default]
     Files,
-    /// Every response, including redirects, rewrites, `/health`, metrics, rejected CORS requests,
-    /// Basic auth challenges, maintenance mode and the method check.
+    /// Every response, including redirects, rewrite redirects, `/health`, metrics, rejected CORS
+    /// requests, Basic auth challenges, maintenance mode and the method check.
     All,
 }
 

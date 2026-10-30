@@ -117,7 +117,8 @@ headers = { Cache-Control = "public, max-age=31536000, immutable" }
 #### e. Also applied to early responses (optional `scope`)
 # By default (`scope = "files"`) headers apply to static file responses only.
 # `scope = "all"` also covers redirects, rewrite redirects, `/health`, rejected
-# CORS requests, `/metrics`, `405` and Basic auth challenges. It can be combined with `status`.
+# CORS requests, `/metrics`, `405`, Basic auth challenges and maintenance mode.
+# It can be combined with `status`.
 [[advanced.headers]]
 source = "**"
 scope = "all"
