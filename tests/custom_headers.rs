@@ -4,7 +4,7 @@
 #![deny(dead_code)]
 
 //! Integration tests for the custom HTTP headers (`[[advanced.headers]]`)
-//! and their optional `status` filter.
+//! and their optional `status` filter and `scope`.
 
 #[cfg(test)]
 pub mod tests {
@@ -22,6 +22,8 @@ pub mod tests {
 
     const STATUS_TOML: &str = "toml/custom_headers_status.toml";
     const ORDER_TOML: &str = "toml/custom_headers_status_order.toml";
+    const EARLY_TOML: &str = "toml/custom_headers_early.toml";
+    const MAINTENANCE_TOML: &str = "toml/custom_headers_maintenance.toml";
     const IMMUTABLE: &str = "public, max-age=31536000, immutable";
 
     async fn request(
@@ -44,6 +46,45 @@ pub mod tests {
             .handle(&mut req, remote_addr)
             .await
             .expect("handler must succeed")
+    }
+
+    async fn request_with_opts(
+        fixture_toml: &str,
+        method: Method,
+        uri: &str,
+        headers: HeaderMap,
+        configure: impl FnOnce(&mut static_web_server::handler::RequestHandlerOpts),
+    ) -> Response<Body> {
+        let opts = fixture_settings(fixture_toml);
+        let mut req_handler_opts = fixture_req_handler_opts(opts.general, opts.advanced);
+        configure(&mut req_handler_opts);
+        let req_handler = fixture_req_handler(req_handler_opts);
+        let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
+
+        let mut req = Request::new(());
+        *req.method_mut() = method;
+        *req.uri_mut() = ["http://localhost", uri].concat().parse().unwrap();
+        *req.headers_mut() = headers;
+
+        req_handler
+            .handle(&mut req, remote_addr)
+            .await
+            .expect("handler must succeed")
+    }
+
+    /// A CORS preflight from an origin that is not allowed: rejected before the file handler.
+    async fn cors_rejected_preflight(fixture_toml: &str) -> Response<Body> {
+        let mut headers = HeaderMap::new();
+        headers.insert("origin", "http://localhost".parse().unwrap());
+        headers.insert("access-control-request-method", "GET".parse().unwrap());
+        request_with_opts(
+            fixture_toml,
+            Method::OPTIONS,
+            "/assets/main.css",
+            headers,
+            |opts| opts.cors = static_web_server::cors::new("https://allowed.example", "", ""),
+        )
+        .await
     }
 
     async fn get(fixture_toml: &str, uri: &str) -> Response<Body> {
@@ -151,6 +192,178 @@ pub mod tests {
         let res = get(ORDER_TOML, "/assets/missing.css").await;
         assert_eq!(res.status(), StatusCode::NOT_FOUND);
         assert_eq!(res.headers()[CACHE_CONTROL], "no-store");
+    }
+
+    #[tokio::test]
+    async fn custom_headers_apply_to_redirects() {
+        let res = get(EARLY_TOML, "/old").await;
+        assert_eq!(res.status(), StatusCode::MOVED_PERMANENTLY);
+        assert_eq!(res.headers()[CACHE_CONTROL], "public, max-age=86400");
+        assert_eq!(res.headers()["x-custom-header"], "every-response");
+    }
+
+    #[tokio::test]
+    async fn custom_headers_apply_to_rewrite_redirects() {
+        let res = get(EARLY_TOML, "/moved").await;
+        assert_eq!(res.status(), StatusCode::FOUND);
+        assert_eq!(res.headers()["x-custom-header"], "every-response");
+    }
+
+    #[tokio::test]
+    async fn custom_headers_apply_to_method_not_allowed() {
+        let res = request(EARLY_TOML, Method::POST, "/old", HeaderMap::new()).await;
+        assert_eq!(res.status(), StatusCode::METHOD_NOT_ALLOWED);
+        assert_eq!(res.headers()["x-custom-header"], "every-response");
+        assert!(res.headers().get(CACHE_CONTROL).is_none());
+    }
+
+    #[tokio::test]
+    async fn custom_headers_apply_to_health() {
+        let res = get(EARLY_TOML, "/health").await;
+        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(res.headers()["x-custom-header"], "every-response");
+    }
+
+    #[tokio::test]
+    async fn custom_headers_apply_to_maintenance() {
+        let res = get(MAINTENANCE_TOML, "/assets/main.css").await;
+        assert_eq!(res.status(), StatusCode::SERVICE_UNAVAILABLE);
+        assert_eq!(res.headers()["retry-after"], "120");
+        assert!(res.headers().get("x-default-scope").is_none());
+    }
+
+    #[tokio::test]
+    async fn custom_headers_default_scope_skips_redirects() {
+        let res = get(EARLY_TOML, "/old").await;
+        assert_eq!(res.status(), StatusCode::MOVED_PERMANENTLY);
+        assert!(res.headers().get("x-default-scope").is_none());
+        assert!(res.headers().get("x-files-scope").is_none());
+    }
+
+    #[tokio::test]
+    async fn custom_headers_default_scope_skips_rewrite_redirects() {
+        let res = get(EARLY_TOML, "/moved").await;
+        assert_eq!(res.status(), StatusCode::FOUND);
+        assert!(res.headers().get("x-default-scope").is_none());
+        assert!(res.headers().get("x-files-scope").is_none());
+    }
+
+    #[tokio::test]
+    async fn custom_headers_default_scope_skips_health_and_method_check() {
+        let res = get(EARLY_TOML, "/health").await;
+        assert_eq!(res.status(), StatusCode::OK);
+        assert!(res.headers().get("x-default-scope").is_none());
+
+        let res = request(EARLY_TOML, Method::POST, "/old", HeaderMap::new()).await;
+        assert_eq!(res.status(), StatusCode::METHOD_NOT_ALLOWED);
+        assert!(res.headers().get("x-files-scope").is_none());
+    }
+
+    #[tokio::test]
+    async fn custom_headers_files_scope_applies_to_files_and_not_found() {
+        for (uri, status) in [
+            ("/assets/main.css", StatusCode::OK),
+            ("/assets/missing.css", StatusCode::NOT_FOUND),
+        ] {
+            let res = get(EARLY_TOML, uri).await;
+            assert_eq!(res.status(), status, "{uri}");
+            assert_eq!(res.headers()["x-default-scope"], "1", "{uri}");
+            assert_eq!(res.headers()["x-files-scope"], "1", "{uri}");
+            assert_eq!(res.headers()["x-custom-header"], "every-response", "{uri}");
+        }
+    }
+
+    #[tokio::test]
+    async fn custom_headers_all_scope_applies_to_files() {
+        let res = get(EARLY_TOML, "/assets/main.css").await;
+        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(res.headers()["x-custom-header"], "every-response");
+    }
+
+    #[tokio::test]
+    async fn custom_headers_all_scope_status_filter_skips_other_status() {
+        let res = get(EARLY_TOML, "/old").await;
+        assert_eq!(res.status(), StatusCode::MOVED_PERMANENTLY);
+        assert_eq!(res.headers()[CACHE_CONTROL], "public, max-age=86400");
+
+        let res = get(EARLY_TOML, "/moved").await;
+        assert_eq!(res.status(), StatusCode::FOUND);
+        assert!(res.headers().get(CACHE_CONTROL).is_none());
+    }
+
+    #[tokio::test]
+    async fn custom_headers_all_scope_applies_to_cors_rejection() {
+        let res = cors_rejected_preflight(EARLY_TOML).await;
+        assert_eq!(res.status(), StatusCode::FORBIDDEN);
+        assert_eq!(res.headers()["x-custom-header"], "every-response");
+    }
+
+    #[tokio::test]
+    async fn custom_headers_default_scope_skips_cors_rejection() {
+        let res = cors_rejected_preflight(EARLY_TOML).await;
+        assert_eq!(res.status(), StatusCode::FORBIDDEN);
+        assert!(res.headers().get("x-default-scope").is_none());
+        assert!(res.headers().get("x-files-scope").is_none());
+    }
+
+    #[cfg(feature = "metrics")]
+    #[tokio::test]
+    async fn custom_headers_all_scope_applies_to_metrics() {
+        let res = request_with_opts(
+            EARLY_TOML,
+            Method::GET,
+            "/metrics",
+            HeaderMap::new(),
+            |opts| opts.metrics_enabled = true,
+        )
+        .await;
+        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(res.headers()["x-custom-header"], "every-response");
+    }
+
+    #[cfg(feature = "metrics")]
+    #[tokio::test]
+    async fn custom_headers_default_scope_skips_metrics() {
+        let res = request_with_opts(
+            EARLY_TOML,
+            Method::GET,
+            "/metrics",
+            HeaderMap::new(),
+            |opts| opts.metrics_enabled = true,
+        )
+        .await;
+        assert_eq!(res.status(), StatusCode::OK);
+        assert!(res.headers().get("x-default-scope").is_none());
+        assert!(res.headers().get("x-files-scope").is_none());
+    }
+
+    #[cfg(feature = "basic-auth")]
+    #[tokio::test]
+    async fn custom_headers_apply_to_basic_auth_challenge() {
+        let opts = fixture_settings(EARLY_TOML);
+        let mut req_handler_opts = fixture_req_handler_opts(opts.general, opts.advanced);
+        req_handler_opts.basic_auth =
+            "jq:$2y$05$32zazJ1yzhlDHnt26L3MFOgY0HVqPmDUvG0KUx6cjf9RDiUGp/M9q".into();
+        let req_handler = fixture_req_handler(req_handler_opts);
+        let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
+
+        let mut req = Request::new(());
+        *req.uri_mut() = "http://localhost/assets/main.css".parse().unwrap();
+
+        let res = req_handler
+            .handle(&mut req, remote_addr)
+            .await
+            .expect("handler must succeed");
+        assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+        assert!(res.headers().get("www-authenticate").is_some());
+        assert_eq!(res.headers()["x-custom-header"], "every-response");
+        assert!(res.headers().get("x-default-scope").is_none());
+    }
+
+    #[test]
+    fn custom_headers_unknown_scope_is_rejected() {
+        let err = settings_error("toml/custom_headers_scope_invalid.toml");
+        assert!(err.contains("everything"), "{err}");
     }
 
     #[test]

@@ -27,6 +27,7 @@ use cli::General;
 
 use self::file::MemoryCache;
 
+pub(crate) use self::file::HeadersScope;
 use self::file::{RedirectsKind, Settings as FileSettings};
 
 #[cfg(any(
@@ -45,6 +46,8 @@ pub struct Headers {
     /// Optional list of response status codes the headers apply to.
     /// If `None`, the headers apply to any response status.
     pub status: Option<Vec<StatusCode>>,
+    /// Which responses the headers apply to.
+    pub scope: HeadersScope,
     /// Map of custom HTTP headers
     pub headers: HeaderMap,
 }
@@ -535,6 +538,7 @@ impl Settings {
                             headers_vec.push(Headers {
                                 source,
                                 status,
+                                scope: headers_entry.scope,
                                 headers: headers_entry.headers.to_owned(),
                             });
                         }
