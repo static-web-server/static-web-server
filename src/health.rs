@@ -7,7 +7,7 @@
 //!
 
 use headers::{ContentType, HeaderMapExt};
-use hyper::{Method, Request, Response};
+use hyper::{Method, Request, Response, Uri};
 
 use crate::body::Body;
 use crate::{Error, handler::RequestHandlerOpts};
@@ -27,7 +27,7 @@ pub fn pre_process<T>(
         return None;
     }
 
-    if !is_health_endpoint(req) {
+    if !is_health_endpoint(req.uri()) {
         return None;
     }
 
@@ -47,8 +47,8 @@ pub fn pre_process<T>(
     Some(Ok(resp))
 }
 
-pub(crate) fn is_health_endpoint<T>(req: &Request<T>) -> bool {
-    req.uri().path() == "/health"
+pub(crate) fn is_health_endpoint(uri: &Uri) -> bool {
+    uri.path() == "/health"
 }
 
 #[cfg(test)]

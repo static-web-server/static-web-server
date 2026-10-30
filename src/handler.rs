@@ -239,7 +239,8 @@ impl RequestHandler {
         #[cfg(feature = "mem-cache")]
         let memory_cache = self.opts.memory_cache.as_ref();
 
-        log_addr::pre_process(&self.opts, req, remote_addr);
+        // Rewrites replace the request URI, so keep the one the client sent for the log line
+        let req_uri = req.uri().clone();
 
         async move {
             #[cfg(feature = "metrics")]
@@ -442,6 +443,14 @@ impl RequestHandler {
                     );
                 }
             }
+
+            log_addr::log_response(
+                &self.opts,
+                req,
+                &req_uri,
+                remote_addr,
+                result.as_ref().ok().map(|resp| resp.status()),
+            );
 
             result
         }

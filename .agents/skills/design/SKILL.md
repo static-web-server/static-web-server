@@ -55,7 +55,6 @@ bin/server.rs → settings/ → server/ (mod.rs, opts.rs) → service.rs → han
 
 | # | Step | Phase | Short-circuits? |
 |---|------|-------|-----------------|
-| 0 | Remote address logging (`log_addr`) | Pre | No |
 | 1 | Method check (`GET`, `HEAD`, `OPTIONS` only) | Pre | Yes (405) |
 | 2 | Health endpoint (`health`) | Pre | Yes |
 | 3 | CORS (`cors::pre_process`) | Pre | Yes (preflight reply, or 403 for a disallowed origin) |
@@ -77,7 +76,7 @@ bin/server.rs → settings/ → server/ (mod.rs, opts.rs) → service.rs → han
 | 19 | Security headers | Post | — |
 | 20 | Custom headers (final precedence) | Post | — |
 
-Metrics (request count, inflight, duration) wrap the whole pipeline.
+Metrics (request count, inflight, duration) wrap the whole pipeline. Once the result exists, `log_addr::log_response` logs one line per request with the response status and the URI the client sent (before rewrites).
 
 ### Pipeline Rules
 
