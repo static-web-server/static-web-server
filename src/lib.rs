@@ -179,6 +179,7 @@ pub(crate) mod text_charset;
 #[cfg(feature = "tls")]
 #[cfg_attr(docsrs, doc(cfg(feature = "tls")))]
 pub mod tls;
+pub(crate) mod trace_context;
 pub(crate) mod virtual_hosts;
 #[cfg(windows)]
 #[cfg_attr(docsrs, doc(cfg(windows)))]

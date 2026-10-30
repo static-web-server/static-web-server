@@ -10,7 +10,7 @@ use crate::settings::Advanced;
 use crate::settings::cli::General;
 use crate::{
     Context, Result, compression_static, control_headers, cors, etag, health, helpers, log_addr,
-    maintenance_mode, security_headers,
+    maintenance_mode, security_headers, trace_context,
 };
 
 #[cfg(feature = "directory-listing")]
@@ -166,6 +166,9 @@ pub(super) fn init(general: &General, advanced: Option<Advanced>) -> Result<Hand
 
     // Log remote address
     log_addr::init(general.log_remote_address, &mut handler_opts);
+
+    // Log trace context
+    trace_context::init(general.log_trace_context, &mut handler_opts);
 
     // Metrics endpoint
     #[cfg(feature = "metrics")]
