@@ -153,7 +153,8 @@ fn render_token(buf: &mut String, token: Token, ctx: &LogContext<'_>) {
     match token {
         Token::Method => buf.push_str(ctx.method),
         Token::Uri => {
-            let _ = write!(Escaped(buf), "{}", ctx.uri);
+            let path = ctx.uri.path_and_query().map_or("/", |p| p.as_str());
+            push_escaped(buf, path.as_bytes());
         }
         Token::Version => buf.push_str(ctx.version),
         Token::Status => {
@@ -202,24 +203,11 @@ fn push_header(buf: &mut String, headers: &HeaderMap, name: HeaderName) {
 fn push_escaped(buf: &mut String, value: &[u8]) {
     for &b in value {
         match b {
-            b'"' | b'\\' => {
-                let _ = write!(buf, "\\x{b:02X}");
-            }
-            0x20..=0x7e => buf.push(b as char),
+            0x20..=0x7e if b != b'"' && b != b'\\' => buf.push(b as char),
             _ => {
                 let _ = write!(buf, "\\x{b:02X}");
             }
         }
-    }
-}
-
-/// Writes formatted text through [`push_escaped`], without an intermediate `String`.
-struct Escaped<'a>(&'a mut String);
-
-impl Write for Escaped<'_> {
-    fn write_str(&mut self, s: &str) -> std::fmt::Result {
-        push_escaped(self.0, s.as_bytes());
-        Ok(())
     }
 }
 
@@ -417,6 +405,15 @@ mod tests {
             ..context(&uri, &headers)
         };
         assert_eq!(fmt.render(&ctx), "GET /index.html 200 1024");
+    }
+
+    #[test]
+    fn render_uri_logs_the_path_and_query_only() {
+        // Over HTTP/2 the request URI carries the scheme and authority
+        let fmt = AccessLogFormat::parse("%{uri}").unwrap();
+        let uri = Uri::from_static("https://127.0.0.1:8443/a/b.css?v=1");
+        let headers = HeaderMap::new();
+        assert_eq!(fmt.render(&context(&uri, &headers)), "/a/b.css?v=1");
     }
 
     #[test]

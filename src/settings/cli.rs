@@ -566,6 +566,7 @@ pub struct General {
     /// request logging with a configurable format that includes response data.
     /// Tokens: method, uri, status, bytes, duration, remote_addr, x_real_ip,
     /// forwarded_for, host, user_agent, referer, timestamp, version.
+    /// x_real_ip and forwarded_for are logged only for requests from --trusted-proxies, if set.
     /// Example: '%{remote_addr} "%{method} %{uri}" %{status} %{bytes}'
     pub access_log_format: String,
 

@@ -117,7 +117,7 @@ mod tests {
             assert_eq!(access[0]["level"], "INFO");
             assert_eq!(
                 access[0]["message"],
-                format!(r#"{ip} "{method} http://localhost/index.html HTTP/1.1" 200 "curl/8.0""#)
+                format!(r#"{ip} "{method} /index.html HTTP/1.1" 200 "curl/8.0""#)
             );
             assert!(
                 lines
@@ -148,8 +148,9 @@ mod tests {
 
     #[tokio::test]
     async fn access_log_format_rewrite_logs_the_uri_sent_by_the_client() {
-        let uri = "http://localhost/some/error-page.html";
-        let req = Request::get(uri).body(()).unwrap();
+        let req = Request::get("http://localhost/some/error-page.html")
+            .body(())
+            .unwrap();
 
         let (status, lines) =
             log_lines("toml/rewrites.toml", with_format("%{uri} %{status}"), req).await;
@@ -158,9 +159,61 @@ mod tests {
         let access = access_log_lines(&lines);
         assert_eq!(access.len(), 1, "{lines:?}");
         assert_eq!(
-            access[0]["message"],
-            format!("{uri} 200"),
+            access[0]["message"], "/some/error-page.html 200",
             "the URI before the rewrite to /404.html"
+        );
+    }
+
+    #[tokio::test]
+    async fn access_log_format_uri_logs_the_path_and_query_only() {
+        // Absolute-form, as `Uri` carries it over HTTP/2
+        let req = Request::get("https://127.0.0.1:8443/index.html?v=1")
+            .body(())
+            .unwrap();
+
+        let (status, lines) = log_lines("toml/handler.toml", with_format("%{uri}"), req).await;
+
+        assert_eq!(status, 200);
+        let access = access_log_lines(&lines);
+        assert_eq!(access.len(), 1, "{lines:?}");
+        assert_eq!(access[0]["message"], "/index.html?v=1");
+    }
+
+    fn proxied_request() -> Request<()> {
+        Request::get("http://localhost/index.html")
+            .header("x-real-ip", "203.0.113.7")
+            .header("x-forwarded-for", "203.0.113.195, 10.0.0.1")
+            .body(())
+            .unwrap()
+    }
+
+    #[tokio::test]
+    async fn access_log_format_proxy_tokens_need_no_log_flags() {
+        let format = "%{x_real_ip} %{forwarded_for}";
+
+        let (_, lines) =
+            log_lines("toml/handler.toml", with_format(format), proxied_request()).await;
+
+        let access = access_log_lines(&lines);
+        assert_eq!(access.len(), 1, "{lines:?}");
+        assert_eq!(access[0]["message"], "203.0.113.7 203.0.113.195");
+    }
+
+    #[tokio::test]
+    async fn access_log_format_proxy_tokens_follow_trusted_proxies() {
+        let format = "%{x_real_ip} %{forwarded_for}";
+        let general = |general| General {
+            trusted_proxies: vec!["10.0.0.1".parse().unwrap()],
+            ..with_format(format)(general)
+        };
+
+        let (_, lines) = log_lines("toml/handler.toml", general, proxied_request()).await;
+
+        let access = access_log_lines(&lines);
+        assert_eq!(access.len(), 1, "{lines:?}");
+        assert_eq!(
+            access[0]["message"], "- -",
+            "the remote address is not a trusted proxy"
         );
     }
 
