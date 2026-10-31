@@ -7,7 +7,8 @@
 //!
 //! SWS exposes the Kubernetes-style `/livez` (liveness) and `/readyz` (readiness) probes.
 //! Both return `200 OK`, except `/readyz` returns `503 Service Unavailable` once a shutdown
-//! signal is received, so load balancers stop routing to SWS during the grace period.
+//! signal is received, so load balancers stop routing to SWS during the grace period, or
+//! while the root directory is not an accessible directory.
 //!
 
 use headers::{ContentType, HeaderMapExt};
@@ -33,7 +34,8 @@ pub fn init(enabled: bool, handler_opts: &mut RequestHandlerOpts) {
 }
 
 /// Answers `GET` and `HEAD` requests to `/livez` and `/readyz` with a `text/plain` body:
-/// `200 OK`, or `503` for `/readyz` while shutting down. Other requests fall through.
+/// `200 OK`, or `503` for `/readyz` while shutting down or without a root directory.
+/// Other requests fall through.
 pub fn pre_process<T>(
     opts: &RequestHandlerOpts,
     req: &Request<T>,
@@ -48,11 +50,9 @@ pub fn pre_process<T>(
         _ => return None,
     };
 
-    let draining = req.uri().path() == READINESS_PATH && opts.shutting_down.load(Ordering::Relaxed);
-    let (status, text) = if draining {
-        (StatusCode::SERVICE_UNAVAILABLE, "shutting down")
-    } else {
-        (StatusCode::OK, "OK")
+    let (status, text) = match readiness_failure(opts, req) {
+        Some(reason) => (StatusCode::SERVICE_UNAVAILABLE, reason),
+        None => (StatusCode::OK, "OK"),
     };
 
     let body = if is_head {
@@ -69,6 +69,21 @@ pub fn pre_process<T>(
     // introducing markup into a probe response.
     resp.headers_mut().typed_insert(ContentType::text_utf8());
     Some(Ok(resp))
+}
+
+/// Returns why `/readyz` must fail, or `None` when ready or for `/livez`.
+fn readiness_failure<T>(opts: &RequestHandlerOpts, req: &Request<T>) -> Option<&'static str> {
+    if req.uri().path() != READINESS_PATH {
+        return None;
+    }
+    if opts.shutting_down.load(Ordering::Relaxed) {
+        return Some("shutting down");
+    }
+    // Same blocking `stat(2)` the file handler runs for every request.
+    if !std::fs::metadata(&opts.root_dir).is_ok_and(|m| m.is_dir()) {
+        return Some("root directory unavailable");
+    }
+    None
 }
 
 /// Reports whether the request path is one of the health endpoints, ignoring the query.
@@ -99,6 +114,7 @@ mod tests {
     fn enabled() -> RequestHandlerOpts {
         RequestHandlerOpts {
             health: true,
+            root_dir: "tests/fixtures/public".into(),
             ..Default::default()
         }
     }
@@ -200,6 +216,28 @@ mod tests {
             let req = make_request("GET", path);
             assert!(!is_health_endpoint(&req), "{path}");
             assert!(pre_process(&enabled(), &req).is_none(), "{path}");
+        }
+    }
+
+    #[tokio::test]
+    async fn health_readyz_fails_without_root_dir() {
+        for root in ["tests/fixtures/missing", "tests/fixtures/public/index.htm"] {
+            let opts = RequestHandlerOpts {
+                root_dir: root.into(),
+                ..enabled()
+            };
+
+            let resp = pre_process(&opts, &make_request("GET", "/readyz"))
+                .expect("probe must be handled")
+                .expect("probe must not fail");
+            assert_eq!(resp.status(), StatusCode::SERVICE_UNAVAILABLE, "{root}");
+            let body = resp.into_body().collect().await.unwrap().to_bytes();
+            assert_eq!(body.as_ref(), b"root directory unavailable", "{root}");
+
+            let resp = pre_process(&opts, &make_request("GET", "/livez"))
+                .expect("probe must be handled")
+                .expect("probe must not fail");
+            assert_eq!(resp.status(), StatusCode::OK, "{root}");
         }
     }
 }
