@@ -109,36 +109,48 @@ pub mod tests {
         }
     }
 
-    /// Send `GET <path>` to a running server and return the response status code.
-    async fn status_of(port: u16, path: &str) -> u16 {
+    /// Send `GET <path>` with the given `Host` to a running server and return the raw response.
+    async fn fetch(port: u16, path: &str, host: &str) -> String {
         let mut stream = tokio::net::TcpStream::connect(("127.0.0.1", port))
             .await
             .expect("connect");
-        let req = format!("GET {path} HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n");
+        let req = format!("GET {path} HTTP/1.1\r\nHost: {host}\r\nConnection: close\r\n\r\n");
         stream.write_all(req.as_bytes()).await.expect("write");
         let mut buf = Vec::new();
         stream.read_to_end(&mut buf).await.expect("read");
-        let head = String::from_utf8_lossy(&buf);
-        head.split(' ')
+        String::from_utf8_lossy(&buf).into_owned()
+    }
+
+    /// Send `GET <path>` to a running server and return the response status code.
+    async fn status_of(port: u16, path: &str) -> u16 {
+        fetch(port, path, "localhost")
+            .await
+            .split(' ')
             .nth(1)
             .and_then(|s| s.parse().ok())
             .expect("status code")
     }
 
-    #[tokio::test]
-    async fn health_readyz_fails_during_grace_period() {
+    /// Run a server with the given extra arguments on a free port.
+    fn spawn_server(
+        extra: &[&str],
+    ) -> (
+        u16,
+        tokio::sync::watch::Sender<()>,
+        std::thread::JoinHandle<static_web_server::Result>,
+    ) {
         let (cancel_tx, cancel_rx) = tokio::sync::watch::channel(());
         let listener = std::net::TcpListener::bind("127.0.0.1:0").expect("bind");
         let port = listener.local_addr().expect("local addr").port();
-        let args = [
+        let mut args: Vec<String> = [
             "static-web-server",
             "--root",
             "tests/fixtures/public",
             "--health",
-            "--grace-period",
-            "3",
         ]
-        .map(String::from);
+        .map(String::from)
+        .to_vec();
+        args.extend(extra.iter().map(|s| s.to_string()));
         let server = std::thread::spawn(move || {
             let refs: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
             let settings =
@@ -148,6 +160,25 @@ pub mod tests {
                 .with_pre_bound_listener(listener)
                 .run_server_on_rt(Some(cancel_rx), || {}, false)
         });
+        (port, cancel_tx, server)
+    }
+
+    /// Stop the server and wait for it to exit.
+    async fn stop_server(
+        cancel_tx: tokio::sync::watch::Sender<()>,
+        server: std::thread::JoinHandle<static_web_server::Result>,
+    ) {
+        // The receiver is gone if shutdown already started.
+        let _ = cancel_tx.send(());
+        tokio::task::spawn_blocking(move || server.join().expect("server thread"))
+            .await
+            .expect("join")
+            .expect("server result");
+    }
+
+    #[tokio::test]
+    async fn health_readyz_fails_during_grace_period() {
+        let (port, cancel_tx, server) = spawn_server(&["--grace-period", "3"]);
 
         assert_eq!(status_of(port, "/readyz").await, 200);
         cancel_tx.send(()).expect("cancel");
@@ -167,9 +198,31 @@ pub mod tests {
             "/livez during grace period"
         );
 
-        tokio::task::spawn_blocking(move || server.join().expect("server thread"))
-            .await
-            .expect("join")
-            .expect("server result");
+        stop_server(cancel_tx, server).await;
+    }
+
+    #[cfg(feature = "metrics")]
+    #[tokio::test]
+    async fn health_probes_skip_metrics() {
+        let (port, cancel_tx, server) = spawn_server(&["--metrics"]);
+
+        for path in PROBES {
+            assert!(
+                fetch(port, path, "probe.test")
+                    .await
+                    .starts_with("HTTP/1.1 200")
+            );
+        }
+        assert!(
+            fetch(port, "/index.htm", "file.test")
+                .await
+                .starts_with("HTTP/1.1 200")
+        );
+
+        let metrics = fetch(port, "/metrics", "localhost").await;
+        assert!(metrics.contains(r#"host="file.test""#), "{metrics}");
+        assert!(!metrics.contains(r#"host="probe.test""#), "{metrics}");
+
+        stop_server(cancel_tx, server).await;
     }
 }

@@ -247,8 +247,10 @@ impl RequestHandler {
         async move {
             #[cfg(feature = "metrics")]
             let req_start = std::time::Instant::now();
+            // Health probes are excluded, like they are from `info` logs
             #[cfg(feature = "metrics")]
-            let metrics_enabled = self.opts.metrics_enabled;
+            let metrics_enabled =
+                self.opts.metrics_enabled && !(self.opts.health && health::is_health_endpoint(req));
 
             #[cfg(feature = "metrics")]
             if metrics_enabled {
