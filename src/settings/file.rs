@@ -115,8 +115,8 @@ pub enum HeadersScope {
     /// Responses of the static file handler only (default).
     #[default]
     Files,
-    /// Every response, including redirects, rewrite redirects, `/health`, metrics, rejected CORS
-    /// requests, Basic auth challenges, maintenance mode and the method check.
+    /// Every response, including redirects, rewrite redirects, `/livez` and `/readyz`, metrics,
+    /// rejected CORS requests, Basic auth challenges, maintenance mode and the method check.
     All,
 }
 
@@ -420,7 +420,7 @@ pub struct General {
     /// Resolve the web root directory at request time rather than at startup.
     pub use_relative_root: Option<bool>,
 
-    /// Health endpoint feature.
+    /// Health endpoints feature (`/livez` and `/readyz`).
     pub health: Option<bool>,
 
     /// Accept markdown content negotiation feature.

@@ -133,7 +133,7 @@ pub struct RequestHandlerOpts {
     pub accept_markdown: bool,
     /// Default `charset=utf-8` parameter applied to certain `text` responses without one.
     pub text_charset: bool,
-    /// Health endpoint feature.
+    /// Health endpoints feature (`/livez` and `/readyz`).
     pub health: bool,
     /// Metrics endpoint feature.
     #[cfg(feature = "metrics")]
@@ -266,7 +266,7 @@ impl RequestHandler {
                     .map(early);
                 }
 
-                // Health endpoint check
+                // Health endpoints check (`/livez` and `/readyz`)
                 if let Some(result) = health::pre_process(&self.opts, req) {
                     return result.map(early);
                 }
