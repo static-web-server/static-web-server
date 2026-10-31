@@ -677,8 +677,8 @@ pub struct General {
         env = "SERVER_HEALTH",
     )]
     /// Add the `/livez` (liveness) and `/readyz` (readiness) endpoints for Kubernetes-style probes.
-    /// They answer `GET` and `HEAD` with `200 OK` (`/readyz` returns `503` once shutdown starts)
-    /// and log requests at `debug` level only.
+    /// They answer `GET` and `HEAD` with `200 OK` (`/readyz` returns `503` once shutdown starts or
+    /// while the root directory is missing) and log requests at `debug` level only.
     pub health: bool,
 
     #[cfg(feature = "metrics")]
