@@ -11,6 +11,8 @@ pub mod tests {
     use http_body_util::BodyExt;
     use hyper::{Method, Request, Response, StatusCode};
     use std::net::SocketAddr;
+    use std::time::Duration;
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
     use static_web_server::body::Body;
     use static_web_server::handler::RequestHandlerOpts;
@@ -105,5 +107,69 @@ pub mod tests {
             .await;
             assert_eq!(res.status(), StatusCode::OK, "{path}");
         }
+    }
+
+    /// Send `GET <path>` to a running server and return the response status code.
+    async fn status_of(port: u16, path: &str) -> u16 {
+        let mut stream = tokio::net::TcpStream::connect(("127.0.0.1", port))
+            .await
+            .expect("connect");
+        let req = format!("GET {path} HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n");
+        stream.write_all(req.as_bytes()).await.expect("write");
+        let mut buf = Vec::new();
+        stream.read_to_end(&mut buf).await.expect("read");
+        let head = String::from_utf8_lossy(&buf);
+        head.split(' ')
+            .nth(1)
+            .and_then(|s| s.parse().ok())
+            .expect("status code")
+    }
+
+    #[tokio::test]
+    async fn health_readyz_fails_during_grace_period() {
+        let (cancel_tx, cancel_rx) = tokio::sync::watch::channel(());
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").expect("bind");
+        let port = listener.local_addr().expect("local addr").port();
+        let args = [
+            "static-web-server",
+            "--root",
+            "tests/fixtures/public",
+            "--health",
+            "--grace-period",
+            "3",
+        ]
+        .map(String::from);
+        let server = std::thread::spawn(move || {
+            let refs: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
+            let settings =
+                static_web_server::Settings::get_unparsed(false, &refs).expect("settings");
+            static_web_server::Server::new(settings)
+                .expect("server")
+                .with_pre_bound_listener(listener)
+                .run_server_on_rt(Some(cancel_rx), || {}, false)
+        });
+
+        assert_eq!(status_of(port, "/readyz").await, 200);
+        cancel_tx.send(()).expect("cancel");
+
+        let mut readyz = 200;
+        for _ in 0..40 {
+            readyz = status_of(port, "/readyz").await;
+            if readyz == 503 {
+                break;
+            }
+            tokio::time::sleep(Duration::from_millis(25)).await;
+        }
+        assert_eq!(readyz, 503, "/readyz during grace period");
+        assert_eq!(
+            status_of(port, "/livez").await,
+            200,
+            "/livez during grace period"
+        );
+
+        tokio::task::spawn_blocking(move || server.join().expect("server thread"))
+            .await
+            .expect("join")
+            .expect("server result");
     }
 }

@@ -6,12 +6,13 @@
 //! Module providing the health endpoints.
 //!
 //! SWS exposes the Kubernetes-style `/livez` (liveness) and `/readyz` (readiness) probes.
-//! SWS keeps no state that could make it alive but not ready, so both paths return the
-//! same `200 OK` response.
+//! Both return `200 OK`, except `/readyz` returns `503 Service Unavailable` once a shutdown
+//! signal is received, so load balancers stop routing to SWS during the grace period.
 //!
 
 use headers::{ContentType, HeaderMapExt};
-use hyper::{Method, Request, Response};
+use hyper::{Method, Request, Response, StatusCode};
+use std::sync::atomic::Ordering;
 
 use crate::body::Body;
 use crate::{Error, handler::RequestHandlerOpts};
@@ -31,8 +32,8 @@ pub fn init(enabled: bool, handler_opts: &mut RequestHandlerOpts) {
     );
 }
 
-/// Answers `GET` and `HEAD` requests to `/livez` and `/readyz` with `200 OK` and a
-/// `text/plain` `OK` body. Any other request falls through to the next pipeline step.
+/// Answers `GET` and `HEAD` requests to `/livez` and `/readyz` with a `text/plain` body:
+/// `200 OK`, or `503` for `/readyz` while shutting down. Other requests fall through.
 pub fn pre_process<T>(
     opts: &RequestHandlerOpts,
     req: &Request<T>,
@@ -41,14 +42,27 @@ pub fn pre_process<T>(
         return None;
     }
 
-    let body = match *req.method() {
-        Method::HEAD => crate::body::empty(),
-        Method::GET => crate::body::full("OK"),
+    let is_head = match *req.method() {
+        Method::HEAD => true,
+        Method::GET => false,
         _ => return None,
     };
 
+    let draining = req.uri().path() == READINESS_PATH && opts.shutting_down.load(Ordering::Relaxed);
+    let (status, text) = if draining {
+        (StatusCode::SERVICE_UNAVAILABLE, "shutting down")
+    } else {
+        (StatusCode::OK, "OK")
+    };
+
+    let body = if is_head {
+        crate::body::empty()
+    } else {
+        crate::body::full(text)
+    };
     let mut resp = Response::new(body);
-    // SECURITY: The body is a literal `OK` ASCII string, so advertise it
+    *resp.status_mut() = status;
+    // SECURITY: The body is a literal ASCII string, so advertise it
     // as `text/plain` instead of `text/html`. This eliminates any chance
     // of a downstream proxy / reverse-CDN rendering this endpoint as
     // HTML and prevents a future contributor from accidentally
@@ -70,6 +84,7 @@ mod tests {
     use crate::handler::RequestHandlerOpts;
     use http_body_util::BodyExt;
     use hyper::{Request, StatusCode, header::CONTENT_TYPE};
+    use std::sync::atomic::Ordering;
 
     const PROBES: [&str; 2] = ["/livez", "/readyz"];
 
@@ -129,6 +144,29 @@ mod tests {
             let body = resp.into_body().collect().await.unwrap().to_bytes();
             assert!(body.is_empty(), "{path}");
         }
+    }
+
+    #[tokio::test]
+    async fn health_readyz_fails_while_shutting_down() {
+        let opts = enabled();
+        opts.shutting_down.store(true, Ordering::Relaxed);
+
+        let resp = pre_process(&opts, &make_request("GET", "/readyz"))
+            .expect("probe must be handled")
+            .expect("probe must not fail");
+        assert_eq!(resp.status(), StatusCode::SERVICE_UNAVAILABLE);
+        let body = resp.into_body().collect().await.unwrap().to_bytes();
+        assert_eq!(body.as_ref(), b"shutting down");
+
+        let resp = pre_process(&opts, &make_request("HEAD", "/readyz"))
+            .expect("probe must be handled")
+            .expect("probe must not fail");
+        assert_eq!(resp.status(), StatusCode::SERVICE_UNAVAILABLE);
+
+        let resp = pre_process(&opts, &make_request("GET", "/livez"))
+            .expect("probe must be handled")
+            .expect("probe must not fail");
+        assert_eq!(resp.status(), StatusCode::OK);
     }
 
     #[test]

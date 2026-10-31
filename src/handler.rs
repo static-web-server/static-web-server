@@ -11,7 +11,7 @@ use std::{
     future::Future,
     net::{IpAddr, SocketAddr},
     path::PathBuf,
-    sync::Arc,
+    sync::{Arc, atomic::AtomicBool},
 };
 
 use crate::body::Body;
@@ -135,6 +135,8 @@ pub struct RequestHandlerOpts {
     pub text_charset: bool,
     /// Health endpoints feature (`/livez` and `/readyz`).
     pub health: bool,
+    /// Set once a shutdown signal is received; `/readyz` then returns `503`.
+    pub shutting_down: Arc<AtomicBool>,
     /// Metrics endpoint feature.
     #[cfg(feature = "metrics")]
     pub metrics_enabled: bool,
@@ -195,6 +197,7 @@ impl Default for RequestHandlerOpts {
             accept_markdown: false,
             text_charset: true,
             health: false,
+            shutting_down: Arc::default(),
             #[cfg(feature = "metrics")]
             metrics_enabled: false,
             maintenance_mode: false,

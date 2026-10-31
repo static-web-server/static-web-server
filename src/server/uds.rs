@@ -49,7 +49,12 @@ pub(super) async fn run<F: FnOnce()>(
         signals::create_signals().with_context(|| "failed to register termination signals")?;
     let handle = signals.handle();
     let cancel_recv = Arc::new(Mutex::new(ctx.cancel_recv));
-    let shutdown = signals::wait_for_signals(signals, ctx.grace_period, cancel_recv);
+    let shutdown = signals::wait_for_signals(
+        signals,
+        ctx.grace_period,
+        cancel_recv,
+        ctx.shutting_down.clone(),
+    );
     tokio::pin!(shutdown);
 
     tracing::info!(
@@ -186,6 +191,7 @@ mod tests {
         let ctx = ShutdownCtx {
             grace_period: 1,
             cancel_recv: Some(cancel_rx),
+            shutting_down: Default::default(),
         };
 
         let addr_str = format!("unix:{}", path.display());
@@ -255,6 +261,7 @@ mod tests {
         let ctx = ShutdownCtx {
             grace_period: 1,
             cancel_recv: Some(cancel_rx),
+            shutting_down: Default::default(),
         };
         let addr_str = format!("unix:{}", path.display());
         let server_path = path.clone();
