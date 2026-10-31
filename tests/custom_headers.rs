@@ -219,7 +219,7 @@ pub mod tests {
 
     #[tokio::test]
     async fn custom_headers_apply_to_health() {
-        let res = get(EARLY_TOML, "/health").await;
+        let res = get(EARLY_TOML, "/livez").await;
         assert_eq!(res.status(), StatusCode::OK);
         assert_eq!(res.headers()["x-custom-header"], "every-response");
     }
@@ -250,7 +250,7 @@ pub mod tests {
 
     #[tokio::test]
     async fn custom_headers_default_scope_skips_health_and_method_check() {
-        let res = get(EARLY_TOML, "/health").await;
+        let res = get(EARLY_TOML, "/readyz").await;
         assert_eq!(res.status(), StatusCode::OK);
         assert!(res.headers().get("x-default-scope").is_none());
 
