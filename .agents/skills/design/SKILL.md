@@ -137,6 +137,7 @@ Validate in `settings/` or `server/opts.rs` and fail startup with context (`bail
 | `--health` / `--metrics` / `--accept-markdown` / `--open` | `false` |
 | `--threads-multiplier` / `--max-blocking-threads` | `1` / `512` (`2` / `20` on wasm) |
 | `--grace-period` | `0` |
+| `--idle-timeout` | `30` (`0` disables) |
 | Memory cache | off unless `[advanced.memory-cache]` exists |
 
 ## Feature Flags

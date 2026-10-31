@@ -547,6 +547,10 @@ pub struct General {
     /// Defines a grace period in seconds after a `SIGTERM` signal is caught which will delay the server before to shut it down gracefully. The maximum value is 255 seconds.
     pub grace_period: u8,
 
+    #[arg(long, default_value = "30", env = "SERVER_IDLE_TIMEOUT")]
+    /// Defines the time in seconds after which a connection without any reads or writes is closed. An HTTP/1 request header must also arrive within this time. Use `0` to disable it. The maximum value is 65535 seconds.
+    pub idle_timeout: u16,
+
     #[arg(
         long,
         short = 'w',
@@ -806,6 +810,7 @@ mod default_tests {
         assert_eq!(general.root, PathBuf::from("."));
         assert!(!general.open);
         assert_eq!(general.open_path, None);
+        assert_eq!(general.idle_timeout, 30);
         #[cfg(feature = "tls")]
         assert_eq!(general.https_redirect_from_port, 8080);
         #[cfg(feature = "directory-listing")]

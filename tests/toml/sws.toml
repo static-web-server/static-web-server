@@ -56,6 +56,9 @@ threads-multiplier = 1
 #### Grace period after a graceful shutdown
 grace-period = 0
 
+#### Connection idle timeout
+idle-timeout = 30
+
 #### Page fallback for 404s
 page-fallback = ""
 
@@ -110,6 +113,16 @@ headers.Strict-Transport-Security = "max-age=63072000; includeSubDomains; preloa
 source = "/assets/**"
 status = [200, 206, 304]
 headers = { Cache-Control = "public, max-age=31536000, immutable" }
+
+#### e. Also applied to early responses (optional `scope`)
+# By default (`scope = "files"`) headers apply to static file responses only.
+# `scope = "all"` also covers redirects, rewrite redirects, `/health`, rejected
+# CORS requests, `/metrics`, `405`, Basic auth challenges and maintenance mode.
+# It can be combined with `status`.
+[[advanced.headers]]
+source = "**"
+scope = "all"
+headers = { X-Content-Type-Options = "nosniff" }
 
 
 ### URL Redirects

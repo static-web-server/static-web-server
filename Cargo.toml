@@ -1,6 +1,6 @@
 [package]
 name = "static-web-server"
-version = "3.0.0-beta.1"
+version = "3.0.0-beta.2"
 edition = "2024"
 rust-version = "1.88.0"
 authors = ["Jose Quintana <https://joseluisq.net>"]
@@ -58,7 +58,7 @@ http2 = ["tls", "hyper-util/http2"]
 compression = ["compression-brotli", "compression-deflate", "compression-gzip", "compression-zstd"]
 compression-brotli = ["async-compression/brotli"]
 compression-deflate = ["async-compression/zlib"]
-compression-gzip = ["async-compression/deflate"]
+compression-gzip = ["async-compression/gzip"]
 compression-zstd = ["async-compression/zstd"]
 # Directory listing
 directory-listing = ["chrono"]

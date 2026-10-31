@@ -109,18 +109,24 @@ impl ContainmentCache {
 
 /// Verifies that `file_path` is safe to serve under the current `opts`.
 ///
+/// `file_path` must be the file that will be served, so every file served
+/// in place of the requested path (index file, `.html` sibling,
+/// pre-compressed variant) is checked itself. Set `is_dir_listing` only for
+/// a directory listing, where `file_path` points at a missing index file of
+/// the listed directory.
+///
 /// Returns `Ok(())` when all security checks pass. Returns a `StatusCode`
 /// describing how the request should be denied otherwise.
 pub(super) fn enforce(
     file_path: &Path,
-    is_dir: bool,
+    is_dir_listing: bool,
     opts: &HandleOpts<'_>,
 ) -> Result<(), StatusCode> {
-    // For directory requests, the metadata-resolved `file_path` already
-    // points at the index file. Strip that segment so containment and
-    // symlink checks reflect the directory the user requested.
+    // For a directory listing, `file_path` points at the missing index file.
+    // Strip that segment so containment and symlink checks apply to the
+    // listed directory.
     let mut probe = file_path.to_path_buf();
-    if is_dir {
+    if is_dir_listing {
         probe.pop();
     }
 

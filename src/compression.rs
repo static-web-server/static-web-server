@@ -21,7 +21,7 @@ use headers::{ContentType, HeaderMap, HeaderMapExt, HeaderValue};
 use http_body_util::BodyExt as _;
 use hyper::{
     Method, Request, Response, StatusCode,
-    header::{CONTENT_ENCODING, CONTENT_LENGTH},
+    header::{CONTENT_ENCODING, CONTENT_LENGTH, CONTENT_RANGE},
 };
 use mime_guess::Mime;
 use tokio_util::io::{ReaderStream, StreamReader};
@@ -117,8 +117,14 @@ pub fn auto(
     level: CompressionLevel,
     resp: Response<Body>,
 ) -> Result<Response<Body>> {
-    // Skip compression for HEAD and OPTIONS request methods
-    if method.is_head() || method.is_options() {
+    // Skip compression for OPTIONS requests
+    if method.is_options() {
+        return Ok(resp);
+    }
+
+    // Skip compression for partial content: `Content-Range` counts bytes of the
+    // identity representation, so the selected range must be sent unencoded
+    if resp.status() == StatusCode::PARTIAL_CONTENT || resp.headers().contains_key(CONTENT_RANGE) {
         return Ok(resp);
     }
 
@@ -150,6 +156,16 @@ pub fn auto(
                 "skipping compression: content-length ({content_length}) below minimum ({MIN_COMPRESS_SIZE})",
             );
             return Ok(resp);
+        }
+
+        // A HEAD response has no content: send the header fields of the GET
+        // response (RFC 9110, section 9.3.2) without encoding a body
+        if method.is_head() {
+            let (mut head, body) = resp.into_parts();
+            let header = create_encoding_header(head.headers.remove(CONTENT_ENCODING), encoding);
+            head.headers.remove(CONTENT_LENGTH);
+            head.headers.insert(CONTENT_ENCODING, header);
+            return Ok(Response::from_parts(head, body));
         }
 
         #[cfg(any(feature = "compression", feature = "compression-gzip"))]
@@ -428,7 +444,7 @@ mod tests {
         let result = auto(&Method::HEAD, &headers, CompressionLevel::Default, resp).unwrap();
         assert!(
             result.headers().get(CONTENT_ENCODING).is_none(),
-            "HEAD requests are never compressed regardless of size"
+            "a HEAD response below the size threshold gets no content-encoding, as its GET response"
         );
     }
 

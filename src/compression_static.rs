@@ -60,58 +60,78 @@ pub fn precompressed_variant(
         "preparing pre-compressed file variant path of {}",
         file_path.display()
     );
-    if let Some(ref accept_encoding) = headers.typed_get::<AcceptEncoding>() {
-        for encoding in accept_encoding.sorted_encodings() {
-            // Determine preferred-encoding extension if available
-            let comp_ext = match encoding {
-                // `deflate` has no variant: a `.gz` file is not a valid `deflate` body.
-                // https://zlib.net/zlib_faq.html#faq39
-                ContentCoding::GZIP => "gz",
-                // https://peazip.github.io/brotli-compressed-file-format.html
-                ContentCoding::BROTLI => "br",
-                // https://datatracker.ietf.org/doc/html/rfc8878
-                ContentCoding::ZSTD => "zst",
-                _ => {
-                    tracing::trace!(
-                        "preferred encoding based on the file extension was not determined, skipping"
-                    );
-                    continue;
-                }
-            };
+    let accept_encoding = headers.typed_get::<AcceptEncoding>()?;
+    accept_encoding.sorted_encodings().find_map(|encoding| {
+        let (file_path, metadata) = variant_metadata(file_path, encoding)?;
+        tracing::trace!("pre-compressed file variant found, serving it directly");
+        Some(CompressedFileVariant {
+            file_path,
+            metadata,
+            encoding,
+        })
+    })
+}
 
-            let Some(comp_name) = file_path.file_name().and_then(OsStr::to_str) else {
-                tracing::trace!("file name was not determined for the current path, skipping");
-                continue;
-            };
+/// Returns the content codings of the pre-compressed variants of the given
+/// file path that exist on disk.
+///
+/// The in-memory cache records them in each entry of the file, so that a cache
+/// hit makes the same choice as [`precompressed_variant`] without touching the disk.
+#[cfg(feature = "mem-cache")]
+pub(crate) fn precompressed_variants(file_path: &Path) -> Box<[ContentCoding]> {
+    [
+        ContentCoding::ZSTD,
+        ContentCoding::BROTLI,
+        ContentCoding::GZIP,
+    ]
+    .into_iter()
+    .filter(|&encoding| variant_metadata(file_path, encoding).is_some())
+    .collect()
+}
 
-            let file_path = file_path.with_file_name([comp_name, ".", comp_ext].concat());
+/// Returns the path and metadata of the pre-compressed variant of the given
+/// file path in the given content coding, if that variant is a file on disk.
+fn variant_metadata(file_path: &Path, encoding: ContentCoding) -> Option<(PathBuf, Metadata)> {
+    // Determine preferred-encoding extension if available
+    let comp_ext = match encoding {
+        // `deflate` has no variant: a `.gz` file is not a valid `deflate` body.
+        // https://zlib.net/zlib_faq.html#faq39
+        ContentCoding::GZIP => "gz",
+        // https://peazip.github.io/brotli-compressed-file-format.html
+        ContentCoding::BROTLI => "br",
+        // https://datatracker.ietf.org/doc/html/rfc8878
+        ContentCoding::ZSTD => "zst",
+        _ => {
             tracing::trace!(
-                "trying to get the pre-compressed file variant metadata for {}",
-                file_path.display()
+                "preferred encoding based on the file extension was not determined, skipping"
             );
-
-            let (metadata, is_dir) = match try_metadata(&file_path) {
-                Ok(v) => v,
-                Err(e) => {
-                    tracing::trace!("pre-compressed file variant error: {:?}", e);
-                    continue;
-                }
-            };
-
-            if is_dir {
-                tracing::trace!("pre-compressed file variant found but it's a directory, skipping");
-                continue;
-            }
-
-            tracing::trace!("pre-compressed file variant found, serving it directly");
-
-            return Some(CompressedFileVariant {
-                file_path,
-                metadata,
-                encoding,
-            });
+            return None;
         }
+    };
+
+    let Some(comp_name) = file_path.file_name().and_then(OsStr::to_str) else {
+        tracing::trace!("file name was not determined for the current path, skipping");
+        return None;
+    };
+
+    let file_path = file_path.with_file_name([comp_name, ".", comp_ext].concat());
+    tracing::trace!(
+        "trying to get the pre-compressed file variant metadata for {}",
+        file_path.display()
+    );
+
+    let (metadata, is_dir) = match try_metadata(&file_path) {
+        Ok(v) => v,
+        Err(e) => {
+            tracing::trace!("pre-compressed file variant error: {:?}", e);
+            return None;
+        }
+    };
+
+    if is_dir {
+        tracing::trace!("pre-compressed file variant found but it's a directory, skipping");
+        return None;
     }
 
-    None
+    Some((file_path, metadata))
 }

@@ -1947,3 +1947,229 @@ mod tests {
         }
     }
 }
+
+/// Files served in place of the requested path (index files, `.html`
+/// siblings and pre-compressed variants) must pass the same containment and
+/// symlink checks as the requested path itself.
+#[cfg(all(test, unix))]
+mod substitute_file_security_tests {
+    use headers::HeaderMap;
+    use http::{Method, StatusCode, header::ACCEPT_ENCODING};
+    use http_body_util::BodyExt;
+    use std::os::unix::fs::symlink;
+    use std::path::{Path, PathBuf};
+
+    #[cfg(feature = "directory-listing")]
+    use static_web_server::directory_listing::DirListFmt;
+    use static_web_server::static_files::{self, HandleOpts};
+
+    const OUTSIDE_BODY: &str = "outside-root-marker";
+    const INSIDE_BODY: &str = "inside-root-target";
+
+    /// A canonical web root plus symlink targets outside and inside it.
+    struct Fixture {
+        _dir: tempfile::TempDir,
+        root: PathBuf,
+        outside: PathBuf,
+        inside: PathBuf,
+    }
+
+    impl Fixture {
+        fn new() -> Self {
+            let dir = tempfile::tempdir().expect("unable to create a temp dir");
+            let base = dir
+                .path()
+                .canonicalize()
+                .expect("unable to resolve the temp dir");
+            let root = base.join("www");
+            std::fs::create_dir_all(root.join("targets")).expect("unable to create the root");
+            let outside = base.join("outside-marker");
+            std::fs::write(&outside, OUTSIDE_BODY).expect("unable to write the outside file");
+            let inside = root.join("targets").join("inside-target");
+            std::fs::write(&inside, INSIDE_BODY).expect("unable to write the inside file");
+            Self {
+                _dir: dir,
+                root,
+                outside,
+                inside,
+            }
+        }
+
+        fn write(&self, name: &str, body: &str) {
+            std::fs::write(self.root.join(name), body).expect("unable to write a fixture file");
+        }
+
+        fn link(&self, name: &str, target: &Path) {
+            symlink(target, self.root.join(name)).expect("unable to create a symlink");
+        }
+    }
+
+    /// Requests `uri_path` with `compression-static` on and returns the
+    /// status and the body (empty on error).
+    async fn get(
+        root: &Path,
+        uri_path: &str,
+        accept_encoding: Option<&str>,
+        follow_symlinks: bool,
+    ) -> (StatusCode, String) {
+        let mut headers = HeaderMap::new();
+        if let Some(coding) = accept_encoding {
+            headers.insert(ACCEPT_ENCODING, coding.parse().unwrap());
+        }
+        let base_path = root.to_path_buf();
+        let result = static_files::handle(&HandleOpts {
+            method: &Method::GET,
+            headers: &headers,
+            base_path: &base_path,
+            uri_path,
+            uri_query: None,
+            #[cfg(feature = "mem-cache")]
+            memory_cache: None,
+            #[cfg(feature = "directory-listing")]
+            dir_listing: false,
+            #[cfg(feature = "directory-listing")]
+            dir_listing_order: 6,
+            #[cfg(feature = "directory-listing")]
+            dir_listing_format: &DirListFmt::Html,
+            #[cfg(feature = "directory-listing-download")]
+            dir_listing_download: &[],
+            redirect_trailing_slash: true,
+            compression_static: true,
+            etag: false,
+            include_hidden: false,
+            follow_symlinks,
+            index_files: &["index.html"],
+        })
+        .await;
+        match result {
+            Ok(res) => {
+                let status = res.resp.status();
+                let body = res.resp.into_body().collect().await.unwrap().to_bytes();
+                (status, String::from_utf8_lossy(&body).into_owned())
+            }
+            Err(status) => (status, String::new()),
+        }
+    }
+
+    /// Asserts how a substitute symlink is handled in both symlink modes:
+    /// outside the root it's never served, inside the root it follows the
+    /// symlink policy.
+    async fn assert_symlink_checked(
+        uri_path: &str,
+        accept_encoding: Option<&str>,
+        link_outside: impl Fn(&Fixture),
+        link_inside: impl Fn(&Fixture),
+    ) {
+        for follow_symlinks in [false, true] {
+            let fixture = Fixture::new();
+            link_outside(&fixture);
+            let (status, body) =
+                get(&fixture.root, uri_path, accept_encoding, follow_symlinks).await;
+            assert_eq!(
+                status,
+                StatusCode::NOT_FOUND,
+                "symlink outside the root must not be served (follow_symlinks={follow_symlinks})"
+            );
+            assert!(!body.contains(OUTSIDE_BODY));
+
+            let fixture = Fixture::new();
+            link_inside(&fixture);
+            let (status, body) =
+                get(&fixture.root, uri_path, accept_encoding, follow_symlinks).await;
+            if follow_symlinks {
+                assert_eq!(status, StatusCode::OK);
+                assert_eq!(body, INSIDE_BODY);
+            } else {
+                assert_eq!(
+                    status,
+                    StatusCode::FORBIDDEN,
+                    "symlink inside the root must follow the symlink policy"
+                );
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn precompressed_variant_symlink_is_checked() {
+        for (ext, coding) in [("gz", "gzip"), ("br", "br"), ("zst", "zstd")] {
+            let variant = format!("app.js.{ext}");
+            assert_symlink_checked(
+                "/app.js",
+                Some(coding),
+                |f| {
+                    f.write("app.js", "original");
+                    f.link(&variant, &f.outside);
+                },
+                |f| {
+                    f.write("app.js", "original");
+                    f.link(&variant, &f.inside);
+                },
+            )
+            .await;
+        }
+    }
+
+    #[tokio::test]
+    async fn precompressed_variant_regular_file_is_served() {
+        let fixture = Fixture::new();
+        fixture.write("app.js", "original");
+        fixture.write("app.js.gz", "gzip variant");
+        let (status, body) = get(&fixture.root, "/app.js", Some("gzip"), false).await;
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(body, "gzip variant");
+    }
+
+    #[tokio::test]
+    async fn index_file_symlink_is_checked() {
+        assert_symlink_checked(
+            "/docs/",
+            None,
+            |f| {
+                std::fs::create_dir(f.root.join("docs")).unwrap();
+                f.link("docs/index.html", &f.outside);
+            },
+            |f| {
+                std::fs::create_dir(f.root.join("docs")).unwrap();
+                f.link("docs/index.html", &f.inside);
+            },
+        )
+        .await;
+    }
+
+    #[tokio::test]
+    async fn index_file_regular_file_is_served() {
+        let fixture = Fixture::new();
+        std::fs::create_dir(fixture.root.join("docs")).unwrap();
+        fixture.write("docs/index.html", "index");
+        let (status, body) = get(&fixture.root, "/docs/", None, false).await;
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(body, "index");
+    }
+
+    #[tokio::test]
+    async fn html_sibling_of_directory_symlink_is_checked() {
+        assert_symlink_checked(
+            "/docs/",
+            None,
+            |f| {
+                std::fs::create_dir(f.root.join("docs")).unwrap();
+                f.link("docs.html", &f.outside);
+            },
+            |f| {
+                std::fs::create_dir(f.root.join("docs")).unwrap();
+                f.link("docs.html", &f.inside);
+            },
+        )
+        .await;
+    }
+
+    #[tokio::test]
+    async fn html_sibling_of_directory_regular_file_is_served() {
+        let fixture = Fixture::new();
+        std::fs::create_dir(fixture.root.join("docs")).unwrap();
+        fixture.write("docs.html", "sibling");
+        let (status, body) = get(&fixture.root, "/docs/", None, false).await;
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(body, "sibling");
+    }
+}

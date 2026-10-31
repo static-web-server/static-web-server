@@ -19,6 +19,7 @@ mod tests {
         assert_eq!(root, Path::new("docker/public"));
         assert_eq!(general.open, Some(true));
         assert_eq!(general.open_path.as_deref(), Some("/docs"));
+        assert_eq!(general.idle_timeout, Some(30));
 
         let advanced = settings.advanced.as_ref().unwrap();
         let virtual_hosts = advanced.virtual_hosts.as_ref().unwrap();

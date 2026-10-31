@@ -59,6 +59,8 @@ pub async fn handle(opts: &HandleOpts<'_>) -> Result<StaticFileResponse, StatusC
     // In-memory file cache lookup. A hit short-circuits the pipeline.
     // On miss, the file is read from disk and the streaming pipeline
     // populates the cache opportunistically (see `mem_cache::stream`).
+    // With `compression-static`, the cached representation is negotiated
+    // from the pre-compressed variants recorded in the cache entries.
     #[cfg(feature = "mem-cache")]
     if let Some(resp) = try_memory_cache(opts, &mut file_path) {
         return Ok(resp);
@@ -77,7 +79,18 @@ pub async fn handle(opts: &HandleOpts<'_>) -> Result<StaticFileResponse, StatusC
         opts.index_files,
     )?;
 
-    security::enforce(file_path, is_dir, opts)?;
+    // A directory request is served from its index file (or `.html` sibling)
+    // when one was resolved, so that file is checked. Only a directory
+    // listing, where `metadata` still describes the directory, checks the
+    // directory itself.
+    let is_dir_listing = is_dir && metadata.is_dir();
+    security::enforce(file_path, is_dir_listing, opts)?;
+
+    // A pre-compressed variant is served instead of `file_path`, so it must
+    // pass the same checks before it is opened.
+    if let Some((precomp_path, _)) = &precompressed_variant {
+        security::enforce(precomp_path, false, opts)?;
+    }
 
     let resp_file_path = file_path.to_owned();
 
@@ -126,7 +139,7 @@ fn try_memory_cache(
         file_path.push("index.html");
     }
 
-    let result = cache::lookup(file_path.as_path(), opts.headers)?;
+    let result = cache::lookup(file_path.as_path(), opts.headers, opts.compression_static)?;
     match result {
         Ok(resp) => Some(StaticFileResponse::new(resp, file_path.clone())),
         // Hit, but the cached entry returned an error status (e.g. malformed Range).

@@ -27,6 +27,7 @@ use cli::General;
 
 use self::file::MemoryCache;
 
+pub(crate) use self::file::HeadersScope;
 use self::file::{RedirectsKind, Settings as FileSettings};
 
 #[cfg(any(
@@ -45,6 +46,8 @@ pub struct Headers {
     /// Optional list of response status codes the headers apply to.
     /// If `None`, the headers apply to any response status.
     pub status: Option<Vec<StatusCode>>,
+    /// Which responses the headers apply to.
+    pub scope: HeadersScope,
     /// Map of custom HTTP headers
     pub headers: HeaderMap,
 }
@@ -215,6 +218,7 @@ impl Settings {
         let mut threads_multiplier = opts.threads_multiplier;
         let mut max_blocking_threads = opts.max_blocking_threads;
         let mut grace_period = opts.grace_period;
+        let mut idle_timeout = opts.idle_timeout;
 
         #[cfg(feature = "fallback-page")]
         let mut page_fallback = opts.page_fallback;
@@ -422,6 +426,9 @@ impl Settings {
                 if let Some(v) = general.grace_period {
                     grace_period = v
                 }
+                if let Some(v) = general.idle_timeout {
+                    idle_timeout = v
+                }
                 #[cfg(feature = "fallback-page")]
                 if let Some(v) = general.page_fallback {
                     page_fallback = v
@@ -531,6 +538,7 @@ impl Settings {
                             headers_vec.push(Headers {
                                 source,
                                 status,
+                                scope: headers_entry.scope,
                                 headers: headers_entry.headers.to_owned(),
                             });
                         }
@@ -816,6 +824,7 @@ impl Settings {
                 threads_multiplier,
                 max_blocking_threads,
                 grace_period,
+                idle_timeout,
                 #[cfg(feature = "fallback-page")]
                 page_fallback,
                 log_remote_address,

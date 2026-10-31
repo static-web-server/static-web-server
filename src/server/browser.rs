@@ -71,6 +71,7 @@ mod tests {
             threads: 1,
             open: false,
             open_path: Some("/docs"),
+            conn: Default::default(),
         };
 
         assert_eq!(listener_url("http", &listener, &run_cfg), None);
@@ -85,6 +86,7 @@ mod tests {
             threads: 1,
             open: true,
             open_path: Some("/docs"),
+            conn: Default::default(),
         };
 
         assert_eq!(

@@ -13,19 +13,17 @@
 //! access can be restricted via filesystem permissions.
 //!
 //! The accept loop is intentionally minimal: each accepted [`tokio::net::UnixStream`]
-//! is wrapped with [`hyper_util::rt::TokioIo`] and served via [`hyper::server::conn::http1`].
+//! is wrapped with [`super::ConnConfig::io`] and served via [`hyper::server::conn::http1`].
 //! No peer socket address is propagated to the request handler since UDS peers
 //! do not have a [`std::net::SocketAddr`].
 
-use hyper::server::conn::http1;
-use hyper_util::rt::TokioIo;
 use hyper_util::server::graceful::GracefulShutdown;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::net::UnixListener;
 use tokio::sync::Mutex;
 
-use crate::server::ShutdownCtx;
+use crate::server::{ServerRunConfig, ShutdownCtx};
 use crate::service::RouterService;
 use crate::signals;
 use crate::{Context, Result};
@@ -40,13 +38,12 @@ pub(super) async fn run<F: FnOnce()>(
     listener: UnixListener,
     socket_path: PathBuf,
     router: RouterService,
-    addr_str: &str,
-    threads: usize,
+    run_cfg: ServerRunConfig<'_>,
     ctx: ShutdownCtx,
     _cancel_fn: F,
 ) -> Result {
     let graceful = GracefulShutdown::new();
-    let builder = http1::Builder::new();
+    let builder = run_cfg.conn.http1_builder();
 
     let signals =
         signals::create_signals().with_context(|| "failed to register termination signals")?;
@@ -56,9 +53,13 @@ pub(super) async fn run<F: FnOnce()>(
     tokio::pin!(shutdown);
 
     tracing::info!(
-        parent: tracing::info_span!("Server::start_server", ?addr_str, ?threads),
+        parent: tracing::info_span!(
+            "Server::start_server",
+            addr_str = ?run_cfg.addr_str,
+            threads = ?run_cfg.threads
+        ),
         "http1 server is listening on unix socket {}",
-        addr_str
+        run_cfg.addr_str
     );
     tracing::info!("press ctrl+c to shut down the server");
 
@@ -69,6 +70,7 @@ pub(super) async fn run<F: FnOnce()>(
                     Ok((stream, _addr)) => stream,
                     Err(e) => {
                         tracing::error!("failed to accept Unix socket connection: {:?}", e);
+                        super::accept_error_backoff(&e).await;
                         continue;
                     }
                 };
@@ -76,7 +78,7 @@ pub(super) async fn run<F: FnOnce()>(
                 // downstream features (e.g. logging, real-ip headers) treat
                 // this connection as having no IP-level remote address.
                 let svc = router.build(None);
-                let conn = builder.serve_connection(TokioIo::new(stream), svc);
+                let conn = builder.serve_connection(run_cfg.conn.io(stream), svc);
                 tokio::spawn(graceful.watch(conn));
             }
             _ = &mut shutdown => { break; }
@@ -122,7 +124,7 @@ mod tests {
     use tokio::sync::watch;
 
     use crate::handler::RequestHandler;
-    use crate::server::{ShutdownCtx, uds};
+    use crate::server::{ServerRunConfig, ShutdownCtx, uds};
     use crate::service::RouterService;
     use crate::testing::fixtures::{fixture_req_handler_opts, fixture_settings};
 
@@ -137,6 +139,17 @@ mod tests {
             .map(|d| d.subsec_nanos())
             .unwrap_or(0);
         std::env::temp_dir().join(format!("sws-{name}-{pid}-{nanos}.sock"))
+    }
+
+    /// Build the run config for a test listener with the default connection settings.
+    fn run_cfg(addr_str: &str) -> ServerRunConfig<'_> {
+        ServerRunConfig {
+            addr_str,
+            threads: 1,
+            open: false,
+            open_path: None,
+            conn: Default::default(),
+        }
     }
 
     /// Build a `RouterService` backed by the same fixture handler as the rest
@@ -178,7 +191,15 @@ mod tests {
         let addr_str = format!("unix:{}", path.display());
         let server_path = path.clone();
         let server = tokio::spawn(async move {
-            uds::run(listener, server_path, router, &addr_str, 1, ctx, || {}).await
+            uds::run(
+                listener,
+                server_path,
+                router,
+                run_cfg(&addr_str),
+                ctx,
+                || {},
+            )
+            .await
         });
 
         // Give the accept loop a moment to start before connecting.
@@ -238,7 +259,15 @@ mod tests {
         let addr_str = format!("unix:{}", path.display());
         let server_path = path.clone();
         let server = tokio::spawn(async move {
-            uds::run(listener, server_path, router, &addr_str, 1, ctx, || {}).await
+            uds::run(
+                listener,
+                server_path,
+                router,
+                run_cfg(&addr_str),
+                ctx,
+                || {},
+            )
+            .await
         });
 
         tokio::time::sleep(std::time::Duration::from_millis(50)).await;
