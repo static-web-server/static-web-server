@@ -12,19 +12,31 @@
 //! Bytes outside printable ASCII, `"` and `\` in them are written as `\xHH`, so a client cannot
 //! end a quoted field, start a new log line or inject terminal escape sequences. An escaped
 //! value longer than 4 KiB is cut and ends with `...`, so a large header cannot make a large line.
+//!
+//! The line is written when hyper drops the response body: once it is sent, or when the client
+//! goes away. So `%{bytes}` and `%{duration}` cover the whole transfer.
 
-use hyper::header::{HOST, HeaderName, HeaderValue};
-use hyper::{HeaderMap, Request, Response, Uri};
+use bytes::Bytes;
+use http::uri::Authority;
+use http_body::{Frame, SizeHint};
+use http_body_util::BodyExt;
+use hyper::header::{HOST, HeaderValue, REFERER, USER_AGENT};
+use hyper::{Method, Request, Response, StatusCode, Uri, Version};
 use std::fmt::Write;
+use std::io;
 use std::net::{IpAddr, SocketAddr};
-use std::time::Duration;
+use std::pin::Pin;
+use std::sync::Arc;
+use std::task::{Context, Poll, ready};
+use std::time::Instant;
+use time::{OffsetDateTime, format_description::BorrowedFormatItem, macros::format_description};
 
 use crate::{body::Body, handler::RequestHandlerOpts, health, log_addr};
 
 /// A compiled access log format, parsed once at startup.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct AccessLogFormat {
-    segments: Vec<Segment>,
+    segments: Arc<[Segment]>,
 }
 
 /// A single segment of a compiled format string.
@@ -121,13 +133,15 @@ impl AccessLogFormat {
             segments.push(Segment::Literal(literal));
         }
 
-        Ok(Self { segments })
+        Ok(Self {
+            segments: segments.into(),
+        })
     }
 
     /// Renders the format using the given request/response context.
     fn render(&self, ctx: &LogContext<'_>) -> String {
         let mut buf = String::with_capacity(256);
-        for seg in &self.segments {
+        for seg in self.segments.iter() {
             match seg {
                 Segment::Literal(s) => buf.push_str(s),
                 Segment::Token(token) => render_token(&mut buf, *token, ctx),
@@ -137,25 +151,142 @@ impl AccessLogFormat {
     }
 }
 
-/// The request values that the pipeline may replace, as the client sent them.
-#[derive(Debug)]
-pub(crate) struct ClientRequest {
-    uri: Uri,
-    host: Option<HeaderValue>,
+/// Whether the line of `req` passes the log level filter, so it is worth building.
+pub(crate) fn enabled<T>(opts: &RequestHandlerOpts, req: &Request<T>) -> bool {
+    // Health check requests are logged in debug mode only, as `log_addr` does
+    if opts.health && health::is_health_endpoint(req.uri()) {
+        tracing::enabled!(tracing::Level::DEBUG)
+    } else {
+        tracing::enabled!(tracing::Level::INFO)
+    }
 }
 
-impl ClientRequest {
-    /// Keeps the URI and `Host` header, which rewrites replace, before the pipeline runs.
-    pub(crate) fn new<T>(req: &Request<T>) -> Self {
+/// The request values of an access log line, copied before the pipeline runs: rewrites replace
+/// the URI and `Host`, and the line is written after the handler returns.
+#[derive(Debug)]
+pub(crate) struct AccessLog {
+    format: AccessLogFormat,
+    method: Method,
+    uri: Uri,
+    host: Option<HeaderValue>,
+    version: Version,
+    user_agent: Option<HeaderValue>,
+    referer: Option<HeaderValue>,
+    remote_addr: Option<SocketAddr>,
+    x_real_ip: Option<IpAddr>,
+    forwarded_for: Option<IpAddr>,
+    health: bool,
+    start: Instant,
+}
+
+impl AccessLog {
+    /// Copies the request values the access log uses.
+    pub(crate) fn new<T>(
+        format: &AccessLogFormat,
+        opts: &RequestHandlerOpts,
+        req: &Request<T>,
+        remote_addr: Option<SocketAddr>,
+    ) -> Self {
+        let headers = req.headers();
         Self {
+            format: format.clone(),
+            method: req.method().clone(),
             uri: req.uri().clone(),
-            host: req.headers().get(HOST).cloned(),
+            host: headers.get(HOST).cloned(),
+            version: req.version(),
+            user_agent: headers.get(USER_AGENT).cloned(),
+            referer: headers.get(REFERER).cloned(),
+            remote_addr,
+            x_real_ip: log_addr::x_real_ip(opts, req, remote_addr),
+            forwarded_for: log_addr::forwarded_for(opts, req, remote_addr),
+            health: opts.health && health::is_health_endpoint(req.uri()),
+            start: Instant::now(),
         }
     }
 
-    /// The URI the client sent, before rewrites.
-    pub(crate) fn uri(&self) -> &Uri {
-        &self.uri
+    /// Wraps the response body, so the line is logged when hyper drops it.
+    pub(crate) fn wrap(self, resp: Response<Body>) -> Response<Body> {
+        let status = resp.status();
+        // Like CLF `%b`, these log `-` since no body is sent
+        let sends_body = self.method != Method::HEAD
+            && status != StatusCode::NO_CONTENT
+            && status != StatusCode::NOT_MODIFIED;
+        resp.map(|inner| {
+            LoggedBody {
+                inner,
+                log: self,
+                status: status.as_u16(),
+                bytes: 0,
+                sends_body,
+            }
+            .boxed()
+        })
+    }
+
+    fn write(&self, status: u16, bytes: u64) {
+        let ctx = LogContext {
+            method: self.method.as_str(),
+            uri: &self.uri,
+            host: self.host.as_ref(),
+            version: http_version_str(self.version),
+            status,
+            bytes,
+            duration_secs: self.start.elapsed().as_secs_f64(),
+            remote_addr: self.remote_addr,
+            user_agent: self.user_agent.as_ref(),
+            referer: self.referer.as_ref(),
+            x_real_ip: self.x_real_ip,
+            forwarded_for: self.forwarded_for,
+        };
+        let line = self.format.render(&ctx);
+
+        // Log health check requests in debug mode only, as `log_addr` does
+        if self.health {
+            tracing::debug!("{line}");
+        } else {
+            tracing::info!("{line}");
+        }
+    }
+}
+
+/// A response body that counts the data bytes it yields and writes the access log line on drop.
+struct LoggedBody {
+    inner: Body,
+    log: AccessLog,
+    status: u16,
+    bytes: u64,
+    sends_body: bool,
+}
+
+impl http_body::Body for LoggedBody {
+    type Data = Bytes;
+    type Error = io::Error;
+
+    fn poll_frame(
+        self: Pin<&mut Self>,
+        cx: &mut Context<'_>,
+    ) -> Poll<Option<Result<Frame<Bytes>, io::Error>>> {
+        let this = self.get_mut();
+        let frame = ready!(Pin::new(&mut this.inner).poll_frame(cx));
+        if let Some(data) = frame.as_ref().and_then(|f| f.as_ref().ok()?.data_ref()) {
+            this.bytes += data.len() as u64;
+        }
+        Poll::Ready(frame)
+    }
+
+    fn is_end_stream(&self) -> bool {
+        self.inner.is_end_stream()
+    }
+
+    fn size_hint(&self) -> SizeHint {
+        self.inner.size_hint()
+    }
+}
+
+impl Drop for LoggedBody {
+    fn drop(&mut self) {
+        let bytes = if self.sends_body { self.bytes } else { 0 };
+        self.log.write(self.status, bytes);
     }
 }
 
@@ -169,7 +300,8 @@ struct LogContext<'a> {
     bytes: u64,
     duration_secs: f64,
     remote_addr: Option<SocketAddr>,
-    headers: &'a HeaderMap,
+    user_agent: Option<&'a HeaderValue>,
+    referer: Option<&'a HeaderValue>,
     x_real_ip: Option<IpAddr>,
     forwarded_for: Option<IpAddr>,
 }
@@ -178,8 +310,13 @@ fn render_token(buf: &mut String, token: Token, ctx: &LogContext<'_>) {
     match token {
         Token::Method => buf.push_str(ctx.method),
         Token::Uri => {
-            let path = ctx.uri.path_and_query().map_or("/", |p| p.as_str());
-            push_escaped(buf, path.as_bytes());
+            let target = match (ctx.uri.path_and_query(), ctx.uri.authority()) {
+                (Some(path), _) => path.as_str(),
+                // Authority-form `CONNECT` target, e.g. `example.com:443`
+                (None, Some(authority)) if ctx.uri.scheme().is_none() => host_port(authority),
+                _ => "/",
+            };
+            push_escaped(buf, target.as_bytes());
         }
         Token::Version => buf.push_str(ctx.version),
         Token::Status => {
@@ -198,13 +335,25 @@ fn render_token(buf: &mut String, token: Token, ctx: &LogContext<'_>) {
         Token::XRealIp => push_ip(buf, ctx.x_real_ip),
         Token::ForwardedFor => push_ip(buf, ctx.forwarded_for),
         Token::Host => push_value(buf, request_host(ctx.uri, ctx.host)),
-        Token::UserAgent => push_header(buf, ctx.headers, hyper::header::USER_AGENT),
-        Token::Referer => push_header(buf, ctx.headers, hyper::header::REFERER),
+        Token::UserAgent => push_value(buf, ctx.user_agent.map(HeaderValue::as_bytes)),
+        Token::Referer => push_value(buf, ctx.referer.map(HeaderValue::as_bytes)),
         Token::Timestamp => {
-            // Uses local time, respecting the TZ environment variable
-            let now = chrono::Local::now();
-            let _ = write!(buf, "{}", now.format("%d/%b/%Y:%H:%M:%S %z"));
+            // Local time, respecting the TZ environment variable, or UTC if the offset is unknown
+            let now = OffsetDateTime::now_local().unwrap_or_else(|_| OffsetDateTime::now_utc());
+            push_clf_time(buf, now);
         }
+    }
+}
+
+/// Common Log Format time, e.g. `29/May/2026:23:43:47 +0200`.
+const CLF_TIME: &[BorrowedFormatItem<'_>] = format_description!(
+    "[day]/[month repr:short]/[year]:[hour]:[minute]:[second] [offset_hour sign:mandatory][offset_minute]"
+);
+
+fn push_clf_time(buf: &mut String, time: OffsetDateTime) {
+    match time.format(CLF_TIME) {
+        Ok(time) => buf.push_str(&time),
+        Err(_) => buf.push('-'),
     }
 }
 
@@ -221,17 +370,15 @@ fn push_ip(buf: &mut String, ip: Option<IpAddr>) {
 /// `:authority` or an absolute-form target) without userinfo, else the `Host` header.
 fn request_host<'a>(uri: &'a Uri, host: Option<&'a HeaderValue>) -> Option<&'a [u8]> {
     match uri.authority() {
-        Some(authority) => {
-            let authority = authority.as_str();
-            let host_port = authority.rsplit_once('@').map_or(authority, |(_, h)| h);
-            Some(host_port.as_bytes())
-        }
+        Some(authority) => Some(host_port(authority).as_bytes()),
         None => host.map(HeaderValue::as_bytes),
     }
 }
 
-fn push_header(buf: &mut String, headers: &HeaderMap, name: HeaderName) {
-    push_value(buf, headers.get(name).map(HeaderValue::as_bytes));
+/// The authority without userinfo.
+fn host_port(authority: &Authority) -> &str {
+    let authority = authority.as_str();
+    authority.rsplit_once('@').map_or(authority, |(_, h)| h)
 }
 
 fn push_value(buf: &mut String, value: Option<&[u8]>) {
@@ -274,56 +421,13 @@ fn http_version_str(version: hyper::Version) -> &'static str {
     }
 }
 
-/// Logs the request with the configured access log format, once the response exists.
-///
-/// It only logs, unlike the `post_process` steps that take and return the response. `client`
-/// holds the URI and `Host` the client sent: rewrites replace them during the pipeline.
-pub(crate) fn log_response<T>(
-    format: &AccessLogFormat,
-    opts: &RequestHandlerOpts,
-    req: &Request<T>,
-    client: &ClientRequest,
-    remote_addr: Option<SocketAddr>,
-    resp: &Response<Body>,
-    elapsed: Duration,
-) {
-    let bytes = resp
-        .headers()
-        .get(hyper::header::CONTENT_LENGTH)
-        .and_then(|v| v.to_str().ok())
-        .and_then(|v| v.parse::<u64>().ok())
-        .unwrap_or_default();
-
-    let ctx = LogContext {
-        method: req.method().as_str(),
-        uri: &client.uri,
-        host: client.host.as_ref(),
-        version: http_version_str(req.version()),
-        status: resp.status().as_u16(),
-        bytes,
-        duration_secs: elapsed.as_secs_f64(),
-        remote_addr,
-        headers: req.headers(),
-        x_real_ip: log_addr::x_real_ip(opts, req, remote_addr),
-        forwarded_for: log_addr::forwarded_for(opts, req, remote_addr),
-    };
-
-    let line = format.render(&ctx);
-
-    // Log health check requests in debug mode only, as `log_addr` does
-    if opts.health && health::is_health_endpoint(&client.uri) {
-        tracing::debug!("{line}");
-    } else {
-        tracing::info!("{line}");
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use hyper::Method;
+    use hyper::HeaderMap;
     use proptest::prelude::*;
     use std::net::Ipv4Addr;
+    use time::macros::datetime;
 
     fn context<'a>(uri: &'a Uri, headers: &'a HeaderMap) -> LogContext<'a> {
         LogContext {
@@ -335,13 +439,12 @@ mod tests {
             bytes: 0,
             duration_secs: 0.0,
             remote_addr: None,
-            headers,
+            user_agent: headers.get(USER_AGENT),
+            referer: headers.get(REFERER),
             x_real_ip: None,
             forwarded_for: None,
         }
     }
-
-    // Parsing tests
 
     #[test]
     fn parse_empty() {
@@ -443,8 +546,6 @@ mod tests {
         assert!(result.is_err());
     }
 
-    // Rendering tests
-
     #[test]
     fn render_basic_format() {
         let fmt = AccessLogFormat::parse("%{method} %{uri} %{status} %{bytes}").unwrap();
@@ -468,6 +569,21 @@ mod tests {
         let uri = Uri::from_static("https://127.0.0.1:8443/a/b.css?v=1");
         let headers = HeaderMap::new();
         assert_eq!(fmt.render(&context(&uri, &headers)), "/a/b.css?v=1");
+    }
+
+    #[test]
+    fn render_uri_logs_the_connect_authority() {
+        let fmt = AccessLogFormat::parse("%{uri}").unwrap();
+        let headers = HeaderMap::new();
+        let cases = [
+            ("example.com:443", "example.com:443"),
+            ("user:secret@example.com:443", "example.com:443"),
+            ("http://example.com", "/"),
+        ];
+        for (uri, target) in cases {
+            let uri = Uri::from_static(uri);
+            assert_eq!(fmt.render(&context(&uri, &headers)), target, "{uri}");
+        }
     }
 
     #[test]
@@ -588,10 +704,33 @@ mod tests {
         let uri = Uri::from_static("/");
         let headers = HeaderMap::new();
         let line = fmt.render(&context(&uri, &headers));
-        // e.g. `[29/May/2026:23:43:47 +0200]`
-        let parsed =
-            chrono::DateTime::parse_from_str(line.trim_matches(['[', ']']), "%d/%b/%Y:%H:%M:%S %z");
-        assert!(parsed.is_ok(), "{line}");
+        let clf =
+            regex_lite::Regex::new(r"^\[\d{2}/[A-Z][a-z]{2}/\d{4}:\d{2}:\d{2}:\d{2} [+-]\d{4}\]$")
+                .unwrap();
+        assert!(clf.is_match(&line), "{line}");
+    }
+
+    #[test]
+    fn push_clf_time_formats_the_offset() {
+        let cases = [
+            (
+                datetime!(2026-05-29 23:43:47 +02:00),
+                "29/May/2026:23:43:47 +0200",
+            ),
+            (
+                datetime!(2026-01-02 03:04:05 -05:30),
+                "02/Jan/2026:03:04:05 -0530",
+            ),
+            (
+                datetime!(2026-12-31 00:00:00 UTC),
+                "31/Dec/2026:00:00:00 +0000",
+            ),
+        ];
+        for (time, expected) in cases {
+            let mut buf = String::new();
+            push_clf_time(&mut buf, time);
+            assert_eq!(buf, expected);
+        }
     }
 
     proptest! {

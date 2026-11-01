@@ -247,9 +247,20 @@ impl RequestHandler {
 
         // Rewrites replace the request URI and `Host`, so keep the ones the client sent for the
         // per-request log line
-        let client_req = access_logs::ClientRequest::new(req);
+        let access_log = self
+            .opts
+            .access_log_format
+            .as_ref()
+            .filter(|_| access_logs::enabled(&self.opts, req))
+            .map(|format| access_logs::AccessLog::new(format, &self.opts, req, remote_addr));
+        let client_uri = self
+            .opts
+            .access_log_format
+            .is_none()
+            .then(|| req.uri().clone());
 
         async move {
+            #[cfg(feature = "metrics")]
             let req_start = std::time::Instant::now();
             // Health probes are excluded, like they are from `info` logs
             #[cfg(feature = "metrics")]
@@ -433,29 +444,21 @@ impl RequestHandler {
                 custom_headers::post_process(&self.opts, req, resp, file_path.as_ref(), early)
             });
 
-            // One line per request, once the response exists
-            match &self.opts.access_log_format {
-                Some(format) => {
-                    if let Ok(resp) = &result {
-                        access_logs::log_response(
-                            format,
-                            &self.opts,
-                            req,
-                            &client_req,
-                            remote_addr,
-                            resp,
-                            req_start.elapsed(),
-                        );
-                    }
-                }
-                None => log_addr::log_response(
+            // One line per request: the `log_addr` line once the response exists, the access log
+            // line once the response body is sent
+            if let Some(uri) = &client_uri {
+                log_addr::log_response(
                     &self.opts,
                     req,
-                    client_req.uri(),
+                    uri,
                     remote_addr,
                     result.as_ref().ok().map(|resp| resp.status()),
-                ),
+                );
             }
+            let result = match access_log {
+                Some(access_log) => result.map(|resp| access_log.wrap(resp)),
+                None => result,
+            };
 
             #[cfg(feature = "metrics")]
             if metrics_enabled {

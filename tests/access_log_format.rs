@@ -12,6 +12,7 @@
 
 #[cfg(test)]
 mod tests {
+    use http_body_util::BodyExt;
     use hyper::{Method, Request, Version};
     use std::io::Write;
     use std::net::SocketAddr;
@@ -37,13 +38,25 @@ mod tests {
         }
     }
 
-    /// Sends `req` through a handler built from `fixture` and `general`, and returns the
-    /// response status and all JSON events emitted while handling it.
-    async fn log_lines(
+    impl Capture {
+        fn lines(&self) -> Vec<serde_json::Value> {
+            let output = String::from_utf8(self.0.lock().unwrap().clone()).unwrap();
+            output
+                .lines()
+                .map(|line| serde_json::from_str(line).expect("valid JSON"))
+                .collect()
+        }
+    }
+
+    /// Sends `req` through a handler built from `fixture` and `general`, reads the response
+    /// body, and returns the response status, the body length and all JSON events emitted
+    /// meanwhile. With `check`, also calls it with the events emitted before reading the body.
+    async fn handle(
         fixture: &str,
         general: impl FnOnce(General) -> General,
         mut req: Request<()>,
-    ) -> (u16, Vec<serde_json::Value>) {
+        check: Option<fn(Vec<serde_json::Value>)>,
+    ) -> (u16, usize, Vec<serde_json::Value>) {
         let opts = fixture_settings(fixture);
         let handler = fixture_req_handler(fixture_req_handler_opts(
             general(opts.general),
@@ -60,19 +73,26 @@ mod tests {
             .finish();
         let guard = tracing::subscriber::set_default(subscriber);
         let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
-        let status = handler
+        let resp = handler
             .handle(&mut req, remote_addr)
             .await
-            .expect("unexpected handler error")
-            .status()
-            .as_u16();
+            .expect("unexpected handler error");
+        if let Some(check) = check {
+            check(capture.lines());
+        }
+        let status = resp.status().as_u16();
+        let body = resp.into_body().collect().await.unwrap().to_bytes();
         drop(guard);
 
-        let output = String::from_utf8(capture.0.lock().unwrap().clone()).unwrap();
-        let lines = output
-            .lines()
-            .map(|line| serde_json::from_str(line).expect("valid JSON"))
-            .collect();
+        (status, body.len(), capture.lines())
+    }
+
+    async fn log_lines(
+        fixture: &str,
+        general: impl FnOnce(General) -> General,
+        req: Request<()>,
+    ) -> (u16, Vec<serde_json::Value>) {
+        let (status, _, lines) = handle(fixture, general, req, None).await;
         (status, lines)
     }
 
@@ -128,6 +148,84 @@ mod tests {
         }
     }
 
+    /// Requests `/index.html` with `accept-encoding`, and returns the logged `%{bytes}` and the
+    /// length of the body sent.
+    async fn bytes_sent(encoding: &str) -> (serde_json::Value, usize) {
+        let req = Request::get("http://localhost/index.html")
+            .header("accept-encoding", encoding)
+            .body(())
+            .unwrap();
+
+        let (status, body_len, lines) =
+            handle("toml/handler.toml", with_format("%{bytes}"), req, None).await;
+
+        assert_eq!(status, 200);
+        let access = access_log_lines(&lines);
+        assert_eq!(access.len(), 1, "{lines:?}");
+        (access[0]["message"].clone(), body_len)
+    }
+
+    #[tokio::test]
+    async fn access_log_format_bytes_logs_the_body_sent() {
+        let file_len = std::fs::metadata("docker/public/index.html").unwrap().len();
+
+        let (logged, body_len) = bytes_sent("identity").await;
+
+        assert_eq!(body_len as u64, file_len);
+        assert_eq!(logged, body_len.to_string());
+    }
+
+    #[cfg(feature = "compression")]
+    #[tokio::test]
+    async fn access_log_format_bytes_logs_the_compressed_body_sent() {
+        let file_len = std::fs::metadata("docker/public/index.html").unwrap().len();
+
+        let (logged, body_len) = bytes_sent("gzip").await;
+
+        assert!((body_len as u64) < file_len, "compressed on the fly");
+        assert_eq!(logged, body_len.to_string());
+    }
+
+    #[tokio::test]
+    async fn access_log_format_bytes_is_a_dash_without_a_body() {
+        let head = Request::head("http://localhost/index.html")
+            .body(())
+            .unwrap();
+        let not_modified = Request::get("http://localhost/index.html")
+            .header("if-modified-since", "Fri, 01 Jan 2100 00:00:00 GMT")
+            .body(())
+            .unwrap();
+
+        for (req, expected) in [(head, "200 -"), (not_modified, "304 -")] {
+            let (_, lines) =
+                log_lines("toml/handler.toml", with_format("%{status} %{bytes}"), req).await;
+
+            let access = access_log_lines(&lines);
+            assert_eq!(access.len(), 1, "{lines:?}");
+            assert_eq!(access[0]["message"], expected);
+        }
+    }
+
+    #[tokio::test]
+    async fn access_log_format_logs_once_the_body_is_dropped() {
+        let req = Request::get("http://localhost/index.html")
+            .body(())
+            .unwrap();
+        let before_body = |lines: Vec<serde_json::Value>| {
+            assert!(access_log_lines(&lines).is_empty(), "{lines:?}");
+        };
+
+        let (_, _, lines) = handle(
+            "toml/handler.toml",
+            with_format("%{status}"),
+            req,
+            Some(before_body),
+        )
+        .await;
+
+        assert_eq!(access_log_lines(&lines).len(), 1, "{lines:?}");
+    }
+
     #[tokio::test]
     async fn access_log_format_unset_keeps_the_default_request_line() {
         let req = Request::get("http://localhost/index.html")
@@ -166,8 +264,9 @@ mod tests {
 
     #[tokio::test]
     async fn access_log_format_uri_logs_the_path_and_query_only() {
-        // Absolute-form, as `Uri` carries it over HTTP/2
+        // `Uri` carries the scheme and authority over HTTP/2
         let req = Request::get("https://127.0.0.1:8443/index.html?v=1")
+            .version(Version::HTTP_2)
             .body(())
             .unwrap();
 
@@ -177,6 +276,19 @@ mod tests {
         let access = access_log_lines(&lines);
         assert_eq!(access.len(), 1, "{lines:?}");
         assert_eq!(access[0]["message"], "/index.html?v=1");
+    }
+
+    #[tokio::test]
+    async fn access_log_format_uri_logs_the_connect_authority() {
+        let req = Request::connect("example.com:443").body(()).unwrap();
+
+        let (status, lines) =
+            log_lines("toml/handler.toml", with_format("%{method} %{uri}"), req).await;
+
+        assert_eq!(status, 405);
+        let access = access_log_lines(&lines);
+        assert_eq!(access.len(), 1, "{lines:?}");
+        assert_eq!(access[0]["message"], "CONNECT example.com:443");
     }
 
     #[tokio::test]
