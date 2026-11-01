@@ -17,6 +17,7 @@
 //! goes away. So `%{bytes}` and `%{duration}` cover the whole transfer.
 
 use bytes::Bytes;
+use http::uri::Authority;
 use http_body::{Frame, SizeHint};
 use http_body_util::BodyExt;
 use hyper::header::{HOST, HeaderValue, REFERER, USER_AGENT};
@@ -147,6 +148,16 @@ impl AccessLogFormat {
             }
         }
         buf
+    }
+}
+
+/// Whether the line of `req` passes the log level filter, so it is worth building.
+pub(crate) fn enabled<T>(opts: &RequestHandlerOpts, req: &Request<T>) -> bool {
+    // Health check requests are logged in debug mode only, as `log_addr` does
+    if opts.health && health::is_health_endpoint(req.uri()) {
+        tracing::enabled!(tracing::Level::DEBUG)
+    } else {
+        tracing::enabled!(tracing::Level::INFO)
     }
 }
 
@@ -299,8 +310,13 @@ fn render_token(buf: &mut String, token: Token, ctx: &LogContext<'_>) {
     match token {
         Token::Method => buf.push_str(ctx.method),
         Token::Uri => {
-            let path = ctx.uri.path_and_query().map_or("/", |p| p.as_str());
-            push_escaped(buf, path.as_bytes());
+            let target = match (ctx.uri.path_and_query(), ctx.uri.authority()) {
+                (Some(path), _) => path.as_str(),
+                // Authority-form `CONNECT` target, e.g. `example.com:443`
+                (None, Some(authority)) if ctx.uri.scheme().is_none() => host_port(authority),
+                _ => "/",
+            };
+            push_escaped(buf, target.as_bytes());
         }
         Token::Version => buf.push_str(ctx.version),
         Token::Status => {
@@ -354,13 +370,15 @@ fn push_ip(buf: &mut String, ip: Option<IpAddr>) {
 /// `:authority` or an absolute-form target) without userinfo, else the `Host` header.
 fn request_host<'a>(uri: &'a Uri, host: Option<&'a HeaderValue>) -> Option<&'a [u8]> {
     match uri.authority() {
-        Some(authority) => {
-            let authority = authority.as_str();
-            let host_port = authority.rsplit_once('@').map_or(authority, |(_, h)| h);
-            Some(host_port.as_bytes())
-        }
+        Some(authority) => Some(host_port(authority).as_bytes()),
         None => host.map(HeaderValue::as_bytes),
     }
+}
+
+/// The authority without userinfo.
+fn host_port(authority: &Authority) -> &str {
+    let authority = authority.as_str();
+    authority.rsplit_once('@').map_or(authority, |(_, h)| h)
 }
 
 fn push_value(buf: &mut String, value: Option<&[u8]>) {
@@ -427,8 +445,6 @@ mod tests {
             forwarded_for: None,
         }
     }
-
-    // Parsing tests
 
     #[test]
     fn parse_empty() {
@@ -530,8 +546,6 @@ mod tests {
         assert!(result.is_err());
     }
 
-    // Rendering tests
-
     #[test]
     fn render_basic_format() {
         let fmt = AccessLogFormat::parse("%{method} %{uri} %{status} %{bytes}").unwrap();
@@ -555,6 +569,21 @@ mod tests {
         let uri = Uri::from_static("https://127.0.0.1:8443/a/b.css?v=1");
         let headers = HeaderMap::new();
         assert_eq!(fmt.render(&context(&uri, &headers)), "/a/b.css?v=1");
+    }
+
+    #[test]
+    fn render_uri_logs_the_connect_authority() {
+        let fmt = AccessLogFormat::parse("%{uri}").unwrap();
+        let headers = HeaderMap::new();
+        let cases = [
+            ("example.com:443", "example.com:443"),
+            ("user:secret@example.com:443", "example.com:443"),
+            ("http://example.com", "/"),
+        ];
+        for (uri, target) in cases {
+            let uri = Uri::from_static(uri);
+            assert_eq!(fmt.render(&context(&uri, &headers)), target, "{uri}");
+        }
     }
 
     #[test]
