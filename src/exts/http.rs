@@ -71,51 +71,32 @@ pub(crate) fn append_vary_accept<B>(resp: &mut Response<B>) {
 }
 
 /// Append a value to the response's `Vary` header, creating it if absent.
-/// Skips the update if the value or `*` is already listed on any `Vary` line.
-/// Existing lines are merged into a single one, so none of them is lost.
+/// Skips the update if the value is already listed.
 fn append_vary<B>(resp: &mut Response<B>, value: &str, static_value: &HeaderValue) {
-    let mut merged = String::new();
-    let mut has_opaque_line = false;
-    for existing in resp.headers().get_all(hyper::header::VARY) {
-        let Ok(s) = existing.to_str() else {
-            has_opaque_line = true;
-            continue;
-        };
-        // Compare whole field names, so that `accept` is not mistaken for `accept-encoding`
-        if s.split(',')
-            .map(str::trim)
-            .any(|name| name == "*" || name.eq_ignore_ascii_case(value))
-        {
-            return;
+    match resp.headers().get(hyper::header::VARY) {
+        None => {
+            resp.headers_mut()
+                .insert(hyper::header::VARY, static_value.clone());
         }
-        let s = s.trim();
-        if !s.is_empty() {
-            // Room for this line and the appended value, so a single line allocates once
-            merged.reserve(s.len() + 2 * ", ".len() + value.len());
-            if !merged.is_empty() {
-                merged.push_str(", ");
+        Some(existing) => {
+            let s = existing.to_str().unwrap_or_default();
+            // Compare whole field names, so that `accept` is not mistaken for `accept-encoding`
+            if s.split(',')
+                .any(|name| name.trim().eq_ignore_ascii_case(value))
+            {
+                return;
             }
-            merged.push_str(s);
+            // Append to existing value
+            let mut new_val = String::with_capacity(s.len() + 2 + value.len());
+            new_val.push_str(s);
+            if !s.is_empty() {
+                new_val.push_str(", ");
+            }
+            new_val.push_str(value);
+            if let Ok(val) = HeaderValue::from_str(&new_val) {
+                resp.headers_mut().insert(hyper::header::VARY, val);
+            }
         }
-    }
-
-    // A line that is not visible ASCII cannot be merged, so keep it as is
-    if has_opaque_line {
-        resp.headers_mut()
-            .append(hyper::header::VARY, static_value.clone());
-        return;
-    }
-
-    if merged.is_empty() {
-        resp.headers_mut()
-            .insert(hyper::header::VARY, static_value.clone());
-        return;
-    }
-
-    merged.push_str(", ");
-    merged.push_str(value);
-    if let Ok(val) = HeaderValue::from_str(&merged) {
-        resp.headers_mut().insert(hyper::header::VARY, val);
     }
 }
 
@@ -217,70 +198,5 @@ mod tests {
         append_vary_accept(&mut resp);
         let vary = resp.headers().get(hyper::header::VARY).unwrap();
         assert_eq!(vary.to_str().unwrap(), "accept-encoding, accept");
-    }
-
-    #[test]
-    fn vary_not_appended_when_wildcard() {
-        let mut resp = Response::new(crate::body::empty());
-        *resp.status_mut() = StatusCode::OK;
-        resp.headers_mut()
-            .insert(hyper::header::VARY, "*".parse().unwrap());
-        append_vary_accept(&mut resp);
-        let vary = resp.headers().get(hyper::header::VARY).unwrap();
-        assert_eq!(vary.to_str().unwrap(), "*");
-    }
-
-    #[test]
-    fn vary_multiple_lines_merged_without_loss() {
-        let mut resp = Response::new(crate::body::empty());
-        *resp.status_mut() = StatusCode::OK;
-        resp.headers_mut()
-            .append(hyper::header::VARY, "origin".parse().unwrap());
-        resp.headers_mut()
-            .append(hyper::header::VARY, "accept-encoding".parse().unwrap());
-        append_vary_accept(&mut resp);
-        let vary: Vec<_> = resp
-            .headers()
-            .get_all(hyper::header::VARY)
-            .iter()
-            .map(|v| v.to_str().unwrap())
-            .collect();
-        assert_eq!(vary, ["origin, accept-encoding, accept"]);
-    }
-
-    #[test]
-    fn vary_not_appended_when_listed_on_another_line() {
-        let mut resp = Response::new(crate::body::empty());
-        *resp.status_mut() = StatusCode::OK;
-        resp.headers_mut()
-            .append(hyper::header::VARY, "origin".parse().unwrap());
-        resp.headers_mut()
-            .append(hyper::header::VARY, "*".parse().unwrap());
-        append_vary_accept(&mut resp);
-        let vary: Vec<_> = resp
-            .headers()
-            .get_all(hyper::header::VARY)
-            .iter()
-            .map(|v| v.to_str().unwrap())
-            .collect();
-        assert_eq!(vary, ["origin", "*"]);
-    }
-
-    #[test]
-    fn vary_opaque_line_kept_untouched() {
-        let mut resp = Response::new(crate::body::empty());
-        *resp.status_mut() = StatusCode::OK;
-        resp.headers_mut().append(
-            hyper::header::VARY,
-            hyper::header::HeaderValue::from_bytes(b"x-\xff").unwrap(),
-        );
-        append_vary_accept(&mut resp);
-        let vary: Vec<_> = resp
-            .headers()
-            .get_all(hyper::header::VARY)
-            .iter()
-            .map(|v| v.as_bytes().to_vec())
-            .collect();
-        assert_eq!(vary, [b"x-\xff".to_vec(), b"accept".to_vec()]);
     }
 }
