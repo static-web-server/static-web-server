@@ -77,7 +77,7 @@ bin/server.rs → settings/ → server/ (mod.rs, opts.rs) → service.rs → han
 | 19 | Security headers | Post | — |
 | 20 | Custom headers (final precedence) | Post | — |
 
-Metrics (request count, inflight, duration) wrap the whole pipeline. With `--access-log-format`, `access_logs::log_response` logs one line per request once the response exists, instead of the `log_addr` line.
+Metrics (request count, inflight, duration) wrap the whole pipeline. With `--access-log-format`, `access_logs::AccessLog` wraps the response body and logs one line per request when the body is dropped (sent or aborted), instead of the `log_addr` line.
 
 ### Pipeline Rules
 

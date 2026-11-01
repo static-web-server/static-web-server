@@ -250,13 +250,14 @@ impl RequestHandler {
         }
         // Rewrites replace the request URI and `Host`, so keep the ones the client sent for the
         // access log
-        let client_req = self
+        let access_log = self
             .opts
             .access_log_format
             .as_ref()
-            .map(|_| access_logs::ClientRequest::new(req));
+            .map(|format| access_logs::AccessLog::new(format, &self.opts, req, remote_addr));
 
         async move {
+            #[cfg(feature = "metrics")]
             let req_start = std::time::Instant::now();
             // Health probes are excluded, like they are from `info` logs
             #[cfg(feature = "metrics")]
@@ -440,19 +441,11 @@ impl RequestHandler {
                 custom_headers::post_process(&self.opts, req, resp, file_path.as_ref(), early)
             });
 
-            if let (Some(format), Some(client_req), Ok(resp)) =
-                (&self.opts.access_log_format, &client_req, &result)
-            {
-                access_logs::log_response(
-                    format,
-                    &self.opts,
-                    req,
-                    client_req,
-                    remote_addr,
-                    resp,
-                    req_start.elapsed(),
-                );
-            }
+            // The access log line is written once the response body is sent
+            let result = match access_log {
+                Some(access_log) => result.map(|resp| access_log.wrap(resp)),
+                None => result,
+            };
 
             #[cfg(feature = "metrics")]
             if metrics_enabled {
