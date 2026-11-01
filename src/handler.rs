@@ -13,6 +13,7 @@ use std::{
     path::PathBuf,
     sync::{Arc, atomic::AtomicBool},
 };
+use tracing::Instrument;
 
 use crate::body::Body;
 
@@ -45,7 +46,7 @@ use crate::{
     health, log_addr, maintenance_mode, redirects, rewrites, security_headers,
     settings::Advanced,
     static_files::{self, HandleOpts},
-    text_charset, virtual_hosts,
+    text_charset, trace_context, virtual_hosts,
 };
 
 #[cfg(feature = "directory-listing")]
@@ -123,6 +124,8 @@ pub struct RequestHandlerOpts {
     pub log_forwarded_for: bool,
     /// Trusted IPs for remote addresses.
     pub trusted_proxies: Vec<IpAddr>,
+    /// Log the trace context of the `traceparent` header.
+    pub log_trace_context: bool,
     /// Redirect trailing slash feature.
     pub redirect_trailing_slash: bool,
     /// Ignore hidden files feature.
@@ -193,6 +196,7 @@ impl Default for RequestHandlerOpts {
             log_x_real_ip: false,
             log_forwarded_for: false,
             trusted_proxies: Vec::new(),
+            log_trace_context: false,
             redirect_trailing_slash: true,
             include_hidden: true,
             follow_symlinks: true,
@@ -245,8 +249,9 @@ impl RequestHandler {
         #[cfg(feature = "mem-cache")]
         let memory_cache = self.opts.memory_cache.as_ref();
 
+        let span = trace_context::span(&self.opts, req.headers());
         if self.opts.access_log_format.is_none() {
-            log_addr::pre_process(&self.opts, req, remote_addr);
+            span.in_scope(|| log_addr::pre_process(&self.opts, req, remote_addr));
         }
         // Rewrites replace the request URI and `Host`, so keep the ones the client sent for the
         // access log
@@ -475,6 +480,7 @@ impl RequestHandler {
 
             result
         }
+        .instrument(span)
     }
 }
 
