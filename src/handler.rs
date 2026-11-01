@@ -409,7 +409,12 @@ impl RequestHandler {
                 let resp = cors::post_process(&self.opts, req, resp)?;
 
                 // Add `Vary: Accept` and set Content-Type for markdown files
-                let resp = crate::markdown::post_process(uri_path_md.is_some(), &self.opts, resp)?;
+                let resp = crate::markdown::post_process(
+                    uri_path_md.is_some(),
+                    file_path.as_deref(),
+                    &self.opts,
+                    resp,
+                )?;
 
                 // Declare a default charset for `text/*` responses
                 let resp = text_charset::post_process(&self.opts, resp)?;

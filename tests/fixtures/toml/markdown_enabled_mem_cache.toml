@@ -1,0 +1,9 @@
+[general]
+root = "tests/fixtures/markdown"
+accept-markdown = true
+
+[advanced.memory-cache]
+capacity = 10
+ttl = 600
+tti = 120
+max-file-size = 4
