@@ -55,7 +55,6 @@ bin/server.rs → settings/ → server/ (mod.rs, opts.rs) → service.rs → han
 
 | # | Step | Phase | Short-circuits? |
 |---|------|-------|-----------------|
-| 0 | Remote address logging (`log_addr`) | Pre | No |
 | 1 | Method check (`GET`, `HEAD`, `OPTIONS` only) | Pre | Yes (405) |
 | 2 | Health endpoint (`health`) | Pre | Yes |
 | 3 | CORS (`cors::pre_process`) | Pre | Yes (preflight reply, or 403 for a disallowed origin) |
@@ -77,7 +76,7 @@ bin/server.rs → settings/ → server/ (mod.rs, opts.rs) → service.rs → han
 | 19 | Security headers | Post | — |
 | 20 | Custom headers (final precedence) | Post | — |
 
-Metrics (request count, inflight, duration) wrap the whole pipeline. With `--access-log-format`, `access_logs::AccessLog` wraps the response body and logs one line per request when the body is dropped (sent or aborted), instead of the `log_addr` line.
+Metrics (request count, inflight, duration) wrap the whole pipeline. One line per request is logged with the response status and the request values the client sent (before rewrites): with `--access-log-format`, `access_logs::AccessLog` wraps the response body and logs it when the body is dropped (sent or aborted), else `log_addr::log_response` logs it once the response exists.
 
 ### Pipeline Rules
 

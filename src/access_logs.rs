@@ -6,7 +6,7 @@
 //! Configurable access logging with format string support.
 //!
 //! Supports a `%{token}` syntax for user-defined log formats.
-//! When no format is configured, `log_addr` logs requests as before.
+//! When no format is configured, `log_addr` logs one structured line per request instead.
 //!
 //! Values taken from the request (URI, `Host`, `User-Agent`, `Referer`) are client-controlled.
 //! Bytes outside printable ASCII, `"` and `\` in them are written as `\xHH`, so a client cannot
