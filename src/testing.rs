@@ -116,6 +116,7 @@ pub mod fixtures {
                 .map(|s| s.trim().to_owned())
                 .collect(),
             health: general.health,
+            shutting_down: Default::default(),
             #[cfg(feature = "metrics")]
             metrics_enabled: general.metrics,
             maintenance_mode: general.maintenance_mode,

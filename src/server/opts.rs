@@ -136,6 +136,7 @@ pub(super) fn init(general: &General, advanced: Option<Advanced>) -> Result<Hand
 
     let mut handler_opts = RequestHandlerOpts {
         root_dir,
+        shutting_down: Default::default(),
         page404: page404.clone(),
         page50x: page50x.clone(),
         access_log_format,

@@ -11,7 +11,7 @@ use std::{
     future::Future,
     net::{IpAddr, SocketAddr},
     path::PathBuf,
-    sync::Arc,
+    sync::{Arc, atomic::AtomicBool},
 };
 
 use crate::body::Body;
@@ -135,8 +135,10 @@ pub struct RequestHandlerOpts {
     pub accept_markdown: bool,
     /// Default `charset=utf-8` parameter applied to certain `text` responses without one.
     pub text_charset: bool,
-    /// Health endpoint feature.
+    /// Health endpoints feature (`/livez` and `/readyz`).
     pub health: bool,
+    /// Set once a shutdown signal is received; `/readyz` then returns `503`.
+    pub shutting_down: Arc<AtomicBool>,
     /// Metrics endpoint feature.
     #[cfg(feature = "metrics")]
     pub metrics_enabled: bool,
@@ -198,6 +200,7 @@ impl Default for RequestHandlerOpts {
             accept_markdown: false,
             text_charset: true,
             health: false,
+            shutting_down: Arc::default(),
             #[cfg(feature = "metrics")]
             metrics_enabled: false,
             maintenance_mode: false,
@@ -254,8 +257,10 @@ impl RequestHandler {
 
         async move {
             let req_start = std::time::Instant::now();
+            // Health probes are excluded, like they are from `info` logs
             #[cfg(feature = "metrics")]
-            let metrics_enabled = self.opts.metrics_enabled;
+            let metrics_enabled = self.opts.metrics_enabled
+                && !(self.opts.health && health::is_health_endpoint(req.uri()));
 
             #[cfg(feature = "metrics")]
             if metrics_enabled {
@@ -276,7 +281,7 @@ impl RequestHandler {
                     .map(early);
                 }
 
-                // Health endpoint check
+                // Health endpoints check (`/livez` and `/readyz`)
                 if let Some(result) = health::pre_process(&self.opts, req) {
                     return result.map(early);
                 }

@@ -239,7 +239,7 @@ mod tests {
 
     #[tokio::test]
     async fn access_log_format_health_check_logs_at_debug() {
-        let req = Request::get("http://localhost/health").body(()).unwrap();
+        let req = Request::get("http://localhost/livez").body(()).unwrap();
         let general = |general| General {
             health: true,
             ..with_format("%{uri} %{status}")(general)

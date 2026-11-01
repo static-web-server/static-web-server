@@ -685,8 +685,9 @@ pub struct General {
         action = clap::ArgAction::Set,
         env = "SERVER_HEALTH",
     )]
-    /// Add a /health endpoint that doesn't generate any log entry and returns a 200 status code.
-    /// This is especially useful with Kubernetes liveness and readiness probes.
+    /// Add the `/livez` (liveness) and `/readyz` (readiness) endpoints for Kubernetes-style probes.
+    /// They answer `GET` and `HEAD` with `200 OK` (`/readyz` returns `503` once shutdown starts or
+    /// while the root directory is missing) and log requests at `debug` level only.
     pub health: bool,
 
     #[cfg(feature = "metrics")]
