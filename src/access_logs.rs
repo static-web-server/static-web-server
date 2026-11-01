@@ -10,9 +10,11 @@
 //!
 //! Values taken from the request (URI, `Host`, `User-Agent`, `Referer`) are client-controlled.
 //! Bytes outside printable ASCII, `"` and `\` in them are written as `\xHH`, so a client cannot
-//! end a quoted field, start a new log line or inject terminal escape sequences.
+//! end a quoted field, start a new log line or inject terminal escape sequences. An escaped
+//! value longer than 4 KiB is cut and ends with `...`, so a large header cannot make a large line.
 
-use hyper::{HeaderMap, Request, Response, Uri, header::HeaderName};
+use hyper::header::{HOST, HeaderName, HeaderValue};
+use hyper::{HeaderMap, Request, Response, Uri};
 use std::fmt::Write;
 use std::net::{IpAddr, SocketAddr};
 use std::time::Duration;
@@ -135,10 +137,28 @@ impl AccessLogFormat {
     }
 }
 
+/// The request values that the pipeline may replace, as the client sent them.
+#[derive(Debug)]
+pub(crate) struct ClientRequest {
+    uri: Uri,
+    host: Option<HeaderValue>,
+}
+
+impl ClientRequest {
+    /// Keeps the URI and `Host` header, which rewrites replace, before the pipeline runs.
+    pub(crate) fn new<T>(req: &Request<T>) -> Self {
+        Self {
+            uri: req.uri().clone(),
+            host: req.headers().get(HOST).cloned(),
+        }
+    }
+}
+
 /// All data available for access log rendering.
 struct LogContext<'a> {
     method: &'a str,
     uri: &'a Uri,
+    host: Option<&'a HeaderValue>,
     version: &'a str,
     status: u16,
     bytes: u64,
@@ -172,7 +192,7 @@ fn render_token(buf: &mut String, token: Token, ctx: &LogContext<'_>) {
         Token::RemoteAddr => push_ip(buf, ctx.remote_addr.map(|addr| addr.ip())),
         Token::XRealIp => push_ip(buf, ctx.x_real_ip),
         Token::ForwardedFor => push_ip(buf, ctx.forwarded_for),
-        Token::Host => push_header(buf, ctx.headers, hyper::header::HOST),
+        Token::Host => push_value(buf, request_host(ctx.uri, ctx.host)),
         Token::UserAgent => push_header(buf, ctx.headers, hyper::header::USER_AGENT),
         Token::Referer => push_header(buf, ctx.headers, hyper::header::REFERER),
         Token::Timestamp => {
@@ -192,21 +212,48 @@ fn push_ip(buf: &mut String, ip: Option<IpAddr>) {
     }
 }
 
+/// The host the client asked for, as `virtual_hosts` resolves it: the URI authority (HTTP/2
+/// `:authority` or an absolute-form target) without userinfo, else the `Host` header.
+fn request_host<'a>(uri: &'a Uri, host: Option<&'a HeaderValue>) -> Option<&'a [u8]> {
+    match uri.authority() {
+        Some(authority) => {
+            let authority = authority.as_str();
+            let host_port = authority.rsplit_once('@').map_or(authority, |(_, h)| h);
+            Some(host_port.as_bytes())
+        }
+        None => host.map(HeaderValue::as_bytes),
+    }
+}
+
 fn push_header(buf: &mut String, headers: &HeaderMap, name: HeaderName) {
-    match headers.get(name).map(|v| v.as_bytes()) {
+    push_value(buf, headers.get(name).map(HeaderValue::as_bytes));
+}
+
+fn push_value(buf: &mut String, value: Option<&[u8]>) {
+    match value {
         Some(value) if !value.is_empty() => push_escaped(buf, value),
         _ => buf.push('-'),
     }
 }
 
+/// Maximum length of an escaped value, before the `...` that marks it as cut.
+const MAX_ESCAPED_LEN: usize = 4096;
+
 /// Appends a client-controlled value, writing bytes outside printable ASCII, `"` and `\` as `\xHH`.
+/// The escaped value is cut at [`MAX_ESCAPED_LEN`] and ends with `...`, never inside an `\xHH`.
 fn push_escaped(buf: &mut String, value: &[u8]) {
+    let start = buf.len();
     for &b in value {
-        match b {
-            0x20..=0x7e if b != b'"' && b != b'\\' => buf.push(b as char),
-            _ => {
-                let _ = write!(buf, "\\x{b:02X}");
-            }
+        let printable = (0x20..=0x7e).contains(&b) && b != b'"' && b != b'\\';
+        let len = if printable { 1 } else { 4 };
+        if buf.len() - start + len > MAX_ESCAPED_LEN {
+            buf.push_str("...");
+            return;
+        }
+        if printable {
+            buf.push(b as char);
+        } else {
+            let _ = write!(buf, "\\x{b:02X}");
         }
     }
 }
@@ -224,13 +271,13 @@ fn http_version_str(version: hyper::Version) -> &'static str {
 
 /// Logs the request with the configured access log format, once the response exists.
 ///
-/// It only logs, unlike the `post_process` steps that take and return the response. `uri` is
-/// the URI the client sent: rewrites replace the request URI during the pipeline.
+/// It only logs, unlike the `post_process` steps that take and return the response. `client`
+/// holds the URI and `Host` the client sent: rewrites replace them during the pipeline.
 pub(crate) fn log_response<T>(
     format: &AccessLogFormat,
     opts: &RequestHandlerOpts,
     req: &Request<T>,
-    uri: &Uri,
+    client: &ClientRequest,
     remote_addr: Option<SocketAddr>,
     resp: &Response<Body>,
     elapsed: Duration,
@@ -244,7 +291,8 @@ pub(crate) fn log_response<T>(
 
     let ctx = LogContext {
         method: req.method().as_str(),
-        uri,
+        uri: &client.uri,
+        host: client.host.as_ref(),
         version: http_version_str(req.version()),
         status: resp.status().as_u16(),
         bytes,
@@ -258,7 +306,7 @@ pub(crate) fn log_response<T>(
     let line = format.render(&ctx);
 
     // Log health check requests in debug mode only, as `log_addr` does
-    if opts.health && health::is_health_endpoint(uri) {
+    if opts.health && health::is_health_endpoint(&client.uri) {
         tracing::debug!("{line}");
     } else {
         tracing::info!("{line}");
@@ -276,6 +324,7 @@ mod tests {
         LogContext {
             method: Method::GET.as_str(),
             uri,
+            host: headers.get(HOST),
             version: "HTTP/1.1",
             status: 200,
             bytes: 0,
@@ -455,6 +504,48 @@ mod tests {
     }
 
     #[test]
+    fn render_host_prefers_the_uri_authority() {
+        let fmt = AccessLogFormat::parse("%{host}").unwrap();
+        let mut headers = HeaderMap::new();
+        headers.insert(HOST, "other.example".parse().unwrap());
+        let cases = [
+            ("http://vhost.example/", "vhost.example"),
+            ("https://example.com:8443/", "example.com:8443"),
+            ("http://[::1]:8080/", "[::1]:8080"),
+            ("http://user:secret@example.com/", "example.com"),
+            ("/", "other.example"),
+        ];
+        for (uri, host) in cases {
+            let uri = Uri::from_static(uri);
+            assert_eq!(fmt.render(&context(&uri, &headers)), host, "{uri}");
+        }
+    }
+
+    #[test]
+    fn push_escaped_cuts_long_values() {
+        let mut buf = String::new();
+        push_escaped(&mut buf, "a".repeat(MAX_ESCAPED_LEN).as_bytes());
+        assert_eq!(buf, "a".repeat(MAX_ESCAPED_LEN));
+
+        let mut buf = String::new();
+        push_escaped(&mut buf, "a".repeat(MAX_ESCAPED_LEN + 1).as_bytes());
+        assert_eq!(buf, format!("{}...", "a".repeat(MAX_ESCAPED_LEN)));
+    }
+
+    #[test]
+    fn push_escaped_never_cuts_an_escape() {
+        let mut buf = String::new();
+        push_escaped(&mut buf, &[0xff; MAX_ESCAPED_LEN / 4]);
+        assert_eq!(buf, "\\xFF".repeat(MAX_ESCAPED_LEN / 4));
+
+        let mut value = "a".repeat(MAX_ESCAPED_LEN - 3).into_bytes();
+        value.push(0xff);
+        let mut buf = String::from("ua=");
+        push_escaped(&mut buf, &value);
+        assert_eq!(buf, format!("ua={}...", "a".repeat(MAX_ESCAPED_LEN - 3)));
+    }
+
+    #[test]
     fn render_all_tokens() {
         let fmt = AccessLogFormat::parse(
             "%{method}|%{uri}|%{version}|%{status}|%{bytes}|%{duration}|%{remote_addr}|\
@@ -521,6 +612,26 @@ mod tests {
                 }
             }
             prop_assert_eq!(decoded, value);
+        }
+
+        /// Escaped values stop at `MAX_ESCAPED_LEN` plus `...`, after the longest prefix that fits.
+        #[test]
+        fn prop_push_escaped_is_bounded(value in proptest::collection::vec(any::<u8>(), 0..2048)) {
+            let width = |b: u8| {
+                if (0x20..=0x7e).contains(&b) && b != b'"' && b != b'\\' { 1 } else { 4 }
+            };
+            let mut buf = String::new();
+            push_escaped(&mut buf, &value);
+
+            let full_len: usize = value.iter().map(|&b| width(b)).sum();
+            if full_len <= MAX_ESCAPED_LEN {
+                prop_assert_eq!(buf.len(), full_len);
+            } else {
+                let body = buf.strip_suffix("...").expect("a cut value ends with `...`");
+                prop_assert!(body.len() <= MAX_ESCAPED_LEN);
+                let kept = body.len() - 3 * body.matches('\\').count();
+                prop_assert!(body.len() + width(value[kept]) > MAX_ESCAPED_LEN);
+            }
         }
     }
 }

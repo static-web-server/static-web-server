@@ -12,7 +12,7 @@
 
 #[cfg(test)]
 mod tests {
-    use hyper::{Method, Request};
+    use hyper::{Method, Request, Version};
     use std::io::Write;
     use std::net::SocketAddr;
     use std::sync::{Arc, Mutex};
@@ -179,6 +179,58 @@ mod tests {
         assert_eq!(access[0]["message"], "/index.html?v=1");
     }
 
+    #[tokio::test]
+    async fn access_log_format_host_logs_the_http2_authority() {
+        // HTTP/2 sends the host as `:authority`, which hyper keeps in the URI, not in `Host`
+        let req = Request::get("https://example.com:8443/index.html")
+            .version(Version::HTTP_2)
+            .body(())
+            .unwrap();
+
+        let (_, lines) = log_lines("toml/handler.toml", with_format("%{host}"), req).await;
+
+        let access = access_log_lines(&lines);
+        assert_eq!(access.len(), 1, "{lines:?}");
+        assert_eq!(access[0]["message"], "example.com:8443");
+    }
+
+    #[tokio::test]
+    async fn access_log_format_host_prefers_the_uri_authority() {
+        // An absolute-form target overrides `Host` (RFC 9112, 3.2.2), as in `virtual_hosts`
+        let req = Request::get("http://vhost.example/index.html")
+            .header("host", "other.example")
+            .body(())
+            .unwrap();
+
+        let (_, lines) = log_lines("toml/handler.toml", with_format("%{host}"), req).await;
+
+        let access = access_log_lines(&lines);
+        assert_eq!(access.len(), 1, "{lines:?}");
+        assert_eq!(access[0]["message"], "vhost.example");
+    }
+
+    #[tokio::test]
+    async fn access_log_format_host_logs_the_host_sent_by_the_client() {
+        let req = Request::get("/vhost/index.html")
+            .header("host", "localhost:8787")
+            .body(())
+            .unwrap();
+
+        let (_, lines) = log_lines(
+            "toml/access_log_format_rewrites.toml",
+            with_format("%{host} %{uri}"),
+            req,
+        )
+        .await;
+
+        let access = access_log_lines(&lines);
+        assert_eq!(access.len(), 1, "{lines:?}");
+        assert_eq!(
+            access[0]["message"], "localhost:8787 /vhost/index.html",
+            "the Host before the rewrite to other.example"
+        );
+    }
+
     fn proxied_request() -> Request<()> {
         Request::get("http://localhost/index.html")
             .header("x-real-ip", "203.0.113.7")
@@ -234,6 +286,24 @@ mod tests {
         assert_eq!(
             access[0]["message"],
             r#"404 "x\x22 200 \x22forged" "a\x5Cb""#
+        );
+    }
+
+    #[tokio::test]
+    async fn access_log_format_long_client_values_are_truncated() {
+        let req = Request::get("http://localhost/index.html")
+            .header("user-agent", "a".repeat(64 * 1024))
+            .body(())
+            .unwrap();
+
+        let (_, lines) = log_lines("toml/handler.toml", with_format("%{user_agent}"), req).await;
+
+        let access = access_log_lines(&lines);
+        assert_eq!(access.len(), 1, "{lines:?}");
+        assert_eq!(
+            access[0]["message"],
+            format!("{}...", "a".repeat(4096)),
+            "cut at 4 KiB"
         );
     }
 
