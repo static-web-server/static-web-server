@@ -12,7 +12,7 @@
 //!
 
 use headers::{ContentType, HeaderMapExt};
-use hyper::{Method, Request, Response, StatusCode};
+use hyper::{Method, Request, Response, StatusCode, Uri};
 use std::sync::atomic::Ordering;
 
 use crate::body::Body;
@@ -40,7 +40,7 @@ pub fn pre_process<T>(
     opts: &RequestHandlerOpts,
     req: &Request<T>,
 ) -> Option<Result<Response<Body>, Error>> {
-    if !opts.health || !is_health_endpoint(req) {
+    if !opts.health || !is_health_endpoint(req.uri()) {
         return None;
     }
 
@@ -88,8 +88,8 @@ fn readiness_failure<T>(opts: &RequestHandlerOpts, req: &Request<T>) -> Option<&
 
 /// Reports whether the request path is one of the health endpoints, ignoring the query.
 #[inline]
-pub(crate) fn is_health_endpoint<T>(req: &Request<T>) -> bool {
-    matches!(req.uri().path(), LIVENESS_PATH | READINESS_PATH)
+pub(crate) fn is_health_endpoint(uri: &Uri) -> bool {
+    matches!(uri.path(), LIVENESS_PATH | READINESS_PATH)
 }
 
 #[cfg(test)]
@@ -214,7 +214,7 @@ mod tests {
             "/health", "/healthz", "/livez/", "/readyz/", "/livez2", "/LIVEZ", "/a/livez",
         ] {
             let req = make_request("GET", path);
-            assert!(!is_health_endpoint(&req), "{path}");
+            assert!(!is_health_endpoint(req.uri()), "{path}");
             assert!(pre_process(&enabled(), &req).is_none(), "{path}");
         }
     }

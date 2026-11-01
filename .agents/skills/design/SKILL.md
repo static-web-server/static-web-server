@@ -47,7 +47,7 @@ bin/server.rs → settings/ → server/ (mod.rs, opts.rs) → service.rs → han
 | `body.rs` | `pub type Body = BoxBody<Bytes, io::Error>` with `empty()`, `full()`, `stream()` |
 | `error.rs` | `Result<T> = anyhow::Result<T>`, `Error = anyhow::Error`, re-exports `Context`, `anyhow!`, `bail!` |
 | `testing.rs` | `testing::fixtures` helpers for tests (`#[doc(hidden)]`) |
-| `winservice.rs`, `signals.rs`, `logger.rs`, `log_addr.rs` | Platform/service integration and logging |
+| `winservice.rs`, `signals.rs`, `logger.rs`, `log_addr.rs`, `access_logs.rs` | Platform/service integration and logging |
 
 ## Request Pipeline
 
@@ -77,7 +77,7 @@ bin/server.rs → settings/ → server/ (mod.rs, opts.rs) → service.rs → han
 | 19 | Security headers | Post | — |
 | 20 | Custom headers (final precedence) | Post | — |
 
-Metrics (request count, inflight, duration) wrap the whole pipeline.
+Metrics (request count, inflight, duration) wrap the whole pipeline. With `--access-log-format`, `access_logs::log_response` logs one line per request once the response exists, instead of the `log_addr` line.
 
 ### Pipeline Rules
 

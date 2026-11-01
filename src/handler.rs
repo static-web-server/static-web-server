@@ -40,7 +40,7 @@ use crate::metrics;
 use crate::mem_cache::cache::MemCacheOpts;
 
 use crate::{
-    Error, Result, control_headers, cors, custom_headers, error_page,
+    Error, Result, access_logs, control_headers, cors, custom_headers, error_page,
     exts::http::MethodExt,
     health, log_addr, maintenance_mode, redirects, rewrites, security_headers,
     settings::Advanced,
@@ -113,6 +113,8 @@ pub struct RequestHandlerOpts {
     pub basic_auth: String,
     /// Index files feature.
     pub index_files: Vec<String>,
+    /// Compiled access log format.
+    pub access_log_format: Option<access_logs::AccessLogFormat>,
     /// Log remote address feature.
     pub log_remote_address: bool,
     /// Log the X-Real-IP header.
@@ -186,6 +188,7 @@ impl Default for RequestHandlerOpts {
             #[cfg(feature = "basic-auth")]
             basic_auth: String::new(),
             index_files: vec!["index.html".into()],
+            access_log_format: None,
             log_remote_address: false,
             log_x_real_ip: false,
             log_forwarded_for: false,
@@ -242,15 +245,23 @@ impl RequestHandler {
         #[cfg(feature = "mem-cache")]
         let memory_cache = self.opts.memory_cache.as_ref();
 
-        log_addr::pre_process(&self.opts, req, remote_addr);
+        if self.opts.access_log_format.is_none() {
+            log_addr::pre_process(&self.opts, req, remote_addr);
+        }
+        // Rewrites replace the request URI and `Host`, so keep the ones the client sent for the
+        // access log
+        let client_req = self
+            .opts
+            .access_log_format
+            .as_ref()
+            .map(|_| access_logs::ClientRequest::new(req));
 
         async move {
-            #[cfg(feature = "metrics")]
             let req_start = std::time::Instant::now();
             // Health probes are excluded, like they are from `info` logs
             #[cfg(feature = "metrics")]
-            let metrics_enabled =
-                self.opts.metrics_enabled && !(self.opts.health && health::is_health_endpoint(req));
+            let metrics_enabled = self.opts.metrics_enabled
+                && !(self.opts.health && health::is_health_endpoint(req.uri()));
 
             #[cfg(feature = "metrics")]
             if metrics_enabled {
@@ -428,6 +439,20 @@ impl RequestHandler {
             let result = result.and_then(|(resp, file_path, early)| {
                 custom_headers::post_process(&self.opts, req, resp, file_path.as_ref(), early)
             });
+
+            if let (Some(format), Some(client_req), Ok(resp)) =
+                (&self.opts.access_log_format, &client_req, &result)
+            {
+                access_logs::log_response(
+                    format,
+                    &self.opts,
+                    req,
+                    client_req,
+                    remote_addr,
+                    resp,
+                    req_start.elapsed(),
+                );
+            }
 
             #[cfg(feature = "metrics")]
             if metrics_enabled {

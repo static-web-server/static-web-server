@@ -1,0 +1,10 @@
+[general]
+
+root = "tests/fixtures/public"
+
+[advanced]
+
+# Rewrite to another virtual host, which replaces the `Host` header
+[[advanced.rewrites]]
+source = "/vhost/{*}"
+destination = "http://other.example/$1"
