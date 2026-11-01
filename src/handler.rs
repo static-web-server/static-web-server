@@ -254,6 +254,7 @@ impl RequestHandler {
             .opts
             .access_log_format
             .as_ref()
+            .filter(|_| access_logs::enabled(&self.opts, req))
             .map(|format| access_logs::AccessLog::new(format, &self.opts, req, remote_addr));
 
         async move {

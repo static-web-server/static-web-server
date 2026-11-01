@@ -264,8 +264,9 @@ mod tests {
 
     #[tokio::test]
     async fn access_log_format_uri_logs_the_path_and_query_only() {
-        // Absolute-form, as `Uri` carries it over HTTP/2
+        // `Uri` carries the scheme and authority over HTTP/2
         let req = Request::get("https://127.0.0.1:8443/index.html?v=1")
+            .version(Version::HTTP_2)
             .body(())
             .unwrap();
 
@@ -275,6 +276,19 @@ mod tests {
         let access = access_log_lines(&lines);
         assert_eq!(access.len(), 1, "{lines:?}");
         assert_eq!(access[0]["message"], "/index.html?v=1");
+    }
+
+    #[tokio::test]
+    async fn access_log_format_uri_logs_the_connect_authority() {
+        let req = Request::connect("example.com:443").body(()).unwrap();
+
+        let (status, lines) =
+            log_lines("toml/handler.toml", with_format("%{method} %{uri}"), req).await;
+
+        assert_eq!(status, 405);
+        let access = access_log_lines(&lines);
+        assert_eq!(access.len(), 1, "{lines:?}");
+        assert_eq!(access[0]["message"], "CONNECT example.com:443");
     }
 
     #[tokio::test]
