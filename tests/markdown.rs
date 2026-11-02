@@ -14,6 +14,14 @@ pub mod tests {
         REMOTE_ADDR, fixture_req_handler, fixture_req_handler_opts, fixture_settings,
     };
 
+    /// Whether the response `Vary` header lists `accept` as a whole field name.
+    fn varies_on_accept<B>(res: &hyper::Response<B>) -> bool {
+        res.headers()
+            .get("vary")
+            .and_then(|v| v.to_str().ok())
+            .is_some_and(|v| v.split(',').any(|n| n.trim() == "accept"))
+    }
+
     #[tokio::test]
     async fn markdown_disabled_returns_html() {
         let opts = fixture_settings("toml/markdown_disabled.toml");
@@ -492,19 +500,13 @@ pub mod tests {
                     .insert(hyper::header::ACCEPT, HeaderValue::from_static(accept));
             }
 
-            match req_handler.handle(&mut req, remote_addr).await {
-                Ok(res) => {
-                    assert_eq!(res.status(), 200);
-                    let vary = res.headers().get("vary").and_then(|v| v.to_str().ok());
-                    assert!(
-                        vary.is_some_and(|v| v.split(',').any(|n| n.trim() == "accept")),
-                        "missing `Vary: Accept` for Accept {accept:?}, got {vary:?}"
-                    );
-                }
-                Err(err) => {
-                    panic!("unexpected error: {err}")
-                }
-            };
+            let res = req_handler.handle(&mut req, remote_addr).await.unwrap();
+            assert_eq!(res.status(), 200);
+            assert!(
+                varies_on_accept(&res),
+                "missing `Vary: Accept` for Accept {accept:?}, got {:?}",
+                res.headers().get("vary")
+            );
         }
     }
 
@@ -522,27 +524,13 @@ pub mod tests {
         req.headers_mut()
             .insert(hyper::header::ACCEPT, HeaderValue::from_static("text/css"));
 
-        match req_handler.handle(&mut req, remote_addr).await {
-            Ok(res) => {
-                assert_eq!(res.status(), 200);
-                let vary = res.headers().get("vary").and_then(|v| v.to_str().ok());
-                assert!(
-                    !vary.is_some_and(|v| v.split(',').any(|n| n.trim() == "accept")),
-                    "unexpected `Vary: Accept` on a CSS asset, got {vary:?}"
-                );
-            }
-            Err(err) => {
-                panic!("unexpected error: {err}")
-            }
-        };
-    }
-
-    /// Whether the response `Vary` header lists `accept` as a whole field name.
-    fn varies_on_accept<B>(res: &hyper::Response<B>) -> bool {
-        res.headers()
-            .get("vary")
-            .and_then(|v| v.to_str().ok())
-            .is_some_and(|v| v.split(',').any(|n| n.trim() == "accept"))
+        let res = req_handler.handle(&mut req, remote_addr).await.unwrap();
+        assert_eq!(res.status(), 200);
+        assert!(
+            !varies_on_accept(&res),
+            "unexpected `Vary: Accept` on a CSS asset, got {:?}",
+            res.headers().get("vary")
+        );
     }
 
     #[tokio::test]
@@ -713,18 +701,12 @@ pub mod tests {
             HeaderValue::from_static("text/markdown"),
         );
 
-        match req_handler.handle(&mut req, remote_addr).await {
-            Ok(res) => {
-                assert_eq!(res.status(), 200);
-                let vary = res.headers().get("vary").and_then(|v| v.to_str().ok());
-                assert!(
-                    !vary.is_some_and(|v| v.split(',').any(|n| n.trim() == "accept")),
-                    "unexpected `Vary: Accept` when the feature is disabled, got {vary:?}"
-                );
-            }
-            Err(err) => {
-                panic!("unexpected error: {err}")
-            }
-        };
+        let res = req_handler.handle(&mut req, remote_addr).await.unwrap();
+        assert_eq!(res.status(), 200);
+        assert!(
+            !varies_on_accept(&res),
+            "unexpected `Vary: Accept` when the feature is disabled, got {:?}",
+            res.headers().get("vary")
+        );
     }
 }
