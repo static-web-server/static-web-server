@@ -3,7 +3,7 @@
 #![deny(rust_2018_idioms)]
 #![deny(dead_code)]
 
-// Integration tests for the per-request log line of `log_addr`.
+// Integration tests for the default per-request log line.
 //
 // Each test captures the JSON events of its own thread through a scoped
 // `tracing` subscriber (`#[tokio::test]` runs on one thread), so the tests
@@ -44,7 +44,7 @@ mod tests {
         ))
     }
 
-    /// Sends `req` through `handler` and returns the response status and the `log_addr` events.
+    /// Sends `req` through `handler` and returns the response status and the default line events.
     async fn request_log_lines(
         handler: &RequestHandler,
         mut req: Request<()>,
@@ -101,7 +101,10 @@ mod tests {
             assert_eq!(lines.len(), 1, "one log line per request: {lines:?}");
             assert_eq!(lines[0]["level"], "INFO");
             assert_eq!(lines[0]["method"], method.as_str());
-            assert_eq!(lines[0]["uri"], uri);
+            assert_eq!(
+                lines[0]["uri"], "/index.html",
+                "the path, without the authority"
+            );
             assert_eq!(lines[0]["status"], 200);
             assert_eq!(lines[0]["remote_addr"], remote_ip());
         }
@@ -155,7 +158,7 @@ mod tests {
 
         assert_eq!(status, 301);
         assert_eq!(lines.len(), 1, "{lines:?}");
-        assert_eq!(lines[0]["uri"], uri);
+        assert_eq!(lines[0]["uri"], "/pages/about.html");
         assert_eq!(lines[0]["status"], 301);
     }
 
@@ -170,7 +173,7 @@ mod tests {
         assert_eq!(status, 200);
         assert_eq!(lines.len(), 1, "{lines:?}");
         assert_eq!(
-            lines[0]["uri"], uri,
+            lines[0]["uri"], "/some/error-page.html",
             "the URI before the rewrite to /404.html"
         );
     }

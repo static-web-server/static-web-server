@@ -6,7 +6,7 @@
 //! Configurable access logging with format string support.
 //!
 //! Supports a `%{token}` syntax for user-defined log formats.
-//! When no format is configured, `log_addr` logs one structured line per request instead.
+//! When no format is configured, the line is logged with structured fields instead.
 //!
 //! Values taken from the request (URI, `Host`, `User-Agent`, `Referer`) are client-controlled.
 //! Bytes outside printable ASCII, `"` and `\` in them are written as `\xHH`, so a client cannot
@@ -151,9 +151,12 @@ impl AccessLogFormat {
     }
 }
 
+/// The target of the default line, kept from `log_addr` for log filters.
+const DEFAULT_TARGET: &str = "static_web_server::log_addr";
+
 /// Whether the line of `req` passes the log level filter, so it is worth building.
 pub(crate) fn enabled<T>(opts: &RequestHandlerOpts, req: &Request<T>) -> bool {
-    // Health check requests are logged in debug mode only, as `log_addr` does
+    // Health check requests are logged in debug mode only
     if opts.health && health::is_health_endpoint(req.uri()) {
         tracing::enabled!(tracing::Level::DEBUG)
     } else {
@@ -165,7 +168,8 @@ pub(crate) fn enabled<T>(opts: &RequestHandlerOpts, req: &Request<T>) -> bool {
 /// the URI and `Host`, and the line is written after the handler returns.
 #[derive(Debug)]
 pub(crate) struct AccessLog {
-    format: AccessLogFormat,
+    /// `None` logs the default line with structured fields.
+    format: Option<AccessLogFormat>,
     method: Method,
     uri: Uri,
     host: Option<HeaderValue>,
@@ -182,23 +186,29 @@ pub(crate) struct AccessLog {
 impl AccessLog {
     /// Copies the request values the access log uses.
     pub(crate) fn new<T>(
-        format: &AccessLogFormat,
+        format: Option<&AccessLogFormat>,
         opts: &RequestHandlerOpts,
         req: &Request<T>,
         remote_addr: Option<SocketAddr>,
     ) -> Self {
         let headers = req.headers();
+        // The default line logs only the addresses its options enable
+        let custom = format.is_some();
         Self {
-            format: format.clone(),
+            format: format.cloned(),
             method: req.method().clone(),
             uri: req.uri().clone(),
             host: headers.get(HOST).cloned(),
             version: req.version(),
             user_agent: headers.get(USER_AGENT).cloned(),
             referer: headers.get(REFERER).cloned(),
-            remote_addr,
-            x_real_ip: log_addr::x_real_ip(opts, req, remote_addr),
-            forwarded_for: log_addr::forwarded_for(opts, req, remote_addr),
+            remote_addr: remote_addr.filter(|_| custom || opts.log_remote_address),
+            x_real_ip: (custom || opts.log_x_real_ip)
+                .then(|| log_addr::x_real_ip(opts, req, remote_addr))
+                .flatten(),
+            forwarded_for: (custom || opts.log_forwarded_for)
+                .then(|| log_addr::forwarded_for(opts, req, remote_addr))
+                .flatten(),
             health: opts.health && health::is_health_endpoint(req.uri()),
             start: Instant::now(),
         }
@@ -224,6 +234,10 @@ impl AccessLog {
     }
 
     fn write(&self, status: u16, bytes: u64) {
+        let Some(format) = &self.format else {
+            self.write_default(status);
+            return;
+        };
         let ctx = LogContext {
             method: self.method.as_str(),
             uri: &self.uri,
@@ -238,13 +252,47 @@ impl AccessLog {
             x_real_ip: self.x_real_ip,
             forwarded_for: self.forwarded_for,
         };
-        let line = self.format.render(&ctx);
+        let line = format.render(&ctx);
 
-        // Log health check requests in debug mode only, as `log_addr` does
+        // Log health check requests in debug mode only
         if self.health {
             tracing::debug!("{line}");
         } else {
             tracing::info!("{line}");
+        }
+    }
+
+    fn write_default(&self, status: u16) {
+        let method = self.method.as_str();
+        let uri = request_target(&self.uri);
+        let remote_addr = self.remote_addr.map(|addr| addr.ip());
+        let remote_addr = remote_addr.as_ref().map(tracing::field::display);
+        let x_real_ip = self.x_real_ip.as_ref().map(tracing::field::display);
+        let real_remote_ip = self.forwarded_for.as_ref().map(tracing::field::display);
+
+        // Log health check requests in debug mode only
+        if self.health {
+            tracing::debug!(
+                target: DEFAULT_TARGET,
+                method,
+                uri,
+                status,
+                remote_addr,
+                x_real_ip,
+                real_remote_ip,
+                "response"
+            );
+        } else {
+            tracing::info!(
+                target: DEFAULT_TARGET,
+                method,
+                uri,
+                status,
+                remote_addr,
+                x_real_ip,
+                real_remote_ip,
+                "response"
+            );
         }
     }
 }
@@ -309,15 +357,7 @@ struct LogContext<'a> {
 fn render_token(buf: &mut String, token: Token, ctx: &LogContext<'_>) {
     match token {
         Token::Method => buf.push_str(ctx.method),
-        Token::Uri => {
-            let target = match (ctx.uri.path_and_query(), ctx.uri.authority()) {
-                (Some(path), _) => path.as_str(),
-                // Authority-form `CONNECT` target, e.g. `example.com:443`
-                (None, Some(authority)) if ctx.uri.scheme().is_none() => host_port(authority),
-                _ => "/",
-            };
-            push_escaped(buf, target.as_bytes());
-        }
+        Token::Uri => push_escaped(buf, request_target(ctx.uri).as_bytes()),
         Token::Version => buf.push_str(ctx.version),
         Token::Status => {
             let _ = write!(buf, "{}", ctx.status);
@@ -372,6 +412,17 @@ fn request_host<'a>(uri: &'a Uri, host: Option<&'a HeaderValue>) -> Option<&'a [
     match uri.authority() {
         Some(authority) => Some(host_port(authority).as_bytes()),
         None => host.map(HeaderValue::as_bytes),
+    }
+}
+
+/// The path and query of `uri`, without the scheme and authority of an absolute-form or
+/// HTTP/2 request URI.
+fn request_target(uri: &Uri) -> &str {
+    match (uri.path_and_query(), uri.authority()) {
+        (Some(path), _) => path.as_str(),
+        // Authority-form `CONNECT` target, e.g. `example.com:443`
+        (None, Some(authority)) if uri.scheme().is_none() => host_port(authority),
+        _ => "/",
     }
 }
 

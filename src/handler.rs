@@ -42,7 +42,7 @@ use crate::mem_cache::cache::MemCacheOpts;
 use crate::{
     Error, Result, access_logs, control_headers, cors, custom_headers, error_page,
     exts::http::MethodExt,
-    health, log_addr, maintenance_mode, redirects, rewrites, security_headers,
+    health, maintenance_mode, redirects, rewrites, security_headers,
     settings::Advanced,
     static_files::{self, HandleOpts},
     text_charset, virtual_hosts,
@@ -246,18 +246,11 @@ impl RequestHandler {
         let memory_cache = self.opts.memory_cache.as_ref();
 
         // Rewrites replace the request URI and `Host`, so keep the ones the client sent for the
-        // per-request log line
-        let access_log = self
-            .opts
-            .access_log_format
-            .as_ref()
-            .filter(|_| access_logs::enabled(&self.opts, req))
-            .map(|format| access_logs::AccessLog::new(format, &self.opts, req, remote_addr));
-        let client_uri = self
-            .opts
-            .access_log_format
-            .is_none()
-            .then(|| req.uri().clone());
+        // access log
+        let access_log = access_logs::enabled(&self.opts, req).then(|| {
+            let format = self.opts.access_log_format.as_ref();
+            access_logs::AccessLog::new(format, &self.opts, req, remote_addr)
+        });
 
         async move {
             #[cfg(feature = "metrics")]
@@ -449,17 +442,7 @@ impl RequestHandler {
                 custom_headers::post_process(&self.opts, req, resp, file_path.as_ref(), early)
             });
 
-            // One line per request: the `log_addr` line once the response exists, the access log
-            // line once the response body is sent
-            if let Some(uri) = &client_uri {
-                log_addr::log_response(
-                    &self.opts,
-                    req,
-                    uri,
-                    remote_addr,
-                    result.as_ref().ok().map(|resp| resp.status()),
-                );
-            }
+            // The access log line is written once the response body is sent
             let result = match access_log {
                 Some(access_log) => result.map(|resp| access_log.wrap(resp)),
                 None => result,

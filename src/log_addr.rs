@@ -6,10 +6,10 @@
 //! A module to log remote and real IP addresses.
 //!
 
-use hyper::{Request, StatusCode, Uri};
+use hyper::Request;
 use std::net::{IpAddr, SocketAddr};
 
-use crate::{handler::RequestHandlerOpts, health};
+use crate::handler::RequestHandlerOpts;
 
 /// Initializes the log address module.
 pub(crate) fn init(enabled: bool, handler_opts: &mut RequestHandlerOpts) {
@@ -27,64 +27,6 @@ pub(crate) fn init(enabled: bool, handler_opts: &mut RequestHandlerOpts) {
         "log X-Forwarded-For header"
     );
     tracing::info!(trusted_proxies = %trusted, "trusted IPs for X-Forwarded-For");
-}
-
-/// Logs one line per request with the response status and the remote and real IP addresses.
-///
-/// Runs after the response is built so that the line carries the status code. It only logs,
-/// unlike the `post_process` steps that take and return the response. `uri` is the URI
-/// the client sent: rewrites replace the request URI during the pipeline. `status` is `None`
-/// when the handler returned an error instead of a response.
-pub(crate) fn log_response<T>(
-    opts: &RequestHandlerOpts,
-    req: &Request<T>,
-    uri: &Uri,
-    remote_addr: Option<SocketAddr>,
-    status: Option<StatusCode>,
-) {
-    let remote_ip = if opts.log_remote_address {
-        remote_addr.map(|addr| addr.ip())
-    } else {
-        None
-    };
-
-    let x_real_ip = if opts.log_x_real_ip {
-        x_real_ip(opts, req, remote_addr)
-    } else {
-        None
-    };
-    let real_remote_ip = if opts.log_forwarded_for {
-        forwarded_for(opts, req, remote_addr)
-    } else {
-        None
-    };
-
-    let method = req.method();
-    let status = status.map(|s| s.as_u16());
-
-    // Log health check requests in debug mode only if the health option is enabled
-    if opts.health && health::is_health_endpoint(uri) {
-        tracing::debug!(
-            method = %method,
-            uri = %uri,
-            status,
-            remote_addr = remote_ip.as_ref().map(tracing::field::display),
-            x_real_ip = x_real_ip.as_ref().map(tracing::field::display),
-            real_remote_ip = real_remote_ip.as_ref().map(tracing::field::display),
-            "response"
-        );
-        return;
-    }
-
-    tracing::info!(
-        method = %method,
-        uri = %uri,
-        status,
-        remote_addr = remote_ip.as_ref().map(tracing::field::display),
-        x_real_ip = x_real_ip.as_ref().map(tracing::field::display),
-        real_remote_ip = real_remote_ip.as_ref().map(tracing::field::display),
-        "response"
-    );
 }
 
 /// Whether the `X-Real-IP` and `X-Forwarded-For` headers of a request from `remote_addr` are trusted.
