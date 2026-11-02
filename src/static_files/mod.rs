@@ -107,7 +107,10 @@ pub async fn handle(opts: &HandleOpts<'_>) -> Result<StaticFileResponse, StatusC
 
     #[cfg(feature = "directory-listing")]
     if let Some(resp) = listing::try_listing(file_path, is_dir, opts)? {
-        return Ok(StaticFileResponse::new(resp, resp_file_path));
+        return Ok(StaticFileResponse {
+            is_dir_listing: true,
+            ..StaticFileResponse::new(resp, resp_file_path)
+        });
     }
 
     let resp =

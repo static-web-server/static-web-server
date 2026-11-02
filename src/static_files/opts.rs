@@ -74,11 +74,17 @@ pub struct StaticFileResponse {
     pub resp: Response<Body>,
     /// The file path of the inner HTTP response.
     pub file_path: PathBuf,
+    /// Whether the inner HTTP response is a directory listing.
+    pub is_dir_listing: bool,
 }
 
 impl StaticFileResponse {
     /// Pairs a response body with the file path that produced it.
     pub(super) fn new(resp: Response<Body>, file_path: PathBuf) -> Self {
-        Self { resp, file_path }
+        Self {
+            resp,
+            file_path,
+            is_dir_listing: false,
+        }
     }
 }

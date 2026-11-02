@@ -686,6 +686,41 @@ pub mod tests {
         }
     }
 
+    #[cfg(feature = "directory-listing")]
+    #[tokio::test]
+    async fn markdown_enabled_vary_accept_on_json_listing() {
+        use static_web_server::directory_listing::DirListFmt;
+        use static_web_server::settings::cli::General;
+
+        let opts = fixture_settings("toml/markdown_enabled.toml");
+        let general = General {
+            directory_listing: true,
+            directory_listing_format: DirListFmt::Json,
+            ..opts.general
+        };
+        let req_handler_opts = fixture_req_handler_opts(general, opts.advanced);
+        let req_handler = fixture_req_handler(req_handler_opts);
+        let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
+
+        // `/guide/` only has a markdown index: other clients get a JSON listing
+        let mut req = Request::new(());
+        *req.method_mut() = hyper::Method::GET;
+        *req.uri_mut() = "http://localhost/guide/".parse().unwrap();
+        req.headers_mut().insert(
+            hyper::header::ACCEPT,
+            HeaderValue::from_static("application/json"),
+        );
+
+        let res = req_handler.handle(&mut req, remote_addr).await.unwrap();
+        assert_eq!(res.status(), 200);
+        assert_eq!(res.headers()["content-type"], "application/json");
+        assert!(
+            varies_on_accept(&res),
+            "missing `Vary: Accept` on a JSON listing, got {:?}",
+            res.headers().get("vary")
+        );
+    }
+
     #[tokio::test]
     async fn markdown_disabled_no_vary_accept() {
         let opts = fixture_settings("toml/markdown_disabled.toml");
