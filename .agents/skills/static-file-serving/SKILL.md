@@ -88,7 +88,7 @@ Both arrays must stay sorted: lookup uses `binary_search`. Override per path wit
 
 ## Markdown Negotiation (`--accept-markdown`, default `false`)
 
-When the request `Accept` header lists `text/markdown`, SWS looks for `<path>.md`, then `<path>.html.md`, then `<path>/index.html.md`, serves it as `text/markdown`, and applies the hidden-file policy to the variant.
+When the request `Accept` header lists `text/markdown`, SWS looks for `<path>.md`, then `<path>.html.md`, then `<path>/index.html.md`, serves it as `text/markdown`, and applies the hidden-file policy to the variant. When the option is enabled, HTML and markdown responses from the static files pipeline carry `Vary: Accept`, so that shared caches key both representations of a URI apart; a markdown variant only makes sense for HTML, so other assets (CSS, JS, images) don't get it. The `Content-Type` decides whether a response is HTML; `304` and trailing-slash `308` responses have none, so the resolved file decides for a `304` and a trailing-slash `308` always gets it. Pre-processing short-circuits (redirects, auth, maintenance, health) don't negotiate and don't get it, and a `[[advanced.headers]]` rule that sets `Vary` replaces it.
 
 ## Advanced TOML Rules
 

@@ -48,7 +48,7 @@ thread_local! {
 
 /// Returns the `Content-Type` `HeaderValue` for the given file path,
 /// using a per-thread cache keyed by the file extension.
-fn content_type_for(path: &Path) -> HeaderValue {
+pub(crate) fn content_type_for(path: &Path) -> HeaderValue {
     let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("");
     CONTENT_TYPE_CACHE.with(|cache| {
         if let Some(hv) = cache.borrow().get(ext) {
