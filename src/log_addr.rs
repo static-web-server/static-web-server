@@ -9,7 +9,7 @@
 use hyper::Request;
 use std::net::{IpAddr, SocketAddr};
 
-use crate::{handler::RequestHandlerOpts, health};
+use crate::handler::RequestHandlerOpts;
 
 /// Initializes the log address module.
 pub(crate) fn init(enabled: bool, handler_opts: &mut RequestHandlerOpts) {
@@ -27,55 +27,6 @@ pub(crate) fn init(enabled: bool, handler_opts: &mut RequestHandlerOpts) {
         "log X-Forwarded-For header"
     );
     tracing::info!(trusted_proxies = %trusted, "trusted IPs for X-Forwarded-For");
-}
-
-/// It logs remote and real IP addresses if available.
-pub(crate) fn pre_process<T>(
-    opts: &RequestHandlerOpts,
-    req: &Request<T>,
-    remote_addr: Option<SocketAddr>,
-) {
-    let remote_ip = if opts.log_remote_address {
-        remote_addr.map(|addr| addr.ip())
-    } else {
-        None
-    };
-
-    let x_real_ip = if opts.log_x_real_ip {
-        x_real_ip(opts, req, remote_addr)
-    } else {
-        None
-    };
-    let real_remote_ip = if opts.log_forwarded_for {
-        forwarded_for(opts, req, remote_addr)
-    } else {
-        None
-    };
-
-    let method = req.method();
-    let uri = req.uri();
-
-    // Log incoming requests in debug mode only if the health option is enabled
-    if opts.health && health::is_health_endpoint(uri) {
-        tracing::debug!(
-            method = %method,
-            uri = %uri,
-            remote_addr = remote_ip.as_ref().map(tracing::field::display),
-            x_real_ip = x_real_ip.as_ref().map(tracing::field::display),
-            real_remote_ip = real_remote_ip.as_ref().map(tracing::field::display),
-            "incoming request"
-        );
-        return;
-    }
-
-    tracing::info!(
-        method = %method,
-        uri = %uri,
-        remote_addr = remote_ip.as_ref().map(tracing::field::display),
-        x_real_ip = x_real_ip.as_ref().map(tracing::field::display),
-        real_remote_ip = real_remote_ip.as_ref().map(tracing::field::display),
-        "incoming request"
-    );
 }
 
 /// Whether the `X-Real-IP` and `X-Forwarded-For` headers of a request from `remote_addr` are trusted.

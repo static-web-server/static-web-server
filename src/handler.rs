@@ -42,7 +42,7 @@ use crate::mem_cache::cache::MemCacheOpts;
 use crate::{
     Error, Result, access_logs, control_headers, cors, custom_headers, error_page,
     exts::http::MethodExt,
-    health, log_addr, maintenance_mode, redirects, rewrites, security_headers,
+    health, maintenance_mode, redirects, rewrites, security_headers,
     settings::Advanced,
     static_files::{self, HandleOpts},
     text_charset, virtual_hosts,
@@ -245,17 +245,12 @@ impl RequestHandler {
         #[cfg(feature = "mem-cache")]
         let memory_cache = self.opts.memory_cache.as_ref();
 
-        if self.opts.access_log_format.is_none() {
-            log_addr::pre_process(&self.opts, req, remote_addr);
-        }
         // Rewrites replace the request URI and `Host`, so keep the ones the client sent for the
         // access log
-        let access_log = self
-            .opts
-            .access_log_format
-            .as_ref()
-            .filter(|_| access_logs::enabled(&self.opts, req))
-            .map(|format| access_logs::AccessLog::new(format, &self.opts, req, remote_addr));
+        let access_log = access_logs::enabled(&self.opts, req).then(|| {
+            let format = self.opts.access_log_format.as_ref();
+            access_logs::AccessLog::new(format, &self.opts, req, remote_addr)
+        });
 
         async move {
             #[cfg(feature = "metrics")]
