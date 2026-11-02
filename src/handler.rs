@@ -347,7 +347,7 @@ impl RequestHandler {
                 let uri_path = uri_path_md.as_deref().unwrap_or(req.uri().path());
 
                 // Static files
-                let (resp, file_path) = match static_files::handle(&HandleOpts {
+                let (resp, file_path, is_dir_listing) = match static_files::handle(&HandleOpts {
                     method: req.method(),
                     headers: req.headers(),
                     #[cfg(feature = "mem-cache")]
@@ -372,7 +372,7 @@ impl RequestHandler {
                 })
                 .await
                 {
-                    Ok(result) => (result.resp, Some(result.file_path)),
+                    Ok(result) => (result.resp, Some(result.file_path), result.is_dir_listing),
                     Err(status) => {
                         #[cfg(feature = "fallback-page")]
                         let will_serve_fallback = fallback_page::can_serve(&self.opts, req, status);
@@ -397,7 +397,7 @@ impl RequestHandler {
                             )?
                         };
 
-                        (resp, None)
+                        (resp, None, false)
                     }
                 };
 
@@ -411,6 +411,7 @@ impl RequestHandler {
                 // Add `Vary: Accept` and set Content-Type for markdown files
                 let resp = crate::markdown::post_process(
                     uri_path_md.is_some(),
+                    is_dir_listing,
                     file_path.as_deref(),
                     &self.opts,
                     resp,

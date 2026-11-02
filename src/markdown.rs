@@ -87,13 +87,15 @@ pub(crate) fn pre_process<T>(
 /// representations must carry it, otherwise a shared cache could serve the
 /// first cached one to every client. A markdown variant only makes sense for
 /// HTML, so other assets (CSS, JS, images) don't get it and shared caches
-/// don't store one copy per `Accept` value. Custom headers can still override
-/// it.
+/// don't store one copy per `Accept` value. Directory listings get it in any
+/// format, since a directory may have a markdown index. Custom headers can
+/// still override it.
 ///
 /// `file_path` is the file resolved by the static files handler, `None` for
 /// error and fallback pages.
 pub(crate) fn post_process(
     is_markdown_variant: bool,
+    is_dir_listing: bool,
     file_path: Option<&Path>,
     opts: &RequestHandlerOpts,
     mut resp: Response<Body>,
@@ -103,7 +105,7 @@ pub(crate) fn post_process(
     }
 
     if !is_markdown_variant {
-        if is_html(file_path, &resp) {
+        if is_dir_listing || is_html(file_path, &resp) {
             append_vary_accept(&mut resp);
         }
         return Ok(resp);
