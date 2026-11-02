@@ -9,12 +9,14 @@
 //! an Accept header that includes text/markdown.
 
 use headers::HeaderMapExt;
-use hyper::{Request, Response};
+use hyper::{Request, Response, StatusCode};
 use percent_encoding::{AsciiSet, CONTROLS, utf8_percent_encode};
 use std::path::Path;
 
 use crate::body::Body;
+use crate::exts::http::append_vary_accept;
 use crate::fs::path::{PathExt, sanitize_path};
+use crate::response::content_type_for;
 use crate::{
     Error, exts::headers::Accept, fs::meta::try_markdown_variant, handler::RequestHandlerOpts,
 };
@@ -78,14 +80,36 @@ pub(crate) fn pre_process<T>(
 }
 
 /// Post-process the response to set the correct Content-Type for markdown files.
+///
+/// When the feature is enabled, HTML and markdown responses get
+/// `Vary: Accept` since the same URI may resolve to either the HTML or the
+/// markdown variant depending on the `Accept` request header. Both
+/// representations must carry it, otherwise a shared cache could serve the
+/// first cached one to every client. A markdown variant only makes sense for
+/// HTML, so other assets (CSS, JS, images) don't get it and shared caches
+/// don't store one copy per `Accept` value. Custom headers can still override
+/// it.
+///
+/// `file_path` is the file resolved by the static files handler, `None` for
+/// error and fallback pages.
 pub(crate) fn post_process(
     is_markdown_variant: bool,
+    file_path: Option<&Path>,
     opts: &RequestHandlerOpts,
     mut resp: Response<Body>,
 ) -> Result<Response<Body>, Error> {
-    if !is_markdown_variant || !opts.accept_markdown {
+    if !opts.accept_markdown {
         return Ok(resp);
     }
+
+    if !is_markdown_variant {
+        if is_html(file_path, &resp) {
+            append_vary_accept(&mut resp);
+        }
+        return Ok(resp);
+    }
+
+    append_vary_accept(&mut resp);
 
     resp.headers_mut().insert(
         http::header::CONTENT_TYPE,
@@ -93,6 +117,28 @@ pub(crate) fn post_process(
     );
 
     Ok(resp)
+}
+
+/// Whether the response is an HTML representation.
+///
+/// The `Content-Type` decides when there is one. A `304 Not Modified` carries
+/// none but must repeat the `Vary` of the `200` (RFC 9110, section 15.4.5), so
+/// the file resolved by the static files handler decides for it. A
+/// trailing-slash `308` carries none either and always counts: a directory with
+/// only a markdown index redirects HTML clients but serves markdown ones, so
+/// the selected response depends on `Accept` (RFC 9110, section 12.5.5).
+#[inline]
+fn is_html(file_path: Option<&Path>, resp: &Response<Body>) -> bool {
+    if let Some(content_type) = resp.headers().get(http::header::CONTENT_TYPE) {
+        return content_type
+            .to_str()
+            .ok()
+            .and_then(|v| v.split(';').next())
+            .is_some_and(|essence| essence.trim().eq_ignore_ascii_case("text/html"));
+    }
+    file_path.is_some_and(|path| {
+        resp.status() == StatusCode::PERMANENT_REDIRECT || content_type_for(path) == "text/html"
+    })
 }
 
 // Property-based regression test for `pre_process`
@@ -320,5 +366,48 @@ mod tests {
         assert_eq!(result, "/a%252fb.html.md");
         let resolved = sanitize_path(&base, &result).unwrap();
         assert_eq!(resolved, base.join("a%2fb.html.md"));
+    }
+
+    #[test]
+    fn is_html_uses_content_type_when_present() {
+        for (content_type, expected) in [
+            ("text/html", true),
+            ("text/html; charset=utf-8", true),
+            ("Text/HTML ;charset=utf-8", true),
+            ("text/markdown; charset=utf-8", false),
+            ("text/css", false),
+            ("text/html-sandboxed", false),
+        ] {
+            let mut resp = Response::new(crate::body::empty());
+            resp.headers_mut().insert(
+                http::header::CONTENT_TYPE,
+                http::HeaderValue::from_static(content_type),
+            );
+            assert_eq!(is_html(None, &resp), expected, "{content_type}");
+        }
+
+        // The `Content-Type` wins over the resolved file, e.g. a directory
+        // listing resolved to a custom non-HTML index file
+        let mut resp = Response::new(crate::body::empty());
+        resp.headers_mut().insert(
+            http::header::CONTENT_TYPE,
+            http::HeaderValue::from_static("text/html; charset=utf-8"),
+        );
+        assert!(is_html(Some(Path::new("/srv/dir/index.txt")), &resp));
+    }
+
+    #[test]
+    fn is_html_uses_resolved_file_without_content_type() {
+        let mut resp = Response::new(crate::body::empty());
+        *resp.status_mut() = StatusCode::NOT_MODIFIED;
+        assert!(is_html(Some(Path::new("/srv/article.html")), &resp));
+        assert!(is_html(Some(Path::new("/srv/dir/index.htm")), &resp));
+        assert!(!is_html(Some(Path::new("/srv/style.css")), &resp));
+        assert!(!is_html(None, &resp));
+
+        // A trailing-slash redirect counts whatever the index file
+        *resp.status_mut() = StatusCode::PERMANENT_REDIRECT;
+        assert!(is_html(Some(Path::new("/srv/dir/index.txt")), &resp));
+        assert!(!is_html(None, &resp));
     }
 }
