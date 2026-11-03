@@ -257,4 +257,40 @@ pub mod tests {
         assert_eq!(resp.status(), 200);
         assert_eq!(warnings.0.load(Ordering::Relaxed), 0);
     }
+
+    #[cfg(feature = "fallback-page")]
+    #[tokio::test]
+    async fn page_fallback_keeps_not_found_for_missing_assets() {
+        let opts = fixture_settings("toml/handler.toml");
+        let mut req_handler_opts = fixture_req_handler_opts(opts.general, opts.advanced);
+        req_handler_opts.page_fallback = b"fallback".to_vec();
+        let req_handler = fixture_req_handler(req_handler_opts);
+        let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
+
+        // A browser asking for a favicon that does not exist.
+        let mut req = Request::new(());
+        *req.method_mut() = Method::GET;
+        *req.uri_mut() = "http://localhost/favicon.ico".parse().unwrap();
+        req.headers_mut().insert(
+            "accept",
+            HeaderValue::from_static("image/avif,image/webp,image/*,*/*;q=0.8"),
+        );
+        let resp = req_handler
+            .handle(&mut req, remote_addr)
+            .await
+            .expect("missing asset request should succeed");
+        assert_eq!(resp.status(), 404);
+
+        // A browser navigating to a client-side route.
+        let mut req = Request::new(());
+        *req.method_mut() = Method::GET;
+        *req.uri_mut() = "http://localhost/missing-route".parse().unwrap();
+        req.headers_mut()
+            .insert("accept", HeaderValue::from_static("text/html,*/*;q=0.8"));
+        let resp = req_handler
+            .handle(&mut req, remote_addr)
+            .await
+            .expect("fallback request should succeed");
+        assert_eq!(resp.status(), 200);
+    }
 }
