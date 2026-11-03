@@ -58,17 +58,24 @@ pub(crate) fn can_serve<T>(
 
 /// Returns whether the request is for a missing asset (like `/favicon.ico`) rather than a page.
 ///
-/// That is a path with a known non-HTML file extension, sent by a client that did not
-/// explicitly ask for HTML. A wildcard like `*/*` does not count as asking for HTML,
-/// because browsers append it to the `Accept` header of image and script requests.
+/// When the client sends `Sec-Fetch-Dest`, any destination other than a document or a frame
+/// is an asset. Otherwise, it is a path with a known non-HTML file extension, sent by a client
+/// that did not explicitly ask for HTML. A wildcard like `*/*` does not count as asking for
+/// HTML, because browsers append it to the `Accept` header of image and script requests.
 fn is_missing_asset<T>(req: &Request<T>) -> bool {
+    if let Some(dest) = req.headers().get("sec-fetch-dest") {
+        return !matches!(dest.as_bytes(), b"document" | b"iframe" | b"frame");
+    }
+
     let names_non_html_file = mime_guess::from_path(req.uri().path())
         .first()
         .is_some_and(|mime| !matches!(mime.essence_str(), "text/html" | "application/xhtml+xml"));
 
     names_non_html_file
         && !req.headers().typed_get::<Accept>().is_some_and(|accept| {
-            accept.accepts("text/html") || accept.accepts("application/xhtml+xml")
+            accept
+                .preferred_media_type(&["text/html", "application/xhtml+xml"])
+                .is_some()
         })
 }
 
@@ -95,20 +102,31 @@ mod tests {
             .unwrap()
     }
 
-    fn make_request_to(uri: &str, accept: Option<&str>) -> Request<Body> {
+    fn make_request_to(uri: &str, accept: Option<&str>, dest: Option<&str>) -> Request<Body> {
         let mut builder = Request::builder().method("GET").uri(uri);
         if let Some(accept) = accept {
             builder = builder.header("Accept", accept);
+        }
+        if let Some(dest) = dest {
+            builder = builder.header("Sec-Fetch-Dest", dest);
         }
         builder.body(crate::body::empty()).unwrap()
     }
 
     fn fallback_status(uri: &str, accept: Option<&str>) -> StatusCode {
+        fallback_status_with_dest(uri, accept, None)
+    }
+
+    fn fallback_status_with_dest(
+        uri: &str,
+        accept: Option<&str>,
+        dest: Option<&str>,
+    ) -> StatusCode {
         let opts = RequestHandlerOpts {
             page_fallback: vec![1, 2, 3],
             ..Default::default()
         };
-        let req = make_request_to(uri, accept);
+        let req = make_request_to(uri, accept, dest);
         let resp = make_response(&StatusCode::NOT_FOUND);
         post_process(&opts, &req, resp).unwrap().status()
     }
@@ -266,6 +284,39 @@ mod tests {
             fallback_status("/user/john.doe", Some("*/*")),
             StatusCode::OK
         );
+    }
+
+    #[test]
+    fn test_dotted_route_without_html_accept_keeps_not_found() {
+        // `.com` is a known extension, so non-browser clients get a 404 for such routes.
+        assert_eq!(
+            fallback_status("/search/example.com", Some("*/*")),
+            StatusCode::NOT_FOUND
+        );
+        assert_eq!(
+            fallback_status("/search/example.com", Some("text/html,*/*;q=0.8")),
+            StatusCode::OK
+        );
+    }
+
+    #[test]
+    fn test_sec_fetch_dest_decides_when_present() {
+        // Extensionless asset URLs are still detected.
+        assert_eq!(
+            fallback_status_with_dest("/assets/chunk-abc", Some("*/*"), Some("script")),
+            StatusCode::NOT_FOUND
+        );
+        assert_eq!(
+            fallback_status_with_dest("/api/users", Some("*/*"), Some("empty")),
+            StatusCode::NOT_FOUND
+        );
+        // Navigations fall back regardless of the extension.
+        for dest in ["document", "iframe", "frame"] {
+            assert_eq!(
+                fallback_status_with_dest("/search/example.com", Some("*/*"), Some(dest)),
+                StatusCode::OK
+            );
+        }
     }
 
     #[test]
