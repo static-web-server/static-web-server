@@ -58,7 +58,7 @@ pub(crate) fn init(enabled: bool, handler_opts: &mut RequestHandlerOpts) {
 ///
 /// Returns [`None`] when the modified time is unavailable or equal to the
 /// UNIX epoch (matching the [`Last-Modified`] policy in
-/// [`crate::response`]). When this happens the caller skips ETag emission
+/// `response`). When this happens the caller skips ETag emission
 /// and falls back to date-based validation.
 #[must_use]
 pub(crate) fn build_from_meta(meta: &Metadata) -> Option<(headers::ETag, HeaderValue)> {
