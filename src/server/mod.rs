@@ -9,6 +9,7 @@ use hyper::server::conn::http1::Builder as Http1Builder;
 use hyper_util::rt::{TokioIo, TokioTimer};
 use std::net::TcpListener;
 use std::sync::Arc;
+use std::sync::atomic::AtomicBool;
 use std::time::Duration;
 use tokio::sync::watch::Receiver;
 
@@ -115,6 +116,8 @@ pub(crate) struct ShutdownCtx {
     pub grace_period: u8,
     /// Optional programmatic cancel receiver.
     pub cancel_recv: Option<Receiver<()>>,
+    /// Shared with the request handler; set once shutdown starts.
+    pub shutting_down: Arc<AtomicBool>,
     #[cfg(windows)]
     /// Whether the server is running as a Windows service.
     pub windows_service: bool,
@@ -346,6 +349,7 @@ impl Server {
 
         // Initialize request handler options from configuration
         let opts_result = opts::init(&general, advanced)?;
+        let shutting_down = opts_result.handler_opts.shutting_down.clone();
         let router_service = RouterService::new(RequestHandler {
             opts: Arc::from(opts_result.handler_opts),
         });
@@ -373,6 +377,7 @@ impl Server {
         let ctx = ShutdownCtx {
             grace_period: general.grace_period,
             cancel_recv,
+            shutting_down,
             #[cfg(windows)]
             windows_service,
             #[cfg(windows)]

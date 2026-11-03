@@ -7,6 +7,7 @@
 //!
 
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use tokio::sync::{Mutex, watch::Receiver};
 use tokio::time::{Duration, sleep};
 
@@ -30,6 +31,7 @@ pub async fn wait_for_signals(
     signals: Signals,
     grace_period_secs: u8,
     cancel_recv: Arc<Mutex<Option<Receiver<()>>>>,
+    shutting_down: Arc<AtomicBool>,
 ) {
     let (first_tx, mut base_rx) = tokio::sync::mpsc::channel(1);
     let last_tx = first_tx.clone();
@@ -63,12 +65,14 @@ pub async fn wait_for_signals(
     base_rx.recv().await.take();
 
     // NOTE: once loop above is done then an upstream graceful shutdown should come next.
-    delay_graceful_shutdown(grace_period_secs).await;
+    delay_graceful_shutdown(grace_period_secs, &shutting_down).await;
     tracing::info!("delegating server's graceful shutdown");
 }
 
-/// Function intended to delay the server's graceful shutdown providing a grace period in seconds.
-async fn delay_graceful_shutdown(grace_period_secs: u8) {
+/// Sets `shutting_down`, then delays the server's graceful shutdown by the grace period in seconds.
+async fn delay_graceful_shutdown(grace_period_secs: u8, shutting_down: &AtomicBool) {
+    // Fail readiness probes while connections drain.
+    shutting_down.store(true, Ordering::Relaxed);
     if grace_period_secs > 0 {
         tracing::info!(
             "grace period of {}s after the SIGTERM started",
@@ -82,12 +86,16 @@ async fn delay_graceful_shutdown(grace_period_secs: u8) {
 #[cfg(windows)]
 #[cfg_attr(docsrs, doc(cfg(windows)))]
 /// It waits for an incoming `ctrl+c` signal on Windows.
-pub async fn wait_for_ctrl_c(cancel_recv: Arc<Mutex<Option<Receiver<()>>>>, grace_period_secs: u8) {
+pub async fn wait_for_ctrl_c(
+    cancel_recv: Arc<Mutex<Option<Receiver<()>>>>,
+    grace_period_secs: u8,
+    shutting_down: Arc<AtomicBool>,
+) {
     if let Some(receiver) = &mut *cancel_recv.lock().await {
         receiver.changed().await.ok();
     }
 
-    delay_graceful_shutdown(grace_period_secs).await;
+    delay_graceful_shutdown(grace_period_secs, &shutting_down).await;
     tracing::info!("delegating server's graceful shutdown");
 }
 
@@ -102,6 +110,7 @@ pub async fn wait_for_ctrl_c_or_cancel(
     ctrl_c_recv: Arc<Mutex<Option<Receiver<()>>>>,
     cancel_recv: Arc<Mutex<Option<Receiver<()>>>>,
     grace_period_secs: u8,
+    shutting_down: Arc<AtomicBool>,
 ) {
     let (tx, mut rx) = tokio::sync::mpsc::channel::<()>(1);
 
@@ -121,6 +130,6 @@ pub async fn wait_for_ctrl_c_or_cancel(
     });
 
     rx.recv().await;
-    delay_graceful_shutdown(grace_period_secs).await;
+    delay_graceful_shutdown(grace_period_secs, &shutting_down).await;
     tracing::info!("delegating server's graceful shutdown");
 }

@@ -11,7 +11,7 @@ use std::{
     future::Future,
     net::{IpAddr, SocketAddr},
     path::PathBuf,
-    sync::Arc,
+    sync::{Arc, atomic::AtomicBool},
 };
 
 use crate::body::Body;
@@ -40,9 +40,9 @@ use crate::metrics;
 use crate::mem_cache::cache::MemCacheOpts;
 
 use crate::{
-    Error, Result, control_headers, cors, custom_headers, error_page,
+    Error, Result, access_logs, control_headers, cors, custom_headers, error_page,
     exts::http::MethodExt,
-    health, log_addr, maintenance_mode, redirects, rewrites, security_headers,
+    health, maintenance_mode, redirects, rewrites, security_headers,
     settings::Advanced,
     static_files::{self, HandleOpts},
     text_charset, virtual_hosts,
@@ -113,6 +113,8 @@ pub struct RequestHandlerOpts {
     pub basic_auth: String,
     /// Index files feature.
     pub index_files: Vec<String>,
+    /// Compiled access log format.
+    pub access_log_format: Option<access_logs::AccessLogFormat>,
     /// Log remote address feature.
     pub log_remote_address: bool,
     /// Log the X-Real-IP header.
@@ -133,8 +135,10 @@ pub struct RequestHandlerOpts {
     pub accept_markdown: bool,
     /// Default `charset=utf-8` parameter applied to certain `text` responses without one.
     pub text_charset: bool,
-    /// Health endpoint feature.
+    /// Health endpoints feature (`/livez` and `/readyz`).
     pub health: bool,
+    /// Set once a shutdown signal is received; `/readyz` then returns `503`.
+    pub shutting_down: Arc<AtomicBool>,
     /// Metrics endpoint feature.
     #[cfg(feature = "metrics")]
     pub metrics_enabled: bool,
@@ -184,6 +188,7 @@ impl Default for RequestHandlerOpts {
             #[cfg(feature = "basic-auth")]
             basic_auth: String::new(),
             index_files: vec!["index.html".into()],
+            access_log_format: None,
             log_remote_address: false,
             log_x_real_ip: false,
             log_forwarded_for: false,
@@ -195,6 +200,7 @@ impl Default for RequestHandlerOpts {
             accept_markdown: false,
             text_charset: true,
             health: false,
+            shutting_down: Arc::default(),
             #[cfg(feature = "metrics")]
             metrics_enabled: false,
             maintenance_mode: false,
@@ -239,20 +245,28 @@ impl RequestHandler {
         #[cfg(feature = "mem-cache")]
         let memory_cache = self.opts.memory_cache.as_ref();
 
-        log_addr::pre_process(&self.opts, req, remote_addr);
+        // Rewrites replace the request URI and `Host`, so keep the ones the client sent for the
+        // access log
+        let access_log = access_logs::enabled(&self.opts, req).then(|| {
+            let format = self.opts.access_log_format.as_ref();
+            access_logs::AccessLog::new(format, &self.opts, req, remote_addr)
+        });
 
         async move {
             #[cfg(feature = "metrics")]
             let req_start = std::time::Instant::now();
+            // Health probes are excluded, like they are from `info` logs
             #[cfg(feature = "metrics")]
-            let metrics_enabled = self.opts.metrics_enabled;
+            let metrics_enabled = self.opts.metrics_enabled
+                && !(self.opts.health && health::is_health_endpoint(req.uri()));
 
             #[cfg(feature = "metrics")]
             if metrics_enabled {
                 metrics::inc_requests_inflight();
             }
 
-            let result: Result<Response<Body>, Error> = async {
+            // Early responses serve no file; custom headers with `scope = "all"` still reach them
+            let result: Result<Early, Error> = async {
                 // Reject if the HTTP request method is not allowed
                 if !req.method().is_allowed() {
                     return error_page::error_response(
@@ -261,44 +275,45 @@ impl RequestHandler {
                         &StatusCode::METHOD_NOT_ALLOWED,
                         &self.opts.page404,
                         &self.opts.page50x,
-                    );
+                    )
+                    .map(early);
                 }
 
-                // Health endpoint check
+                // Health endpoints check (`/livez` and `/readyz`)
                 if let Some(result) = health::pre_process(&self.opts, req) {
-                    return result;
+                    return result.map(early);
                 }
 
                 // CORS
                 if let Some(result) = cors::pre_process(&self.opts, req) {
-                    return result;
+                    return result.map(early);
                 }
 
                 // `Basic` HTTP Authorization Schema
                 #[cfg(feature = "basic-auth")]
                 if let Some(response) = basic_auth::pre_process(&self.opts, req) {
-                    return response;
+                    return response.map(early);
                 }
 
                 // Metrics endpoint check
                 #[cfg(feature = "metrics")]
                 if let Some(result) = metrics::pre_process(&self.opts, req) {
-                    return result;
+                    return result.map(early);
                 }
 
                 // Maintenance Mode
                 if let Some(response) = maintenance_mode::pre_process(&self.opts, req) {
-                    return response;
+                    return response.map(early);
                 }
 
                 // Redirects
                 if let Some(result) = redirects::pre_process(&self.opts, req) {
-                    return result;
+                    return result.map(early);
                 }
 
                 // Rewrites
                 if let Some(result) = rewrites::pre_process(&self.opts, req) {
-                    return result;
+                    return result.map(early);
                 }
 
                 // Advanced options
@@ -327,7 +342,7 @@ impl RequestHandler {
                 let uri_path = uri_path_md.as_deref().unwrap_or(req.uri().path());
 
                 // Static files
-                let (resp, file_path) = match static_files::handle(&HandleOpts {
+                let (resp, file_path, is_dir_listing) = match static_files::handle(&HandleOpts {
                     method: req.method(),
                     headers: req.headers(),
                     #[cfg(feature = "mem-cache")]
@@ -352,7 +367,7 @@ impl RequestHandler {
                 })
                 .await
                 {
-                    Ok(result) => (result.resp, Some(result.file_path)),
+                    Ok(result) => (result.resp, Some(result.file_path), result.is_dir_listing),
                     Err(status) => {
                         #[cfg(feature = "fallback-page")]
                         let will_serve_fallback = fallback_page::can_serve(&self.opts, req, status);
@@ -377,7 +392,7 @@ impl RequestHandler {
                             )?
                         };
 
-                        (resp, None)
+                        (resp, None, false)
                     }
                 };
 
@@ -388,8 +403,14 @@ impl RequestHandler {
                 // Append CORS headers if they are present
                 let resp = cors::post_process(&self.opts, req, resp)?;
 
-                // Set Content-Type for markdown files
-                let resp = crate::markdown::post_process(uri_path_md.is_some(), &self.opts, resp)?;
+                // Add `Vary: Accept` and set Content-Type for markdown files
+                let resp = crate::markdown::post_process(
+                    uri_path_md.is_some(),
+                    is_dir_listing,
+                    file_path.as_deref(),
+                    &self.opts,
+                    resp,
+                )?;
 
                 // Declare a default charset for `text/*` responses
                 let resp = text_charset::post_process(&self.opts, resp)?;
@@ -413,12 +434,20 @@ impl RequestHandler {
                 // Append security headers
                 let resp = security_headers::post_process(&self.opts, req, resp)?;
 
-                // Add/update custom headers
-                let resp = custom_headers::post_process(&self.opts, req, resp, file_path.as_ref())?;
-
-                Ok(resp)
+                Ok((resp, file_path, false))
             }
             .await;
+
+            // Add/update custom headers
+            let result = result.and_then(|(resp, file_path, early)| {
+                custom_headers::post_process(&self.opts, req, resp, file_path.as_ref(), early)
+            });
+
+            // The access log line is written once the response body is sent
+            let result = match access_log {
+                Some(access_log) => result.map(|resp| access_log.wrap(resp)),
+                None => result,
+            };
 
             #[cfg(feature = "metrics")]
             if metrics_enabled {
@@ -442,4 +471,12 @@ impl RequestHandler {
             result
         }
     }
+}
+
+/// A response together with the served file path and whether it was returned early.
+type Early = (Response<Body>, Option<PathBuf>, bool);
+
+/// Marks a response that was returned before the static file handler ran.
+fn early(resp: Response<Body>) -> Early {
+    (resp, None, true)
 }

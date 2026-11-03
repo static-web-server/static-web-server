@@ -47,7 +47,7 @@ bin/server.rs → settings/ → server/ (mod.rs, opts.rs) → service.rs → han
 | `body.rs` | `pub type Body = BoxBody<Bytes, io::Error>` with `empty()`, `full()`, `stream()` |
 | `error.rs` | `Result<T> = anyhow::Result<T>`, `Error = anyhow::Error`, re-exports `Context`, `anyhow!`, `bail!` |
 | `testing.rs` | `testing::fixtures` helpers for tests (`#[doc(hidden)]`) |
-| `winservice.rs`, `signals.rs`, `logger.rs`, `log_addr.rs` | Platform/service integration and logging |
+| `winservice.rs`, `signals.rs`, `logger.rs`, `log_addr.rs`, `access_logs.rs` | Platform/service integration and logging |
 
 ## Request Pipeline
 
@@ -55,7 +55,6 @@ bin/server.rs → settings/ → server/ (mod.rs, opts.rs) → service.rs → han
 
 | # | Step | Phase | Short-circuits? |
 |---|------|-------|-----------------|
-| 0 | Remote address logging (`log_addr`) | Pre | No |
 | 1 | Method check (`GET`, `HEAD`, `OPTIONS` only) | Pre | Yes (405) |
 | 2 | Health endpoint (`health`) | Pre | Yes |
 | 3 | CORS (`cors::pre_process`) | Pre | Yes (preflight reply, or 403 for a disallowed origin) |
@@ -69,7 +68,7 @@ bin/server.rs → settings/ → server/ (mod.rs, opts.rs) → service.rs → han
 | 11 | `static_files::handle()` (mem-cache lookup, sanitize, resolve, security, listing, conditional/range reply) | Core | Errors become error pages |
 | 12 | Fallback page | Post | — |
 | 13 | CORS response headers | Post | — |
-| 14 | Markdown `Content-Type` | Post | — |
+| 14 | Markdown `Vary: Accept` (when enabled, HTML, markdown and directory listings only) and `Content-Type` (variant only) | Post | — |
 | 15 | Text charset (`charset=utf-8` on `text/*`) | Post | — |
 | 16 | Static compression `Vary` | Post | — |
 | 17 | Dynamic compression | Post | — |
@@ -77,7 +76,7 @@ bin/server.rs → settings/ → server/ (mod.rs, opts.rs) → service.rs → han
 | 19 | Security headers | Post | — |
 | 20 | Custom headers (final precedence) | Post | — |
 
-Metrics (request count, inflight, duration) wrap the whole pipeline.
+Metrics (request count, inflight, duration) wrap the whole pipeline. `access_logs::AccessLog` wraps the response body and logs one line per request when the body is dropped (sent or aborted), with the response status and the request values the client sent (before rewrites): rendered from `--access-log-format`, else as structured fields.
 
 ### Pipeline Rules
 

@@ -1,0 +1,16 @@
+[general]
+
+root = "tests/fixtures/public"
+maintenance-mode = true
+
+[advanced]
+
+[[advanced.headers]]
+source = "**"
+scope = "all"
+status = [503]
+headers = { Retry-After = "120" }
+
+[[advanced.headers]]
+source = "**"
+headers = { X-Default-Scope = "1" }

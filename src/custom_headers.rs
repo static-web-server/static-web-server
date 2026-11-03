@@ -10,7 +10,11 @@ use hyper::{Request, Response};
 use std::{ffi::OsStr, path::PathBuf};
 
 use crate::body::Body;
-use crate::{Error, handler::RequestHandlerOpts, settings::Headers};
+use crate::{
+    Error,
+    handler::RequestHandlerOpts,
+    settings::{Headers, HeadersScope},
+};
 
 /// Appends custom HTTP headers to a response if necessary
 pub(crate) fn post_process<T>(
@@ -18,6 +22,7 @@ pub(crate) fn post_process<T>(
     req: &Request<T>,
     mut resp: Response<Body>,
     file_path: Option<&PathBuf>,
+    early: bool,
 ) -> Result<Response<Body>, Error> {
     if let Some(advanced) = &opts.advanced_opts {
         append_headers(
@@ -26,6 +31,7 @@ pub(crate) fn post_process<T>(
             &mut resp,
             file_path,
             opts.redirect_trailing_slash,
+            early,
         )
     }
     Ok(resp)
@@ -38,6 +44,7 @@ fn append_headers(
     resp: &mut Response<Body>,
     file_path: Option<&PathBuf>,
     redirect_trailing_slash: bool,
+    early: bool,
 ) {
     if let Some(headers_vec) = headers_opts {
         let uri_path_auto_index = file_path
@@ -56,6 +63,10 @@ fn append_headers(
 
         let status = resp.status();
         for headers_entry in headers_vec {
+            // Skip the entry if it does not reach responses returned before the file handler
+            if early && headers_entry.scope == HeadersScope::Files {
+                continue;
+            }
             // Skip the entry if it is limited to other response status codes
             if headers_entry
                 .status

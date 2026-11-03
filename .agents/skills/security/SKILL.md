@@ -78,7 +78,7 @@ HSTS is sent whenever the option is on, including over plain HTTP if the user en
 ## Basic Auth
 
 - `--basic-auth "user:$2y$..."`: username, colon, bcrypt hash (`htpasswd -nBC 10 user`). Split on the first `:`
-- Runs before metrics, maintenance, redirects, and file serving, so it protects `/metrics` (reordered in #718). `/health` runs before auth by design
+- Runs before metrics, maintenance, redirects, and file serving, so it protects `/metrics` (reordered in #718). `/livez` and `/readyz` run before auth by design
 - Credentials are base64, not encrypted. Pair with TLS
 - No rate limiting; deploy behind a proxy for brute-force protection
 

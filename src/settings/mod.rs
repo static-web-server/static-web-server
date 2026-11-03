@@ -27,6 +27,7 @@ use cli::General;
 
 use self::file::MemoryCache;
 
+pub(crate) use self::file::HeadersScope;
 use self::file::{RedirectsKind, Settings as FileSettings};
 
 #[cfg(any(
@@ -45,6 +46,8 @@ pub struct Headers {
     /// Optional list of response status codes the headers apply to.
     /// If `None`, the headers apply to any response status.
     pub status: Option<Vec<StatusCode>>,
+    /// Which responses the headers apply to.
+    pub scope: HeadersScope,
     /// Map of custom HTTP headers
     pub headers: HeaderMap,
 }
@@ -220,6 +223,7 @@ impl Settings {
         #[cfg(feature = "fallback-page")]
         let mut page_fallback = opts.page_fallback;
 
+        let mut access_log_format = opts.access_log_format;
         let mut log_remote_address = opts.log_remote_address;
         let mut log_x_real_ip = opts.log_x_real_ip;
         let mut log_forwarded_for = opts.log_forwarded_for;
@@ -430,6 +434,9 @@ impl Settings {
                 if let Some(v) = general.page_fallback {
                     page_fallback = v
                 }
+                if let Some(ref v) = general.access_log_format {
+                    v.clone_into(&mut access_log_format)
+                }
                 if let Some(v) = general.log_remote_address {
                     log_remote_address = v
                 }
@@ -535,6 +542,7 @@ impl Settings {
                             headers_vec.push(Headers {
                                 source,
                                 status,
+                                scope: headers_entry.scope,
                                 headers: headers_entry.headers.to_owned(),
                             });
                         }
@@ -823,6 +831,7 @@ impl Settings {
                 idle_timeout,
                 #[cfg(feature = "fallback-page")]
                 page_fallback,
+                access_log_format,
                 log_remote_address,
                 log_x_real_ip,
                 log_forwarded_for,

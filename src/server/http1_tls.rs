@@ -44,6 +44,7 @@ pub(super) async fn run<F: FnOnce()>(
         .with_context(|| "failed to create tokio::net::TcpListener")?;
 
     let grace_period = ctx.grace_period;
+    let shutting_down = ctx.shutting_down.clone();
 
     #[cfg(unix)]
     let signals =
@@ -89,13 +90,20 @@ pub(super) async fn run<F: FnOnce()>(
             let builder = conn_cfg.http1_builder();
 
             #[cfg(unix)]
-            let shutdown = signals::wait_for_signals(signals, grace_period, cancel_recv);
+            let shutdown =
+                signals::wait_for_signals(signals, grace_period, cancel_recv, shutting_down);
             #[cfg(unix)]
             tokio::pin!(shutdown);
 
             #[cfg(windows)]
             let shutdown = async move {
-                signals::wait_for_ctrl_c_or_cancel(ctrl_c_recv, cancel_recv, grace_period).await;
+                signals::wait_for_ctrl_c_or_cancel(
+                    ctrl_c_recv,
+                    cancel_recv,
+                    grace_period,
+                    shutting_down,
+                )
+                .await;
             };
             #[cfg(windows)]
             tokio::pin!(shutdown);

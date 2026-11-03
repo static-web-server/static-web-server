@@ -44,7 +44,12 @@ pub(super) async fn run<F: FnOnce()>(
     #[cfg(unix)]
     let cancel_recv = Arc::new(Mutex::new(ctx.cancel_recv));
     #[cfg(unix)]
-    let shutdown = signals::wait_for_signals(signals, ctx.grace_period, cancel_recv);
+    let shutdown = signals::wait_for_signals(
+        signals,
+        ctx.grace_period,
+        cancel_recv,
+        ctx.shutting_down.clone(),
+    );
     #[cfg(unix)]
     tokio::pin!(shutdown);
 
@@ -57,7 +62,16 @@ pub(super) async fn run<F: FnOnce()>(
         }));
         let cancel_recv = Arc::new(Mutex::new(ctx.cancel_recv));
         let grace_period = ctx.grace_period;
-        async move { signals::wait_for_ctrl_c_or_cancel(ctrl_c_recv, cancel_recv, grace_period).await }
+        let shutting_down = ctx.shutting_down.clone();
+        async move {
+            signals::wait_for_ctrl_c_or_cancel(
+                ctrl_c_recv,
+                cancel_recv,
+                grace_period,
+                shutting_down,
+            )
+            .await
+        }
     };
     #[cfg(windows)]
     tokio::pin!(shutdown);

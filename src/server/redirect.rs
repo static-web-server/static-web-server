@@ -64,7 +64,8 @@ pub(super) fn spawn(
         let cancel_recv = cfg.cancel_recv;
 
         #[cfg(unix)]
-        let shutdown = signals::wait_for_signals(redirect_signals, grace_period, cancel_recv);
+        let shutdown =
+            signals::wait_for_signals(redirect_signals, grace_period, cancel_recv, Arc::default());
         #[cfg(unix)]
         tokio::pin!(shutdown);
 
@@ -72,7 +73,13 @@ pub(super) fn spawn(
         let ctrl_c_recv = cfg.ctrl_c_recv;
         #[cfg(windows)]
         let shutdown = async move {
-            signals::wait_for_ctrl_c_or_cancel(ctrl_c_recv, cancel_recv, grace_period).await;
+            signals::wait_for_ctrl_c_or_cancel(
+                ctrl_c_recv,
+                cancel_recv,
+                grace_period,
+                Arc::default(),
+            )
+            .await;
         };
         #[cfg(windows)]
         tokio::pin!(shutdown);

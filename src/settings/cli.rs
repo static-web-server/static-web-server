@@ -561,6 +561,15 @@ pub struct General {
     /// Server TOML configuration file path.
     pub config_file: PathBuf,
 
+    #[arg(long, default_value = "", env = "SERVER_ACCESS_LOG_FORMAT")]
+    /// Custom access log format string using %{token} syntax. When set, replaces the default
+    /// request logging with a configurable format that includes response data.
+    /// Tokens: method, uri, status, bytes, duration, remote_addr, x_real_ip,
+    /// forwarded_for, host, user_agent, referer, timestamp, version.
+    /// x_real_ip and forwarded_for are logged only for requests from --trusted-proxies, if set.
+    /// Example: '%{remote_addr} "%{method} %{uri}" %{status} %{bytes}'
+    pub access_log_format: String,
+
     #[arg(
         long,
         default_value = "false",
@@ -570,7 +579,7 @@ pub struct General {
         action = clap::ArgAction::Set,
         env = "SERVER_LOG_REMOTE_ADDRESS",
     )]
-    /// Log incoming requests information along with its remote address if available using the `info` log level.
+    /// Log the remote address of each request, if available.
     pub log_remote_address: bool,
 
     #[arg(
@@ -676,8 +685,9 @@ pub struct General {
         action = clap::ArgAction::Set,
         env = "SERVER_HEALTH",
     )]
-    /// Add a /health endpoint that doesn't generate any log entry and returns a 200 status code.
-    /// This is especially useful with Kubernetes liveness and readiness probes.
+    /// Add the `/livez` (liveness) and `/readyz` (readiness) endpoints for Kubernetes-style probes.
+    /// They answer `GET` and `HEAD` with `200 OK` (`/readyz` returns `503` once shutdown starts or
+    /// while the root directory is missing) and log requests at `debug` level only.
     pub health: bool,
 
     #[cfg(feature = "metrics")]
