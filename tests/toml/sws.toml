@@ -59,6 +59,9 @@ grace-period = 0
 #### Connection idle timeout
 idle-timeout = 30
 
+#### Maximum connections served at the same time (0 means no limit)
+max-connections = 0
+
 #### Page fallback for 404s
 page-fallback = ""
 

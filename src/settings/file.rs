@@ -391,6 +391,9 @@ pub struct General {
     /// Connection idle timeout in seconds.
     pub idle_timeout: Option<u16>,
 
+    /// Maximum number of connections served at the same time.
+    pub max_connections: Option<usize>,
+
     /// Page fallback feature.
     #[cfg(feature = "fallback-page")]
     #[cfg_attr(docsrs, doc(cfg(feature = "fallback-page")))]

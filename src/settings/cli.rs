@@ -551,6 +551,10 @@ pub struct General {
     /// Defines the time in seconds after which a connection without any reads or writes is closed. An HTTP/1 request header must also arrive within this time. Use `0` to disable it. The maximum value is 65535 seconds.
     pub idle_timeout: u16,
 
+    #[arg(long, default_value = "0", env = "SERVER_MAX_CONNECTIONS")]
+    /// Defines the maximum number of connections served at the same time, across all listeners. Once reached, new connections wait until another one closes. Use `0` for no limit.
+    pub max_connections: usize,
+
     #[arg(
         long,
         short = 'w',
@@ -821,6 +825,7 @@ mod default_tests {
         assert!(!general.open);
         assert_eq!(general.open_path, None);
         assert_eq!(general.idle_timeout, 30);
+        assert_eq!(general.max_connections, 0);
         #[cfg(feature = "tls")]
         assert_eq!(general.https_redirect_from_port, 8080);
         #[cfg(feature = "directory-listing")]
