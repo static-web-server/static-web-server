@@ -105,8 +105,8 @@ pub(super) async fn run<F: FnOnce()>(
                     tracing::warn!("failed to enable TCP_NODELAY for {}: {:?}", addr, e);
                 }
                 let svc = router.build(Some(addr));
-                let conn = builder.serve_connection(run_cfg.conn.io(stream), svc);
-                tokio::spawn(graceful.watch(conn));
+                let conn = builder.serve_connection(run_cfg.conn.io(stream, Some(addr)), svc);
+                run_cfg.conn.serve(graceful.watch(conn), Some(addr));
             }
             _ = &mut shutdown => { break; }
         }

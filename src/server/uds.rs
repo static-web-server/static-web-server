@@ -83,8 +83,8 @@ pub(super) async fn run<F: FnOnce()>(
                 // downstream features (e.g. logging, real-ip headers) treat
                 // this connection as having no IP-level remote address.
                 let svc = router.build(None);
-                let conn = builder.serve_connection(run_cfg.conn.io(stream), svc);
-                tokio::spawn(graceful.watch(conn));
+                let conn = builder.serve_connection(run_cfg.conn.io(stream, None), svc);
+                run_cfg.conn.serve(graceful.watch(conn), None);
             }
             _ = &mut shutdown => { break; }
         }

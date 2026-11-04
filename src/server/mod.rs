@@ -11,7 +11,8 @@ use hyper::server::conn::http2::Builder as Http2Builder;
 #[cfg(feature = "http2")]
 use hyper_util::rt::TokioExecutor;
 use hyper_util::rt::{TokioIo, TokioTimer};
-use std::net::TcpListener;
+use std::future::Future;
+use std::net::{SocketAddr, TcpListener};
 use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
 use std::time::Duration;
@@ -104,9 +105,31 @@ impl ConnConfig {
         builder
     }
 
-    /// Wrap an accepted connection's IO for Hyper, applying the idle timeout.
-    fn io<T>(&self, io: T) -> TokioIo<IdleTimeout<T>> {
-        TokioIo::new(IdleTimeout::new(io, self.idle_timeout))
+    /// Wrap the IO of a connection accepted from `peer` for Hyper, applying the idle timeout.
+    fn io<T>(&self, io: T, peer: Option<SocketAddr>) -> TokioIo<IdleTimeout<T>> {
+        TokioIo::new(IdleTimeout::new(io, self.idle_timeout, peer))
+    }
+
+    /// Serve the Hyper connection `conn` from `peer` in a new task.
+    ///
+    /// The idle timeout logs itself, but an HTTP/1 request header that arrives too slowly
+    /// is closed by Hyper's header read timeout, so that one is logged here.
+    fn serve<C>(&self, conn: C, peer: Option<SocketAddr>)
+    where
+        C: Future<Output = hyper::Result<()>> + Send + 'static,
+    {
+        let header_timeout = self.idle_timeout;
+        tokio::spawn(async move {
+            if let Err(err) = conn.await
+                && err.is_timeout()
+            {
+                tracing::debug!(
+                    peer = peer.map(tracing::field::display),
+                    "closing connection: request header not received within {:?}",
+                    header_timeout.unwrap_or_default()
+                );
+            }
+        });
     }
 }
 
@@ -506,10 +529,12 @@ impl Server {
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use super::{ACCEPT_ERROR_DELAY, ConnConfig, accept_error_delay};
     use std::io::{Error, ErrorKind};
+    use std::sync::{Arc, Mutex};
     use std::time::Duration;
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
     /// Create the connection settings from the given command line arguments.
     fn conn_config(args: &[&str]) -> ConnConfig {
@@ -528,6 +553,91 @@ mod tests {
         // `None` also disables Hyper's header read timeout instead of keeping its default.
         let conn = conn_config(&["static-web-server", "--idle-timeout", "0"]);
         assert_eq!(conn.idle_timeout, None);
+    }
+
+    /// Log output captured by [`capture_debug_logs`].
+    #[derive(Clone, Default)]
+    pub(super) struct Capture(Arc<Mutex<Vec<u8>>>);
+
+    impl Capture {
+        /// The captured lines that contain `pattern`.
+        pub(super) fn lines(&self, pattern: &str) -> Vec<String> {
+            String::from_utf8_lossy(&self.0.lock().unwrap())
+                .lines()
+                .filter(|line| line.contains(pattern))
+                .map(String::from)
+                .collect()
+        }
+    }
+
+    impl std::io::Write for Capture {
+        fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+            self.0.lock().unwrap().extend_from_slice(buf);
+            Ok(buf.len())
+        }
+
+        fn flush(&mut self) -> std::io::Result<()> {
+            Ok(())
+        }
+    }
+
+    /// Capture the DEBUG logs of the current thread until the guard is dropped.
+    ///
+    /// While a single subscriber is registered, tracing-core asks only the current thread's subscriber
+    /// whether a callsite is enabled, so a callsite first hit by a parallel test is never enabled here.
+    /// A second subscriber that stays alive makes it ask all of them.
+    pub(super) fn capture_debug_logs() -> (Capture, tracing::subscriber::DefaultGuard) {
+        static SECOND: std::sync::LazyLock<tracing::Dispatch> =
+            std::sync::LazyLock::new(|| tracing::Dispatch::new(tracing_subscriber::registry()));
+        std::sync::LazyLock::force(&SECOND);
+
+        let capture = Capture::default();
+        let writer = capture.clone();
+        let subscriber = tracing_subscriber::fmt()
+            .with_max_level(tracing::Level::DEBUG)
+            .with_ansi(false)
+            .with_writer(move || writer.clone())
+            .finish();
+        (capture, tracing::subscriber::set_default(subscriber))
+    }
+
+    #[tokio::test]
+    async fn serve_logs_request_header_timeout() {
+        let (logs, _guard) = capture_debug_logs();
+
+        let timeout = Duration::from_millis(200);
+        let conn_cfg = ConnConfig {
+            idle_timeout: Some(timeout),
+        };
+        let peer = "192.0.2.1:4321".parse().ok();
+        let (server, mut client) = tokio::io::duplex(1024);
+        let svc = hyper::service::service_fn(|_req| async {
+            Ok::<_, std::convert::Infallible>(hyper::Response::new(crate::body::empty()))
+        });
+        let conn = conn_cfg
+            .http1_builder()
+            .serve_connection(conn_cfg.io(server, peer), svc);
+        conn_cfg.serve(conn, peer);
+
+        // A byte every quarter timeout keeps the connection active, but the header never completes.
+        let mut buf = [0u8; 1024];
+        for byte in b"GET / HTTP/1.1\r\nHost: localhost\r\n" {
+            if client.write_all(&[*byte]).await.is_err() {
+                break;
+            }
+            tokio::time::sleep(timeout / 4).await;
+        }
+        while client.read(&mut buf).await.is_ok_and(|n| n > 0) {}
+
+        let lines = logs.lines("closing connection");
+        assert_eq!(lines.len(), 1, "expected one log line, got: {lines:?}");
+        assert!(lines[0].contains("DEBUG"), "{}", lines[0]);
+        assert!(
+            lines[0].contains("request header not received within 200ms"),
+            "{}",
+            lines[0]
+        );
+        assert!(lines[0].contains("peer=192.0.2.1:4321"), "{}", lines[0]);
     }
 
     #[test]
