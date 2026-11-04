@@ -86,7 +86,7 @@ pub(super) fn spawn(
 
         loop {
             tokio::select! {
-                result = redirect_listener.accept() => {
+                (result, slot) = cfg.conn.accept(redirect_listener.accept()) => {
                     let (stream, addr) = match result {
                         Ok(v) => v,
                         Err(e) => {
@@ -118,8 +118,8 @@ pub(super) fn spawn(
                             }
                         }
                     });
-                    let conn = http.serve_connection(cfg.conn.io(stream), svc);
-                    tokio::spawn(graceful.watch(conn));
+                    let conn = http.serve_connection(cfg.conn.io(stream, Some(addr)), svc);
+                    cfg.conn.serve(graceful.watch(conn), Some(addr), slot);
                 }
                 _ = &mut shutdown => { break; }
             }

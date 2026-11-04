@@ -80,11 +80,11 @@ pub(super) async fn run<F: FnOnce()>(
         #[cfg(windows)]
         redirect_ctrl_c_recv,
         grace_period,
-        run_cfg.conn,
+        run_cfg.conn.clone(),
     )?
     .unwrap_or_else(|| tokio::spawn(async { Ok::<_, crate::Error>(()) }));
     let browser_url = browser::listener_url("https", &listener, &run_cfg);
-    let conn_cfg = run_cfg.conn;
+    let conn_cfg = run_cfg.conn.clone();
     // HTTP/2 + TLS accept-loop task
     let http2_task = tokio::spawn({
         let router = router.clone();
@@ -112,7 +112,7 @@ pub(super) async fn run<F: FnOnce()>(
             tokio::pin!(shutdown);
             loop {
                 tokio::select! {
-                    result = listener.accept() => {
+                    (result, slot) = conn_cfg.accept(listener.accept()) => {
                         let (stream, addr) = match result {
                             Ok(v) => v,
                             Err(e) => {
@@ -128,8 +128,9 @@ pub(super) async fn run<F: FnOnce()>(
                         let svc = router.build(Some(addr));
                         match tls_acceptor.accept(stream).await {
                             Ok(tls_stream) => {
-                                let conn = builder.serve_connection(conn_cfg.io(tls_stream), svc);
-                                tokio::spawn(graceful.watch(conn));
+                                let conn = builder
+                                    .serve_connection(conn_cfg.io(tls_stream, Some(addr)), svc);
+                                conn_cfg.serve(graceful.watch(conn), Some(addr), slot);
                             }
                             Err(e) => {
                                 tracing::debug!(

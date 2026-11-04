@@ -184,6 +184,22 @@ mod test_helpers {
             .port()
     }
 
+    /// Open a TLS connection to the server on `port`, offering the `alpn` protocols.
+    pub async fn tls_connect(
+        port: u16,
+        alpn: &[&str],
+    ) -> tokio_rustls::client::TlsStream<tokio::net::TcpStream> {
+        let connector = tokio_rustls::TlsConnector::from(tls_client_config(alpn));
+        let stream = tokio::net::TcpStream::connect(("127.0.0.1", port))
+            .await
+            .expect("TCP connect");
+        let domain = ServerName::try_from("localhost").unwrap().to_owned();
+        connector
+            .connect(domain, stream)
+            .await
+            .expect("TLS handshake")
+    }
+
     /// Wait until the server is accepting TCP connections on `port`.
     pub async fn wait_for_server(port: u16) {
         for _ in 0..100 {
@@ -457,7 +473,8 @@ mod live_http1_tls_tests {
     use hyper::Request;
     use hyper_util::rt::TokioIo;
     use rustls_pki_types::ServerName;
-    use tokio::io::AsyncReadExt;
+    use std::time::Duration;
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
     use tokio_rustls::TlsConnector;
 
     use super::test_helpers::*;
@@ -592,6 +609,48 @@ mod live_http1_tls_tests {
             "server sent data instead of closing the connection"
         );
 
+        shutdown_server(cancel_tx, handle).await;
+    }
+
+    #[tokio::test]
+    async fn max_connections_is_shared_with_https_redirect() {
+        let redirect_port = free_port().to_string();
+        let (port, cancel_tx, handle) = spawn_server(&[
+            "--max-connections",
+            "1",
+            "--https-redirect",
+            "--https-redirect-from-port",
+            &redirect_port,
+        ]);
+        let redirect_port: u16 = redirect_port.parse().unwrap();
+        wait_for_server(port).await;
+        wait_for_server(redirect_port).await;
+
+        // The HTTPS connection takes the only slot, so the redirect server doesn't answer.
+        let https = tls_connect(port, &["http/1.1"]).await;
+        let mut http = tokio::net::TcpStream::connect(("127.0.0.1", redirect_port))
+            .await
+            .expect("TCP connect");
+        http.write_all(b"GET / HTTP/1.1\r\nHost: localhost\r\n\r\n")
+            .await
+            .expect("write request");
+        let mut buf = [0u8; 1024];
+        assert!(
+            tokio::time::timeout(Duration::from_millis(500), http.read(&mut buf))
+                .await
+                .is_err(),
+            "redirect server answered past the shared limit"
+        );
+
+        drop(https);
+        let n = tokio::time::timeout(TIMEOUT, http.read(&mut buf))
+            .await
+            .expect("redirect server did not answer after the HTTPS connection closed")
+            .expect("read response");
+        let response = String::from_utf8_lossy(&buf[..n]);
+        assert!(response.starts_with("HTTP/1.1 301"), "{response}");
+
+        drop(http);
         shutdown_server(cancel_tx, handle).await;
     }
 }
@@ -751,6 +810,32 @@ mod live_http2_tls_tests {
         let closed = tokio::time::timeout(TIMEOUT, conn).await;
         assert!(closed.is_ok(), "idle connection was not closed");
 
+        shutdown_server(cancel_tx, handle).await;
+    }
+
+    #[tokio::test]
+    async fn max_connections_holds_new_connections_until_one_closes() {
+        let (port, cancel_tx, handle) = spawn_server(&["--http2", "--max-connections", "1"]);
+        wait_for_server(port).await;
+
+        let first = tls_connect(port, &["h2"]).await;
+
+        // The first connection takes the only slot, so the second handshake doesn't complete.
+        let second = tls_connect(port, &["h2"]);
+        tokio::pin!(second);
+        assert!(
+            tokio::time::timeout(std::time::Duration::from_millis(500), &mut second)
+                .await
+                .is_err(),
+            "second connection accepted past the limit"
+        );
+
+        drop(first);
+        let second = tokio::time::timeout(TIMEOUT, second)
+            .await
+            .expect("second connection not accepted after the first one closed");
+
+        drop(second);
         shutdown_server(cancel_tx, handle).await;
     }
 }

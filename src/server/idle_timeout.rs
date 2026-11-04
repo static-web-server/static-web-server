@@ -8,6 +8,7 @@
 
 use std::future::Future;
 use std::io;
+use std::net::SocketAddr;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 use std::time::Duration;
@@ -27,6 +28,8 @@ pub(crate) struct IdleTimeout<T> {
     inner: T,
     /// The idle timer, or `None` when the timeout is disabled.
     timer: Option<Timer>,
+    /// Peer address of the connection, logged when it times out (`None` for Unix sockets).
+    peer: Option<SocketAddr>,
 }
 
 /// Idle timer state of an [`IdleTimeout`] connection.
@@ -38,18 +41,22 @@ struct Timer {
     /// Wake-up for the earliest possible expiry.
     /// It's only moved forward when it fires, so progress doesn't touch the timer wheel.
     sleep: Pin<Box<Sleep>>,
+    /// Whether the timeout was already logged, since every pending operation fails after it.
+    logged: bool,
 }
 
 impl<T> IdleTimeout<T> {
-    /// Wrap `inner`, failing it after `timeout` without progress, or never if `None`.
-    pub(crate) fn new(inner: T, timeout: Option<Duration>) -> Self {
+    /// Wrap the connection `inner` from `peer`, failing it after `timeout` without progress, or never if `None`.
+    pub(crate) fn new(inner: T, timeout: Option<Duration>, peer: Option<SocketAddr>) -> Self {
         Self {
             inner,
             timer: timeout.map(|timeout| Timer {
                 timeout,
                 last_progress: Instant::now(),
                 sleep: Box::pin(tokio::time::sleep(timeout)),
+                logged: false,
             }),
+            peer,
         }
     }
 
@@ -75,6 +82,14 @@ impl<T> IdleTimeout<T> {
         let deadline = timer.last_progress + timer.timeout;
         while timer.sleep.as_mut().poll(cx).is_ready() {
             if timer.sleep.deadline() >= deadline {
+                if !timer.logged {
+                    timer.logged = true;
+                    tracing::debug!(
+                        peer = self.peer.map(tracing::field::display),
+                        "closing connection after {:?} without activity",
+                        timer.timeout
+                    );
+                }
                 return Poll::Ready(Err(io::Error::new(
                     io::ErrorKind::TimedOut,
                     "connection idle timeout",
@@ -152,7 +167,7 @@ mod tests {
     #[tokio::test]
     async fn read_fails_after_idle_timeout() {
         let (server, _client) = duplex(64);
-        let mut io = IdleTimeout::new(server, Some(TIMEOUT));
+        let mut io = IdleTimeout::new(server, Some(TIMEOUT), None);
         let mut buf = [0u8; 1];
         let err = tokio::time::timeout(Duration::from_secs(5), io.read(&mut buf))
             .await
@@ -162,10 +177,38 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn idle_timeout_is_logged_once_with_peer() {
+        let (logs, _guard) = crate::server::tests::capture_debug_logs();
+
+        let (server, _client) = duplex(64);
+        let peer = "192.0.2.1:4321".parse().unwrap();
+        let mut io = IdleTimeout::new(server, Some(TIMEOUT), Some(peer));
+        let mut buf = [0u8; 1];
+        // Every later operation fails as well, but only the first one logs.
+        for _ in 0..2 {
+            let err = tokio::time::timeout(Duration::from_secs(5), io.read(&mut buf))
+                .await
+                .expect("idle read did not time out")
+                .expect_err("idle read succeeded");
+            assert_eq!(err.kind(), std::io::ErrorKind::TimedOut);
+        }
+
+        let lines = logs.lines("closing connection");
+        assert_eq!(lines.len(), 1, "expected one log line, got: {lines:?}");
+        assert!(lines[0].contains("DEBUG"), "{}", lines[0]);
+        assert!(
+            lines[0].contains("closing connection after 200ms without activity"),
+            "{}",
+            lines[0]
+        );
+        assert!(lines[0].contains("peer=192.0.2.1:4321"), "{}", lines[0]);
+    }
+
+    #[tokio::test]
     async fn write_fails_after_idle_timeout() {
         // The peer never reads, so the write blocks once the buffer is full.
         let (server, _client) = duplex(64);
-        let mut io = IdleTimeout::new(server, Some(TIMEOUT));
+        let mut io = IdleTimeout::new(server, Some(TIMEOUT), None);
         let err = tokio::time::timeout(Duration::from_secs(5), io.write_all(&[0u8; 1024]))
             .await
             .expect("blocked write did not time out")
@@ -176,7 +219,7 @@ mod tests {
     #[tokio::test]
     async fn flush_is_not_progress() {
         let (server, _client) = duplex(64);
-        let mut io = IdleTimeout::new(server, Some(TIMEOUT));
+        let mut io = IdleTimeout::new(server, Some(TIMEOUT), None);
         let mut buf = [0u8; 1];
         let start = std::time::Instant::now();
         // Flush between reads, like Hyper's HTTP/2 connection does whenever it's polled.
@@ -196,7 +239,7 @@ mod tests {
     #[tokio::test]
     async fn read_progress_restarts_idle_timeout() {
         let (server, mut client) = duplex(64);
-        let mut io = IdleTimeout::new(server, Some(TIMEOUT));
+        let mut io = IdleTimeout::new(server, Some(TIMEOUT), None);
         let mut buf = [0u8; 4];
         // One byte every half timeout: 2 timeouts in total, never a full one without progress.
         let write = async {
@@ -223,7 +266,7 @@ mod tests {
     /// 2 timeouts in total, never a full one without progress.
     async fn assert_write_progress(vectored: bool) {
         let (server, mut client) = duplex(1);
-        let mut io = IdleTimeout::new(server, Some(TIMEOUT));
+        let mut io = IdleTimeout::new(server, Some(TIMEOUT), None);
         let read = async {
             let mut buf = [0u8; 1];
             for _ in 0..4 {
@@ -254,7 +297,7 @@ mod tests {
     #[tokio::test]
     async fn disabled_timeout_never_fails() {
         let (server, _client) = duplex(64);
-        let mut io = IdleTimeout::new(server, None);
+        let mut io = IdleTimeout::new(server, None, None);
         let mut buf = [0u8; 1];
         assert!(
             tokio::time::timeout(TIMEOUT * 3, io.read(&mut buf))
