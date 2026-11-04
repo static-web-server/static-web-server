@@ -131,6 +131,7 @@ Validate in `settings/` or `server/opts.rs`; fail startup with `bail!`/`with_con
 | `--threads-multiplier` / `--max-blocking-threads` | `1` / `512` (`2` / `20` on wasm) |
 | `--grace-period` / `--idle-timeout` / `--max-header-size` | `0` / `30` s (`0` disables) / `16384` bytes (431 when exceeded) |
 | `--page404` / `--page50x` / `--page-fallback` | `./404.html` / `./50x.html` / unset |
+| `--max-connections` | `0` (no limit) |
 | Memory cache | off unless `[advanced.memory-cache]` exists |
 
 ## Feature Flags

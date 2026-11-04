@@ -555,6 +555,10 @@ pub struct General {
     /// Defines the maximum size in bytes of the request headers. For HTTP/1 it includes the request line, for HTTP/2 it applies to the header list. Larger requests get `431 Request Header Fields Too Large`. The value must be greater than `0`.
     pub max_header_size: u32,
 
+    #[arg(long, default_value = "0", env = "SERVER_MAX_CONNECTIONS")]
+    /// Defines the maximum number of connections served at the same time, across all listeners. Once reached, new connections wait until another one closes. Use `0` for no limit.
+    pub max_connections: usize,
+
     #[arg(
         long,
         short = 'w',
@@ -828,6 +832,7 @@ mod default_tests {
         assert_eq!(general.open_path, None);
         assert_eq!(general.idle_timeout, 30);
         assert_eq!(general.max_header_size, 16384);
+        assert_eq!(general.max_connections, 0);
         #[cfg(feature = "tls")]
         assert_eq!(general.https_redirect_from_port, 8080);
         #[cfg(feature = "directory-listing")]

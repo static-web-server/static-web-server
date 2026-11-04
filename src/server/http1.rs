@@ -92,7 +92,7 @@ pub(super) async fn run<F: FnOnce()>(
     }
     loop {
         tokio::select! {
-            result = listener.accept() => {
+            (result, slot) = run_cfg.conn.accept(listener.accept()) => {
                 let (stream, addr) = match result {
                     Ok(v) => v,
                     Err(e) => {
@@ -106,7 +106,7 @@ pub(super) async fn run<F: FnOnce()>(
                 }
                 let svc = router.build(Some(addr));
                 let conn = builder.serve_connection(run_cfg.conn.io(stream, Some(addr)), svc);
-                run_cfg.conn.serve(graceful.watch(conn), Some(addr));
+                run_cfg.conn.serve(graceful.watch(conn), Some(addr), slot);
             }
             _ = &mut shutdown => { break; }
         }

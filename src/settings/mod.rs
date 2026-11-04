@@ -220,6 +220,7 @@ impl Settings {
         let mut grace_period = opts.grace_period;
         let mut idle_timeout = opts.idle_timeout;
         let mut max_header_size = opts.max_header_size;
+        let mut max_connections = opts.max_connections;
 
         #[cfg(feature = "fallback-page")]
         let mut page_fallback = opts.page_fallback;
@@ -423,6 +424,9 @@ impl Settings {
                 }
                 if let Some(v) = general.max_header_size {
                     max_header_size = v
+                }
+                if let Some(v) = general.max_connections {
+                    max_connections = v
                 }
                 #[cfg(feature = "fallback-page")]
                 if let Some(v) = general.page_fallback {
@@ -823,6 +827,7 @@ impl Settings {
                 grace_period,
                 idle_timeout,
                 max_header_size,
+                max_connections,
                 #[cfg(feature = "fallback-page")]
                 page_fallback,
                 access_log_format,

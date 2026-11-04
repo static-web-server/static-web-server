@@ -70,7 +70,7 @@ pub(super) async fn run<F: FnOnce()>(
 
     loop {
         tokio::select! {
-            result = listener.accept() => {
+            (result, slot) = run_cfg.conn.accept(listener.accept()) => {
                 let stream = match result {
                     Ok((stream, _addr)) => stream,
                     Err(e) => {
@@ -84,7 +84,7 @@ pub(super) async fn run<F: FnOnce()>(
                 // this connection as having no IP-level remote address.
                 let svc = router.build(None);
                 let conn = builder.serve_connection(run_cfg.conn.io(stream, None), svc);
-                run_cfg.conn.serve(graceful.watch(conn), None);
+                run_cfg.conn.serve(graceful.watch(conn), None, slot);
             }
             _ = &mut shutdown => { break; }
         }
