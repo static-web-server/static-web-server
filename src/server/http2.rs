@@ -128,8 +128,9 @@ pub(super) async fn run<F: FnOnce()>(
                         let svc = router.build(Some(addr));
                         match tls_acceptor.accept(stream).await {
                             Ok(tls_stream) => {
-                                let conn = builder.serve_connection(conn_cfg.io(tls_stream), svc);
-                                tokio::spawn(graceful.watch(conn));
+                                let conn = builder
+                                    .serve_connection(conn_cfg.io(tls_stream, Some(addr)), svc);
+                                conn_cfg.serve(graceful.watch(conn), Some(addr));
                             }
                             Err(e) => {
                                 tracing::debug!(

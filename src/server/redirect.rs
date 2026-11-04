@@ -118,8 +118,8 @@ pub(super) fn spawn(
                             }
                         }
                     });
-                    let conn = http.serve_connection(cfg.conn.io(stream), svc);
-                    tokio::spawn(graceful.watch(conn));
+                    let conn = http.serve_connection(cfg.conn.io(stream, Some(addr)), svc);
+                    cfg.conn.serve(graceful.watch(conn), Some(addr));
                 }
                 _ = &mut shutdown => { break; }
             }
