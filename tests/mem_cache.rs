@@ -593,6 +593,21 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn cache_hit_not_served_to_options_requests() {
+        init_cache_store();
+        let (_dir, root) = all_variants_root();
+
+        serve_index(&root, Method::GET, &[]).await;
+        let (_, headers, _) = serve_index(&root, Method::GET, &[]).await;
+        assert_eq!(headers["x-cache"], "HIT");
+
+        let (status, headers, body) = serve_index(&root, Method::OPTIONS, &[]).await;
+        assert_eq!(status, StatusCode::NO_CONTENT);
+        assert!(headers.get("x-cache").is_none());
+        assert!(body.is_empty());
+    }
+
+    #[tokio::test]
     async fn cache_precompressed_variant_keeps_its_content_encoding() {
         init_cache_store();
         let (_dir, root) = all_variants_root();

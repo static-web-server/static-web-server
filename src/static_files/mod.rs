@@ -136,6 +136,11 @@ fn try_memory_cache(
     // `opts.memory_cache` is `None` and we skip the lookup entirely.
     opts.memory_cache.as_ref()?;
 
+    // A hit returns the file content, which only `GET` and `HEAD` may get
+    if !opts.method.is_get() && !opts.method.is_head() {
+        return None;
+    }
+
     // NOTE: only the default auto-index is supported for directory
     // requests inside the memory-cache context.
     if opts.redirect_trailing_slash && opts.uri_path.ends_with('/') {

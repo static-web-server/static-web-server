@@ -293,4 +293,73 @@ pub mod tests {
             .expect("fallback request should succeed");
         assert_eq!(resp.status(), 200);
     }
+
+    #[cfg(all(feature = "basic-auth", feature = "mem-cache"))]
+    #[tokio::test]
+    async fn basic_auth_options_never_serves_cached_file() {
+        use http_body_util::BodyExt;
+        use static_web_server::cors;
+        use static_web_server::mem_cache::cache;
+        use static_web_server::settings::{Advanced, file::MemoryCache};
+
+        let opts = fixture_settings("toml/handler.toml");
+        let advanced = Advanced {
+            memory_cache: Some(MemoryCache {
+                capacity: None,
+                ttl: None,
+                tti: None,
+                max_file_size: None,
+            }),
+            ..Default::default()
+        };
+        let mut req_handler_opts = fixture_req_handler_opts(opts.general, Some(advanced));
+        req_handler_opts.basic_auth =
+            "jq:$2y$05$32zazJ1yzhlDHnt26L3MFOgY0HVqPmDUvG0KUx6cjf9RDiUGp/M9q".into();
+        req_handler_opts.cors = cors::new("*", "", "");
+        cache::init(&mut req_handler_opts).unwrap();
+        let req_handler = fixture_req_handler(req_handler_opts);
+        let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
+
+        let request = |method: Method, headers: &[(&'static str, &'static str)]| {
+            let mut req = Request::new(());
+            *req.method_mut() = method;
+            *req.uri_mut() = "http://localhost/index.html".parse().unwrap();
+            for (name, value) in headers {
+                req.headers_mut()
+                    .insert(*name, HeaderValue::from_static(value));
+            }
+            req
+        };
+        let auth = ("authorization", "Basic anE6anE=");
+
+        // An authenticated client caches the file
+        for _ in 0..2 {
+            let mut req = request(Method::GET, &[auth]);
+            let resp = req_handler.handle(&mut req, remote_addr).await.unwrap();
+            assert_eq!(resp.status(), 200);
+            resp.into_body().collect().await.unwrap();
+        }
+        let mut req = request(Method::GET, &[auth]);
+        let resp = req_handler.handle(&mut req, remote_addr).await.unwrap();
+        assert_eq!(resp.headers()["x-cache"], "HIT");
+
+        // A plain `OPTIONS` request must authenticate
+        let mut req = request(Method::OPTIONS, &[]);
+        let resp = req_handler.handle(&mut req, remote_addr).await.unwrap();
+        assert_eq!(resp.status(), 401);
+
+        // A CORS preflight skips authentication but gets no file content
+        let mut req = request(
+            Method::OPTIONS,
+            &[
+                ("origin", "https://example.com"),
+                ("access-control-request-method", "GET"),
+            ],
+        );
+        let resp = req_handler.handle(&mut req, remote_addr).await.unwrap();
+        assert_eq!(resp.status(), 204);
+        assert!(resp.headers().get("x-cache").is_none());
+        let body = resp.into_body().collect().await.unwrap().to_bytes();
+        assert!(body.is_empty());
+    }
 }
