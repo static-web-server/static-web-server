@@ -231,6 +231,14 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn request_logging_no_trusted_proxies_omits_real_client_ips() {
+        let line = proxy_request_log_line(vec![]).await;
+
+        assert!(line.get("x_real_ip").is_none(), "{line}");
+        assert!(line.get("real_remote_ip").is_none(), "{line}");
+    }
+
+    #[tokio::test]
     async fn request_logging_untrusted_proxy_omits_real_client_ips() {
         let line = proxy_request_log_line(vec!["192.0.2.1".parse().unwrap()]).await;
 

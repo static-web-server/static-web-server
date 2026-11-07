@@ -84,7 +84,7 @@ HSTS is sent whenever the option is on, including over plain HTTP if the user en
 
 ## Untrusted Input Checklist
 
-Inputs: URI path and query, `Host`, `Origin`, `Accept`, `Accept-Encoding`, `Range`, `If-*`, `Authorization`, `X-Forwarded-For` / `X-Real-IP` (used for logging only; when `--trusted-proxies` is set, honored only from those peers).
+Inputs: URI path and query, `Host`, `Origin`, `Accept`, `Accept-Encoding`, `Range`, `If-*`, `Authorization`, `X-Forwarded-For` / `X-Real-IP` (used for logging only; honored only from `--trusted-proxies` peers, so an empty list trusts nobody).
 
 - Parse without panicking: no indexing, `unwrap`, or unchecked arithmetic on attacker-controlled values. Byte-range math (`response/range.rs`) must stay checked or saturating
 - Bound allocations by input size (header counts, q-value lists, range sets)

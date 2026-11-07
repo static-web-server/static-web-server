@@ -95,7 +95,7 @@ http = "1"
 http-body = "1"
 http-body-util = "0.1"
 http-serde = "2"
-hyper = { version = "1", default-features = false, features = ["http1", "http2", "server"] }
+hyper = { version = "1.12", default-features = false, features = ["http1", "http2", "server"] }
 hyper-util = { version = "0.1", default-features = false, features = ["tokio", "server", "server-auto", "server-graceful"] }
 listenfd = "1.0"
 maud = { version = "0.27" }

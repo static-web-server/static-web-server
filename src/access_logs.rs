@@ -138,6 +138,13 @@ impl AccessLogFormat {
         })
     }
 
+    /// Whether the format logs `X-Real-IP` or `X-Forwarded-For`.
+    pub(crate) fn uses_proxy_headers(&self) -> bool {
+        self.segments
+            .iter()
+            .any(|seg| matches!(seg, Segment::Token(Token::XRealIp | Token::ForwardedFor)))
+    }
+
     /// Renders the format using the given request/response context.
     fn render(&self, ctx: &LogContext<'_>) -> String {
         let mut buf = String::with_capacity(256);
@@ -559,6 +566,14 @@ mod tests {
             .filter(|s| matches!(s, Segment::Token(_)))
             .count();
         assert_eq!(token_count, 13);
+    }
+
+    #[test]
+    fn uses_proxy_headers_only_with_proxy_tokens() {
+        let uses = |f: &str| AccessLogFormat::parse(f).unwrap().uses_proxy_headers();
+        assert!(uses("%{x_real_ip}"));
+        assert!(uses("%{method} %{forwarded_for}"));
+        assert!(!uses("%{remote_addr} x_real_ip forwarded_for"));
     }
 
     #[test]

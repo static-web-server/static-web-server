@@ -354,13 +354,28 @@ mod tests {
     #[tokio::test]
     async fn access_log_format_proxy_tokens_need_no_log_flags() {
         let format = "%{x_real_ip} %{forwarded_for}";
+        let general = |general| General {
+            trusted_proxies: vec![REMOTE_ADDR.parse::<SocketAddr>().unwrap().ip()],
+            ..with_format(format)(general)
+        };
+
+        let (_, lines) = log_lines("toml/handler.toml", general, proxied_request()).await;
+
+        let access = access_log_lines(&lines);
+        assert_eq!(access.len(), 1, "{lines:?}");
+        assert_eq!(access[0]["message"], "203.0.113.7 203.0.113.195");
+    }
+
+    #[tokio::test]
+    async fn access_log_format_proxy_tokens_without_trusted_proxies() {
+        let format = "%{x_real_ip} %{forwarded_for}";
 
         let (_, lines) =
             log_lines("toml/handler.toml", with_format(format), proxied_request()).await;
 
         let access = access_log_lines(&lines);
         assert_eq!(access.len(), 1, "{lines:?}");
-        assert_eq!(access[0]["message"], "203.0.113.7 203.0.113.195");
+        assert_eq!(access[0]["message"], "- -", "no proxy is trusted");
     }
 
     #[tokio::test]

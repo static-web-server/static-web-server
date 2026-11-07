@@ -570,7 +570,7 @@ pub struct General {
     /// request logging with a configurable format that includes response data.
     /// Tokens: method, uri, status, bytes, duration, remote_addr, x_real_ip,
     /// forwarded_for, host, user_agent, referer, timestamp, version.
-    /// x_real_ip and forwarded_for are logged only for requests from --trusted-proxies, if set.
+    /// x_real_ip and forwarded_for are logged only for requests from --trusted-proxies.
     /// Example: '%{remote_addr} "%{method} %{uri}" %{status} %{bytes}'
     pub access_log_format: String,
 
@@ -595,7 +595,7 @@ pub struct General {
         action = clap::ArgAction::Set,
         env = "SERVER_LOG_X_REAL_IP",
     )]
-    /// Log the X-Real-IP header for remote IP information.
+    /// Log the X-Real-IP header of requests from --trusted-proxies.
     pub log_x_real_ip: bool,
 
     #[arg(
@@ -607,7 +607,7 @@ pub struct General {
         action = clap::ArgAction::Set,
         env = "SERVER_LOG_FORWARDED_FOR",
     )]
-    /// Log the X-Forwarded-For header for remote IP information
+    /// Log the first X-Forwarded-For address of requests from --trusted-proxies.
     pub log_forwarded_for: bool,
 
     #[arg(
@@ -617,7 +617,9 @@ pub struct General {
         action = clap::ArgAction::Set,
         env = "SERVER_TRUSTED_PROXIES",
     )]
-    /// List of IPs to use X-Forwarded-For from. The default is to trust all
+    /// List of proxy IPs to use the X-Real-IP and X-Forwarded-For headers from.
+    /// The default trusts no one, so the headers are not logged unless set.
+    /// IPv4 entries also match their IPv4-mapped IPv6 form (`::ffff:a.b.c.d`).
     pub trusted_proxies: Vec<IpAddr>,
 
     #[arg(

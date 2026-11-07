@@ -13,7 +13,7 @@ fn security_headers_benchmark(c: &mut Criterion) {
         b.iter(|| {
             let mut resp = Response::new(static_web_server::body::empty());
             *resp.status_mut() = StatusCode::OK;
-            security_headers::append_headers(&mut resp);
+            security_headers::append_headers(&mut resp, true);
             resp
         })
     });

@@ -411,7 +411,8 @@ pub struct General {
     /// Log the X-Forwarded-For header.
     pub log_forwarded_for: Option<bool>,
 
-    /// Trusted IPs for remote addresses.
+    /// Proxy IPs to log the X-Real-IP and X-Forwarded-For headers from.
+    /// The headers are not logged when unset.
     pub trusted_proxies: Option<Vec<IpAddr>>,
 
     /// Redirect trailing slash feature.
