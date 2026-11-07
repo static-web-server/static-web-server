@@ -551,6 +551,10 @@ pub struct General {
     /// Defines the time in seconds after which a connection without any reads or writes is closed. An HTTP/1 request header must also arrive within this time. Use `0` to disable it. The maximum value is 65535 seconds.
     pub idle_timeout: u16,
 
+    #[arg(long, default_value = "16384", env = "SERVER_MAX_HEADER_SIZE")]
+    /// Defines the maximum size in bytes of the request headers. For HTTP/1 it includes the request line, for HTTP/2 it applies to the header list. Larger requests get `431 Request Header Fields Too Large`. The value must be greater than `0`.
+    pub max_header_size: u32,
+
     #[arg(
         long,
         short = 'w',
@@ -821,6 +825,7 @@ mod default_tests {
         assert!(!general.open);
         assert_eq!(general.open_path, None);
         assert_eq!(general.idle_timeout, 30);
+        assert_eq!(general.max_header_size, 16384);
         #[cfg(feature = "tls")]
         assert_eq!(general.https_redirect_from_port, 8080);
         #[cfg(feature = "directory-listing")]

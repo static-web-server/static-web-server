@@ -6,6 +6,10 @@
 //! Server module to construct a multi-threaded HTTP or HTTP/2 web server.
 
 use hyper::server::conn::http1::Builder as Http1Builder;
+#[cfg(feature = "http2")]
+use hyper::server::conn::http2::Builder as Http2Builder;
+#[cfg(feature = "http2")]
+use hyper_util::rt::TokioExecutor;
 use hyper_util::rt::{TokioIo, TokioTimer};
 use std::net::TcpListener;
 use std::sync::Arc;
@@ -50,11 +54,21 @@ pub(crate) struct ServerRunConfig<'a> {
 
 /// Connection settings shared by all accept loops.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-#[cfg_attr(test, derive(Default))]
 pub(crate) struct ConnConfig {
     /// Time without read or write progress after which a connection is closed, or `None` for no limit.
     /// HTTP/1 request headers must also arrive within this time.
     pub idle_timeout: Option<Duration>,
+    /// Maximum size in bytes of the request headers.
+    pub max_header_size: u32,
+}
+
+#[cfg(test)]
+impl Default for ConnConfig {
+    /// The connection settings of the default command line arguments.
+    fn default() -> Self {
+        use clap::Parser;
+        Self::new(&General::parse_from(["static-web-server"]))
+    }
 }
 
 impl ConnConfig {
@@ -63,6 +77,7 @@ impl ConnConfig {
         Self {
             idle_timeout: (general.idle_timeout > 0)
                 .then(|| Duration::from_secs(general.idle_timeout.into())),
+            max_header_size: general.max_header_size,
         }
     }
 
@@ -70,11 +85,22 @@ impl ConnConfig {
     ///
     /// The idle timeout alone doesn't limit a request header that arrives a byte at a time,
     /// so Hyper's header read timeout is set to the same value. It requires a timer.
+    ///
+    /// Without a header size limit, Hyper buffers up to about 400 KiB of request headers.
     fn http1_builder(&self) -> Http1Builder {
         let mut builder = Http1Builder::new();
         builder
             .timer(TokioTimer::new())
-            .header_read_timeout(self.idle_timeout);
+            .header_read_timeout(self.idle_timeout)
+            .max_header_size(self.max_header_size as usize);
+        builder
+    }
+
+    /// Create an HTTP/2 connection builder with these settings.
+    #[cfg(feature = "http2")]
+    fn http2_builder(&self) -> Http2Builder<TokioExecutor> {
+        let mut builder = Http2Builder::new(TokioExecutor::new());
+        builder.max_header_list_size(self.max_header_size);
         builder
     }
 
@@ -344,6 +370,10 @@ impl Server {
         tracing::info!(
             idle_timeout_seconds = general.idle_timeout,
             "connection idle timeout"
+        );
+        tracing::info!(
+            max_header_size_bytes = general.max_header_size,
+            "maximum request header size"
         );
         let conn = ConnConfig::new(&general);
 

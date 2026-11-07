@@ -5,8 +5,6 @@
 
 //! HTTP/2 + TLS server accept-loop with optional HTTP to HTTPS redirect.
 
-use hyper::server::conn::http2;
-use hyper_util::rt::TokioExecutor;
 use hyper_util::server::graceful::GracefulShutdown;
 use std::net::TcpListener;
 use std::sync::Arc;
@@ -90,7 +88,7 @@ pub(super) async fn run<F: FnOnce()>(
         let router = router.clone();
         async move {
             let graceful = GracefulShutdown::new();
-            let builder = http2::Builder::new(TokioExecutor::new());
+            let builder = conn_cfg.http2_builder();
 
             #[cfg(unix)]
             let shutdown =

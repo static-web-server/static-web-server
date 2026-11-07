@@ -219,6 +219,7 @@ impl Settings {
         let mut max_blocking_threads = opts.max_blocking_threads;
         let mut grace_period = opts.grace_period;
         let mut idle_timeout = opts.idle_timeout;
+        let mut max_header_size = opts.max_header_size;
 
         #[cfg(feature = "fallback-page")]
         let mut page_fallback = opts.page_fallback;
@@ -429,6 +430,9 @@ impl Settings {
                 }
                 if let Some(v) = general.idle_timeout {
                     idle_timeout = v
+                }
+                if let Some(v) = general.max_header_size {
+                    max_header_size = v
                 }
                 #[cfg(feature = "fallback-page")]
                 if let Some(v) = general.page_fallback {
@@ -737,6 +741,11 @@ impl Settings {
             bail!("HTTP/2 requires TLS; enable --tls along with --tls-cert and --tls-key");
         }
 
+        // Runtime validation: a zero limit would reject every request
+        if max_header_size == 0 {
+            bail!("--max-header-size must be greater than 0");
+        }
+
         // Runtime validation: ANSI log output requires pretty format
         if log_with_ansi && log_format != logger::LogFormat::Pretty {
             bail!("--log-with-ansi requires --log-format=pretty");
@@ -829,6 +838,7 @@ impl Settings {
                 max_blocking_threads,
                 grace_period,
                 idle_timeout,
+                max_header_size,
                 #[cfg(feature = "fallback-page")]
                 page_fallback,
                 access_log_format,
@@ -921,6 +931,18 @@ mod tests {
             .expect("open path without open should be rejected");
 
         assert_eq!(error.to_string(), "--open-path requires --open");
+    }
+
+    #[test]
+    fn max_header_size_rejects_zero() {
+        let error = Settings::get_unparsed(false, &["static-web-server", "--max-header-size", "0"])
+            .err()
+            .expect("zero max header size should be rejected");
+
+        assert_eq!(
+            error.to_string(),
+            "--max-header-size must be greater than 0"
+        );
     }
 
     #[cfg(windows)]

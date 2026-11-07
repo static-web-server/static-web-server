@@ -610,6 +610,14 @@ mod live_http2_tls_tests {
     use super::test_helpers::*;
 
     async fn https_get_http2(port: u16, path: &str) -> StatusCode {
+        let req = Request::builder()
+            .uri(format!("https://localhost:{port}{path}"))
+            .body(Empty::<bytes::Bytes>::new())
+            .unwrap();
+        https_send_http2(port, req).await
+    }
+
+    async fn https_send_http2(port: u16, req: Request<Empty<bytes::Bytes>>) -> StatusCode {
         let cfg = tls_client_config(&["h2"]);
         let connector = TlsConnector::from(cfg);
         let stream = tokio::net::TcpStream::connect(("127.0.0.1", port))
@@ -626,11 +634,6 @@ mod live_http2_tls_tests {
                 .await
                 .expect("HTTP/2 handshake");
         tokio::spawn(conn);
-
-        let req = Request::builder()
-            .uri(format!("https://localhost:{port}{path}"))
-            .body(Empty::<bytes::Bytes>::new())
-            .unwrap();
 
         sender
             .send_request(req)
@@ -661,6 +664,30 @@ mod live_http2_tls_tests {
             .await
             .expect("request timed out");
         assert_eq!(status, StatusCode::NOT_FOUND);
+
+        shutdown_server(cancel_tx, handle).await;
+    }
+
+    #[tokio::test]
+    async fn max_header_size_limits_header_list() {
+        let (port, cancel_tx, handle) = spawn_server(&["--http2", "--max-header-size", "32768"]);
+        wait_for_server(port).await;
+
+        // 20 KB is above the 16 KiB HTTP/2 default but within the configured limit.
+        for (pad, expected) in [
+            (20_000, StatusCode::OK),
+            (40_000, StatusCode::REQUEST_HEADER_FIELDS_TOO_LARGE),
+        ] {
+            let req = Request::builder()
+                .uri(format!("https://localhost:{port}/index.htm"))
+                .header("x-pad", "a".repeat(pad))
+                .body(Empty::<bytes::Bytes>::new())
+                .unwrap();
+            let status = tokio::time::timeout(TIMEOUT, https_send_http2(port, req))
+                .await
+                .expect("request timed out");
+            assert_eq!(status, expected, "x-pad header of {pad} bytes");
+        }
 
         shutdown_server(cancel_tx, handle).await;
     }
