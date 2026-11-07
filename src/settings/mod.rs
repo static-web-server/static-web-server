@@ -362,16 +362,6 @@ impl Settings {
                 if let Some(v) = general.https_redirect_from_hosts {
                     https_redirect_from_hosts = v
                 }
-                #[cfg(feature = "tls")]
-                match general.security_headers {
-                    Some(v) => security_headers = v,
-                    _ => {
-                        if tls {
-                            security_headers = true;
-                        }
-                    }
-                }
-                #[cfg(not(feature = "tls"))]
                 if let Some(v) = general.security_headers {
                     security_headers = v
                 }
@@ -755,12 +745,6 @@ impl Settings {
         #[cfg(feature = "tls")]
         if https_redirect && !tls {
             bail!("--https-redirect requires TLS to be enabled (--tls)");
-        }
-
-        // Auto-enable security headers when TLS is on (applies when no config file is present)
-        #[cfg(feature = "tls")]
-        if tls && !security_headers {
-            security_headers = true;
         }
 
         Ok(Settings {

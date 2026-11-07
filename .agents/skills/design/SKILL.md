@@ -129,7 +129,7 @@ Validate in `settings/` or `server/opts.rs` and fail startup with context (`bail
 | `--etag` | `true` |
 | `--text-charset` | `true` |
 | `--redirect-trailing-slash` | `true` |
-| `--security-headers` | `false`, `true` when `--tls` is set |
+| `--security-headers` | `true` with the `tls` feature, `false` otherwise; `Strict-Transport-Security` only with `--tls` |
 | `--directory-listing` | `false` (format `html`; `auto` negotiates via `Accept`) |
 | `--include-hidden` / `--follow-symlinks` | `false` / `false` |
 | `--cors-allow-origins` | empty (CORS off) |

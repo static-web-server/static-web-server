@@ -486,7 +486,6 @@ pub struct General {
             num_args(0..=1),
             require_equals(false),
             action = clap::ArgAction::Set,
-            default_value_if("tls", "true", Some("true")),
             env = "SERVER_SECURITY_HEADERS",
         )
     )]
@@ -502,9 +501,10 @@ pub struct General {
             env = "SERVER_SECURITY_HEADERS",
         )
     )]
-    /// Enable security headers by default when TLS feature is activated.
-    /// Headers included: "Strict-Transport-Security: max-age=63072000; includeSubDomains; preload" (2 years max-age),
-    /// "X-Frame-Options: DENY" and "Content-Security-Policy: frame-ancestors 'self'".
+    /// Enable security headers. Enabled by default when the TLS feature is activated.
+    /// Headers included: "X-Frame-Options: DENY", "X-Content-Type-Options: nosniff", "Content-Security-Policy: frame-ancestors 'self'"
+    /// and "Referrer-Policy: strict-origin-when-cross-origin". With `--tls`, also "Strict-Transport-Security: max-age=63072000; includeSubDomains" (2 years max-age).
+    /// Behind a TLS-terminating proxy, add `Strict-Transport-Security` at the proxy or with an `[[advanced.headers]]` rule.
     pub security_headers: bool,
 
     #[arg(

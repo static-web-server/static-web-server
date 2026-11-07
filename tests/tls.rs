@@ -49,14 +49,39 @@ mod settings_tests {
         );
     }
 
-    /// Enabling TLS must automatically set `security_headers = true` even if
-    /// the user did not supply `--security-headers`.
+    /// Builds with the `tls` feature enable security headers by default,
+    /// with or without `--tls`. Only HSTS depends on `--tls`.
     #[cfg(feature = "tls")]
     #[test]
-    fn tls_auto_enables_security_headers() {
-        let settings = static_web_server::Settings::get_unparsed(
-            false,
-            &[
+    fn tls_build_enables_security_headers_by_default() {
+        let plain = ["static-web-server", "--root", "tests/fixtures/public"];
+        let tls = [
+            "static-web-server",
+            "--root",
+            "tests/fixtures/public",
+            "--tls",
+            "--tls-cert",
+            CERT,
+            "--tls-key",
+            KEY,
+        ];
+        for args in [&plain[..], &tls[..]] {
+            let settings = static_web_server::Settings::get_unparsed(false, args)
+                .expect("settings must parse");
+            assert!(
+                settings.general.security_headers,
+                "security headers should be on by default: {args:?}"
+            );
+        }
+    }
+
+    /// An explicit `--security-headers=false` must win over the TLS default,
+    /// also when a config file without `security-headers` is loaded.
+    #[cfg(feature = "tls")]
+    #[test]
+    fn tls_respects_security_headers_false() {
+        for config in [None, Some("tests/fixtures/toml/handler.toml")] {
+            let mut args = vec![
                 "static-web-server",
                 "--root",
                 "tests/fixtures/public",
@@ -67,14 +92,19 @@ mod settings_tests {
                 CERT,
                 "--tls-key",
                 KEY,
-            ],
-        )
-        .expect("settings with --tls must parse");
+                "--security-headers=false",
+            ];
+            if let Some(path) = config {
+                args.extend(["--config-file", path]);
+            }
+            let settings = static_web_server::Settings::get_unparsed(false, &args)
+                .expect("settings with --tls must parse");
 
-        assert!(
-            settings.general.security_headers,
-            "--tls should automatically enable security_headers"
-        );
+            assert!(
+                !settings.general.security_headers,
+                "--security-headers=false was overridden (config file: {config:?})"
+            );
+        }
     }
 
     /// `--https-redirect` requires `--tls`; without it the settings parsing
@@ -395,11 +425,16 @@ mod live_http1_plain_tests {
     use http::StatusCode;
     use http_body_util::Empty;
     use hyper::Request;
+    use hyper::body::Incoming;
     use hyper_util::rt::TokioIo;
 
     use super::test_helpers::*;
 
     async fn http_get(port: u16, path: &str) -> StatusCode {
+        http_get_response(port, path).await.status()
+    }
+
+    async fn http_get_response(port: u16, path: &str) -> hyper::Response<Incoming> {
         let stream = tokio::net::TcpStream::connect(("127.0.0.1", port))
             .await
             .expect("TCP connect");
@@ -415,11 +450,25 @@ mod live_http1_plain_tests {
             .body(Empty::<bytes::Bytes>::new())
             .unwrap();
 
-        sender
-            .send_request(req)
+        sender.send_request(req).await.expect("send request")
+    }
+
+    #[tokio::test]
+    async fn http1_plain_omits_hsts() {
+        let (port, cancel_tx, handle) = spawn_plain_server(&["--security-headers=true"]);
+        wait_for_server(port).await;
+
+        let resp = tokio::time::timeout(TIMEOUT, http_get_response(port, "/index.htm"))
             .await
-            .expect("send request")
-            .status()
+            .expect("request timed out");
+        assert_eq!(resp.status(), StatusCode::OK);
+        assert!(resp.headers().contains_key("x-frame-options"));
+        assert!(
+            !resp.headers().contains_key("strict-transport-security"),
+            "HSTS must not be sent over plain HTTP"
+        );
+
+        shutdown_server(cancel_tx, handle).await;
     }
 
     #[tokio::test]
@@ -455,6 +504,7 @@ mod live_http1_tls_tests {
     use http::StatusCode;
     use http_body_util::Empty;
     use hyper::Request;
+    use hyper::body::Incoming;
     use hyper_util::rt::TokioIo;
     use rustls_pki_types::ServerName;
     use tokio::io::AsyncReadExt;
@@ -463,6 +513,10 @@ mod live_http1_tls_tests {
     use super::test_helpers::*;
 
     async fn https_get_http1(port: u16, path: &str) -> StatusCode {
+        https_get_http1_response(port, path).await.status()
+    }
+
+    async fn https_get_http1_response(port: u16, path: &str) -> hyper::Response<Incoming> {
         let cfg = tls_client_config(&["http/1.1"]);
         let connector = TlsConnector::from(cfg);
         let stream = tokio::net::TcpStream::connect(("127.0.0.1", port))
@@ -485,11 +539,41 @@ mod live_http1_tls_tests {
             .body(Empty::<bytes::Bytes>::new())
             .unwrap();
 
-        sender
-            .send_request(req)
+        sender.send_request(req).await.expect("send request")
+    }
+
+    #[tokio::test]
+    async fn sends_hsts_without_preload() {
+        let (port, cancel_tx, handle) = spawn_server(&[]);
+        wait_for_server(port).await;
+
+        let resp = tokio::time::timeout(TIMEOUT, https_get_http1_response(port, "/index.htm"))
             .await
-            .expect("send request")
-            .status()
+            .expect("request timed out");
+        assert_eq!(resp.status(), StatusCode::OK);
+        assert_eq!(
+            resp.headers()
+                .get("strict-transport-security")
+                .and_then(|v| v.to_str().ok()),
+            Some("max-age=63072000; includeSubDomains")
+        );
+
+        shutdown_server(cancel_tx, handle).await;
+    }
+
+    #[tokio::test]
+    async fn security_headers_false_disables_them() {
+        let (port, cancel_tx, handle) = spawn_server(&["--security-headers=false"]);
+        wait_for_server(port).await;
+
+        let resp = tokio::time::timeout(TIMEOUT, https_get_http1_response(port, "/index.htm"))
+            .await
+            .expect("request timed out");
+        assert_eq!(resp.status(), StatusCode::OK);
+        assert!(!resp.headers().contains_key("strict-transport-security"));
+        assert!(!resp.headers().contains_key("x-frame-options"));
+
+        shutdown_server(cancel_tx, handle).await;
     }
 
     #[tokio::test]

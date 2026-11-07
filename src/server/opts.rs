@@ -231,7 +231,11 @@ pub(super) fn init(general: &General, advanced: Option<Advanced>) -> Result<Hand
     etag::init(general.etag, &mut handler_opts);
 
     // Security headers
-    security_headers::init(general.security_headers, &mut handler_opts);
+    #[cfg(feature = "tls")]
+    let tls = general.tls;
+    #[cfg(not(feature = "tls"))]
+    let tls = false;
+    security_headers::init(general.security_headers, tls, &mut handler_opts);
 
     // In-memory cache
     #[cfg(feature = "mem-cache")]
