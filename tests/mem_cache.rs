@@ -836,4 +836,90 @@ mod tests {
         assert_eq!(headers["vary"], "accept-encoding");
         assert_eq!(body, ZSTD_BODY);
     }
+
+    /// Creates a root directory holding the given directories and files.
+    fn dirs_root(dirs: &[&str], files: &[(&str, &[u8])]) -> (tempfile::TempDir, PathBuf) {
+        let (dir, root) = precompressed_root(&[]);
+        for name in dirs {
+            std::fs::create_dir(root.join(name)).expect("unable to create a fixture dir");
+        }
+        for (name, body) in files {
+            std::fs::write(root.join(name), body).expect("unable to write a fixture file");
+        }
+        (dir, root)
+    }
+
+    /// Requests `uri_path` with the memory cache on and drains the body, which
+    /// populates the cache on a miss. Returns whether it is a directory listing.
+    async fn serve_path(
+        root: &Path,
+        uri_path: &str,
+        index_files: &[&str],
+    ) -> Result<(HeaderMap, Bytes, bool), StatusCode> {
+        let headers = HeaderMap::new();
+        let base_path = root.to_path_buf();
+        let mem_opts = MemCacheOpts::new(DEFAULT_MAX_FILE_SIZE);
+        let opts = HandleOpts {
+            method: &Method::GET,
+            headers: &headers,
+            base_path: &base_path,
+            uri_path,
+            uri_query: None,
+            memory_cache: Some(&mem_opts),
+            #[cfg(feature = "directory-listing")]
+            dir_listing: true,
+            #[cfg(feature = "directory-listing")]
+            dir_listing_order: 6,
+            #[cfg(feature = "directory-listing")]
+            dir_listing_format: &DirListFmt::Html,
+            #[cfg(feature = "directory-listing-download")]
+            dir_listing_download: &[],
+            redirect_trailing_slash: true,
+            compression_static: false,
+            etag: true,
+            include_hidden: true,
+            follow_symlinks: true,
+            index_files,
+        };
+        let result = static_files::handle(&opts).await?;
+        let (parts, body) = result.resp.into_parts();
+        let body = body.collect().await.unwrap().to_bytes();
+        Ok((parts.headers, body, result.is_dir_listing))
+    }
+
+    #[tokio::test]
+    async fn cache_miss_resolves_directory_from_disk() {
+        init_cache_store();
+        let (_dir, root) = dirs_root(
+            &["htm", "posts"],
+            &[
+                ("htm/index.htm", b"htm index"),
+                ("posts.html", b"posts sibling"),
+            ],
+        );
+        let index_files = &["index.html", "index.htm"];
+
+        let (_, body, _) = serve_path(&root, "/htm/", index_files).await.unwrap();
+        assert_eq!(body, "htm index", "a later index file is served");
+
+        let (_, body, _) = serve_path(&root, "/posts/", index_files).await.unwrap();
+        assert_eq!(body, "posts sibling", "the `.html` sibling is served");
+    }
+
+    #[cfg(feature = "directory-listing")]
+    #[tokio::test]
+    async fn cache_miss_lists_directory_without_index_file() {
+        init_cache_store();
+        let (_dir, root) = dirs_root(
+            &["empty", "unlisted"],
+            &[("unlisted/index.html", b"unlisted index")],
+        );
+        // `index.html` is not an index file here, so its directory is listed too
+        let index_files = &["index.htm"];
+
+        for uri_path in ["/", "/empty/", "/unlisted/"] {
+            let (_, _, is_dir_listing) = serve_path(&root, uri_path, index_files).await.unwrap();
+            assert!(is_dir_listing, "{uri_path} is listed");
+        }
+    }
 }

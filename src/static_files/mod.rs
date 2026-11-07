@@ -62,7 +62,7 @@ pub async fn handle(opts: &HandleOpts<'_>) -> Result<StaticFileResponse, StatusC
     // With `compression-static`, the cached representation is negotiated
     // from the pre-compressed variants recorded in the cache entries.
     #[cfg(feature = "mem-cache")]
-    if let Some(resp) = try_memory_cache(opts, &mut file_path) {
+    if let Some(resp) = try_memory_cache(opts, &file_path) {
         return Ok(resp);
     }
 
@@ -123,14 +123,12 @@ pub async fn handle(opts: &HandleOpts<'_>) -> Result<StaticFileResponse, StatusC
 /// Returns `Some(response)` on a cache hit, `None` otherwise (cache disabled
 /// in the runtime config, no entry yet, or a non-UTF-8 path).
 ///
-/// When a memory cache is configured and the request targets a directory
-/// with trailing-slash redirect on, the cache key is the implicit
-/// `<dir>/index.html`. The function may push that segment onto
-/// `file_path` before performing the lookup.
+/// With trailing-slash redirect on and a request path ending in `/`, the
+/// cache key is that path joined with `index.html`.
 #[cfg(feature = "mem-cache")]
 fn try_memory_cache(
     opts: &HandleOpts<'_>,
-    file_path: &mut std::path::PathBuf,
+    file_path: &std::path::Path,
 ) -> Option<StaticFileResponse> {
     // Runtime gate: if `[advanced.memory-cache]` is not configured in TOML,
     // `opts.memory_cache` is `None` and we skip the lookup entirely.
@@ -143,13 +141,16 @@ fn try_memory_cache(
 
     // NOTE: only the default auto-index is supported for directory
     // requests inside the memory-cache context.
-    if opts.redirect_trailing_slash && opts.uri_path.ends_with('/') {
-        file_path.push("index.html");
-    }
+    let index_path = (opts.redirect_trailing_slash && opts.uri_path.ends_with('/'))
+        .then(|| file_path.join("index.html"));
+    let cache_path = index_path.as_deref().unwrap_or(file_path);
 
-    let result = cache::lookup(file_path.as_path(), opts.headers, opts.compression_static)?;
+    let result = cache::lookup(cache_path, opts.headers, opts.compression_static)?;
     match result {
-        Ok(resp) => Some(StaticFileResponse::new(resp, file_path.clone())),
+        Ok(resp) => {
+            let resp_file_path = index_path.unwrap_or_else(|| file_path.to_path_buf());
+            Some(StaticFileResponse::new(resp, resp_file_path))
+        }
         // Hit, but the cached entry returned an error status (e.g. malformed Range).
         // Fall through to the regular pipeline so the error path is consistent.
         Err(_) => None,
