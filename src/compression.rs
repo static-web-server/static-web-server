@@ -18,6 +18,7 @@ use async_compression::tokio::bufread::ZlibEncoder;
 use async_compression::tokio::bufread::ZstdEncoder;
 
 use headers::{ContentType, HeaderMap, HeaderMapExt, HeaderValue};
+use http_body::Body as _;
 use http_body_util::BodyExt as _;
 use hyper::{
     Method, Request, Response, StatusCode,
@@ -128,6 +129,12 @@ pub fn auto(
         return Ok(resp);
     }
 
+    // A `Content-Encoding` on a response without content describes nothing,
+    // and caches merge the header fields of a `304` into the stored response
+    if !has_content(method, &resp) {
+        return Ok(resp);
+    }
+
     // Compress response based on Accept-Encoding header
     if let Some(encoding) = get_preferred_encoding(headers) {
         tracing::trace!(
@@ -159,13 +166,14 @@ pub fn auto(
         }
 
         // A HEAD response has no content: send the header fields of the GET
-        // response (RFC 9110, section 9.3.2) without encoding a body
+        // response (RFC 9110, section 9.3.2) without encoding a body. The body
+        // is dropped too, or hyper derives the identity length from its size
         if method.is_head() {
-            let (mut head, body) = resp.into_parts();
+            let (mut head, _) = resp.into_parts();
             let header = create_encoding_header(head.headers.remove(CONTENT_ENCODING), encoding);
             head.headers.remove(CONTENT_LENGTH);
             head.headers.insert(CONTENT_ENCODING, header);
-            return Ok(Response::from_parts(head, body));
+            return Ok(Response::from_parts(head, crate::body::empty()));
         }
 
         #[cfg(any(feature = "compression", feature = "compression-gzip"))]
@@ -198,6 +206,23 @@ pub fn auto(
     }
 
     Ok(resp)
+}
+
+/// Whether the response has content to encode. `1xx`, `204` and `304` never
+/// have any. A `HEAD` body is always empty, so it counts as content only when
+/// it declares the length of its `GET` counterpart.
+fn has_content(method: &Method, resp: &Response<Body>) -> bool {
+    let status = resp.status();
+    if status.is_informational()
+        || status == StatusCode::NO_CONTENT
+        || status == StatusCode::NOT_MODIFIED
+    {
+        return false;
+    }
+    if method.is_head() {
+        return resp.headers().contains_key(CONTENT_LENGTH);
+    }
+    !resp.body().is_end_stream()
 }
 
 /// Create a wrapping handler that compresses the Body of a [`Response`].
@@ -446,6 +471,44 @@ mod tests {
             result.headers().get(CONTENT_ENCODING).is_none(),
             "a HEAD response below the size threshold gets no content-encoding, as its GET response"
         );
+    }
+
+    #[test]
+    fn response_without_content_is_not_compressed() {
+        let headers = accept_gzip_headers();
+        for method in [Method::GET, Method::HEAD] {
+            for status in [
+                StatusCode::CONTINUE,
+                StatusCode::NO_CONTENT,
+                StatusCode::NOT_MODIFIED,
+            ] {
+                let mut resp = text_response_with_size(MIN_COMPRESS_SIZE);
+                *resp.status_mut() = status;
+                let result = auto(&method, &headers, CompressionLevel::Default, resp).unwrap();
+                assert!(
+                    result.headers().get(CONTENT_ENCODING).is_none(),
+                    "{method} {status}"
+                );
+            }
+
+            // An empty body without a length, like a `308` or `412`
+            let mut resp = Response::new(body::empty());
+            *resp.status_mut() = StatusCode::PERMANENT_REDIRECT;
+            let result = auto(&method, &headers, CompressionLevel::Default, resp).unwrap();
+            assert!(result.headers().get(CONTENT_ENCODING).is_none(), "{method}");
+        }
+    }
+
+    #[test]
+    fn head_response_with_content_length_is_compressed() {
+        // A full body, as the memory cache gives, has an exact size hint that
+        // hyper would send as the `Content-Length` of the identity content
+        let resp = text_response_with_size(MIN_COMPRESS_SIZE);
+        let headers = accept_gzip_headers();
+        let result = auto(&Method::HEAD, &headers, CompressionLevel::Default, resp).unwrap();
+        assert_eq!(result.headers()[CONTENT_ENCODING], "gzip");
+        assert!(result.headers().get(CONTENT_LENGTH).is_none());
+        assert!(result.body().is_end_stream());
     }
 
     #[test]

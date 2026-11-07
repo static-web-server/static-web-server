@@ -88,7 +88,8 @@ pub(super) fn file_or_precompressed(
 }
 
 /// Serves a pre-compressed variant and adjusts headers (`Content-Length`
-/// removed, `Content-Encoding` set) accordingly.
+/// removed, `Content-Encoding` set) accordingly. Responses without content
+/// such as `304`, `412` and `416` are left as they are.
 fn precompressed_reply(
     opts: &HandleOpts<'_>,
     file_path: &Path,
@@ -103,6 +104,10 @@ fn precompressed_reply(
         Some((precomp_path, precomp_encoding)),
         None,
     )?;
+
+    if !resp.status().is_success() {
+        return Ok(resp);
+    }
 
     resp.headers_mut().remove(CONTENT_LENGTH);
     let encoding = HeaderValue::from_str(precomp_encoding.as_str()).map_err(|err| {
