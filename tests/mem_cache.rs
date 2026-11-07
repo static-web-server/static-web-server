@@ -922,4 +922,33 @@ mod tests {
             assert!(is_dir_listing, "{uri_path} is listed");
         }
     }
+
+    #[tokio::test]
+    async fn cache_directory_hit_follows_index_files_order() {
+        init_cache_store();
+        let (_dir, root) = dirs_root(
+            &["both"],
+            &[
+                ("both/index.htm", b"htm index"),
+                ("both/index.html", b"html index"),
+            ],
+        );
+        let index_files = &["index.htm", "index.html"];
+
+        let (_, body, _) = serve_path(&root, "/both/index.html", index_files)
+            .await
+            .unwrap();
+        assert_eq!(body, "html index");
+
+        let (headers, body, _) = serve_path(&root, "/both/", index_files).await.unwrap();
+        assert!(headers.get("x-cache").is_none());
+        assert_eq!(
+            body, "htm index",
+            "the first index file wins over a cached later one"
+        );
+
+        let (headers, body, _) = serve_path(&root, "/both/", index_files).await.unwrap();
+        assert_eq!(headers["x-cache"], "HIT");
+        assert_eq!(body, "htm index");
+    }
 }

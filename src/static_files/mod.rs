@@ -46,6 +46,8 @@ use crate::fs::meta::FileMetadata;
 
 #[cfg(feature = "mem-cache")]
 use crate::mem_cache::cache;
+#[cfg(feature = "mem-cache")]
+use opts::DEFAULT_INDEX_FILES;
 
 /// The server entry point to handle incoming requests which map to specific files
 /// on file system and return a file response.
@@ -123,8 +125,11 @@ pub async fn handle(opts: &HandleOpts<'_>) -> Result<StaticFileResponse, StatusC
 /// Returns `Some(response)` on a cache hit, `None` otherwise (cache disabled
 /// in the runtime config, no entry yet, or a non-UTF-8 path).
 ///
-/// With trailing-slash redirect on and a request path ending in `/`, the
-/// cache key is that path joined with `index.html`.
+/// With trailing-slash redirect on and a request path ending in `/`, only
+/// the first `--index-files` entry joined to that path is looked up. Any
+/// other file is served only when that entry doesn't exist, which takes a
+/// disk check, so a directory served by a later entry or by its `.html`
+/// sibling never hits the cache.
 #[cfg(feature = "mem-cache")]
 fn try_memory_cache(
     opts: &HandleOpts<'_>,
@@ -139,10 +144,10 @@ fn try_memory_cache(
         return None;
     }
 
-    // NOTE: only the default auto-index is supported for directory
-    // requests inside the memory-cache context.
-    let index_path = (opts.redirect_trailing_slash && opts.uri_path.ends_with('/'))
-        .then(|| file_path.join("index.html"));
+    let index_path = (opts.redirect_trailing_slash && opts.uri_path.ends_with('/')).then(|| {
+        let index = opts.index_files.first().unwrap_or(&DEFAULT_INDEX_FILES[0]);
+        file_path.join(index)
+    });
     let cache_path = index_path.as_deref().unwrap_or(file_path);
 
     let result = cache::lookup(cache_path, opts.headers, opts.compression_static)?;
