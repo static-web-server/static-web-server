@@ -460,6 +460,7 @@ impl RequestHandler {
                         .and_then(|v| v.parse::<u64>().ok())
                         .unwrap_or(0);
                     metrics::record_request(
+                        &self.opts,
                         req,
                         resp.status(),
                         bytes,
