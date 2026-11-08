@@ -9,10 +9,7 @@
 //! [`super`](super) pairs the response with the file path it relates to.
 
 use headers::{AcceptRanges, HeaderMapExt, HeaderValue};
-use hyper::{
-    Response, StatusCode,
-    header::{CONTENT_ENCODING, CONTENT_LENGTH},
-};
+use hyper::{Response, StatusCode, header::CONTENT_ENCODING};
 use std::fs::{File, Metadata};
 use std::io;
 use std::path::{Path, PathBuf};
@@ -87,9 +84,9 @@ pub(super) fn file_or_precompressed(
     file_reply(opts, file_path, metadata, None, pre_opened)
 }
 
-/// Serves a pre-compressed variant and adjusts headers (`Content-Length`
-/// removed, `Content-Encoding` set) accordingly. Responses without content
-/// such as `304`, `412` and `416` are left as they are.
+/// Serves a pre-compressed variant with its `Content-Encoding`. `metadata`
+/// is the variant's, so `Content-Length` is the variant's length. Responses
+/// without content such as `304`, `412` and `416` are left as they are.
 fn precompressed_reply(
     opts: &HandleOpts<'_>,
     file_path: &Path,
@@ -109,7 +106,6 @@ fn precompressed_reply(
         return Ok(resp);
     }
 
-    resp.headers_mut().remove(CONTENT_LENGTH);
     let encoding = HeaderValue::from_str(precomp_encoding.as_str()).map_err(|err| {
         tracing::error!(
             "unable to parse header value from content encoding: {:?}",
