@@ -9,8 +9,6 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 use tokio::sync::{OwnedSemaphorePermit, Semaphore};
 
-use crate::Result;
-
 /// Minimum time between two warnings that the limit is reached,
 /// so a server that stays at its limit doesn't log a line for every closed connection.
 const WARNING_INTERVAL: Duration = Duration::from_secs(60);
@@ -31,21 +29,14 @@ pub(crate) struct ConnLimit {
 
 impl ConnLimit {
     /// Create a limit of `max` connections served at the same time, or `None` for no limit when `max` is `0`.
-    pub(crate) fn new(max: usize) -> Result<Option<Self>> {
-        if max == 0 {
-            return Ok(None);
-        }
-        if max > Semaphore::MAX_PERMITS {
-            bail!(
-                "max connections must be at most {}, got {max}",
-                Semaphore::MAX_PERMITS
-            );
-        }
-        Ok(Some(Self {
+    ///
+    /// Settings reject values above [`Semaphore::MAX_PERMITS`], for which [`Semaphore::new`] panics.
+    pub(crate) fn new(max: usize) -> Option<Self> {
+        (max > 0).then(|| Self {
             slots: Arc::new(Semaphore::new(max)),
             max,
             last_warning: Arc::default(),
-        }))
+        })
     }
 
     /// Maximum number of connections served at the same time.
@@ -88,23 +79,15 @@ impl ConnLimit {
 mod tests {
     use super::ConnLimit;
     use std::time::Duration;
-    use tokio::sync::Semaphore;
 
     #[test]
     fn conn_limit_zero_means_no_limit() {
-        assert!(ConnLimit::new(0).unwrap().is_none());
-    }
-
-    #[test]
-    fn conn_limit_rejects_values_above_semaphore_max() {
-        let err = ConnLimit::new(Semaphore::MAX_PERMITS + 1).unwrap_err();
-        assert!(err.to_string().contains("max connections must be at most"));
-        assert!(ConnLimit::new(Semaphore::MAX_PERMITS).unwrap().is_some());
+        assert!(ConnLimit::new(0).is_none());
     }
 
     #[tokio::test]
     async fn conn_limit_waits_until_a_slot_is_released() {
-        let limit = ConnLimit::new(2).unwrap().unwrap();
+        let limit = ConnLimit::new(2).unwrap();
         let first = limit.acquire().await;
         let _second = limit.acquire().await;
 
@@ -125,7 +108,7 @@ mod tests {
 
     #[tokio::test]
     async fn conn_limit_clones_share_slots() {
-        let limit = ConnLimit::new(1).unwrap().unwrap();
+        let limit = ConnLimit::new(1).unwrap();
         let other = limit.clone();
         let _permit = limit.acquire().await;
         assert!(
@@ -139,7 +122,7 @@ mod tests {
     #[tokio::test]
     async fn conn_limit_warns_once_per_interval() {
         let (logs, _guard) = crate::server::tests::capture_debug_logs();
-        let limit = ConnLimit::new(1).unwrap().unwrap();
+        let limit = ConnLimit::new(1).unwrap();
         let permit = limit.acquire().await;
         // Hit the limit twice in a row: only the first wait is logged.
         for _ in 0..2 {

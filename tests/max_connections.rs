@@ -130,21 +130,4 @@ mod tests {
         drop((first, second));
         shutdown_server(cancel_tx, handle).await;
     }
-
-    #[test]
-    fn max_connections_rejects_out_of_range_value() {
-        // Above the limit on 32 and 64-bit targets, and still a valid `usize`.
-        let max = usize::MAX.to_string();
-        let args = ["static-web-server", "--max-connections", &max];
-        let settings =
-            static_web_server::Settings::get_unparsed(false, &args).expect("settings parse");
-        let err = static_web_server::Server::new(settings)
-            .expect("server build")
-            .run_server_on_rt(None, || {}, false)
-            .expect_err("server started with an out-of-range limit");
-        assert!(
-            err.to_string().contains("max connections must be at most"),
-            "{err}"
-        );
-    }
 }

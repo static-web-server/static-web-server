@@ -740,6 +740,14 @@ impl Settings {
             bail!("--max-header-size must be greater than 0");
         }
 
+        // Runtime validation: the connection limit is a Tokio semaphore, which has a maximum
+        if max_connections > tokio::sync::Semaphore::MAX_PERMITS {
+            bail!(
+                "--max-connections must be at most {}",
+                tokio::sync::Semaphore::MAX_PERMITS
+            );
+        }
+
         // Runtime validation: ANSI log output requires pretty format
         if log_with_ansi && log_format != logger::LogFormat::Pretty {
             bail!("--log-with-ansi requires --log-format=pretty");
@@ -932,6 +940,25 @@ mod tests {
             error.to_string(),
             "--max-header-size must be greater than 0"
         );
+    }
+
+    #[test]
+    fn max_connections_rejects_values_above_semaphore_max() {
+        let max = tokio::sync::Semaphore::MAX_PERMITS;
+        let above = (max + 1).to_string();
+        let error =
+            Settings::get_unparsed(false, &["static-web-server", "--max-connections", &above])
+                .err()
+                .expect("max connections above the semaphore maximum should be rejected");
+
+        assert_eq!(
+            error.to_string(),
+            format!("--max-connections must be at most {max}")
+        );
+
+        let max = max.to_string();
+        Settings::get_unparsed(false, &["static-web-server", "--max-connections", &max])
+            .expect("max connections at the semaphore maximum should be accepted");
     }
 
     #[cfg(windows)]

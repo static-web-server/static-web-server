@@ -75,26 +75,25 @@ impl Default for ConnConfig {
     /// The connection settings of the default command line arguments.
     fn default() -> Self {
         use clap::Parser;
-        Self::new(&General::parse_from(["static-web-server"])).expect("default connection settings")
+        Self::new(&General::parse_from(["static-web-server"]))
     }
 }
 
 impl ConnConfig {
     /// Create the connection settings from the general settings.
-    fn new(general: &General) -> Result<Self> {
-        let conn = Self {
+    fn new(general: &General) -> Self {
+        Self {
             idle_timeout: (general.idle_timeout > 0)
                 .then(|| Duration::from_secs(general.idle_timeout.into())),
             max_header_size: general.max_header_size,
-            limit: ConnLimit::new(general.max_connections)?,
-        };
-        if conn.limit.is_some() && conn.idle_timeout.is_none() {
-            tracing::warn!(
-                "max connections is set but the idle timeout is disabled: \
-                connections that send nothing keep their slot until the client closes them"
-            );
+            limit: ConnLimit::new(general.max_connections),
         }
-        Ok(conn)
+    }
+
+    /// Whether connections are limited without an idle timeout,
+    /// so connections that send nothing keep their slot until the client closes them.
+    fn has_limit_without_idle_timeout(&self) -> bool {
+        self.limit.is_some() && self.idle_timeout.is_none()
     }
 
     /// Run `accept`, then wait for a free connection slot if connections are limited.
@@ -151,16 +150,17 @@ impl ConnConfig {
     where
         C: Future<Output = hyper::Result<()>> + Send + 'static,
     {
+        // Hyper's header read timeout is only set along with the idle timeout.
         let header_timeout = self.idle_timeout;
         tokio::spawn(async move {
             let _slot = slot;
-            if let Err(err) = conn.await
+            if let (Err(err), Some(timeout)) = (conn.await, header_timeout)
                 && err.is_timeout()
             {
                 tracing::debug!(
                     peer = peer.map(tracing::field::display),
                     "closing connection: request header not received within {:?}",
-                    header_timeout.unwrap_or_default()
+                    timeout
                 );
             }
         });
@@ -375,9 +375,6 @@ impl Server {
             );
         }
 
-        // Validated before binding, so invalid settings don't hold the port.
-        let conn = ConnConfig::new(&general)?;
-
         // Choose listener kind: Unix Domain Socket (when --unix-socket is set,
         // Unix only) or a TCP socket otherwise. Clap already enforces mutual
         // exclusion with host/port/fd/tls, but we still resolve the listener
@@ -439,6 +436,13 @@ impl Server {
             max_connections = general.max_connections,
             "maximum connections served at the same time"
         );
+        let conn = ConnConfig::new(&general);
+        if conn.has_limit_without_idle_timeout() {
+            tracing::warn!(
+                "max connections is set but the idle timeout is disabled: \
+                connections that send nothing keep their slot until the client closes them"
+            );
+        }
 
         // Initialize request handler options from configuration
         let opts_result = opts::init(&general, advanced)?;
@@ -579,7 +583,7 @@ pub(crate) mod tests {
     /// Create the connection settings from the given command line arguments.
     fn conn_config(args: &[&str]) -> ConnConfig {
         let settings = crate::Settings::get_unparsed(false, args).expect("settings parse");
-        ConnConfig::new(&settings.general).expect("connection settings")
+        ConnConfig::new(&settings.general)
     }
 
     #[test]
@@ -688,24 +692,17 @@ pub(crate) mod tests {
     }
 
     #[test]
-    fn conn_config_warns_about_limit_without_idle_timeout() {
-        let (logs, _guard) = capture_debug_logs();
-        let warning = "max connections is set but the idle timeout is disabled";
-
-        conn_config(&["static-web-server", "--max-connections", "2"]);
-        conn_config(&["static-web-server", "--idle-timeout", "0"]);
-        assert!(logs.lines(warning).is_empty());
-
-        conn_config(&[
-            "static-web-server",
-            "--max-connections",
-            "2",
-            "--idle-timeout",
-            "0",
-        ]);
-        let lines = logs.lines(warning);
-        assert_eq!(lines.len(), 1, "{lines:?}");
-        assert!(lines[0].contains("WARN"), "{}", lines[0]);
+    fn conn_config_has_limit_without_idle_timeout() {
+        let cases = [
+            (&["--max-connections", "2"][..], false),
+            (&["--idle-timeout", "0"][..], false),
+            (&["--max-connections", "2", "--idle-timeout", "0"][..], true),
+        ];
+        for (args, expected) in cases {
+            let args: Vec<_> = ["static-web-server"].iter().chain(args).copied().collect();
+            let conn = conn_config(&args);
+            assert_eq!(conn.has_limit_without_idle_timeout(), expected, "{args:?}");
+        }
     }
 
     #[test]
@@ -718,7 +715,7 @@ pub(crate) mod tests {
     async fn accept_takes_no_slot_while_listener_is_idle() {
         let conn = ConnConfig {
             idle_timeout: None,
-            limit: super::ConnLimit::new(1).unwrap(),
+            limit: super::ConnLimit::new(1),
             ..ConnConfig::default()
         };
         let idle = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
@@ -748,7 +745,7 @@ pub(crate) mod tests {
     async fn accept_waits_for_a_slot_after_accepting() {
         let conn = ConnConfig {
             idle_timeout: None,
-            limit: super::ConnLimit::new(1).unwrap(),
+            limit: super::ConnLimit::new(1),
             ..ConnConfig::default()
         };
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
