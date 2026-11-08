@@ -21,6 +21,7 @@ mod tests {
         assert_eq!(general.open_path.as_deref(), Some("/docs"));
         assert_eq!(general.idle_timeout, Some(30));
         assert_eq!(general.max_header_size, Some(16384));
+        assert_eq!(general.max_connections, Some(0));
 
         let advanced = settings.advanced.as_ref().unwrap();
         let virtual_hosts = advanced.virtual_hosts.as_ref().unwrap();
@@ -34,5 +35,22 @@ mod tests {
                 panic!("Could not determine value of advanced.virtual-hosts.root");
             }
         }
+    }
+
+    #[test]
+    fn toml_max_connections_overrides_cli() {
+        let dir = tempfile::tempdir().unwrap();
+        let config = dir.path().join("sws.toml");
+        std::fs::write(&config, "[general]\nmax-connections = 64\n").unwrap();
+
+        let args = [
+            "static-web-server",
+            "--config-file",
+            config.to_str().unwrap(),
+            "--max-connections",
+            "8",
+        ];
+        let settings = static_web_server::Settings::get_unparsed(false, &args).unwrap();
+        assert_eq!(settings.general.max_connections, 64);
     }
 }

@@ -394,6 +394,9 @@ pub struct General {
     /// Maximum request header size in bytes.
     pub max_header_size: Option<u32>,
 
+    /// Maximum number of connections served at the same time.
+    pub max_connections: Option<usize>,
+
     /// Page fallback feature.
     #[cfg(feature = "fallback-page")]
     #[cfg_attr(docsrs, doc(cfg(feature = "fallback-page")))]

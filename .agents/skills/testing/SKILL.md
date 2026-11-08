@@ -17,7 +17,7 @@ Every behavior change ships with a test that fails before the change and passes 
 | Handler integration | `tests/<feature>.rs` via `RequestHandler::handle()` | Behavior that depends on pipeline order or several steps. Security fixes always get one |
 | Static-file integration | `tests/static_files.rs` via `static_files::handle()` | Resolution, index files, ranges, pre-compressed variants, without the pipeline |
 | Settings | `tests/settings.rs` | CLI/env/TOML parsing and merging |
-| TLS / server | `tests/tls.rs`, `tests/idle_timeout.rs`, `tests/max_header_size.rs` | Certificates in `tests/tls/`; connection limits |
+| TLS / server | `tests/tls.rs`, `tests/idle_timeout.rs`, `tests/max_header_size.rs`, `tests/max_connections.rs` | Certificates in `tests/tls/`; connection limits |
 | Property | `proptest!` blocks in source files | Parsers and path handling over arbitrary input |
 | Fuzz | `fuzz/src/*.rs` (cargo-fuzz) | Untrusted-input parsers |
 | Bench | `benches/*.rs` (Criterion/CodSpeed) | Hot-path functions |

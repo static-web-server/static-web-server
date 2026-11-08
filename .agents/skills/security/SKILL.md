@@ -80,6 +80,7 @@ Behind a TLS-terminating proxy, HSTS is added at the proxy or with an `[[advance
 
 - `--idle-timeout` (default 30 s): closes a connection with no read or write progress; an HTTP/1 request header must also arrive within it. `0` disables
 - `--max-header-size` (default 16384 bytes): request line + headers for HTTP/1, header list for HTTP/2. Exceeded → 431
+- `--max-connections` (default `0`, no limit): connections served at the same time, shared by all listeners (`server/conn_limit.rs`). A slot is taken after `accept`, so an idle listener never holds one; once full, new connections wait in the listen backlog. It relies on the idle timeout to free slots of connections that send nothing
 - Accept-loop errors back off instead of spinning
 - Metrics labels are bounded: method is `GET`/`HEAD`/`OPTIONS` or `other`, status is its class (`2xx`), host is a configured virtual host or `other`
 

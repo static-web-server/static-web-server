@@ -30,7 +30,7 @@ bin/server.rs → settings/ → server/ (mod.rs, opts.rs) → service.rs → han
 | `settings/file.rs` | TOML `Settings`: `General` (all `Option<T>`) + `Advanced` (headers, rewrites, redirects, virtual hosts, memory cache). Unknown keys reported via `serde_ignored` |
 | `settings/mod.rs` | Merge CLI/env with TOML, compile advanced rules (globs → regex, Aho-Corasick), build `Settings { general, advanced }` |
 | `server/opts.rs` | Build `RequestHandlerOpts`: canonicalize root, call each feature's `init()` |
-| `server/` | `listener.rs` (TCP, `--fd`, Unix socket), `http1.rs`, `http1_tls.rs`, `http2.rs`, `uds.rs` accept loops; `redirect.rs` (HTTP→HTTPS server); `idle_timeout.rs` (connection IO wrapper); `browser.rs` (`--open`); graceful shutdown in `mod.rs` |
+| `server/` | `listener.rs` (TCP, `--fd`, Unix socket), `http1.rs`, `http1_tls.rs`, `http2.rs`, `uds.rs` accept loops; `redirect.rs` (HTTP→HTTPS server); `idle_timeout.rs` (connection IO wrapper); `conn_limit.rs` (`--max-connections` slots); `browser.rs` (`--open`); graceful shutdown in `mod.rs` |
 | `service.rs` | `RouterService` → `RequestService` → `RequestHandler::handle()` |
 | `handler.rs` | `RequestHandlerOpts` and the request pipeline |
 | `static_files/` | `mod.rs::handle()` entry; `resolve.rs` (metadata, index files, pre-compressed variant), `security.rs` (containment, symlink, hidden), `listing.rs`, `reply.rs`, `opts.rs` (`HandleOpts`, `StaticFileResponse`) |
@@ -131,6 +131,7 @@ Validate in `settings/` or `server/opts.rs`; fail startup with `bail!`/`with_con
 | `--threads-multiplier` / `--max-blocking-threads` | `1` / `512` (`2` / `20` on wasm) |
 | `--grace-period` / `--idle-timeout` / `--max-header-size` | `0` / `30` s (`0` disables) / `16384` bytes (431 when exceeded) |
 | `--page404` / `--page50x` / `--page-fallback` | `./404.html` / `./50x.html` / unset |
+| `--max-connections` | `0` (no limit) |
 | Memory cache | off unless `[advanced.memory-cache]` exists |
 
 ## Feature Flags
