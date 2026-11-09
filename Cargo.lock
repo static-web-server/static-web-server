@@ -2160,6 +2160,7 @@ dependencies = [
  "shadow-rs",
  "signal-hook",
  "signal-hook-tokio",
+ "socket2",
  "tempfile",
  "time",
  "tokio",
