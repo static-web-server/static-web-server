@@ -157,7 +157,7 @@ pub(super) fn maybe_spawn(
         cfg.https_redirect_from_port,
     );
 
-    let tcp_listener = TcpListener::bind(addr)
+    let tcp_listener = super::listener::bind_tcp(addr)
         .with_context(|| format!("failed to bind redirect listener to {addr}"))?;
 
     tracing::info!("http1 redirect server is listening on http://{}", addr);

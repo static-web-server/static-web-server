@@ -23,7 +23,7 @@ use crate::Result;
 #[command(author, about, long_about)]
 pub struct General {
     #[arg(long, short = 'a', default_value = "::", env = "SERVER_HOST")]
-    /// Host address (E.g 127.0.0.1 or ::1)
+    /// Host address (E.g 127.0.0.1 or ::1). The default `::` accepts both IPv6 and IPv4 connections where the OS supports dual-stack sockets
     pub host: String,
 
     #[arg(long, short = 'p', default_value = "8080", env = "SERVER_PORT")]
