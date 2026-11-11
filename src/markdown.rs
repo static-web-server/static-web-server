@@ -16,6 +16,7 @@ use std::path::Path;
 use crate::fs::path::{PathExt, sanitize_path};
 use crate::{
     Error, fs::meta::try_markdown_variant, handler::RequestHandlerOpts, headers_ext::Accept,
+    http_ext::MethodExt,
 };
 
 /// Escape set used when converting a resolved file path back into a URI path.
@@ -42,6 +43,12 @@ pub(crate) fn pre_process<T>(
     uri_path: &str,
     ignore_hidden_files: bool,
 ) -> Option<String> {
+    // Only a `GET` or `HEAD` gets a representation to negotiate
+    let method = req.method();
+    if !method.is_get() && !method.is_head() {
+        return None;
+    }
+
     let accepts_markdown = req
         .headers()
         .typed_get::<Accept>()

@@ -376,7 +376,19 @@ pub struct StaticFileResponse {
     /// Inner HTTP response.
     pub resp: Response<Body>,
     /// The file path of the inner HTTP response.
+    /// For an `OPTIONS` reply, the sanitized request path, never resolved
+    /// against the file system.
     pub file_path: PathBuf,
+}
+
+/// Responds with the permitted communication methods.
+fn options_reply() -> Response<Body> {
+    let mut resp = Response::new(Body::empty());
+    *resp.status_mut() = StatusCode::NO_CONTENT;
+    resp.headers_mut()
+        .typed_insert(headers::Allow::from_iter(HTTP_SUPPORTED_METHODS.clone()));
+    resp.headers_mut().typed_insert(AcceptRanges::bytes());
+    resp
 }
 
 /// The server entry point to handle incoming requests which map to specific files
@@ -390,6 +402,15 @@ pub async fn handle(opts: &HandleOpts<'_>) -> Result<StaticFileResponse, StatusC
 
     let uri_path = opts.uri_path;
     let mut file_path = sanitize_path(opts.base_path, uri_path)?;
+
+    // Answered before the path is resolved, so the reply doesn't tell whether
+    // a path exists, is a directory, or is denied
+    if method.is_options() {
+        return Ok(StaticFileResponse {
+            resp: options_reply(),
+            file_path,
+        });
+    }
 
     let headers_opt = opts.headers;
 
@@ -485,20 +506,6 @@ pub async fn handle(opts: &HandleOpts<'_>) -> Result<StaticFileResponse, StatusC
         *resp.status_mut() = StatusCode::PERMANENT_REDIRECT;
 
         tracing::trace!("uri doesn't end with a slash so redirecting permanently");
-        return Ok(StaticFileResponse {
-            resp,
-            file_path: resp_file_path,
-        });
-    }
-
-    // Respond with the permitted communication methods
-    if method.is_options() {
-        let mut resp = Response::new(Body::empty());
-        *resp.status_mut() = StatusCode::NO_CONTENT;
-        resp.headers_mut()
-            .typed_insert(headers::Allow::from_iter(HTTP_SUPPORTED_METHODS.clone()));
-        resp.headers_mut().typed_insert(AcceptRanges::bytes());
-
         return Ok(StaticFileResponse {
             resp,
             file_path: resp_file_path,

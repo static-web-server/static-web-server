@@ -730,6 +730,60 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn handle_options_reply_does_not_depend_on_path() {
+        // An existing file, a missing path, a directory with and without
+        // trailing slash, a symlink and a hidden file
+        let paths = [
+            "index.htm",
+            "missing.html",
+            "assets",
+            "assets/",
+            "symlink",
+            ".dotfile",
+        ];
+        let mut replies = Vec::new();
+        for uri_path in paths {
+            let result = static_files::handle(&HandleOpts {
+                method: &Method::OPTIONS,
+                headers: &HeaderMap::new(),
+                base_path: &root_dir(),
+                uri_path,
+                uri_query: None,
+                #[cfg(feature = "experimental")]
+                memory_cache: None,
+                #[cfg(feature = "directory-listing")]
+                dir_listing: false,
+                #[cfg(feature = "directory-listing")]
+                dir_listing_order: 6,
+                #[cfg(feature = "directory-listing")]
+                dir_listing_format: &DirListFmt::Html,
+                #[cfg(feature = "directory-listing-download")]
+                dir_listing_download: &[],
+                redirect_trailing_slash: true,
+                compression_static: false,
+                ignore_hidden_files: true,
+                disable_symlinks: true,
+                index_files: &["index.html"],
+            })
+            .await;
+            let resp = match result {
+                Ok(result) => {
+                    // The path is the sanitized request path, not a resolved one
+                    assert_eq!(result.file_path, root_dir().join(uri_path), "{uri_path}");
+                    result.resp
+                }
+                Err(status) => panic!("{uri_path}: unexpected status {status}"),
+            };
+            replies.push((resp.status(), resp.headers().clone()));
+        }
+
+        assert_eq!(replies[0].0, StatusCode::NO_CONTENT);
+        for (reply, uri_path) in replies.iter().zip(paths) {
+            assert_eq!(reply, &replies[0], "{uri_path}");
+        }
+    }
+
+    #[tokio::test]
     async fn handle_file_allowed_disallowed_methods() {
         for method in METHODS {
             match static_files::handle(&HandleOpts {

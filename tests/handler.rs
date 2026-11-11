@@ -8,8 +8,10 @@ pub mod tests {
     use headers::HeaderValue;
     use hyper::{Method, Request};
     use std::net::SocketAddr;
+    use std::path::PathBuf;
 
     use static_web_server::http_ext::MethodExt;
+    use static_web_server::settings::cli::General;
     use static_web_server::testing::fixtures::{
         REMOTE_ADDR, fixture_req_handler, fixture_req_handler_opts, fixture_settings,
     };
@@ -151,6 +153,58 @@ pub mod tests {
                     panic!("unexpected error: {err}")
                 }
             };
+        }
+    }
+
+    #[tokio::test]
+    async fn options_reply_does_not_depend_on_path() {
+        let opts = fixture_settings("toml/handler.toml");
+        let general = General {
+            root: PathBuf::from("tests/fixtures/public"),
+            ..opts.general
+        };
+        let mut req_handler_opts = fixture_req_handler_opts(general, opts.advanced);
+        req_handler_opts.cors = static_web_server::cors::new("*", "", "");
+        let req_handler = fixture_req_handler(req_handler_opts);
+        let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
+
+        // `assets/` has an `index.html`, which matches a custom header rule,
+        // the other paths are missing, a directory without trailing slash,
+        // a symlink and a hidden file
+        let uris = [
+            "http://localhost/assets/",
+            "http://localhost/missing/",
+            "http://localhost/assets",
+            "http://localhost/symlink",
+            "http://localhost/.dotfile",
+        ];
+        // A plain `OPTIONS` request and a CORS preflight
+        for preflight in [false, true] {
+            let mut replies = Vec::new();
+            for uri in uris {
+                let mut req = Request::default();
+                *req.method_mut() = Method::OPTIONS;
+                *req.uri_mut() = uri.parse().unwrap();
+                if preflight {
+                    req.headers_mut().insert(
+                        hyper::header::ORIGIN,
+                        HeaderValue::from_static("https://example.com"),
+                    );
+                    req.headers_mut().insert(
+                        hyper::header::ACCESS_CONTROL_REQUEST_METHOD,
+                        HeaderValue::from_static("GET"),
+                    );
+                }
+
+                let res = req_handler.handle(&mut req, remote_addr).await.unwrap();
+                assert!(res.headers().get("server").is_none(), "{uri}");
+                replies.push((res.status(), res.headers().clone()));
+            }
+
+            assert_eq!(replies[0].0, 204, "preflight={preflight}");
+            for (reply, uri) in replies.iter().zip(uris) {
+                assert_eq!(reply, &replies[0], "{uri} preflight={preflight}");
+            }
         }
     }
 

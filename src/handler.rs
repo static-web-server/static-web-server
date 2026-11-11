@@ -342,6 +342,9 @@ impl RequestHandler {
                 })
                 .await
                 {
+                    // An `OPTIONS` reply isn't a file, so custom headers
+                    // match it by the request URI only
+                    Ok(result) if req.method().is_options() => (result.resp, None),
                     Ok(result) => (result.resp, Some(result.file_path)),
                     Err(status) => {
                         #[cfg(feature = "fallback-page")]
