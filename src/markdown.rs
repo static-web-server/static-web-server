@@ -74,11 +74,24 @@ pub(crate) fn pre_process<T>(
     }
 
     let md_path = try_markdown_variant(&file_path)?;
+    let relative_md = md_path.strip_prefix(base_path).ok()?;
+
+    // 8.3 short-name aliases such as `GIT~1` are checked on the variant found:
+    // the requested path may have no entry of its own (`/guide~v2` for
+    // `guide~v2.md`). A failed check counts as an alias.
+    if !include_hidden
+        && relative_md
+            .contains_short_name_alias(base_path)
+            .unwrap_or(true)
+    {
+        tracing::debug!("markdown: skipping short-name alias {:?}", relative_md);
+        return None;
+    }
     tracing::debug!("markdown: found variant {:?}", md_path);
 
     // Convert the variant path back into a URI path, escaping `%` so the
     // static-files handler's re-decode resolves to the same file.
-    let relative_md = md_path.strip_prefix(base_path).ok()?.to_str()?;
+    let relative_md = relative_md.to_str()?;
     Some(format!(
         "/{}",
         utf8_percent_encode(relative_md, URI_PATH_ESCAPE)
@@ -318,6 +331,78 @@ mod tests {
         // hidden check).
         let result = pre_process(&req, &base, "/.dotfile", true);
         assert!(result.is_none());
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn test_hidden_dir_short_name_alias_rejected() {
+        use std::os::windows::process::CommandExt;
+
+        let dir = tempfile::tempdir().unwrap();
+        let hidden = dir.path().join(".hidden-dir");
+        std::fs::create_dir(&hidden).unwrap();
+        std::fs::write(hidden.join("page.md"), "# page").unwrap();
+        let out = std::process::Command::new("cmd")
+            .arg("/C")
+            .raw_arg(format!(
+                "for %I in (\"{}\") do @echo %~snxI",
+                hidden.display()
+            ))
+            .output()
+            .expect("unable to run cmd");
+        let alias = String::from_utf8(out.stdout).unwrap().trim().to_owned();
+        if alias == ".hidden-dir" {
+            eprintln!("skipped: no 8.3 short names on this volume");
+            return;
+        }
+        assert!(
+            out.status.success() && alias.contains('~'),
+            "unexpected short name {alias:?}"
+        );
+        let uri = format!("/{alias}/page");
+        let req = markdown_request(&uri);
+
+        assert!(pre_process(&req, dir.path(), &uri, true).is_some());
+        assert!(pre_process(&req, dir.path(), &uri, false).is_none());
+    }
+
+    #[test]
+    fn test_name_with_tilde_negotiates_variant() {
+        let tmp = tempfile::tempdir().unwrap();
+        let base = tmp.path().canonicalize().unwrap();
+        std::fs::write(base.join("guide~v2.md"), "# guide").unwrap();
+        let req = markdown_request("/guide~v2");
+
+        let result = pre_process(&req, &base, "/guide~v2", false);
+
+        assert_eq!(result, Some("/guide~v2.md".to_string()));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn test_variant_with_tilde_in_unlistable_dir_rejected() {
+        use std::fs::Permissions;
+        use std::os::unix::fs::PermissionsExt;
+
+        let tmp = tempfile::tempdir().unwrap();
+        let base = tmp.path().canonicalize().unwrap();
+        let locked = base.join("locked");
+        std::fs::create_dir(&locked).unwrap();
+        std::fs::write(locked.join("a~b.md"), "# page").unwrap();
+        std::fs::set_permissions(&locked, Permissions::from_mode(0o311)).unwrap();
+        let listable = std::fs::read_dir(&locked).is_ok();
+        let req = markdown_request("/locked/a~b");
+
+        let included = pre_process(&req, &base, "/locked/a~b", true);
+        let excluded = pre_process(&req, &base, "/locked/a~b", false);
+        std::fs::set_permissions(&locked, Permissions::from_mode(0o755)).unwrap();
+
+        if listable {
+            eprintln!("skipped: this user can list a directory without read permission");
+            return;
+        }
+        assert_eq!(included, Some("/locked/a~b.md".to_string()));
+        assert_eq!(excluded, None);
     }
 
     #[test]

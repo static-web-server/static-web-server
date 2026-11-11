@@ -28,7 +28,7 @@ Order as executed in `static_files::handle()`:
 5. **`security::enforce(file_path, is_dir, opts)`**, run on the file actually served (index file, `.html` sibling, and the pre-compressed variant separately):
    1. Containment: `canonicalize()` the path, require the canonical base as prefix. Escape → 404. Positive results are cached per thread (bounded size, wholesale TTL eviction); the TTL bounds how long a directory swapped for a symlink stays trusted
    2. Symlink policy (when `--follow-symlinks` is off): `symlink_metadata()` on every component. Symlink → 403; check error → 404
-   3. Hidden files (when `--include-hidden` is off): any component starting with `.` → 404
+   3. Hidden files (when `--include-hidden` is off): any component starting with `.` → 404. So is an 8.3 short-name alias (`GIT~1` for `.git` on NTFS and FAT): a component containing `~` with no same-name entry, ignoring case, in its parent directory. Only `~` components cost a directory read; an unlistable parent → 404
 
 Containment is check-then-use: a symlink retargeted between check and open can still escape (documented in `fs::path::is_path_within_base`). Don't widen the window by adding I/O between `enforce()` and opening the file.
 
@@ -37,7 +37,7 @@ The base must already be canonical (root in `server/opts.rs`, virtual-host roots
 ### Other path consumers
 
 Every feature that maps a request to a file reuses these layers:
-- **Markdown negotiation** applies the hidden-file policy and strips the base before rewriting the URI
+- **Markdown negotiation** applies the hidden-file policy (dotfiles on the request, short-name aliases on the variant found) and strips the base before rewriting the URI
 - **Directory download** excludes symlinks pointing outside the root from archives regardless of `--follow-symlinks`
 - **Rewrites/redirects** substitute captures into destinations; the rewritten path still goes through layers 2–5. Redirect destinations must not become open redirects through placeholder injection
 - **Error and fallback pages** are configured paths read at startup, not request-derived
