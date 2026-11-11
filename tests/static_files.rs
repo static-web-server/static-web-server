@@ -2171,3 +2171,170 @@ mod tests {
         }
     }
 }
+
+/// A hidden file or directory must not be served through its 8.3 short name
+/// (`GIT~1` for `.git`), which NTFS and FAT volumes resolve on open.
+#[cfg(test)]
+mod short_name_alias_tests {
+    use headers::HeaderMap;
+    use http::{Method, StatusCode};
+    use std::path::Path;
+
+    #[cfg(feature = "directory-listing")]
+    use static_web_server::directory_listing::DirListFmt;
+    #[cfg(feature = "directory-listing-download")]
+    use static_web_server::directory_listing_download::DirDownloadFmt;
+    use static_web_server::static_files::{self, HandleOpts};
+
+    /// Requests `uri_path` with directory listing and archive download on,
+    /// when built in, and returns the status.
+    async fn request(
+        root: &Path,
+        uri_path: &str,
+        uri_query: Option<&str>,
+        include_hidden: bool,
+    ) -> StatusCode {
+        let headers = HeaderMap::new();
+        let base_path = root.to_path_buf();
+        let result = static_files::handle(&HandleOpts {
+            method: &Method::GET,
+            headers: &headers,
+            base_path: &base_path,
+            uri_path,
+            uri_query,
+            #[cfg(feature = "experimental")]
+            memory_cache: None,
+            #[cfg(feature = "directory-listing")]
+            dir_listing: true,
+            #[cfg(feature = "directory-listing")]
+            dir_listing_order: 6,
+            #[cfg(feature = "directory-listing")]
+            dir_listing_format: &DirListFmt::Html,
+            #[cfg(feature = "directory-listing-download")]
+            dir_listing_download: &[DirDownloadFmt::Targz],
+            redirect_trailing_slash: true,
+            compression_static: false,
+            ignore_hidden_files: !include_hidden,
+            disable_symlinks: true,
+            index_files: &["index.html"],
+        })
+        .await;
+        match result {
+            Ok(res) => res.resp.status(),
+            Err(status) => status,
+        }
+    }
+
+    #[tokio::test]
+    async fn short_name_check_serves_names_with_tilde() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::create_dir(dir.path().join("a~b")).unwrap();
+        std::fs::write(dir.path().join("a~b/file.txt"), "file").unwrap();
+        std::fs::write(dir.path().join("report~1.txt"), "report").unwrap();
+        std::fs::create_dir(dir.path().join("c~d")).unwrap();
+        std::fs::write(dir.path().join("c~d/index.html"), "index").unwrap();
+
+        for uri_path in ["/report~1.txt", "/a~b/file.txt", "/c~d/"] {
+            let status = request(dir.path(), uri_path, None, false).await;
+            assert_eq!(status, StatusCode::OK, "{uri_path}");
+        }
+        assert_eq!(
+            request(dir.path(), "/c~d", None, false).await,
+            StatusCode::PERMANENT_REDIRECT
+        );
+        #[cfg(feature = "directory-listing")]
+        assert_eq!(
+            request(dir.path(), "/a~b/", None, false).await,
+            StatusCode::OK
+        );
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn short_name_check_refuses_names_with_tilde_in_unlistable_dir() {
+        use std::fs::Permissions;
+        use std::os::unix::fs::PermissionsExt;
+
+        let dir = tempfile::tempdir().unwrap();
+        let locked = dir.path().join("locked");
+        std::fs::create_dir(&locked).unwrap();
+        std::fs::write(locked.join("a~b.txt"), "file").unwrap();
+        std::fs::set_permissions(&locked, Permissions::from_mode(0o311)).unwrap();
+        let listable = std::fs::read_dir(&locked).is_ok();
+
+        let included = request(dir.path(), "/locked/a~b.txt", None, true).await;
+        let excluded = request(dir.path(), "/locked/a~b.txt", None, false).await;
+        std::fs::set_permissions(&locked, Permissions::from_mode(0o755)).unwrap();
+
+        if listable {
+            eprintln!("skipped: this user can list a directory without read permission");
+            return;
+        }
+        assert_eq!(included, StatusCode::OK);
+        assert_eq!(excluded, StatusCode::NOT_FOUND);
+    }
+
+    /// Returns the 8.3 short name of `path`, or `None` when the volume has
+    /// short names disabled and `cmd` prints the long name back.
+    #[cfg(windows)]
+    fn short_name(path: &Path) -> Option<String> {
+        use std::os::windows::process::CommandExt;
+
+        let out = std::process::Command::new("cmd")
+            .arg("/C")
+            .raw_arg(format!(
+                "for %I in (\"{}\") do @echo %~snxI",
+                path.display()
+            ))
+            .output()
+            .expect("unable to run cmd");
+        let name = String::from_utf8(out.stdout).expect("cmd printed a non-UTF-8 name");
+        let name = name.trim();
+        let long_name = path.file_name().unwrap().to_str().unwrap();
+        if name == long_name {
+            eprintln!("skipped: no 8.3 short names on this volume (cmd printed {name:?})");
+            return None;
+        }
+        assert!(
+            out.status.success() && name.contains('~'),
+            "unexpected short name {name:?} for {long_name:?}"
+        );
+        Some(name.to_owned())
+    }
+
+    #[cfg(windows)]
+    #[tokio::test]
+    async fn short_name_alias_of_hidden_path_returns_404() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path();
+        std::fs::create_dir(root.join(".hidden-dir")).unwrap();
+        std::fs::write(root.join(".hidden-dir/file.txt"), "secret").unwrap();
+        std::fs::write(root.join(".env"), "secret").unwrap();
+        let (Some(dir_alias), Some(file_alias)) = (
+            short_name(&root.join(".hidden-dir")),
+            short_name(&root.join(".env")),
+        ) else {
+            return;
+        };
+        let file_in_dir = format!("/{dir_alias}/file.txt");
+
+        let status = request(root, &file_in_dir, None, true).await;
+        assert_eq!(
+            status,
+            StatusCode::OK,
+            "{dir_alias} must resolve on this volume"
+        );
+
+        let requests = [
+            (file_in_dir.clone(), None),
+            (format!("/{file_alias}"), None),
+            (format!("/{dir_alias}"), None),
+            (format!("/{dir_alias}/"), None),
+            (format!("/{dir_alias}/"), Some("download=targz")),
+        ];
+        for (uri_path, uri_query) in requests {
+            let status = request(root, &uri_path, uri_query, false).await;
+            assert_eq!(status, StatusCode::NOT_FOUND, "{uri_path} {uri_query:?}");
+        }
+    }
+}

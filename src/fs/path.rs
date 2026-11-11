@@ -8,6 +8,7 @@
 use anyhow::Context;
 use hyper::StatusCode;
 use percent_encoding::percent_decode_str;
+use std::ffi::OsStr;
 use std::path::{Component, Path, PathBuf};
 
 use crate::Result;
@@ -18,6 +19,8 @@ pub(crate) trait PathExt {
     fn is_hidden(&self) -> bool;
     /// If the path is a symlink or contains intermediate symlink components.
     fn contains_symlink(&self, base: &Path) -> Result<bool>;
+    /// If a path component may be an 8.3 short-name alias of another entry.
+    fn contains_short_name_alias(&self, base: &Path) -> Result<bool>;
 }
 
 impl PathExt for Path {
@@ -56,6 +59,66 @@ impl PathExt for Path {
             }
         }
         Ok(false)
+    }
+
+    /// Checks if a component of the path, relative to `base`, contains `~` but
+    /// has no entry of that name (ignoring case) in its parent directory.
+    ///
+    /// NTFS and FAT volumes give each entry an 8.3 short name, such as `GIT~1`
+    /// for `.git`, and open the entry by either name. The directory lists the
+    /// long name only, so a short-name alias has no entry of its own.
+    /// Canonicalization can't detect it: Linux keeps the alias spelling.
+    ///
+    /// Only components containing `~` cost a directory read. Returns an error
+    /// when that directory can't be listed. Matching ignores case, so on a
+    /// case-sensitive volume that keeps short names, a real entry spelled like
+    /// an alias in another case hides that alias.
+    fn contains_short_name_alias(&self, base: &Path) -> Result<bool> {
+        let mut dir = base.to_path_buf();
+        dir.reserve(self.as_os_str().len());
+        for component in self.components() {
+            let Component::Normal(name) = component else {
+                continue;
+            };
+            if name.as_encoded_bytes().contains(&b'~') && !has_dir_entry(&dir, name)? {
+                return Ok(true);
+            }
+            dir.push(name);
+        }
+        Ok(false)
+    }
+}
+
+/// Checks if `dir` has an entry named `name`, ignoring case. `name` is
+/// lowercased once, so comparing an entry doesn't allocate.
+fn has_dir_entry(dir: &Path, name: &OsStr) -> Result<bool> {
+    let lowercase = name.to_str().map(|name| {
+        name.chars()
+            .flat_map(char::to_lowercase)
+            .collect::<String>()
+    });
+    let entries = std::fs::read_dir(dir)
+        .with_context(|| format!("unable to read directory '{}'", dir.display()))?;
+    for entry in entries {
+        let entry =
+            entry.with_context(|| format!("unable to read entry of '{}'", dir.display()))?;
+        let entry_name = entry.file_name();
+        if entry_name == name || is_lowercase_of(&entry_name, lowercase.as_deref()) {
+            return Ok(true);
+        }
+    }
+    Ok(false)
+}
+
+/// Checks if `name` lowercases to `lowercase`. Unicode lowercasing
+/// approximates the case folding of NTFS and FAT.
+fn is_lowercase_of(name: &OsStr, lowercase: Option<&str>) -> bool {
+    match (name.to_str(), lowercase) {
+        (Some(name), Some(lowercase)) => name
+            .chars()
+            .flat_map(char::to_lowercase)
+            .eq(lowercase.chars()),
+        _ => false,
     }
 }
 
@@ -137,7 +200,7 @@ pub fn is_path_within_base(path: &Path, base_path: &Path) -> bool {
 #[cfg(test)]
 mod tests {
     use super::{PathExt, is_path_within_base, sanitize_path};
-    use std::path::PathBuf;
+    use std::path::{Path, PathBuf};
 
     fn root_dir() -> PathBuf {
         PathBuf::from("docker/public/")
@@ -240,5 +303,82 @@ mod tests {
                 "unexpected error message: {err}"
             ),
         }
+    }
+
+    fn short_name_fixture() -> tempfile::TempDir {
+        let base = tempfile::tempdir().unwrap();
+        let root = base.path();
+        std::fs::create_dir_all(root.join(".git")).unwrap();
+        std::fs::create_dir_all(root.join("a~b/.env")).unwrap();
+        std::fs::write(root.join(".git/config"), "config").unwrap();
+        std::fs::write(root.join("report~1.txt"), "report").unwrap();
+        base
+    }
+
+    #[test]
+    fn contains_short_name_alias_detects_alias_of_hidden_dir() {
+        let base = short_name_fixture();
+
+        for path in ["GIT~1/config", "git~1", "a~b/ENV~1"] {
+            assert!(
+                Path::new(path)
+                    .contains_short_name_alias(base.path())
+                    .unwrap(),
+                "{path} must be reported as a short-name alias"
+            );
+        }
+    }
+
+    #[test]
+    fn contains_short_name_alias_accepts_names_with_tilde() {
+        let base = short_name_fixture();
+
+        for path in ["report~1.txt", "REPORT~1.TXT", "a~b", "a~b/.env"] {
+            assert!(
+                !Path::new(path)
+                    .contains_short_name_alias(base.path())
+                    .unwrap(),
+                "{path} is an entry name, not an alias"
+            );
+        }
+    }
+
+    #[test]
+    fn contains_short_name_alias_skips_names_without_tilde() {
+        let base = short_name_fixture();
+
+        assert!(
+            !Path::new("missing/dir/file.txt")
+                .contains_short_name_alias(base.path())
+                .unwrap()
+        );
+    }
+
+    #[test]
+    fn contains_short_name_alias_errors_on_missing_dir() {
+        let base = short_name_fixture();
+
+        assert!(
+            Path::new("missing/x~1")
+                .contains_short_name_alias(base.path())
+                .is_err()
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn contains_short_name_alias_skips_base_components() {
+        use std::fs::Permissions;
+        use std::os::unix::fs::PermissionsExt;
+
+        let parent = tempfile::tempdir().unwrap();
+        let base = parent.path().join("r~1");
+        std::fs::create_dir(&base).unwrap();
+        std::fs::set_permissions(parent.path(), Permissions::from_mode(0o311)).unwrap();
+
+        let result = Path::new("file.txt").contains_short_name_alias(&base);
+        std::fs::set_permissions(parent.path(), Permissions::from_mode(0o755)).unwrap();
+
+        assert!(!result.unwrap());
     }
 }
