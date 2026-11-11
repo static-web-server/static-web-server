@@ -8,7 +8,10 @@
 
 use bcrypt::non_truncating_verify as bcrypt_verify;
 use headers::{Authorization, HeaderMap, HeaderMapExt, authorization::Basic};
-use hyper::{Body, Request, Response, StatusCode, header::WWW_AUTHENTICATE};
+use hyper::{
+    Body, Request, Response, StatusCode,
+    header::{ACCESS_CONTROL_REQUEST_METHOD, ORIGIN, WWW_AUTHENTICATE},
+};
 
 use crate::{Error, error_page, handler::RequestHandlerOpts, http_ext::MethodExt};
 
@@ -64,11 +67,11 @@ pub(crate) fn pre_process<T>(
         return None;
     }
 
-    let method = req.method();
-    if method.is_options() {
+    if is_cors_preflight(opts, req) {
         return None;
     }
 
+    let method = req.method();
     let uri = req.uri();
     if let Some((user_id, password)) = opts.basic_auth.split_once(':') {
         let err = check_request(req.headers(), user_id, password).err()?;
@@ -99,6 +102,16 @@ pub(crate) fn pre_process<T>(
             &opts.page50x,
         ))
     }
+}
+
+/// Browsers send CORS preflight requests without credentials, so they can't
+/// be authenticated. Any other `OPTIONS` request is.
+fn is_cors_preflight<T>(opts: &RequestHandlerOpts, req: &Request<T>) -> bool {
+    let headers = req.headers();
+    opts.cors.is_some()
+        && req.method().is_options()
+        && headers.contains_key(ORIGIN)
+        && headers.contains_key(ACCESS_CONTROL_REQUEST_METHOD)
 }
 
 /// Check for a `Basic` HTTP Authorization Schema of an incoming request
@@ -200,18 +213,36 @@ mod tests {
     }
 
     #[test]
-    fn test_options_request() {
-        assert!(
-            pre_process(
-                &RequestHandlerOpts {
-                    basic_auth: "jq:$2y$05$32zazJ1yzhlDHnt26L3MFOgY0HVqPmDUvG0KUx6cjf9RDiUGp/M9q"
-                        .into(),
-                    ..Default::default()
-                },
-                &make_request("OPTIONS", "")
-            )
-            .is_none()
-        );
+    fn test_options_request_requires_auth() {
+        assert!(is_401(pre_process(
+            &RequestHandlerOpts {
+                basic_auth: "jq:$2y$05$32zazJ1yzhlDHnt26L3MFOgY0HVqPmDUvG0KUx6cjf9RDiUGp/M9q"
+                    .into(),
+                ..Default::default()
+            },
+            &make_request("OPTIONS", "")
+        )));
+    }
+
+    #[test]
+    fn test_cors_preflight_skips_auth_only_with_cors_enabled() {
+        let mut req = make_request("OPTIONS", "");
+        req.headers_mut()
+            .insert("Origin", "https://example.com".parse().unwrap());
+        req.headers_mut()
+            .insert("Access-Control-Request-Method", "GET".parse().unwrap());
+
+        let mut opts = RequestHandlerOpts {
+            basic_auth: "jq:$2y$05$32zazJ1yzhlDHnt26L3MFOgY0HVqPmDUvG0KUx6cjf9RDiUGp/M9q".into(),
+            ..Default::default()
+        };
+        assert!(is_401(pre_process(&opts, &req)));
+
+        opts.cors = crate::cors::new("*", "", "");
+        assert!(pre_process(&opts, &req).is_none());
+
+        req.headers_mut().remove("Access-Control-Request-Method");
+        assert!(is_401(pre_process(&opts, &req)));
     }
 
     #[test]

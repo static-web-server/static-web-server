@@ -35,6 +35,7 @@ jobs:
         modes:
           - no-defaults
           - all
+          - experimental
           - fips
 
         include:
@@ -42,6 +43,8 @@ jobs:
             features: "--no-default-features"
           - modes: all
             features: "--features all"
+          - modes: experimental
+            features: "--features all,experimental"
           - modes: fips
             features: "--no-default-features --features all-fips"
 
@@ -80,6 +83,20 @@ jobs:
     - name: Check via Clippy (tests)
       run: |
         cargo clippy ${{ matrix.features }} --tests -- -D warnings
+
+    # The release binaries are built with `all` or `all-fips`, which must not
+    # ship the experimental in-memory cache
+    - name: Check the experimental features are not shipped
+      if: ${{ matrix.modes == 'all' || matrix.modes == 'fips' }}
+      run: |
+        ! cargo tree -e normal ${{ matrix.features }} -i mini-moka
+
+    # Experimental features are not part of `all`, so the test job doesn't
+    # cover them
+    - name: Run tests (experimental)
+      if: ${{ matrix.modes == 'experimental' }}
+      run: |
+        cargo test ${{ matrix.features }}
 
   test:
     name: Test
@@ -413,12 +430,12 @@ jobs:
         toolchain: nightly
         components: rustfmt, clippy
 
-    # `--features all` rather than `--all-features` for the same reason as
+    # `--features all,experimental` rather than `--all-features` for the same reason as
     # the clippy job above: the http2-ring and http2-fips providers are
     # mutually exclusive. FIPS rustdoc coverage lives in devel-fips.
     - name: Rustdoc build
       run: |
-        cargo +nightly rustdoc --lib -Zrustdoc-map --features all \
+        cargo +nightly rustdoc --lib -Zrustdoc-map --features all,experimental \
             --config "build.rustflags=[\"--cfg\", \"tokio_unstable\"]" \
             -Zhost-config -Ztarget-applies-to-host \
             --config "host.rustflags=[\"--cfg\", \"tokio_unstable\"]" \

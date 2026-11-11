@@ -213,6 +213,41 @@ pub mod tests {
         };
     }
 
+    #[cfg(feature = "basic-auth")]
+    #[tokio::test]
+    async fn basic_auth_options_requires_auth_except_cors_preflight() {
+        let opts = fixture_settings("toml/handler.toml");
+        let mut req_handler_opts = fixture_req_handler_opts(opts.general, opts.advanced);
+        req_handler_opts.basic_auth =
+            "jq:$2y$05$32zazJ1yzhlDHnt26L3MFOgY0HVqPmDUvG0KUx6cjf9RDiUGp/M9q".into();
+        req_handler_opts.cors = static_web_server::cors::new("*", "", "");
+        let req_handler = fixture_req_handler(req_handler_opts);
+        let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
+
+        // A plain `OPTIONS` request must authenticate
+        let mut req = Request::default();
+        *req.method_mut() = Method::OPTIONS;
+        *req.uri_mut() = "http://localhost/index.html".parse().unwrap();
+        let res = req_handler.handle(&mut req, remote_addr).await.unwrap();
+        assert_eq!(res.status(), 401);
+        assert!(res.headers().get(hyper::header::WWW_AUTHENTICATE).is_some());
+
+        // A CORS preflight is sent without credentials, so it skips auth
+        let mut req = Request::default();
+        *req.method_mut() = Method::OPTIONS;
+        *req.uri_mut() = "http://localhost/index.html".parse().unwrap();
+        req.headers_mut().insert(
+            hyper::header::ORIGIN,
+            HeaderValue::from_static("https://example.com"),
+        );
+        req.headers_mut().insert(
+            hyper::header::ACCESS_CONTROL_REQUEST_METHOD,
+            HeaderValue::from_static("GET"),
+        );
+        let res = req_handler.handle(&mut req, remote_addr).await.unwrap();
+        assert_eq!(res.status(), 204);
+    }
+
     #[cfg(feature = "fallback-page")]
     #[tokio::test]
     async fn page_fallback_does_not_log_not_found_warning() {

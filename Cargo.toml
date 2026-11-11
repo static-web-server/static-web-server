@@ -39,12 +39,14 @@ doc = false
 [features]
 # All features enabled by default
 default = ["compression", "http2-ring", "directory-listing", "directory-listing-download", "basic-auth", "fallback-page", "metrics"]
-# Include all features (used when building SWS binaries)
-all = ["default", "experimental"]
+# Include all features (used when building SWS binaries).
+# The `experimental` features are not included, so the binaries don't ship them.
+# Tokio runtime metrics stay (requires: `RUSTFLAGS="--cfg tokio_unstable"`).
+all = ["default", "tokio-metrics-collector"]
 # Default feature set with the FIPS crypto provider in place of ring.
 default-fips = ["compression", "http2-fips", "directory-listing", "directory-listing-download", "basic-auth", "fallback-page", "metrics"]
 # All features with the FIPS crypto provider (used when building FIPS SWS binaries).
-all-fips = ["default-fips", "experimental"]
+all-fips = ["default-fips", "tokio-metrics-collector"]
 # HTTP2 base TLS plumbing -- gates all TLS code via cfg(feature = "http2").
 # Does not select a crypto provider on its own.
 http2 = ["tokio-rustls", "rustls-pki-types", "tokio-rustls/logging", "tokio-rustls/tls12"]
@@ -68,7 +70,8 @@ basic-auth = ["bcrypt"]
 fallback-page = []
 # Metrics endpoint with Prometheus integration
 metrics = ["prometheus"]
-# Experimental features (requires: `RUSTFLAGS="--cfg tokio_unstable"`)
+# Experimental features: in-memory file cache and Tokio runtime metrics
+# (requires: `RUSTFLAGS="--cfg tokio_unstable"`). Not part of `all`.
 experimental = ["metrics", "tokio-metrics-collector", "compact_str", "mini-moka"]
 
 [dependencies]
@@ -152,6 +155,6 @@ debug = 2
 strip = false
 
 [package.metadata.docs.rs]
-features = ["all"]
+features = ["all", "experimental"]
 rustdoc-args = ["--cfg", "docsrs", "--cfg", "tokio_unstable"]
 rustc-args = ["--cfg", "tokio_unstable"]

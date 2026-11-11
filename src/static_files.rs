@@ -393,9 +393,10 @@ pub async fn handle(opts: &HandleOpts<'_>) -> Result<StaticFileResponse, StatusC
 
     let headers_opt = opts.headers;
 
-    // In-memory file cache feature with eviction policy
+    // In-memory file cache feature with eviction policy.
+    // A hit returns the file content, which only `GET` and `HEAD` may get.
     #[cfg(feature = "experimental")]
-    if opts.memory_cache.is_some() {
+    if opts.memory_cache.is_some() && (method.is_get() || method.is_head()) {
         // NOTE: we only support a default auto index for directory requests
         // when working on a memory-cache context.
         if opts.redirect_trailing_slash && uri_path.ends_with('/') {
@@ -1234,6 +1235,72 @@ mod tests {
             store.get(&key).is_none(),
             "pre-compressed body was inserted into the in-memory cache store"
         );
+    }
+
+    #[cfg(feature = "experimental")]
+    #[tokio::test]
+    async fn cached_file_is_not_served_to_options_requests() {
+        use crate::mem_cache::cache::{CACHE_STORE, MemCacheOpts};
+        use compact_str::CompactString;
+
+        let (_temp_dir, root_dir) = web_root("options-mem-cache");
+        fs::write(root_dir.join("secret.txt"), "secret")
+            .expect("unexpected error writing source file");
+
+        // `CACHE_STORE` is process-global and may already be initialized by
+        // another test; either way we only need a live store to assert against.
+        let _ = CACHE_STORE.set(
+            mini_moka::sync::Cache::builder()
+                .max_capacity(8)
+                .time_to_live(std::time::Duration::from_secs(60))
+                .build(),
+        );
+        let store = CACHE_STORE
+            .get()
+            .expect("expected an in-memory cache store");
+
+        let memory_cache = MemCacheOpts::new(8);
+        let headers = HeaderMap::new();
+        let request = |method| HandleOpts {
+            method,
+            headers: &headers,
+            base_path: &root_dir,
+            uri_path: "/secret.txt",
+            uri_query: None,
+            memory_cache: Some(&memory_cache),
+            #[cfg(feature = "directory-listing")]
+            dir_listing: false,
+            #[cfg(feature = "directory-listing")]
+            dir_listing_order: 6,
+            #[cfg(feature = "directory-listing")]
+            dir_listing_format: &crate::directory_listing::DirListFmt::Html,
+            #[cfg(feature = "directory-listing-download")]
+            dir_listing_download: &[],
+            redirect_trailing_slash: true,
+            compression_static: false,
+            ignore_hidden_files: false,
+            disable_symlinks: false,
+            index_files: &[],
+        };
+
+        let result = handle(&request(&Method::GET))
+            .await
+            .expect("expected a file response");
+        assert_eq!(body_of(result).await, b"secret");
+
+        let key = CompactString::from(
+            root_dir
+                .join("secret.txt")
+                .to_str()
+                .expect("unexpected non-UTF-8 web root"),
+        );
+        assert!(store.get(&key).is_some(), "file was not cached");
+
+        let result = handle(&request(&Method::OPTIONS))
+            .await
+            .expect("expected an options response");
+        assert_eq!(result.resp.status(), StatusCode::NO_CONTENT);
+        assert!(body_of(result).await.is_empty());
     }
 
     #[tokio::test]

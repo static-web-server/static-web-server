@@ -3,7 +3,7 @@
 #![deny(rust_2018_idioms)]
 #![deny(dead_code)]
 
-#[cfg(all(unix, feature = "experimental"))]
+#[cfg(all(unix, feature = "metrics", feature = "tokio-metrics-collector"))]
 pub mod tests {
     use hyper::Request;
     use std::net::SocketAddr;

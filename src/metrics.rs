@@ -80,8 +80,9 @@ static HTTP_CONNECTIONS_ACTIVE: LazyLock<IntGauge> = LazyLock::new(|| {
 });
 
 /// Initializes the metrics endpoint and registers HTTP-level collectors.
-/// Tokio runtime metrics are additionally registered when the `experimental`
-/// feature is enabled and built with `RUSTFLAGS="--cfg tokio_unstable"`.
+/// Tokio runtime metrics are additionally registered when the
+/// `tokio-metrics-collector` feature is enabled (included in `all` and
+/// `experimental`) and built with `RUSTFLAGS="--cfg tokio_unstable"`.
 ///
 /// # Security
 ///
@@ -110,8 +111,8 @@ pub fn init(enabled: bool, handler_opts: &mut RequestHandlerOpts) {
     if enabled {
         let registry = default_registry();
 
-        // Tokio runtime metrics (experimental, unix-only, requires tokio_unstable)
-        #[cfg(all(unix, feature = "experimental"))]
+        // Tokio runtime metrics (unix-only, requires tokio_unstable)
+        #[cfg(all(unix, feature = "tokio-metrics-collector"))]
         {
             if let Err(err) = registry.register(Box::new(
                 tokio_metrics_collector::default_runtime_collector(),

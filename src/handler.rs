@@ -437,3 +437,97 @@ impl RequestHandler {
         }
     }
 }
+
+#[cfg(all(test, feature = "basic-auth", feature = "experimental"))]
+mod tests {
+    use hyper::{Body, Method, Request, StatusCode, header::HeaderValue};
+    use std::sync::Arc;
+    use std::time::Duration;
+
+    use super::{RequestHandler, RequestHandlerOpts};
+    use crate::mem_cache::cache::{CACHE_STORE, MemCacheOpts};
+
+    #[tokio::test]
+    async fn basic_auth_options_never_serves_cached_file() {
+        let temp_dir = tempfile::tempdir().expect("unexpected error creating web root");
+        let root_dir = temp_dir
+            .path()
+            .canonicalize()
+            .expect("unexpected error canonicalizing web root");
+        std::fs::write(root_dir.join("secret.txt"), "secret")
+            .expect("unexpected error writing protected file");
+
+        // `CACHE_STORE` is process-global and may already be initialized by
+        // another test; either way the handler only needs a live store.
+        let _ = CACHE_STORE.set(
+            mini_moka::sync::Cache::builder()
+                .max_capacity(8)
+                .time_to_live(Duration::from_secs(60))
+                .build(),
+        );
+        let req_handler = RequestHandler {
+            opts: Arc::new(RequestHandlerOpts {
+                root_dir,
+                memory_cache: Some(MemCacheOpts::new(8)),
+                basic_auth: "jq:$2y$05$32zazJ1yzhlDHnt26L3MFOgY0HVqPmDUvG0KUx6cjf9RDiUGp/M9q"
+                    .into(),
+                cors: crate::cors::new("*", "", ""),
+                ..Default::default()
+            }),
+        };
+
+        let request = |method: Method, headers: &[(&'static str, &'static str)]| {
+            let mut req = Request::new(Body::empty());
+            *req.method_mut() = method;
+            *req.uri_mut() = "http://localhost/secret.txt".parse().unwrap();
+            for (name, value) in headers {
+                req.headers_mut()
+                    .insert(*name, HeaderValue::from_static(value));
+            }
+            req
+        };
+        let body = |resp: hyper::Response<Body>| async {
+            hyper::body::to_bytes(resp.into_body()).await.unwrap()
+        };
+
+        // An authenticated client caches the file
+        let mut req = request(Method::GET, &[("authorization", "Basic anE6anE=")]);
+        let resp = req_handler.handle(&mut req, None).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+        assert_eq!(body(resp).await, "secret");
+
+        let key = compact_str::CompactString::from(
+            req_handler
+                .opts
+                .root_dir
+                .join("secret.txt")
+                .to_str()
+                .expect("unexpected non-UTF-8 web root"),
+        );
+        assert!(
+            CACHE_STORE
+                .get()
+                .and_then(|store| store.get(&key))
+                .is_some(),
+            "file was not cached"
+        );
+
+        // A plain `OPTIONS` request must authenticate
+        let mut req = request(Method::OPTIONS, &[]);
+        let resp = req_handler.handle(&mut req, None).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::UNAUTHORIZED);
+        assert_ne!(body(resp).await, "secret");
+
+        // A CORS preflight skips authentication but gets no file content
+        let mut req = request(
+            Method::OPTIONS,
+            &[
+                ("origin", "https://example.com"),
+                ("access-control-request-method", "GET"),
+            ],
+        );
+        let resp = req_handler.handle(&mut req, None).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::NO_CONTENT);
+        assert!(body(resp).await.is_empty());
+    }
+}

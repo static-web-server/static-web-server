@@ -76,8 +76,8 @@
 //! ---------|------
 //! **Default** |
 //! `default` | Activates the default features.
-//! `all` | Activates all features including the default and experimental ones. E.g. this feature is used when building the SWS binaries.
-//! `experimental` | Activates all unstable features.
+//! `all` | Activates the default features and the Tokio runtime metrics, but not the experimental ones. E.g. this feature is used when building the SWS binaries.
+//! `experimental` | Activates all unstable features: the in-memory file cache and the Tokio runtime metrics.
 //! [**HTTP2/TLS**](https://static-web-server.net/features/http2-tls/) |
 //! `http2` | Activates the HTTP2 and TLS feature.
 //! [**Compression**](https://static-web-server.net/features/compression/) |
@@ -93,7 +93,7 @@
 //! [**Fallback Page**](./features/error-pages.md#fallback-page-for-use-with-client-routers) |
 //! `fallback-page` | Activates the Fallback Page feature.
 //! **Metrics** |
-//! `metrics` | Activates the Prometheus metrics endpoint (`/metrics`). Enabled by default but requires the `--metrics` flag at runtime. Tokio runtime metrics are additionally available via the `experimental` feature.
+//! `metrics` | Activates the Prometheus metrics endpoint (`/metrics`). Enabled by default but requires the `--metrics` flag at runtime. Tokio runtime metrics are additionally available via the `all` or `experimental` features.
 //!
 
 #![deny(missing_docs)]
