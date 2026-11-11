@@ -370,7 +370,7 @@ impl RequestHandler {
                 })
                 .await
                 {
-                    Ok(result) => (result.resp, Some(result.file_path), result.is_dir_listing),
+                    Ok(result) => (result.resp, result.file_path, result.is_dir_listing),
                     Err(status) => {
                         #[cfg(feature = "fallback-page")]
                         let will_serve_fallback = fallback_page::can_serve(&self.opts, req, status);

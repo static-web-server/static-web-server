@@ -23,6 +23,30 @@ pub mod tests {
     }
 
     #[tokio::test]
+    async fn markdown_enabled_options_reply_does_not_depend_on_path() {
+        let opts = fixture_settings("toml/markdown_enabled.toml");
+        let req_handler_opts = fixture_req_handler_opts(opts.general, opts.advanced);
+        let req_handler = fixture_req_handler(req_handler_opts);
+        let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
+
+        // `article` has a markdown variant, `test` doesn't
+        for uri in ["http://localhost/article", "http://localhost/test"] {
+            let mut req = Request::new(());
+            *req.method_mut() = hyper::Method::OPTIONS;
+            *req.uri_mut() = uri.parse().unwrap();
+            req.headers_mut().insert(
+                hyper::header::ACCEPT,
+                HeaderValue::from_static("text/markdown"),
+            );
+
+            let res = req_handler.handle(&mut req, remote_addr).await.unwrap();
+            assert_eq!(res.status(), 204, "{uri}");
+            assert!(res.headers().get("content-type").is_none(), "{uri}");
+            assert!(!varies_on_accept(&res), "{uri}");
+        }
+    }
+
+    #[tokio::test]
     async fn markdown_disabled_returns_html() {
         let opts = fixture_settings("toml/markdown_disabled.toml");
         let req_handler_opts = fixture_req_handler_opts(opts.general, opts.advanced);

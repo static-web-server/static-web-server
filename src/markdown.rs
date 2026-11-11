@@ -14,7 +14,7 @@ use percent_encoding::{AsciiSet, CONTROLS, utf8_percent_encode};
 use std::path::Path;
 
 use crate::body::Body;
-use crate::exts::http::append_vary_accept;
+use crate::exts::http::{MethodExt, append_vary_accept};
 use crate::fs::path::{PathExt, sanitize_path};
 use crate::response::content_type_for;
 use crate::{
@@ -45,6 +45,12 @@ pub(crate) fn pre_process<T>(
     uri_path: &str,
     include_hidden: bool,
 ) -> Option<String> {
+    // Only a `GET` or `HEAD` gets a representation to negotiate
+    let method = req.method();
+    if !method.is_get() && !method.is_head() {
+        return None;
+    }
+
     let accepts_markdown = req
         .headers()
         .typed_get::<Accept>()

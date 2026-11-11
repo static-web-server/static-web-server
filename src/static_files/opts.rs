@@ -72,8 +72,8 @@ pub struct HandleOpts<'a> {
 pub struct StaticFileResponse {
     /// Inner HTTP response.
     pub resp: Response<Body>,
-    /// The file path of the inner HTTP response.
-    pub file_path: PathBuf,
+    /// The file path of the inner HTTP response, `None` for an `OPTIONS` reply.
+    pub file_path: Option<PathBuf>,
     /// Whether the inner HTTP response is a directory listing.
     pub is_dir_listing: bool,
 }
@@ -83,7 +83,7 @@ impl StaticFileResponse {
     pub(super) fn new(resp: Response<Body>, file_path: PathBuf) -> Self {
         Self {
             resp,
-            file_path,
+            file_path: Some(file_path),
             is_dir_listing: false,
         }
     }

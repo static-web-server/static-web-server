@@ -732,6 +732,53 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn handle_options_reply_does_not_depend_on_path() {
+        // An existing file, a missing path, a directory without trailing slash,
+        // a symlink and a hidden file
+        let paths = ["index.htm", "missing.html", "assets", "symlink", ".dotfile"];
+        let mut replies = Vec::new();
+        for uri_path in paths {
+            let result = static_files::handle(&HandleOpts {
+                method: &Method::OPTIONS,
+                headers: &HeaderMap::new(),
+                base_path: &root_dir(),
+                uri_path,
+                uri_query: None,
+                #[cfg(feature = "mem-cache")]
+                memory_cache: None,
+                #[cfg(feature = "directory-listing")]
+                dir_listing: false,
+                #[cfg(feature = "directory-listing")]
+                dir_listing_order: 6,
+                #[cfg(feature = "directory-listing")]
+                dir_listing_format: &DirListFmt::Html,
+                #[cfg(feature = "directory-listing-download")]
+                dir_listing_download: &[],
+                redirect_trailing_slash: true,
+                compression_static: false,
+                etag: true,
+                include_hidden: false,
+                follow_symlinks: false,
+                index_files: &["index.htm"],
+            })
+            .await;
+            let resp = match result {
+                Ok(result) => {
+                    assert!(result.file_path.is_none(), "{uri_path}");
+                    result.resp
+                }
+                Err(status) => panic!("{uri_path}: unexpected status {status}"),
+            };
+            replies.push((resp.status(), resp.headers().clone()));
+        }
+
+        assert_eq!(replies[0].0, StatusCode::NO_CONTENT);
+        for (reply, uri_path) in replies.iter().zip(paths) {
+            assert_eq!(reply, &replies[0], "{uri_path}");
+        }
+    }
+
+    #[tokio::test]
     async fn handle_file_allowed_disallowed_methods() {
         for method in METHODS {
             match static_files::handle(&HandleOpts {

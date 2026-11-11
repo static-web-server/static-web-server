@@ -56,6 +56,16 @@ pub async fn handle(opts: &HandleOpts<'_>) -> Result<StaticFileResponse, StatusC
         return Err(StatusCode::METHOD_NOT_ALLOWED);
     }
 
+    // Answered before the path is resolved, so the reply doesn't tell whether
+    // a path exists, is a directory, or is denied
+    if opts.method.is_options() {
+        return Ok(StaticFileResponse {
+            resp: reply::options_reply(),
+            file_path: None,
+            is_dir_listing: false,
+        });
+    }
+
     let mut file_path = sanitize_path(opts.base_path, opts.uri_path)?;
 
     // In-memory file cache lookup. A hit short-circuits the pipeline.
@@ -98,13 +108,6 @@ pub async fn handle(opts: &HandleOpts<'_>) -> Result<StaticFileResponse, StatusC
 
     if let Some(resp) = reply::trailing_slash_redirect(is_dir, opts)? {
         return Ok(StaticFileResponse::new(resp, resp_file_path));
-    }
-
-    if opts.method.is_options() {
-        return Ok(StaticFileResponse::new(
-            reply::options_reply(),
-            resp_file_path,
-        ));
     }
 
     #[cfg(feature = "directory-listing")]
