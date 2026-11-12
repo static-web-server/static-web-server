@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v2.44.2 - 2026-11-12
+
+This new `v2.44.2` brings bug fixes, security improvements and dependency updates.
+
+**Security updates**
+
+This release includes security updates related to the basic authentication, HTTP `OPTIONS` request handling and ignore hidden files features.
+We encourage users to update to this version. We will provide more details about the fixed security issues in the next few days.
+
+**Fixes**
+
+- [81c61d2][81c61d2] Update dependencies. PR [#807][807] by [@joseluisq][joseluisq]
+- [9a94131][9a94131] Update Alpine (3.24.4) & Debian (13.7) Docker images. PR [#810][810] by [@joseluisq][joseluisq]
+- [8284b69][8284b69] Release binaries and Docker images (built with the `all` and `all-fips` Cargo features) no longer include the `experimental` feature set. A config file with an `[advanced.memory-cache]` section still loads, but the section is ignored and files are served from disk. Source builds can still enable the `experimental` via the Cargo feature. By [@joseluisq][joseluisq]
+
+[81c61d2]: https://github.com/static-web-server/static-web-server/commit/81c61d2
+[9a94131]: https://github.com/static-web-server/static-web-server/commit/9a94131
+[8284b69]: https://github.com/static-web-server/static-web-server/commit/8284b69
+
+[807]: https://github.com/static-web-server/static-web-server/pull/807
+[810]: https://github.com/static-web-server/static-web-server/pull/810
+
+For more details see the [v2.44.2 milestone][v2442-milestone] and the full changelog [v2.44.1...v2.44.2][v2442-diff].
+
+[v2442-diff]: https://github.com/static-web-server/static-web-server/compare/v2.44.1...v2.44.2
+[v2442-milestone]: https://github.com/static-web-server/static-web-server/milestone/44?closed=1
+
 ## v2.44.1 - 2026-10-07
 
 This new `v2.44.1` brings bug fixes, security improvements and dependency updates.
