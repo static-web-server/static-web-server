@@ -11,7 +11,7 @@ use http::header::{
 };
 use hyper::{Body, Request, Response, header::HeaderValue};
 
-use crate::{Error, handler::RequestHandlerOpts};
+use crate::{Error, handler::RequestHandlerOpts, settings::cli::General};
 
 // Pre-computed static header values to avoid per-response parsing
 static HSTS_VALUE: HeaderValue =
@@ -19,6 +19,17 @@ static HSTS_VALUE: HeaderValue =
 static XFO_VALUE: HeaderValue = HeaderValue::from_static("DENY");
 static XCTO_VALUE: HeaderValue = HeaderValue::from_static("nosniff");
 static CSP_VALUE: HeaderValue = HeaderValue::from_static("frame-ancestors 'self'");
+
+/// Whether the server uses TLS (`--http2`), which `Strict-Transport-Security` requires.
+pub(crate) fn tls_enabled(general: &General) -> bool {
+    #[cfg(feature = "http2")]
+    return general.http2;
+    #[cfg(not(feature = "http2"))]
+    {
+        let _ = general;
+        false
+    }
+}
 
 /// Enable the security headers.
 /// `Strict-Transport-Security` is only sent when the server uses TLS (`--http2`).

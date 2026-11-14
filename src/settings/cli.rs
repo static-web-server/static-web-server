@@ -392,6 +392,7 @@ pub struct General {
     /// Headers included: "X-Frame-Options: DENY", "X-Content-Type-Options: nosniff" and "Content-Security-Policy: frame-ancestors 'self'".
     /// With `--http2` (TLS), also "Strict-Transport-Security: max-age=63072000; includeSubDomains; preload" (2 years max-age),
     /// which is never sent over plain HTTP.
+    /// Behind a TLS-terminating proxy, add `Strict-Transport-Security` at the proxy or with an `[[advanced.headers]]` rule.
     pub security_headers: bool,
 
     #[arg(
