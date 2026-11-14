@@ -388,9 +388,10 @@ pub struct General {
         action = clap::ArgAction::Set,
         env = "SERVER_SECURITY_HEADERS",
     )]
-    /// Enable security headers by default when HTTP/2 feature is activated.
-    /// Headers included: "Strict-Transport-Security: max-age=63072000; includeSubDomains; preload" (2 years max-age),
-    /// "X-Frame-Options: DENY" and "Content-Security-Policy: frame-ancestors 'self'".
+    /// Enable security headers. Enabled by default when HTTP/2 (`--http2`) is activated.
+    /// Headers included: "X-Frame-Options: DENY", "X-Content-Type-Options: nosniff" and "Content-Security-Policy: frame-ancestors 'self'".
+    /// With `--http2` (TLS), also "Strict-Transport-Security: max-age=63072000; includeSubDomains; preload" (2 years max-age),
+    /// which is never sent over plain HTTP.
     pub security_headers: bool,
 
     #[arg(

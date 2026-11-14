@@ -390,7 +390,12 @@ impl Server {
         control_headers::init(general.cache_control_headers, &mut handler_opts);
 
         // Security Headers option
-        security_headers::init(general.security_headers, &mut handler_opts);
+        // NOTE: `Strict-Transport-Security` is only sent over TLS (`--http2`)
+        #[cfg(feature = "http2")]
+        let tls = general.http2;
+        #[cfg(not(feature = "http2"))]
+        let tls = false;
+        security_headers::init(general.security_headers, tls, &mut handler_opts);
 
         // In-Memory cache option
         #[cfg(feature = "experimental")]

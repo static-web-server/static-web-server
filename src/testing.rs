@@ -99,6 +99,10 @@ pub mod fixtures {
             // TODO: add support or `cors` when required
             cors: None,
             security_headers: general.security_headers,
+            #[cfg(feature = "http2")]
+            hsts: general.security_headers && general.http2,
+            #[cfg(not(feature = "http2"))]
+            hsts: false,
             cache_control_headers: general.cache_control_headers,
             page404: general.page404,
             page50x: general.page50x,
