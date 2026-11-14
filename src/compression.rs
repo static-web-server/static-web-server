@@ -22,7 +22,7 @@ use futures_util::Stream;
 use headers::{ContentType, HeaderMap, HeaderMapExt, HeaderValue};
 use hyper::{
     Body, Method, Request, Response, StatusCode,
-    header::{CONTENT_ENCODING, CONTENT_LENGTH},
+    header::{CONTENT_ENCODING, CONTENT_LENGTH, CONTENT_RANGE},
 };
 use mime_guess::Mime;
 use pin_project::pin_project;
@@ -134,6 +134,12 @@ pub fn auto(
 ) -> Result<Response<Body>> {
     // Skip compression for HEAD and OPTIONS request methods
     if method.is_head() || method.is_options() {
+        return Ok(resp);
+    }
+
+    // Skip compression for partial content: `Content-Range` counts bytes of the
+    // identity representation, so the selected range must be sent unencoded
+    if resp.status() == StatusCode::PARTIAL_CONTENT || resp.headers().contains_key(CONTENT_RANGE) {
         return Ok(resp);
     }
 
@@ -489,6 +495,40 @@ mod tests {
         assert!(
             result.headers().get(CONTENT_ENCODING).is_none(),
             "non-compressible content-types are never compressed"
+        );
+    }
+
+    #[test]
+    fn partial_content_is_not_compressed() {
+        let mut resp = text_response_with_size(MIN_COMPRESS_SIZE + 100);
+        *resp.status_mut() = StatusCode::PARTIAL_CONTENT;
+        resp.headers_mut()
+            .insert(CONTENT_RANGE, "bytes 0-299/1000".parse().unwrap());
+        let headers = accept_gzip_headers();
+        let result = auto(&Method::GET, &headers, CompressionLevel::Default, resp).unwrap();
+
+        assert!(
+            result.headers().get(CONTENT_ENCODING).is_none(),
+            "206 responses must not be compressed"
+        );
+        assert_eq!(result.headers()[CONTENT_RANGE], "bytes 0-299/1000");
+        assert_eq!(
+            result.headers()[CONTENT_LENGTH],
+            (MIN_COMPRESS_SIZE + 100).to_string()
+        );
+    }
+
+    #[test]
+    fn response_with_content_range_is_not_compressed() {
+        let mut resp = text_response_with_size(MIN_COMPRESS_SIZE + 100);
+        resp.headers_mut()
+            .insert(CONTENT_RANGE, "bytes 0-299/300".parse().unwrap());
+        let headers = accept_gzip_headers();
+        let result = auto(&Method::GET, &headers, CompressionLevel::Default, resp).unwrap();
+
+        assert!(
+            result.headers().get(CONTENT_ENCODING).is_none(),
+            "responses with Content-Range must not be compressed"
         );
     }
 }
