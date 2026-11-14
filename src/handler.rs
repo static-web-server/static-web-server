@@ -93,8 +93,6 @@ pub struct RequestHandlerOpts {
     pub cors: Option<cors::Configured>,
     /// Security headers feature.
     pub security_headers: bool,
-    /// Send `Strict-Transport-Security` with the security headers. Only set when the server uses TLS.
-    pub hsts: bool,
     /// Cache control headers feature.
     pub cache_control_headers: bool,
     /// Page for 404 errors.
@@ -173,7 +171,6 @@ impl Default for RequestHandlerOpts {
             #[cfg(feature = "experimental")]
             memory_cache: None,
             security_headers: false,
-            hsts: false,
             cache_control_headers: true,
             page404: PathBuf::from("./404.html"),
             page50x: PathBuf::from("./50x.html"),

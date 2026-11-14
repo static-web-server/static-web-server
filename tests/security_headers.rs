@@ -77,17 +77,18 @@ pub mod tests {
         "tests/tls/local.dev_key.pkcs8.pem",
     ];
 
+    /// `--http2` enables the security headers by default. `Strict-Transport-Security`
+    /// depends on the connection, so a handler used without the TLS server never sends it.
     #[cfg(feature = "http2")]
     #[tokio::test]
-    async fn tls_sends_hsts_by_default() {
+    async fn tls_settings_without_tls_connection_omit_hsts() {
         for extra in [&[][..], &["--security-headers=true"][..]] {
             let mut args = TLS_ARGS.to_vec();
             args.extend_from_slice(extra);
             let res = get_index(&args).await;
             assert_common_headers(&res, true);
-            assert_eq!(
-                res.headers().get("strict-transport-security").unwrap(),
-                "max-age=63072000; includeSubDomains; preload",
+            assert!(
+                !res.headers().contains_key("strict-transport-security"),
                 "args: {args:?}"
             );
         }

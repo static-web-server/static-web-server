@@ -14,7 +14,6 @@ pub mod fixtures {
     use crate::{
         Settings,
         handler::{RequestHandler, RequestHandlerOpts},
-        security_headers,
         settings::Advanced,
         settings::cli::General,
     };
@@ -71,16 +70,13 @@ pub mod fixtures {
         ))]
         let compression_static = general.compression_static;
 
-        let security_headers_enabled = general.security_headers;
-        let tls_enabled = security_headers::tls_enabled(&general);
-
         let root_dir = if general.use_relative_root {
             general.root.clone()
         } else {
             general.root.canonicalize().unwrap_or(general.root)
         };
 
-        let mut opts = RequestHandlerOpts {
+        RequestHandlerOpts {
             root_dir,
             compression,
             compression_static,
@@ -102,9 +98,7 @@ pub mod fixtures {
             dir_listing_download: general.directory_listing_download,
             // TODO: add support or `cors` when required
             cors: None,
-            // Set below by `security_headers::init`
-            security_headers: false,
-            hsts: false,
+            security_headers: general.security_headers,
             cache_control_headers: general.cache_control_headers,
             page404: general.page404,
             page50x: general.page50x,
@@ -137,11 +131,7 @@ pub mod fixtures {
             #[cfg(feature = "experimental")]
             memory_cache: None,
             advanced_opts: advanced,
-        };
-
-        security_headers::init(security_headers_enabled, tls_enabled, &mut opts);
-
-        opts
+        }
     }
 
     /// Create a `RequestHandler` from a custom TOML config file (fixture).

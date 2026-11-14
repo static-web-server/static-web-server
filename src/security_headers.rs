@@ -11,7 +11,7 @@ use http::header::{
 };
 use hyper::{Body, Request, Response, header::HeaderValue};
 
-use crate::{Error, handler::RequestHandlerOpts, settings::cli::General};
+use crate::{Error, handler::RequestHandlerOpts};
 
 // Pre-computed static header values to avoid per-response parsing
 static HSTS_VALUE: HeaderValue =
@@ -20,36 +20,30 @@ static XFO_VALUE: HeaderValue = HeaderValue::from_static("DENY");
 static XCTO_VALUE: HeaderValue = HeaderValue::from_static("nosniff");
 static CSP_VALUE: HeaderValue = HeaderValue::from_static("frame-ancestors 'self'");
 
-/// Whether the server uses TLS (`--http2`), which `Strict-Transport-Security` requires.
-pub(crate) fn tls_enabled(general: &General) -> bool {
-    #[cfg(feature = "http2")]
-    return general.http2;
-    #[cfg(not(feature = "http2"))]
-    {
-        let _ = general;
-        false
-    }
-}
+/// Request extension that marks a request received over a TLS connection.
+///
+/// It's inserted by the request service of a TLS server (`--http2`)
+/// and enables the `Strict-Transport-Security` header for that request.
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct TlsConnection;
 
-/// Enable the security headers.
-/// `Strict-Transport-Security` is only sent when the server uses TLS (`--http2`).
-pub(crate) fn init(enabled: bool, tls: bool, handler_opts: &mut RequestHandlerOpts) {
+pub(crate) fn init(enabled: bool, handler_opts: &mut RequestHandlerOpts) {
     handler_opts.security_headers = enabled;
-    handler_opts.hsts = enabled && tls;
-    tracing::info!(
-        "security headers: enabled={enabled}, hsts={}",
-        handler_opts.hsts
-    );
+    tracing::info!("security headers: enabled={enabled}");
 }
 
-/// Appends security headers to a response if necessary
+/// Appends security headers to a response if necessary.
+///
+/// `Strict-Transport-Security` is only appended to requests received over TLS.
+/// Embedders that call `RouterService::new` behind their own TLS layer
+/// don't get it, so they should add it with a custom header instead.
 pub(crate) fn post_process<T>(
     opts: &RequestHandlerOpts,
-    _req: &Request<T>,
+    req: &Request<T>,
     mut resp: Response<Body>,
 ) -> Result<Response<Body>, Error> {
     if opts.security_headers {
-        if opts.hsts {
+        if req.extensions().get::<TlsConnection>().is_some() {
             append_hsts_header(&mut resp);
         }
         append_common_headers(&mut resp);
@@ -95,7 +89,7 @@ mod tests {
     };
     use hyper::{Body, Request, Response};
 
-    use super::{append_headers, init, post_process};
+    use super::{TlsConnection, append_headers, init, post_process};
     use crate::handler::RequestHandlerOpts;
 
     fn assert_common_headers(resp: &Response<Body>) {
@@ -109,26 +103,14 @@ mod tests {
     }
 
     #[test]
-    fn init_enables_hsts_only_with_tls() {
-        for (enabled, tls, hsts) in [
-            (true, true, true),
-            (true, false, false),
-            (false, true, false),
-            (false, false, false),
-        ] {
-            let mut opts = RequestHandlerOpts::default();
-            init(enabled, tls, &mut opts);
-            assert_eq!(opts.security_headers, enabled);
-            assert_eq!(opts.hsts, hsts, "enabled={enabled} tls={tls}");
-        }
-    }
-
-    #[test]
-    fn post_process_sends_hsts_only_with_tls() {
+    fn post_process_sends_hsts_only_over_tls() {
         for (enabled, tls) in [(true, true), (true, false), (false, true), (false, false)] {
             let mut opts = RequestHandlerOpts::default();
-            init(enabled, tls, &mut opts);
-            let req = Request::new(Body::empty());
+            init(enabled, &mut opts);
+            let mut req = Request::new(Body::empty());
+            if tls {
+                req.extensions_mut().insert(TlsConnection);
+            }
             let resp = post_process(&opts, &req, Response::new(Body::empty())).unwrap();
 
             if enabled {

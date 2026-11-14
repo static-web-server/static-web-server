@@ -163,8 +163,6 @@ impl Server {
         let general = self.opts.general;
         // Config-file "advanced" options
         let advanced_opts = self.opts.advanced;
-        // Whether the server uses TLS (`--http2`)
-        let tls_enabled = security_headers::tls_enabled(&general);
 
         tracing::info!("log level: {}", general.log_level);
 
@@ -392,17 +390,24 @@ impl Server {
         control_headers::init(general.cache_control_headers, &mut handler_opts);
 
         // Security Headers option
-        // NOTE: `Strict-Transport-Security` is only sent over TLS (`--http2`)
-        security_headers::init(general.security_headers, tls_enabled, &mut handler_opts);
+        security_headers::init(general.security_headers, &mut handler_opts);
 
         // In-Memory cache option
         #[cfg(feature = "experimental")]
         mem_cache::cache::init(&mut handler_opts)?;
 
-        // Create a service router for Hyper
-        let router_service = RouterService::new(RequestHandler {
-            opts: Arc::from(handler_opts),
-        });
+        // Create a service router for Hyper.
+        // NOTE: `Strict-Transport-Security` is only sent over TLS (`--http2`).
+        #[cfg(feature = "http2")]
+        let tls_enabled = general.http2;
+        #[cfg(not(feature = "http2"))]
+        let tls_enabled = false;
+        let router_service = RouterService::with_tls(
+            RequestHandler {
+                opts: Arc::from(handler_opts),
+            },
+            tls_enabled,
+        );
 
         #[cfg(windows)]
         let (sender, receiver) = tokio::sync::watch::channel(());
