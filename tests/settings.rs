@@ -25,4 +25,31 @@ mod tests {
             }
         }
     }
+
+    #[cfg(feature = "http2")]
+    #[test]
+    fn security_headers_follow_http2_in_config_file() {
+        let opts = static_web_server::Settings::get_unparsed(
+            false,
+            &["static-web-server", "-w", "tests/toml/http2.toml"],
+        )
+        .unwrap();
+        assert!(opts.general.security_headers);
+    }
+
+    #[cfg(feature = "http2")]
+    #[test]
+    fn security_headers_explicit_false_with_http2_in_config_file() {
+        let opts = static_web_server::Settings::get_unparsed(
+            false,
+            &[
+                "static-web-server",
+                "-w",
+                "tests/toml/http2.toml",
+                "--security-headers=false",
+            ],
+        )
+        .unwrap();
+        assert!(!opts.general.security_headers);
+    }
 }
