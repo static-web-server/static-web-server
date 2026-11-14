@@ -1,0 +1,4 @@
+[general]
+http2 = true
+http2-tls-cert = "tests/tls/local.dev_cert.pkcs8.pem"
+http2-tls-key = "tests/tls/local.dev_key.pkcs8.pem"
