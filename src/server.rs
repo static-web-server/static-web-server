@@ -396,10 +396,18 @@ impl Server {
         #[cfg(feature = "experimental")]
         mem_cache::cache::init(&mut handler_opts)?;
 
-        // Create a service router for Hyper
-        let router_service = RouterService::new(RequestHandler {
-            opts: Arc::from(handler_opts),
-        });
+        // Create a service router for Hyper.
+        // NOTE: `Strict-Transport-Security` is only sent over TLS (`--http2`).
+        #[cfg(feature = "http2")]
+        let tls_enabled = general.http2;
+        #[cfg(not(feature = "http2"))]
+        let tls_enabled = false;
+        let router_service = RouterService::with_tls(
+            RequestHandler {
+                opts: Arc::from(handler_opts),
+            },
+            tls_enabled,
+        );
 
         #[cfg(windows)]
         let (sender, receiver) = tokio::sync::watch::channel(());
