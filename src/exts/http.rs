@@ -70,6 +70,13 @@ pub(crate) fn append_vary_accept<B>(resp: &mut Response<B>) {
     append_vary(resp, "accept", &VARY_ACCEPT);
 }
 
+/// Append `origin` to the response's `Vary` header, creating it if absent.
+/// Skips the update if `origin` is already listed.
+pub(crate) fn append_vary_origin<B>(resp: &mut Response<B>) {
+    static VARY_ORIGIN: HeaderValue = HeaderValue::from_static("origin");
+    append_vary(resp, "origin", &VARY_ORIGIN);
+}
+
 /// Append a value to the response's `Vary` header, creating it if absent.
 /// Skips the update if the value is already listed.
 fn append_vary<B>(resp: &mut Response<B>, value: &str, static_value: &HeaderValue) {
