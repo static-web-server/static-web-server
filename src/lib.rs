@@ -153,6 +153,7 @@ pub mod exts;
 pub mod fallback_page;
 pub(crate) mod fs;
 pub mod handler;
+pub(crate) mod handler_opts;
 pub(crate) mod health;
 #[cfg(feature = "tls")]
 #[cfg_attr(docsrs, doc(cfg(feature = "tls")))]

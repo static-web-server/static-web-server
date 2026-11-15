@@ -24,7 +24,7 @@ use crate::Result;
 use crate::body::{self, Body};
 use crate::conditional_headers::{ConditionalBody, ConditionalHeaders, Validators};
 use crate::exts::headers::{AcceptEncoding, ContentCoding};
-use crate::handler::RequestHandlerOpts;
+use crate::handler_opts::RequestHandlerOpts;
 use crate::response::range::{BadRangeError, bytes_range};
 
 /// Cache key: the requested file path and the content coding of the stored
@@ -448,7 +448,7 @@ mod tests {
 
     #[test]
     fn init_returns_ok_without_advanced_opts() {
-        let mut handler_opts = crate::handler::RequestHandlerOpts::default();
+        let mut handler_opts = crate::handler_opts::RequestHandlerOpts::default();
         let result = init(&mut handler_opts);
         assert!(result.is_ok());
         assert!(handler_opts.memory_cache.is_none());

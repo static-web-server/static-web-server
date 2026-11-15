@@ -17,7 +17,7 @@ use hyper::{Request, Response, StatusCode};
 use std::collections::HashSet;
 
 use crate::body::Body;
-use crate::{Error, error_page, handler::RequestHandlerOpts};
+use crate::{Error, error_page, handler_opts::RequestHandlerOpts};
 
 /// It defines CORS instance.
 #[derive(Clone, Debug)]
@@ -500,7 +500,7 @@ pub(crate) fn post_process<T>(
 mod tests {
     use super::{Configured, Cors, post_process, pre_process};
     use crate::body::Body;
-    use crate::{Error, handler::RequestHandlerOpts};
+    use crate::{Error, handler_opts::RequestHandlerOpts};
     use hyper::{Request, Response, StatusCode};
 
     fn make_request(method: &str, origin: &str) -> Request<Body> {

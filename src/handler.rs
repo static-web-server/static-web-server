@@ -7,12 +7,7 @@
 //!
 
 use hyper::{Request, Response, StatusCode};
-use std::{
-    future::Future,
-    net::{IpAddr, SocketAddr},
-    path::PathBuf,
-    sync::{Arc, atomic::AtomicBool},
-};
+use std::{future::Future, net::SocketAddr, path::PathBuf, sync::Arc};
 
 use crate::body::Body;
 
@@ -36,183 +31,15 @@ use crate::fallback_page;
 #[cfg(feature = "metrics")]
 use crate::metrics;
 
-#[cfg(feature = "mem-cache")]
-use crate::mem_cache::cache::MemCacheOpts;
-
 use crate::{
     Error, Result, access_logs, control_headers, cors, custom_headers, error_page,
     exts::http::MethodExt,
     health, maintenance_mode, redirects, rewrites, security_headers,
-    settings::Advanced,
     static_files::{self, HandleOpts},
     text_charset, virtual_hosts,
 };
 
-#[cfg(feature = "directory-listing")]
-use crate::directory_listing::DirListFmt;
-
-#[cfg(feature = "directory-listing-download")]
-use crate::directory_listing::download::DirDownloadFmt;
-
-/// It defines options for a request handler.
-pub struct RequestHandlerOpts {
-    // General options
-    /// Root directory of static files.
-    pub root_dir: PathBuf,
-    #[cfg(feature = "mem-cache")]
-    /// In-memory cache feature.
-    pub memory_cache: Option<MemCacheOpts>,
-    /// Compression feature.
-    pub compression: bool,
-    #[cfg(any(
-        feature = "compression",
-        feature = "compression-gzip",
-        feature = "compression-brotli",
-        feature = "compression-zstd",
-        feature = "compression-deflate"
-    ))]
-    /// Compression level.
-    pub compression_level: crate::settings::CompressionLevel,
-    /// Compression static feature.
-    pub compression_static: bool,
-    /// Directory listing feature.
-    #[cfg(feature = "directory-listing")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "directory-listing")))]
-    pub dir_listing: bool,
-    /// Directory listing order feature.
-    #[cfg(feature = "directory-listing")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "directory-listing")))]
-    pub dir_listing_order: u8,
-    #[cfg(feature = "directory-listing")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "directory-listing")))]
-    /// Directory listing format feature.
-    pub dir_listing_format: DirListFmt,
-    /// Directory listing download feature.
-    #[cfg(feature = "directory-listing-download")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "directory-listing-download")))]
-    pub dir_listing_download: Vec<DirDownloadFmt>,
-    /// CORS feature.
-    pub cors: Option<cors::Configured>,
-    /// Security headers feature.
-    pub security_headers: bool,
-    /// Send `Strict-Transport-Security` with the security headers. Only set when the server uses TLS.
-    pub hsts: bool,
-    /// Cache control headers feature.
-    pub cache_control_headers: bool,
-    /// Weak ETag header feature.
-    pub etag: bool,
-    /// Page for 404 errors.
-    pub page404: PathBuf,
-    /// Page for 50x errors.
-    pub page50x: PathBuf,
-    /// Page fallback feature.
-    #[cfg(feature = "fallback-page")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "fallback-page")))]
-    pub page_fallback: Vec<u8>,
-    /// Basic auth feature.
-    #[cfg(feature = "basic-auth")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "basic-auth")))]
-    pub basic_auth: String,
-    /// Index files feature.
-    pub index_files: Vec<String>,
-    /// Compiled access log format.
-    pub access_log_format: Option<access_logs::AccessLogFormat>,
-    /// Log remote address feature.
-    pub log_remote_address: bool,
-    /// Log the X-Real-IP header.
-    pub log_x_real_ip: bool,
-    /// Log the X-Forwarded-For header.
-    pub log_forwarded_for: bool,
-    /// Trusted IPs for remote addresses.
-    pub trusted_proxies: Vec<IpAddr>,
-    /// Redirect trailing slash feature.
-    pub redirect_trailing_slash: bool,
-    /// Ignore hidden files feature.
-    pub include_hidden: bool,
-    /// Prevent following symlinks for files and directories.
-    pub follow_symlinks: bool,
-    /// Resolve the web root directory at request time rather than at startup.
-    pub use_relative_root: bool,
-    /// Accept markdown content negotiation feature.
-    pub accept_markdown: bool,
-    /// Default `charset=utf-8` parameter applied to certain `text` responses without one.
-    pub text_charset: bool,
-    /// Health endpoints feature (`/livez` and `/readyz`).
-    pub health: bool,
-    /// Set once a shutdown signal is received; `/readyz` then returns `503`.
-    pub shutting_down: Arc<AtomicBool>,
-    /// Metrics endpoint feature.
-    #[cfg(feature = "metrics")]
-    pub metrics_enabled: bool,
-    /// Maintenance mode feature.
-    pub maintenance_mode: bool,
-    /// Custom HTTP status for when entering into maintenance mode.
-    pub maintenance_mode_status: StatusCode,
-    /// Custom maintenance mode HTML file.
-    pub maintenance_mode_file: PathBuf,
-
-    /// Advanced options from the config file.
-    pub advanced_opts: Option<Advanced>,
-}
-
-impl Default for RequestHandlerOpts {
-    fn default() -> Self {
-        Self {
-            root_dir: PathBuf::from("./public"),
-            compression: true,
-            compression_static: false,
-            #[cfg(any(
-                feature = "compression",
-                feature = "compression-gzip",
-                feature = "compression-brotli",
-                feature = "compression-zstd",
-                feature = "compression-deflate"
-            ))]
-            compression_level: crate::settings::CompressionLevel::Default,
-            #[cfg(feature = "directory-listing")]
-            dir_listing: false,
-            #[cfg(feature = "directory-listing")]
-            dir_listing_order: 6, // unordered
-            #[cfg(feature = "directory-listing")]
-            dir_listing_format: DirListFmt::Html,
-            #[cfg(feature = "directory-listing-download")]
-            dir_listing_download: Vec::new(),
-            cors: None,
-            #[cfg(feature = "mem-cache")]
-            memory_cache: None,
-            security_headers: false,
-            hsts: false,
-            cache_control_headers: true,
-            etag: true,
-            page404: PathBuf::from("./404.html"),
-            page50x: PathBuf::from("./50x.html"),
-            #[cfg(feature = "fallback-page")]
-            page_fallback: Vec::new(),
-            #[cfg(feature = "basic-auth")]
-            basic_auth: String::new(),
-            index_files: vec!["index.html".into()],
-            access_log_format: None,
-            log_remote_address: false,
-            log_x_real_ip: false,
-            log_forwarded_for: false,
-            trusted_proxies: Vec::new(),
-            redirect_trailing_slash: true,
-            include_hidden: true,
-            follow_symlinks: true,
-            use_relative_root: false,
-            accept_markdown: false,
-            text_charset: true,
-            health: false,
-            shutting_down: Arc::default(),
-            #[cfg(feature = "metrics")]
-            metrics_enabled: false,
-            maintenance_mode: false,
-            maintenance_mode_status: StatusCode::SERVICE_UNAVAILABLE,
-            maintenance_mode_file: PathBuf::new(),
-            advanced_opts: None,
-        }
-    }
-}
+pub use crate::handler_opts::RequestHandlerOpts;
 
 /// It defines the main request handler used by the Hyper service request.
 pub struct RequestHandler {

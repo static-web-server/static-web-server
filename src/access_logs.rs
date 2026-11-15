@@ -31,7 +31,7 @@ use std::task::{Context, Poll, ready};
 use std::time::Instant;
 use time::{OffsetDateTime, format_description::BorrowedFormatItem, macros::format_description};
 
-use crate::{body::Body, handler::RequestHandlerOpts, health, log_addr};
+use crate::{body::Body, handler_opts::RequestHandlerOpts, health, log_addr};
 
 /// A compiled access log format, parsed once at startup.
 #[derive(Debug, Clone)]

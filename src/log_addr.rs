@@ -9,7 +9,7 @@
 use hyper::Request;
 use std::net::{IpAddr, SocketAddr};
 
-use crate::handler::RequestHandlerOpts;
+use crate::handler_opts::RequestHandlerOpts;
 
 /// Initializes the log address module.
 pub(crate) fn init(enabled: bool, unix_socket: bool, handler_opts: &mut RequestHandlerOpts) {

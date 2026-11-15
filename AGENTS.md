@@ -65,6 +65,7 @@ Rules: pre-processing steps return early when they handle the request. Post-proc
 | `settings/` | Parse CLI (clap) / env / TOML, merge, validate |
 | `server/` | Bind listener, HTTP/1 or HTTP/2+TLS, graceful shutdown |
 | `handler.rs` | Orchestrate request pipeline |
+| `handler_opts.rs` | `RequestHandlerOpts`, shared by the handler and feature modules (re-exported from `handler`) |
 | `static_files/` | `handle()` entry; `resolve.rs`, `security.rs`, `listing.rs`, `reply.rs` |
 | `conditional_headers.rs`, `etag.rs` | `If-*` preconditions (304/412), weak `ETag` |
 | `compression.rs` | On-the-fly gzip/deflate/brotli/zstd |

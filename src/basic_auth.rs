@@ -16,7 +16,7 @@ use hyper::{
 use crate::Error;
 use crate::error_page;
 use crate::exts::http::MethodExt;
-use crate::handler::RequestHandlerOpts;
+use crate::handler_opts::RequestHandlerOpts;
 
 /// Initializes `Basic` HTTP Authorization handling
 pub(crate) fn init(credentials: &str, handler_opts: &mut RequestHandlerOpts) {
@@ -103,7 +103,7 @@ mod tests {
     use super::{check_request, pre_process};
     use crate::body;
     use crate::body::Body;
-    use crate::{Error, handler::RequestHandlerOpts};
+    use crate::{Error, handler_opts::RequestHandlerOpts};
     use headers::HeaderMap;
     use hyper::{Request, Response, StatusCode, header::WWW_AUTHENTICATE};
 

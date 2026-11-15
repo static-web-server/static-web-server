@@ -18,7 +18,7 @@ use crate::exts::http::{MethodExt, append_vary_accept};
 use crate::fs::path::{PathExt, sanitize_path};
 use crate::response::content_type_for;
 use crate::{
-    Error, exts::headers::Accept, fs::meta::try_markdown_variant, handler::RequestHandlerOpts,
+    Error, exts::headers::Accept, fs::meta::try_markdown_variant, handler_opts::RequestHandlerOpts,
 };
 
 /// Escape set used when converting a resolved file path back into a URI path.
