@@ -447,4 +447,58 @@ mod tests {
             Err(err) => panic!("unexpected error: {err}"),
         };
     }
+
+    // A `304`, `412` or `416` for a pre-compressed variant has no content, so it gets
+    // no `Content-Encoding` either, with or without dynamic compression enabled.
+    #[tokio::test]
+    async fn compression_static_skips_responses_without_content() {
+        for compression in [false, true] {
+            let opts = fixture_settings("toml/handler_fixtures.toml");
+            let general = General {
+                compression,
+                compression_static: true,
+                index_files: "index.htm, index.html".to_owned(),
+                ..opts.general
+            };
+            let req_handler_opts = fixture_req_handler_opts(general, opts.advanced);
+            let req_handler = fixture_req_handler(req_handler_opts);
+            let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
+
+            let request = |method: hyper::Method, name: &'static str, value: &str| {
+                let mut req = Request::default();
+                *req.method_mut() = method;
+                *req.uri_mut() = "http://localhost/index.htm".parse().unwrap();
+                req.headers_mut()
+                    .insert(http::header::ACCEPT_ENCODING, "br".parse().unwrap());
+                req.headers_mut()
+                    .insert(name, value.parse::<http::HeaderValue>().unwrap());
+                req
+            };
+
+            let mut req = request(hyper::Method::GET, "accept", "*/*");
+            let res = req_handler.handle(&mut req, remote_addr).await.unwrap();
+            assert_eq!(res.status(), 200);
+            assert_eq!(res.headers()["content-encoding"], "br");
+            let last_modified = res.headers()["last-modified"].to_str().unwrap().to_owned();
+
+            for (name, value, status) in [
+                ("if-modified-since", last_modified.as_str(), 304),
+                ("if-unmodified-since", "Mon, 01 Jan 1990 00:00:00 GMT", 412),
+                ("range", "bytes=99999-", 416),
+            ] {
+                for method in [hyper::Method::GET, hyper::Method::HEAD] {
+                    let mut req = request(method.clone(), name, value);
+                    let mut res = req_handler.handle(&mut req, remote_addr).await.unwrap();
+                    assert_eq!(res.status(), status, "{compression} {method} {name}");
+                    assert_eq!(
+                        res.headers().get("content-encoding"),
+                        None,
+                        "{compression} {method} {name}"
+                    );
+                    let body = hyper::body::to_bytes(res.body_mut()).await.unwrap();
+                    assert!(body.is_empty(), "{compression} {method} {name}");
+                }
+            }
+        }
+    }
 }

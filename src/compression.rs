@@ -22,6 +22,7 @@ use futures_util::Stream;
 use headers::{ContentType, HeaderMap, HeaderMapExt, HeaderValue};
 use hyper::{
     Body, Method, Request, Response, StatusCode,
+    body::HttpBody as _,
     header::{CONTENT_ENCODING, CONTENT_LENGTH},
 };
 use mime_guess::Mime;
@@ -137,6 +138,12 @@ pub fn auto(
         return Ok(resp);
     }
 
+    // A `Content-Encoding` on a response without content describes nothing,
+    // and caches merge the header fields of a `304` into the stored response
+    if !has_content(&resp) {
+        return Ok(resp);
+    }
+
     // Compress response based on Accept-Encoding header
     if let Some(encoding) = get_preferred_encoding(headers) {
         tracing::trace!(
@@ -197,6 +204,26 @@ pub fn auto(
     }
 
     Ok(resp)
+}
+
+/// Whether the response has content to encode. A `1xx`, `204` or `304` never
+/// has any. Neither does a response with `Content-Length: 0`, or a body that
+/// is known to be empty, such as the `Body::empty()` of a `412`, a `416` or a
+/// trailing-slash `308`. A streamed body is never known to be empty, so an
+/// empty file served from disk is caught by its `Content-Length` only.
+fn has_content(resp: &Response<Body>) -> bool {
+    let status = resp.status();
+    if status.is_informational()
+        || status == StatusCode::NO_CONTENT
+        || status == StatusCode::NOT_MODIFIED
+    {
+        return false;
+    }
+    let zero_length = resp
+        .headers()
+        .get(CONTENT_LENGTH)
+        .is_some_and(|v| v.as_bytes() == b"0");
+    !zero_length && !resp.body().is_end_stream()
 }
 
 /// Create a wrapping handler that compresses the Body of a [`Response`].
@@ -472,6 +499,68 @@ mod tests {
             result.headers().get(CONTENT_ENCODING).is_none(),
             "HEAD requests are never compressed regardless of size"
         );
+    }
+
+    #[test]
+    fn response_without_content_is_not_compressed() {
+        let headers = accept_gzip_headers();
+        for status in [
+            StatusCode::CONTINUE,
+            StatusCode::NO_CONTENT,
+            StatusCode::NOT_MODIFIED,
+        ] {
+            let mut resp = text_response_with_size(MIN_COMPRESS_SIZE);
+            *resp.status_mut() = status;
+            let result = auto(&Method::GET, &headers, CompressionLevel::Default, resp).unwrap();
+            assert!(
+                result.headers().get(CONTENT_ENCODING).is_none(),
+                "{status} responses must not be compressed"
+            );
+        }
+
+        // An empty body without a length, like a `308`, `412` or `416`
+        for status in [
+            StatusCode::PERMANENT_REDIRECT,
+            StatusCode::PRECONDITION_FAILED,
+            StatusCode::RANGE_NOT_SATISFIABLE,
+        ] {
+            let mut resp = Response::new(Body::empty());
+            *resp.status_mut() = status;
+            let result = auto(&Method::GET, &headers, CompressionLevel::Default, resp).unwrap();
+            assert!(
+                result.headers().get(CONTENT_ENCODING).is_none(),
+                "{status} responses without content must not be compressed"
+            );
+        }
+    }
+
+    #[test]
+    fn streamed_response_with_zero_content_length_is_not_compressed() {
+        // A streamed body never reports its end up front, like an empty file
+        let body = Body::wrap_stream(futures_util::stream::empty::<Result<Bytes, hyper::Error>>());
+        let mut resp = Response::new(body);
+        resp.headers_mut()
+            .insert(CONTENT_TYPE, "text/html".parse().unwrap());
+        resp.headers_mut()
+            .insert(CONTENT_LENGTH, HeaderValue::from_static("0"));
+        assert!(!has_content(&resp));
+
+        let headers = accept_gzip_headers();
+        let result = auto(&Method::GET, &headers, CompressionLevel::Default, resp).unwrap();
+        assert!(
+            result.headers().get(CONTENT_ENCODING).is_none(),
+            "responses with `Content-Length: 0` must not be compressed"
+        );
+    }
+
+    #[test]
+    fn error_response_with_content_is_compressed() {
+        // An error page has an HTML body, so it is still encoded
+        let mut resp = text_response_with_size(MIN_COMPRESS_SIZE);
+        *resp.status_mut() = StatusCode::PRECONDITION_FAILED;
+        let headers = accept_gzip_headers();
+        let result = auto(&Method::GET, &headers, CompressionLevel::Default, resp).unwrap();
+        assert_eq!(result.headers()[CONTENT_ENCODING], "gzip");
     }
 
     #[test]

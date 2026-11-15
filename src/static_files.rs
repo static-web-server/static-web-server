@@ -643,6 +643,15 @@ pub async fn handle(opts: &HandleOpts<'_>) -> Result<StaticFileResponse, StatusC
             None,
         )?;
 
+        // Responses without content such as `304`, `412` and `416` are left
+        // as they are, since there is no payload to decode
+        if !resp.status().is_success() {
+            return Ok(StaticFileResponse {
+                resp,
+                file_path: resp_file_path,
+            });
+        }
+
         // Prepare corresponding headers to let know how to decode the payload
         resp.headers_mut().remove(CONTENT_LENGTH);
         let encoding = match HeaderValue::from_str(precomp_encoding.as_str()) {

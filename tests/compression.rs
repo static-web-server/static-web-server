@@ -83,4 +83,75 @@ pub mod tests {
             Err(err) => panic!("unexpected error: {err}"),
         };
     }
+
+    // A `Content-Encoding` on a response without content describes nothing, and
+    // a cache would merge it from a `304` into its stored identity response.
+    #[tokio::test]
+    async fn compression_skips_responses_without_content() {
+        let opts = fixture_settings("toml/handler_fixtures.toml");
+        let general = General {
+            compression: true,
+            compression_static: false,
+            redirect_trailing_slash: true,
+            ..opts.general
+        };
+        let req_handler_opts = fixture_req_handler_opts(general, opts.advanced);
+        let req_handler = fixture_req_handler(req_handler_opts);
+        let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
+
+        let mut req = Request::default();
+        *req.uri_mut() = "http://localhost/assets/index.html".parse().unwrap();
+        req.headers_mut().insert(
+            http::header::ACCEPT_ENCODING,
+            "gzip, deflate, br, zstd".parse().unwrap(),
+        );
+        let res = req_handler.handle(&mut req, remote_addr).await.unwrap();
+        assert_eq!(res.status(), 200);
+        assert!(res.headers().contains_key("content-encoding"));
+        let last_modified = res.headers()["last-modified"].clone();
+
+        let cases = [
+            (
+                "/assets/index.html",
+                "if-modified-since",
+                last_modified,
+                304,
+            ),
+            (
+                "/assets/index.html",
+                "if-unmodified-since",
+                HeaderValue::from_static("Mon, 01 Jan 1990 00:00:00 GMT"),
+                412,
+            ),
+            (
+                "/assets/index.html",
+                "range",
+                HeaderValue::from_static("bytes=99999-"),
+                416,
+            ),
+            ("/assets", "accept", HeaderValue::from_static("*/*"), 308),
+        ];
+        for (path, name, value, status) in cases {
+            for method in [hyper::Method::GET, hyper::Method::HEAD] {
+                let mut req = Request::default();
+                *req.method_mut() = method.clone();
+                *req.uri_mut() = format!("http://localhost{path}").parse().unwrap();
+                req.headers_mut().insert(
+                    http::header::ACCEPT_ENCODING,
+                    "gzip, deflate, br, zstd".parse().unwrap(),
+                );
+                req.headers_mut().insert(name, value.clone());
+
+                let mut res = req_handler.handle(&mut req, remote_addr).await.unwrap();
+                assert_eq!(res.status(), status, "{method} {path} {name}");
+                assert_eq!(
+                    res.headers().get("content-encoding"),
+                    None,
+                    "{method} {path} {name}"
+                );
+                let body = hyper::body::to_bytes(res.body_mut()).await.unwrap();
+                assert!(body.is_empty(), "{method} {path} {name}");
+            }
+        }
+    }
 }
