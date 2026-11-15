@@ -7,7 +7,9 @@
 //!
 
 use aho_corasick::AhoCorasick;
-use clap::Parser;
+#[cfg(feature = "http2")]
+use clap::parser::ValueSource;
+use clap::{CommandFactory, FromArgMatches};
 use globset::{Glob, GlobBuilder, GlobMatcher};
 use headers::HeaderMap;
 use hyper::StatusCode;
@@ -127,10 +129,20 @@ impl Settings {
     }
 
     fn parse_from(log_init: bool, args: Option<&[&str]>) -> Result<Settings> {
-        let opts = match args {
-            Some(v) => General::parse_from(v),
-            None => General::parse(),
+        let matches = match args {
+            Some(v) => General::command().get_matches_from(v),
+            None => General::command().get_matches(),
         };
+        let opts = General::from_arg_matches(&matches)
+            .map_err(|err| err.format(&mut General::command()))
+            .unwrap_or_else(|err| err.exit());
+
+        // Whether `--security-headers` was set explicitly via CLI or env
+        #[cfg(feature = "http2")]
+        let security_headers_explicit = matches!(
+            matches.value_source("security_headers"),
+            Some(ValueSource::CommandLine | ValueSource::EnvVariable)
+        );
 
         // Define the general CLI/file options
         let version = opts.version;
@@ -327,7 +339,7 @@ impl Settings {
                 match general.security_headers {
                     Some(v) => security_headers = v,
                     _ => {
-                        if http2 {
+                        if http2 && !security_headers_explicit {
                             security_headers = true;
                         }
                     }
