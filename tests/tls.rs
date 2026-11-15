@@ -417,7 +417,7 @@ mod test_helpers {
         let _ = cancel_tx.send(());
         // Join in a blocking task to avoid starving the async runtime.
         let join_result = tokio::time::timeout(
-            std::time::Duration::from_secs(5),
+            TIMEOUT,
             tokio::task::spawn_blocking(move || handle.join().expect("server thread panicked")),
         )
         .await;
@@ -427,10 +427,7 @@ mod test_helpers {
                 server_result.ok();
             }
             Ok(Err(e)) => panic!("spawn_blocking panicked: {e:?}"),
-            Err(_) => {
-                // Server didn't shut down within 5s — not ideal but don't block the test.
-                eprintln!("warning: server did not shut down within 5s after cancel");
-            }
+            Err(_) => panic!("server did not shut down after cancel"),
         }
     }
 }
