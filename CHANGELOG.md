@@ -5,14 +5,52 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v2.44.3 - 2026-11-16
+
+This new `v2.44.3` brings bug fixes and security improvements.
+
+**Security updates**
+
+This release includes security updates related to the request header size limits, compression and `X-Real-IP`/`X-Forwarded-For` logging features.
+We encourage users to update to this version. We will provide more details about the fixed security issues in the next few days.
+
+**Fixes**
+
+- [020bf82][020bf82] Send the `Strict-Transport-Security` (HSTS) header only over TLS connections. PR [#814][814] by [@joseluisq][joseluisq]
+- [4d343ca][4d343ca] Honor an explicit `--security-headers=false` when a config file enables `http2`. PR [#816][816] by [@joseluisq][joseluisq]
+- [43ee868][43ee868] Skip dynamic compression for `206 Partial Content` responses. PR [#817][817] by [@joseluisq][joseluisq]
+- [f6f857e][f6f857e] Tests: Fix flaky `max_header_size_https_redirect_server` test. PR [#818][818] by [@joseluisq][joseluisq]
+
+[020bf82]: https://github.com/static-web-server/static-web-server/commit/020bf82
+[4d343ca]: https://github.com/static-web-server/static-web-server/commit/4d343ca
+[43ee868]: https://github.com/static-web-server/static-web-server/commit/43ee868
+[f6f857e]: https://github.com/static-web-server/static-web-server/commit/f6f857e
+
+[814]: https://github.com/static-web-server/static-web-server/pull/814
+[816]: https://github.com/static-web-server/static-web-server/pull/816
+[817]: https://github.com/static-web-server/static-web-server/pull/817
+[818]: https://github.com/static-web-server/static-web-server/pull/818
+
+For more details see the [v2.44.3 milestone][v2443-milestone] and the full changelog [v2.44.2...v2.44.3][v2443-diff].
+
+[v2443-diff]: https://github.com/static-web-server/static-web-server/compare/v2.44.2...v2.44.3
+[v2443-milestone]: https://github.com/static-web-server/static-web-server/milestone/45?closed=1
+
 ## v2.44.2 - 2026-11-12
 
 This new `v2.44.2` brings bug fixes, security improvements and dependency updates.
 
 **Security updates**
 
-This release includes security updates related to the basic authentication, HTTP `OPTIONS` request handling and ignore hidden files features.
-We encourage users to update to this version. We will provide more details about the fixed security issues in the next few days.
+This release includes security updates related to the basic authentication, HTTP `OPTIONS` request handling and ignore hidden files features. Users are encouraged to update to this version. Below are the advisories published and ordered by severity.
+
+- Memory cache (High): [GHSA-f46q-99h3-m7gp](https://github.com/static-web-server/static-web-server/security/advisories/GHSA-f46q-99h3-m7gp)
+- Basic authentication (Moderate): [GHSA-fm32-72mc-qrfg](https://github.com/static-web-server/static-web-server/security/advisories/GHSA-fm32-72mc-qrfg)
+- Ignore hidden files (Moderate): [GHSA-6j8m-4pp3-m5v9](https://github.com/static-web-server/static-web-server/security/advisories/GHSA-6j8m-4pp3-m5v9)
+
+Thanks to [@Hama1cco][Hama1cco] for reporting the hidden files issue.
+
+[Hama1cco]: https://github.com/Hama1cco
 
 **Fixes**
 
@@ -38,8 +76,12 @@ This new `v2.44.1` brings bug fixes, security improvements and dependency update
 
 **Security updates**
 
-This release includes security updates related to the metrics and directory listing download features.
-We encourage users to update to this version. We will provide more details about the fixed security issues in the next few days.
+This release includes security updates related to the metrics and directory listing download features. Users are encouraged to update to this version. Below are the advisories published and ordered by severity.
+
+- Directory listing download (Moderate): [GHSA-3p6p-6r38-h33v](https://github.com/static-web-server/static-web-server/security/advisories/GHSA-3p6p-6r38-h33v)
+- Metrics (Moderate): [GHSA-cw5g-jrq8-536j](https://github.com/static-web-server/static-web-server/security/advisories/GHSA-cw5g-jrq8-536j)
+
+Thanks to [@T3pp31][T3pp31] for reporting this.
 
 **Fixes**
 
