@@ -696,19 +696,84 @@ mod live_http1_tls_tests {
         shutdown_server(cancel_tx, handle).await;
     }
 
+    /// Whether the server on `port` answers with a redirect to `host`.
+    async fn redirects_to(port: u16, host: &str) -> bool {
+        let probe = async {
+            let mut stream = tokio::net::TcpStream::connect(("127.0.0.1", port)).await?;
+            stream
+                .write_all(b"GET / HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n")
+                .await?;
+            let mut response = Vec::new();
+            stream.read_to_end(&mut response).await?;
+            std::io::Result::Ok(response)
+        };
+        match tokio::time::timeout(Duration::from_secs(1), probe).await {
+            Ok(Ok(response)) => {
+                String::from_utf8_lossy(&response).contains(&format!("https://{host}:"))
+            }
+            _ => false,
+        }
+    }
+
+    /// Spawn a TLS server with its HTTPS redirect server on a free port.
+    ///
+    /// The redirect port isn't pre-bound, so another server can take it before this one binds it.
+    /// The server then exits, and it's spawned again on another port.
+    async fn spawn_redirect_server(
+        extra_args: &[&str],
+    ) -> (
+        u16,
+        u16,
+        tokio::sync::watch::Sender<()>,
+        std::thread::JoinHandle<static_web_server::Result>,
+    ) {
+        static SERVERS: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+
+        for _ in 0..3 {
+            let redirect_port = free_port();
+            // A redirect host unique to this server tells it apart from one that took the port.
+            let id = SERVERS.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            let host = format!("redirect-{}-{id}.test", std::process::id());
+            let redirect_port_arg = redirect_port.to_string();
+            let mut args = vec![
+                "--https-redirect",
+                "--https-redirect-from-port",
+                &redirect_port_arg,
+                "--https-redirect-host",
+                &host,
+            ];
+            args.extend_from_slice(extra_args);
+            let (port, cancel_tx, handle) = spawn_server(&args);
+
+            let deadline = tokio::time::Instant::now() + TIMEOUT;
+            while !handle.is_finished() {
+                if redirects_to(redirect_port, &host).await {
+                    return (port, redirect_port, cancel_tx, handle);
+                }
+                assert!(
+                    tokio::time::Instant::now() < deadline,
+                    "redirect server on port {redirect_port} did not start"
+                );
+                tokio::time::sleep(Duration::from_millis(50)).await;
+            }
+            // Only a lost redirect port is retried, any other startup error fails the test.
+            let err = handle
+                .join()
+                .expect("server thread panicked")
+                .expect_err("server exited during startup without an error");
+            assert!(
+                format!("{err:#}").contains("failed to bind redirect listener"),
+                "server failed to start: {err:#}"
+            );
+            eprintln!("redirect port {redirect_port} was taken, retrying: {err:#}");
+        }
+        panic!("redirect port was taken 3 times");
+    }
+
     #[tokio::test]
     async fn max_connections_is_shared_with_https_redirect() {
-        let redirect_port = free_port().to_string();
-        let (port, cancel_tx, handle) = spawn_server(&[
-            "--max-connections",
-            "1",
-            "--https-redirect",
-            "--https-redirect-from-port",
-            &redirect_port,
-        ]);
-        let redirect_port: u16 = redirect_port.parse().unwrap();
-        wait_for_server(port).await;
-        wait_for_server(redirect_port).await;
+        let (port, redirect_port, cancel_tx, handle) =
+            spawn_redirect_server(&["--max-connections", "1"]).await;
 
         // The HTTPS connection takes the only slot, so the redirect server doesn't answer.
         let https = tls_connect(port, &["http/1.1"]).await;
