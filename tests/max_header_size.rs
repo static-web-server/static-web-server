@@ -31,6 +31,9 @@ mod tests {
     /// A server running on its own thread.
     struct TestServer {
         port: u16,
+        /// The HTTPS redirect server's port, used when it was requested.
+        #[cfg(feature = "http2")]
+        redirect_port: u16,
         cancel_tx: tokio::sync::watch::Sender<()>,
         handle: std::thread::JoinHandle<static_web_server::Result>,
         _serial: tokio::sync::MutexGuard<'static, ()>,
@@ -73,65 +76,97 @@ mod tests {
         }
     }
 
-    /// Find a free local port.
-    fn free_port() -> u16 {
-        std::net::TcpListener::bind("127.0.0.1:0")
-            .expect("bind to a free port")
-            .local_addr()
-            .expect("listener address")
-            .port()
+    /// Find `N` distinct free local ports.
+    ///
+    /// The listeners are kept until all ports are found. Otherwise the same port can come back
+    /// twice, since Linux picks it at random from a few thousand.
+    fn free_ports<const N: usize>() -> [u16; N] {
+        let listeners: [std::net::TcpListener; N] = std::array::from_fn(|_| {
+            std::net::TcpListener::bind("127.0.0.1:0").expect("bind to a free port")
+        });
+        listeners.map(|listener| listener.local_addr().expect("listener address").port())
     }
+
+    /// How many times a server that exits during startup is spawned again.
+    const SPAWN_ATTEMPTS: usize = 3;
 
     /// Spawn a server on a free port with the given extra arguments and wait until it accepts connections.
-    async fn spawn_server(extra_args: &[&str]) -> TestServer {
+    ///
+    /// With `https_redirect` set, the HTTPS redirect server is started on a second free port.
+    ///
+    /// A free port can still be taken before the server binds it, which makes the server exit,
+    /// so it's spawned again on other ports.
+    async fn spawn_server(extra_args: &[&str], https_redirect: bool) -> TestServer {
         let serial = SERIAL.lock().await;
-        let (cancel_tx, cancel_rx) = tokio::sync::watch::channel(());
-        let port = free_port();
 
-        let mut args: Vec<String> = vec![
-            "static-web-server".into(),
-            "--root".into(),
-            "tests/fixtures/public".into(),
-            "--host".into(),
-            "127.0.0.1".into(),
-            "--port".into(),
-            port.to_string(),
-        ];
-        args.extend(extra_args.iter().map(|s| s.to_string()));
+        for attempt in 1..=SPAWN_ATTEMPTS {
+            let (cancel_tx, cancel_rx) = tokio::sync::watch::channel(());
+            let [port, redirect_port] = free_ports();
 
-        let handle = std::thread::spawn(move || {
-            let refs: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
-            let settings =
-                static_web_server::Settings::get_unparsed(false, &refs).expect("settings parse");
-            static_web_server::Server::new(settings)
-                .expect("server build")
-                .run_server_on_rt(Some(cancel_rx), || {}, false)
-        });
+            let mut args: Vec<String> = vec![
+                "static-web-server".into(),
+                "--root".into(),
+                "tests/fixtures/public".into(),
+                "--host".into(),
+                "127.0.0.1".into(),
+                "--port".into(),
+                port.to_string(),
+            ];
+            args.extend(extra_args.iter().map(|s| s.to_string()));
+            let mut ports = vec![port];
+            if https_redirect {
+                args.extend([
+                    "--https-redirect".into(),
+                    "--https-redirect-from-port".into(),
+                    redirect_port.to_string(),
+                ]);
+                ports.push(redirect_port);
+            }
 
-        wait_for_port(port).await;
-        // A server that failed to bind its port has already returned.
-        assert!(
-            !handle.is_finished(),
-            "server on port {port} exited during startup"
-        );
+            let handle = std::thread::spawn(move || {
+                let refs: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
+                let settings = static_web_server::Settings::get_unparsed(false, &refs)
+                    .expect("settings parse");
+                static_web_server::Server::new(settings)
+                    .expect("server build")
+                    .run_server_on_rt(Some(cancel_rx), || {}, false)
+            });
 
-        TestServer {
-            port,
-            cancel_tx,
-            handle,
-            _serial: serial,
+            if wait_for_server(&handle, &ports).await {
+                return TestServer {
+                    port,
+                    #[cfg(feature = "http2")]
+                    redirect_port,
+                    cancel_tx,
+                    handle,
+                    _serial: serial,
+                };
+            }
+            eprintln!(
+                "server on ports {ports:?} exited during startup (attempt {attempt} of {SPAWN_ATTEMPTS}): {:?}",
+                handle.join()
+            );
         }
+        panic!("server exited during startup {SPAWN_ATTEMPTS} times");
     }
 
-    /// Wait until a TCP connection to the port succeeds.
-    async fn wait_for_port(port: u16) {
-        for _ in 0..100 {
-            if TcpStream::connect(("127.0.0.1", port)).await.is_ok() {
-                return;
+    /// Wait until TCP connections to all the server's ports succeed.
+    ///
+    /// Returns `false` if the server thread exits first, e.g. because a port was taken.
+    async fn wait_for_server<T>(handle: &std::thread::JoinHandle<T>, ports: &[u16]) -> bool {
+        for &port in ports {
+            let mut tries = 0;
+            while TcpStream::connect(("127.0.0.1", port)).await.is_err() {
+                if handle.is_finished() {
+                    return false;
+                }
+                tries += 1;
+                assert!(tries < 100, "server on port {port} did not start");
+                tokio::time::sleep(Duration::from_millis(50)).await;
             }
-            tokio::time::sleep(Duration::from_millis(50)).await;
         }
-        panic!("server on port {port} did not start");
+        // A server that failed to bind a port has already returned.
+        !handle.is_finished()
     }
 
     /// Build a request head of exactly `len` bytes, padded by a single `X-Pad` header.
@@ -190,7 +225,7 @@ mod tests {
 
     #[tokio::test]
     async fn max_header_size_accepts_head_up_to_limit() {
-        let server = spawn_server(&[]).await;
+        let server = spawn_server(&[], false).await;
 
         assert_eq!(
             send(server.port, request_head(8 * 1024, true)).await,
@@ -206,7 +241,7 @@ mod tests {
 
     #[tokio::test]
     async fn max_header_size_rejects_larger_head() {
-        let server = spawn_server(&[]).await;
+        let server = spawn_server(&[], false).await;
 
         // An incomplete head that reaches the limit can't fit anymore. The server reads all of it
         // before replying, so the 431 isn't lost to a connection reset.
@@ -315,7 +350,7 @@ mod tests {
 
         #[tokio::test]
         async fn max_header_size_tls_http1() {
-            let server = spawn_server(&TLS_ARGS).await;
+            let server = spawn_server(&TLS_ARGS, false).await;
 
             let status = send_tls(server.port, request_head(8 * 1024, true)).await;
             assert_eq!(status, STATUS_OK);
@@ -336,16 +371,8 @@ mod tests {
 
         #[tokio::test]
         async fn max_header_size_https_redirect_server() {
-            let redirect_port = free_port();
-            let redirect_port_arg = redirect_port.to_string();
-            let mut args = TLS_ARGS.to_vec();
-            args.extend([
-                "--https-redirect",
-                "--https-redirect-from-port",
-                &redirect_port_arg,
-            ]);
-            let server = spawn_server(&args).await;
-            wait_for_port(redirect_port).await;
+            let server = spawn_server(&TLS_ARGS, true).await;
+            let redirect_port = server.redirect_port;
 
             let status = send(redirect_port, request_head(HTTP1_MAX_BUF_SIZE, true)).await;
             assert_eq!(status, "HTTP/1.1 301 Moved Permanently");
