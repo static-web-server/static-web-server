@@ -58,6 +58,23 @@ use crate::{
     Settings, control_headers, cors, health, helpers, log_addr, maintenance_mode, security_headers,
 };
 
+/// HTTP/1 connection buffer size in bytes.
+///
+/// Hyper 0.14 has no separate HTTP/1 header size limit, so this bounds the buffer for an
+/// incomplete request head, which gets `431 Request Header Fields Too Large`. A complete head
+/// that arrives in few segments can exceed it by up to about 4 times.
+/// Hyper also uses it to cap HTTP/1 response write buffering. 64 KiB keeps large file
+/// throughput as before, while the head bound drops from Hyper's default of about 408 KiB.
+const HTTP1_MAX_BUF_SIZE: usize = 64 * 1024;
+
+// Hyper panics on an HTTP/1 buffer below 8 KiB. Above its old default of about 408 KiB,
+// the write buffer could hold more of each response than before.
+const _: () = assert!(HTTP1_MAX_BUF_SIZE >= 8192 && HTTP1_MAX_BUF_SIZE <= 8192 + 4096 * 100);
+
+/// HTTP/2 maximum header list size in bytes, the same as v3. Hyper 0.14's default is 16 MB.
+#[cfg(feature = "http2")]
+const HTTP2_MAX_HEADER_LIST_SIZE: u32 = 16 * 1024;
+
 /// Define a multi-threaded HTTP or HTTP/2 web server.
 pub struct Server {
     opts: Settings,
@@ -479,8 +496,11 @@ impl Server {
             #[cfg(unix)]
             let handle = signals.handle();
 
-            let http2_server =
-                HyperServer::builder(TlsAcceptor::new(tls, incoming)).serve(router_service);
+            // NOTE: TLS connections also negotiate HTTP/1.1, so both limits are set.
+            let http2_server = HyperServer::builder(TlsAcceptor::new(tls, incoming))
+                .http1_max_buf_size(HTTP1_MAX_BUF_SIZE)
+                .http2_max_header_list_size(HTTP2_MAX_HEADER_LIST_SIZE)
+                .serve(router_service);
 
             #[cfg(unix)]
             let http2_cancel_recv = Arc::new(Mutex::new(_cancel_recv));
@@ -566,6 +586,7 @@ impl Server {
                     .unwrap()
                     .tcp_nodelay(true)
                     .http1_only(true)
+                    .http1_max_buf_size(HTTP1_MAX_BUF_SIZE)
                     .serve(make_service_fn(move |_: &AddrStream| {
                         let redirect_opts = redirect_opts.clone();
                         let page404 = page404.clone();
@@ -661,6 +682,7 @@ impl Server {
             .unwrap()
             .tcp_nodelay(true)
             .http1_only(true)
+            .http1_max_buf_size(HTTP1_MAX_BUF_SIZE)
             .serve(router_service);
 
         #[cfg(unix)]
