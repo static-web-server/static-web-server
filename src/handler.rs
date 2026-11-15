@@ -534,3 +534,98 @@ mod tests {
         assert!(body(resp).await.is_empty());
     }
 }
+
+#[cfg(all(
+    test,
+    feature = "experimental",
+    any(feature = "compression", feature = "compression-gzip")
+))]
+mod mem_cache_compression_tests {
+    use hyper::{Body, Method, Request, StatusCode, header::HeaderValue};
+    use std::sync::Arc;
+    use std::time::Duration;
+
+    use super::{RequestHandler, RequestHandlerOpts};
+    use crate::mem_cache::cache::{CACHE_STORE, MemCacheOpts};
+
+    // A range served from the in-memory cache is a `206 Partial Content` of the
+    // identity representation, so it must not be compressed afterwards.
+    #[tokio::test]
+    async fn mem_cache_partial_content_is_not_compressed() {
+        let temp_dir = tempfile::tempdir().expect("unexpected error creating web root");
+        let root_dir = temp_dir
+            .path()
+            .canonicalize()
+            .expect("unexpected error canonicalizing web root");
+        let data = "<p>lorem ipsum dolor sit amet</p>\n".repeat(64);
+        std::fs::write(root_dir.join("page.html"), &data).expect("unexpected error writing file");
+
+        // `CACHE_STORE` is process-global and may already be initialized by
+        // another test; either way the handler only needs a live store.
+        let _ = CACHE_STORE.set(
+            mini_moka::sync::Cache::builder()
+                .max_capacity(8)
+                .time_to_live(Duration::from_secs(60))
+                .build(),
+        );
+        let req_handler = RequestHandler {
+            opts: Arc::new(RequestHandlerOpts {
+                root_dir,
+                compression: true,
+                memory_cache: Some(MemCacheOpts::new(8)),
+                ..Default::default()
+            }),
+        };
+
+        let request = |headers: &[(&'static str, &'static str)]| {
+            let mut req = Request::new(Body::empty());
+            *req.method_mut() = Method::GET;
+            *req.uri_mut() = "http://localhost/page.html".parse().unwrap();
+            for (name, value) in headers {
+                req.headers_mut()
+                    .insert(*name, HeaderValue::from_static(value));
+            }
+            req
+        };
+
+        // A full identity request caches the file
+        let mut req = request(&[]);
+        let resp = req_handler.handle(&mut req, None).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+        let body = hyper::body::to_bytes(resp.into_body()).await.unwrap();
+        assert_eq!(body, data.as_bytes());
+
+        let key = compact_str::CompactString::from(
+            req_handler
+                .opts
+                .root_dir
+                .join("page.html")
+                .to_str()
+                .expect("unexpected non-UTF-8 web root"),
+        );
+        assert!(
+            CACHE_STORE
+                .get()
+                .and_then(|store| store.get(&key))
+                .is_some(),
+            "file was not cached"
+        );
+
+        // A range request is served from the cache, uncompressed
+        let mut req = request(&[("accept-encoding", "gzip"), ("range", "bytes=0-399")]);
+        let resp = req_handler.handle(&mut req, None).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::PARTIAL_CONTENT);
+        assert_eq!(
+            resp.headers().get("content-encoding"),
+            None,
+            "a 206 response must not be compressed"
+        );
+        assert_eq!(
+            resp.headers()["content-range"],
+            format!("bytes 0-399/{}", data.len())
+        );
+        assert_eq!(resp.headers()["content-length"], "400");
+        let body = hyper::body::to_bytes(resp.into_body()).await.unwrap();
+        assert_eq!(body, data.as_bytes()[..400]);
+    }
+}
