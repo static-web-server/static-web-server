@@ -15,7 +15,7 @@ use crate::{handler::RequestHandlerOpts, health};
 pub(crate) fn init(enabled: bool, handler_opts: &mut RequestHandlerOpts) {
     handler_opts.log_remote_address = enabled;
     let trusted = if handler_opts.trusted_proxies.is_empty() {
-        "all".to_owned()
+        "none".to_owned()
     } else {
         format!("{:?}", handler_opts.trusted_proxies)
     };
@@ -23,13 +23,70 @@ pub(crate) fn init(enabled: bool, handler_opts: &mut RequestHandlerOpts) {
     tracing::info!("log requests with remote IP addresses: enabled={enabled}");
     tracing::info!(
         "log X-Real-IP header: enabled={}",
-        handler_opts.log_forwarded_for
+        handler_opts.log_x_real_ip
     );
     tracing::info!(
         "log X-Forwarded-For header: enabled={}",
         handler_opts.log_forwarded_for
     );
-    tracing::info!("trusted IPs for X-Forwarded-For: {trusted}");
+    tracing::info!("trusted IPs for X-Real-IP and X-Forwarded-For: {trusted}");
+
+    if let Some(warning) = proxy_headers_warning(handler_opts) {
+        tracing::warn!("{warning}");
+    }
+}
+
+/// Why the `X-Real-IP` and `X-Forwarded-For` headers will never be logged, if they are set to be.
+fn proxy_headers_warning(opts: &RequestHandlerOpts) -> Option<&'static str> {
+    if (opts.log_x_real_ip || opts.log_forwarded_for) && opts.trusted_proxies.is_empty() {
+        Some(
+            "X-Real-IP and X-Forwarded-For are not logged since no trusted proxies are set, use --trusted-proxies",
+        )
+    } else {
+        None
+    }
+}
+
+/// Whether the `X-Real-IP` and `X-Forwarded-For` headers of a request from `remote_addr` are trusted.
+///
+/// Only requests from `trusted_proxies` are, so an empty list trusts nobody.
+/// IPv4-mapped IPv6 addresses (`::ffff:a.b.c.d`) of a dual-stack listener match their IPv4 entry.
+fn is_trusted_proxy(opts: &RequestHandlerOpts, remote_addr: Option<SocketAddr>) -> bool {
+    remote_addr.is_some_and(|addr| {
+        let ip = addr.ip().to_canonical();
+        opts.trusted_proxies.iter().any(|p| p.to_canonical() == ip)
+    })
+}
+
+/// The `X-Real-IP` address, if the request comes from a trusted proxy.
+fn x_real_ip<T>(
+    opts: &RequestHandlerOpts,
+    req: &Request<T>,
+    remote_addr: Option<SocketAddr>,
+) -> Option<IpAddr> {
+    if !is_trusted_proxy(opts, remote_addr) {
+        return None;
+    }
+    req.headers()
+        .get("X-Real-IP")
+        .and_then(|h| h.to_str().ok())
+        .and_then(|s| s.trim().parse::<IpAddr>().ok())
+}
+
+/// The first `X-Forwarded-For` address, if the request comes from a trusted proxy.
+fn forwarded_for<T>(
+    opts: &RequestHandlerOpts,
+    req: &Request<T>,
+    remote_addr: Option<SocketAddr>,
+) -> Option<IpAddr> {
+    if !is_trusted_proxy(opts, remote_addr) {
+        return None;
+    }
+    req.headers()
+        .get("X-Forwarded-For")
+        .and_then(|h| h.to_str().ok())
+        .and_then(|s| s.split(',').next())
+        .and_then(|s| s.trim().parse::<IpAddr>().ok())
 }
 
 /// It logs remote and real IP addresses if available.
@@ -38,36 +95,7 @@ pub(crate) fn pre_process<T>(
     req: &Request<T>,
     remote_addr: Option<SocketAddr>,
 ) {
-    let mut remote_addrs = String::new();
-
-    if opts.log_remote_address
-        && let Some(addr) = remote_addr
-    {
-        remote_addrs.push_str(format!(" remote_addr={addr}").as_str());
-    }
-    if opts.log_x_real_ip
-        && (opts.trusted_proxies.is_empty()
-            || remote_addr.is_some_and(|addr| opts.trusted_proxies.contains(&addr.ip())))
-        && let Some(real_ip) = req
-            .headers()
-            .get("X-Real-IP")
-            .and_then(|h| h.to_str().ok())
-            .and_then(|s| s.trim().parse::<IpAddr>().ok())
-    {
-        remote_addrs.push_str(format!(" x_real_ip={real_ip}").as_str());
-    }
-    if opts.log_forwarded_for
-        && (opts.trusted_proxies.is_empty()
-            || remote_addr.is_some_and(|addr| opts.trusted_proxies.contains(&addr.ip())))
-        && let Some(forwarded_for) = req
-            .headers()
-            .get("X-Forwarded-For")
-            .and_then(|h| h.to_str().ok())
-            .and_then(|s| s.split(',').next())
-            .and_then(|s| s.trim().parse::<IpAddr>().ok())
-    {
-        remote_addrs.push_str(format!(" real_remote_ip={forwarded_for}").as_str());
-    }
+    let remote_addrs = remote_addrs(opts, req, remote_addr);
 
     // Log incoming requests in debug mode only if the health option is enabled
     if opts.health && health::is_health_endpoint(req) {
@@ -84,4 +112,284 @@ pub(crate) fn pre_process<T>(
         req.method(),
         req.uri(),
     );
+}
+
+/// The remote and real IP address fields of the incoming request log line.
+fn remote_addrs<T>(
+    opts: &RequestHandlerOpts,
+    req: &Request<T>,
+    remote_addr: Option<SocketAddr>,
+) -> String {
+    let mut remote_addrs = String::new();
+
+    if opts.log_remote_address
+        && let Some(addr) = remote_addr
+    {
+        remote_addrs.push_str(format!(" remote_addr={addr}").as_str());
+    }
+    if opts.log_x_real_ip
+        && let Some(real_ip) = x_real_ip(opts, req, remote_addr)
+    {
+        remote_addrs.push_str(format!(" x_real_ip={real_ip}").as_str());
+    }
+    if opts.log_forwarded_for
+        && let Some(forwarded_for) = forwarded_for(opts, req, remote_addr)
+    {
+        remote_addrs.push_str(format!(" real_remote_ip={forwarded_for}").as_str());
+    }
+
+    remote_addrs
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::net::{Ipv4Addr, Ipv6Addr};
+
+    const PROXY: IpAddr = IpAddr::V4(Ipv4Addr::new(172, 16, 0, 1));
+    const CLIENT: IpAddr = IpAddr::V4(Ipv4Addr::new(10, 0, 0, 1));
+
+    fn request(header: &str, value: &str) -> Request<()> {
+        Request::get("/").header(header, value).body(()).unwrap()
+    }
+
+    fn trusting(trusted_proxies: Vec<IpAddr>) -> RequestHandlerOpts {
+        RequestHandlerOpts {
+            trusted_proxies,
+            ..Default::default()
+        }
+    }
+
+    fn from(ip: IpAddr) -> Option<SocketAddr> {
+        Some(SocketAddr::new(ip, 1234))
+    }
+
+    #[test]
+    fn x_real_ip_no_trusted_proxies_trusts_nobody() {
+        let req = request("X-Real-IP", "10.0.0.1");
+        let opts = RequestHandlerOpts::default();
+        assert_eq!(x_real_ip(&opts, &req, from(PROXY)), None);
+    }
+
+    #[test]
+    fn forwarded_for_no_trusted_proxies_trusts_nobody() {
+        let req = request("X-Forwarded-For", "10.0.0.1");
+        let opts = RequestHandlerOpts::default();
+        assert_eq!(forwarded_for(&opts, &req, from(PROXY)), None);
+    }
+
+    #[test]
+    fn forwarded_for_without_remote_addr_is_untrusted() {
+        let req = request("X-Forwarded-For", "10.0.0.1");
+        assert_eq!(forwarded_for(&trusting(vec![PROXY]), &req, None), None);
+    }
+
+    #[test]
+    fn x_real_ip_untrusted_proxy() {
+        let req = request("X-Real-IP", "10.0.0.1");
+        let other = IpAddr::V4(Ipv4Addr::new(192, 168, 1, 1));
+        assert_eq!(x_real_ip(&trusting(vec![PROXY]), &req, from(other)), None);
+    }
+
+    #[test]
+    fn x_real_ip_trusted_proxy() {
+        let req = request("X-Real-IP", " 10.0.0.1 ");
+        let ip = x_real_ip(&trusting(vec![PROXY]), &req, from(PROXY));
+        assert_eq!(ip, Some(CLIENT));
+    }
+
+    #[test]
+    fn forwarded_for_trusted_proxy_first_ip() {
+        let req = request("X-Forwarded-For", "10.0.0.1, 10.0.0.2");
+        let ip = forwarded_for(&trusting(vec![PROXY]), &req, from(PROXY));
+        assert_eq!(ip, Some(CLIENT));
+    }
+
+    #[test]
+    fn trusted_proxy_ipv4_mapped() {
+        let req = request("X-Real-IP", "10.0.0.1");
+        let mapped = IpAddr::V6(Ipv4Addr::new(172, 16, 0, 1).to_ipv6_mapped());
+
+        // IPv4 client of a dual-stack (`::`) listener, IPv4 entry
+        let ip = x_real_ip(&trusting(vec![PROXY]), &req, from(mapped));
+        assert_eq!(ip, Some(CLIENT));
+
+        // IPv4 client of an IPv4 listener, IPv4-mapped entry
+        let ip = x_real_ip(&trusting(vec![mapped]), &req, from(PROXY));
+        assert_eq!(ip, Some(CLIENT));
+
+        // Another IPv4-mapped address is still untrusted
+        let other = IpAddr::V6(Ipv4Addr::new(172, 16, 0, 2).to_ipv6_mapped());
+        assert_eq!(x_real_ip(&trusting(vec![PROXY]), &req, from(other)), None);
+    }
+
+    #[test]
+    fn trusted_proxy_ipv6() {
+        let req = request("X-Forwarded-For", "2001:db8::1");
+        let proxy = IpAddr::V6(Ipv6Addr::LOCALHOST);
+        let ip = forwarded_for(&trusting(vec![proxy]), &req, from(proxy));
+        assert_eq!(ip, Some("2001:db8::1".parse().unwrap()));
+    }
+
+    #[test]
+    fn proxy_headers_warning_when_never_logged() {
+        let opts = |log_x_real_ip, log_forwarded_for, trusted_proxies| RequestHandlerOpts {
+            log_x_real_ip,
+            log_forwarded_for,
+            trusted_proxies,
+            ..Default::default()
+        };
+
+        assert!(proxy_headers_warning(&opts(false, false, vec![])).is_none());
+        assert!(proxy_headers_warning(&opts(true, true, vec![PROXY])).is_none());
+        assert!(proxy_headers_warning(&opts(true, false, vec![])).is_some());
+        assert!(proxy_headers_warning(&opts(false, true, vec![])).is_some());
+    }
+
+    #[test]
+    fn trusted_proxy_ipv4_compatible_is_not_ipv4() {
+        let req = request("X-Real-IP", "10.0.0.1");
+        // `::172.16.0.1` is IPv4-compatible, not IPv4-mapped, so it is a different address
+        let compatible = IpAddr::V6(Ipv4Addr::new(172, 16, 0, 1).to_ipv6_compatible());
+
+        assert_eq!(
+            x_real_ip(&trusting(vec![PROXY]), &req, from(compatible)),
+            None
+        );
+        assert_eq!(
+            x_real_ip(&trusting(vec![compatible]), &req, from(PROXY)),
+            None
+        );
+    }
+
+    #[test]
+    fn trusted_proxy_ipv6_loopback_is_not_ipv4() {
+        let req = request("X-Real-IP", "10.0.0.1");
+        let loopback = IpAddr::V6(Ipv6Addr::LOCALHOST);
+
+        for ipv4 in [Ipv4Addr::new(0, 0, 0, 1), Ipv4Addr::LOCALHOST] {
+            let ipv4 = IpAddr::V4(ipv4);
+            assert_eq!(x_real_ip(&trusting(vec![ipv4]), &req, from(loopback)), None);
+            assert_eq!(x_real_ip(&trusting(vec![loopback]), &req, from(ipv4)), None);
+        }
+    }
+
+    /// A request with both proxy headers set.
+    fn proxied_request() -> Request<()> {
+        Request::get("/")
+            .header("X-Real-IP", "10.0.0.1")
+            .header("X-Forwarded-For", "10.0.0.2, 10.0.0.3")
+            .body(())
+            .unwrap()
+    }
+
+    fn logging(
+        log_remote_address: bool,
+        log_x_real_ip: bool,
+        log_forwarded_for: bool,
+        trusted_proxies: Vec<IpAddr>,
+    ) -> RequestHandlerOpts {
+        RequestHandlerOpts {
+            log_remote_address,
+            log_x_real_ip,
+            log_forwarded_for,
+            trusted_proxies,
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn remote_addrs_gates() {
+        let req = proxied_request();
+        let addrs = |opts: RequestHandlerOpts| remote_addrs(&opts, &req, from(PROXY));
+
+        assert_eq!(addrs(logging(false, false, false, vec![PROXY])), "");
+        assert_eq!(
+            addrs(logging(true, false, false, vec![PROXY])),
+            " remote_addr=172.16.0.1:1234"
+        );
+        assert_eq!(
+            addrs(logging(false, true, false, vec![PROXY])),
+            " x_real_ip=10.0.0.1"
+        );
+        assert_eq!(
+            addrs(logging(false, false, true, vec![PROXY])),
+            " real_remote_ip=10.0.0.2"
+        );
+        assert_eq!(
+            addrs(logging(true, true, true, vec![PROXY])),
+            " remote_addr=172.16.0.1:1234 x_real_ip=10.0.0.1 real_remote_ip=10.0.0.2"
+        );
+    }
+
+    #[test]
+    fn remote_addrs_no_trusted_proxies() {
+        let req = proxied_request();
+        let opts = logging(true, true, true, vec![]);
+        assert_eq!(
+            remote_addrs(&opts, &req, from(PROXY)),
+            " remote_addr=172.16.0.1:1234"
+        );
+        assert_eq!(
+            remote_addrs(&logging(false, true, true, vec![]), &req, None),
+            ""
+        );
+    }
+
+    #[test]
+    fn remote_addrs_untrusted_peer() {
+        let req = proxied_request();
+        let opts = logging(true, true, true, vec![PROXY]);
+        let other = IpAddr::V4(Ipv4Addr::new(192, 168, 1, 1));
+        assert_eq!(
+            remote_addrs(&opts, &req, from(other)),
+            " remote_addr=192.168.1.1:1234"
+        );
+    }
+
+    #[test]
+    fn remote_addrs_ipv4_mapped_trusted_peer() {
+        let req = proxied_request();
+        let opts = logging(true, true, true, vec![PROXY]);
+        let mapped = IpAddr::V6(Ipv4Addr::new(172, 16, 0, 1).to_ipv6_mapped());
+        assert_eq!(
+            remote_addrs(&opts, &req, from(mapped)),
+            " remote_addr=[::ffff:172.16.0.1]:1234 x_real_ip=10.0.0.1 real_remote_ip=10.0.0.2"
+        );
+    }
+
+    #[test]
+    fn remote_addrs_forwarded_for_uses_first_header_line() {
+        let opts = logging(false, false, true, vec![PROXY]);
+
+        let req = Request::get("/")
+            .header("X-Forwarded-For", "10.0.0.2")
+            .header("X-Forwarded-For", "10.0.0.3")
+            .body(())
+            .unwrap();
+        assert_eq!(
+            remote_addrs(&opts, &req, from(PROXY)),
+            " real_remote_ip=10.0.0.2"
+        );
+
+        // An invalid first line is not skipped in favor of a later one
+        let req = Request::get("/")
+            .header("X-Forwarded-For", "unknown")
+            .header("X-Forwarded-For", "10.0.0.3")
+            .body(())
+            .unwrap();
+        assert_eq!(remote_addrs(&opts, &req, from(PROXY)), "");
+    }
+
+    #[test]
+    fn remote_addrs_invalid_first_entry() {
+        let opts = logging(false, true, true, vec![PROXY]);
+        let req = Request::get("/")
+            .header("X-Real-IP", "not-an-ip")
+            .header("X-Forwarded-For", "unknown, 10.0.0.3")
+            .body(())
+            .unwrap();
+        // The leftmost entry is used as-is, so an invalid one logs nothing
+        assert_eq!(remote_addrs(&opts, &req, from(PROXY)), "");
+    }
 }
