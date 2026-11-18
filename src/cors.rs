@@ -17,6 +17,7 @@ use hyper::{Request, Response, StatusCode};
 use std::collections::HashSet;
 
 use crate::body::Body;
+use crate::exts::http::append_vary_origin;
 use crate::{Error, error_page, handler::RequestHandlerOpts};
 
 /// It defines CORS instance.
@@ -487,10 +488,7 @@ pub(crate) fn post_process<T>(
         for (k, v) in cors_headers.0.iter() {
             resp.headers_mut().insert(k, v.to_owned());
         }
-        resp.headers_mut().insert(
-            http::header::VARY,
-            HeaderValue::from_name(http::header::ORIGIN),
-        );
+        append_vary_origin(&mut resp);
         resp.headers_mut().remove(http::header::ALLOW);
     }
     Ok(resp)
@@ -632,6 +630,26 @@ mod tests {
 
         let resp = post_process(&opts, &req, make_response())?;
         assert_eq!(get_allowed_origin(resp), Some("https://example.com".into()));
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_allowed_request_keeps_existing_vary() -> Result<(), Error> {
+        let opts = RequestHandlerOpts {
+            cors: make_cors_config(),
+            ..Default::default()
+        };
+
+        let mut req = make_request("GET", "https://example.com");
+        assert!(pre_process(&opts, &mut req).is_none());
+
+        let resp = Response::builder()
+            .header("Vary", "accept")
+            .body(crate::body::empty())
+            .unwrap();
+        let resp = post_process(&opts, &req, resp)?;
+        assert_eq!(resp.headers()["vary"], "accept, origin");
 
         Ok(())
     }
