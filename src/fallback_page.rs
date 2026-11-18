@@ -6,11 +6,13 @@
 //! Fallback page module useful for a custom page default.
 //!
 
+use headers::HeaderMapExt;
 use hyper::{Request, Response, StatusCode};
 use std::path::Path;
 
 use crate::body::Body;
 use crate::error_page::build_html_response;
+use crate::exts::headers::Accept;
 use crate::{Error, exts::http::MethodExt, handler::RequestHandlerOpts, helpers};
 
 /// Initializes fallback page processing
@@ -48,7 +50,33 @@ pub(crate) fn can_serve<T>(
     req: &Request<T>,
     status: StatusCode,
 ) -> bool {
-    req.method().is_get() && status == StatusCode::NOT_FOUND && !opts.page_fallback.is_empty()
+    req.method().is_get()
+        && status == StatusCode::NOT_FOUND
+        && !opts.page_fallback.is_empty()
+        && !is_missing_asset(req)
+}
+
+/// Returns whether the request is for a missing asset (like `/favicon.ico`) rather than a page.
+///
+/// When the client sends `Sec-Fetch-Dest`, any destination other than a document or a frame
+/// is an asset. Otherwise, it is a path with a known non-HTML file extension, sent by a client
+/// that did not explicitly ask for HTML. A wildcard like `*/*` does not count as asking for
+/// HTML, because browsers append it to the `Accept` header of image and script requests.
+fn is_missing_asset<T>(req: &Request<T>) -> bool {
+    if let Some(dest) = req.headers().get("sec-fetch-dest") {
+        return !matches!(dest.as_bytes(), b"document" | b"iframe" | b"frame");
+    }
+
+    let names_non_html_file = mime_guess::from_path(req.uri().path())
+        .first()
+        .is_some_and(|mime| !matches!(mime.essence_str(), "text/html" | "application/xhtml+xml"));
+
+    names_non_html_file
+        && !req.headers().typed_get::<Accept>().is_some_and(|accept| {
+            accept
+                .preferred_media_type(&["text/html", "application/xhtml+xml"])
+                .is_some()
+        })
 }
 
 /// Checks if a fallback response can be generated, i.e. if it is a `GET` request
@@ -72,6 +100,35 @@ mod tests {
             .uri("/")
             .body(crate::body::empty())
             .unwrap()
+    }
+
+    fn make_request_to(uri: &str, accept: Option<&str>, dest: Option<&str>) -> Request<Body> {
+        let mut builder = Request::builder().method("GET").uri(uri);
+        if let Some(accept) = accept {
+            builder = builder.header("Accept", accept);
+        }
+        if let Some(dest) = dest {
+            builder = builder.header("Sec-Fetch-Dest", dest);
+        }
+        builder.body(crate::body::empty()).unwrap()
+    }
+
+    fn fallback_status(uri: &str, accept: Option<&str>) -> StatusCode {
+        fallback_status_with_dest(uri, accept, None)
+    }
+
+    fn fallback_status_with_dest(
+        uri: &str,
+        accept: Option<&str>,
+        dest: Option<&str>,
+    ) -> StatusCode {
+        let opts = RequestHandlerOpts {
+            page_fallback: vec![1, 2, 3],
+            ..Default::default()
+        };
+        let req = make_request_to(uri, accept, dest);
+        let resp = make_response(&StatusCode::NOT_FOUND);
+        post_process(&opts, &req, resp).unwrap().status()
     }
 
     fn make_response(status: &StatusCode) -> Response<Body> {
@@ -186,5 +243,87 @@ mod tests {
         );
 
         Ok(())
+    }
+
+    #[test]
+    fn test_missing_asset_keeps_not_found() {
+        // Browsers ask for the favicon with an image `Accept` list that ends in `*/*`.
+        let accept = "image/avif,image/webp,image/png,image/svg+xml,image/*;q=0.8,*/*;q=0.5";
+        assert_eq!(
+            fallback_status("/favicon.ico", Some(accept)),
+            StatusCode::NOT_FOUND
+        );
+        assert_eq!(
+            fallback_status("/assets/app.js", Some("*/*")),
+            StatusCode::NOT_FOUND
+        );
+        assert_eq!(
+            fallback_status("/img/logo.png", None),
+            StatusCode::NOT_FOUND
+        );
+    }
+
+    #[test]
+    fn test_html_navigation_still_falls_back() {
+        let accept = "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8";
+        // A client-side route.
+        assert_eq!(fallback_status("/users/42", Some(accept)), StatusCode::OK);
+        assert_eq!(fallback_status("/users/42", Some("*/*")), StatusCode::OK);
+        assert_eq!(fallback_status("/users/42", None), StatusCode::OK);
+        // A route that happens to end in a file-like segment, requested as a page.
+        assert_eq!(
+            fallback_status("/files/report.pdf", Some(accept)),
+            StatusCode::OK
+        );
+    }
+
+    #[test]
+    fn test_html_and_unknown_extensions_still_fall_back() {
+        assert_eq!(fallback_status("/missing.html", None), StatusCode::OK);
+        assert_eq!(
+            fallback_status("/user/john.doe", Some("*/*")),
+            StatusCode::OK
+        );
+    }
+
+    #[test]
+    fn test_dotted_route_without_html_accept_keeps_not_found() {
+        // `.com` is a known extension, so non-browser clients get a 404 for such routes.
+        assert_eq!(
+            fallback_status("/search/example.com", Some("*/*")),
+            StatusCode::NOT_FOUND
+        );
+        assert_eq!(
+            fallback_status("/search/example.com", Some("text/html,*/*;q=0.8")),
+            StatusCode::OK
+        );
+    }
+
+    #[test]
+    fn test_sec_fetch_dest_decides_when_present() {
+        // Extensionless asset URLs are still detected.
+        assert_eq!(
+            fallback_status_with_dest("/assets/chunk-abc", Some("*/*"), Some("script")),
+            StatusCode::NOT_FOUND
+        );
+        assert_eq!(
+            fallback_status_with_dest("/api/users", Some("*/*"), Some("empty")),
+            StatusCode::NOT_FOUND
+        );
+        // Navigations fall back regardless of the extension.
+        for dest in ["document", "iframe", "frame"] {
+            assert_eq!(
+                fallback_status_with_dest("/search/example.com", Some("*/*"), Some(dest)),
+                StatusCode::OK
+            );
+        }
+    }
+
+    #[test]
+    fn test_zero_quality_html_does_not_count_as_requested() {
+        assert_eq!(
+            fallback_status("/favicon.ico", Some("text/html;q=0, */*")),
+            StatusCode::NOT_FOUND
+        );
     }
 }

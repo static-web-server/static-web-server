@@ -181,7 +181,11 @@ pub(super) fn init(general: &General, advanced: Option<Advanced>) -> Result<Hand
     health::init(general.health, &mut handler_opts);
 
     // Log remote address
-    log_addr::init(general.log_remote_address, &mut handler_opts);
+    #[cfg(unix)]
+    let unix_socket = general.unix_socket.is_some();
+    #[cfg(not(unix))]
+    let unix_socket = false;
+    log_addr::init(general.log_remote_address, unix_socket, &mut handler_opts);
 
     // Metrics endpoint
     #[cfg(feature = "metrics")]
@@ -231,7 +235,11 @@ pub(super) fn init(general: &General, advanced: Option<Advanced>) -> Result<Hand
     etag::init(general.etag, &mut handler_opts);
 
     // Security headers
-    security_headers::init(general.security_headers, &mut handler_opts);
+    #[cfg(feature = "tls")]
+    let tls = general.tls;
+    #[cfg(not(feature = "tls"))]
+    let tls = false;
+    security_headers::init(general.security_headers, tls, &mut handler_opts);
 
     // In-memory cache
     #[cfg(feature = "mem-cache")]

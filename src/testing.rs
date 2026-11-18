@@ -88,6 +88,10 @@ pub mod fixtures {
             // TODO: add support or `cors` when required
             cors: None,
             security_headers: general.security_headers,
+            #[cfg(feature = "tls")]
+            hsts: general.security_headers && general.tls,
+            #[cfg(not(feature = "tls"))]
+            hsts: false,
             cache_control_headers: general.cache_control_headers,
             etag: general.etag,
             page404: general.page404,

@@ -219,6 +219,8 @@ impl Settings {
         let mut max_blocking_threads = opts.max_blocking_threads;
         let mut grace_period = opts.grace_period;
         let mut idle_timeout = opts.idle_timeout;
+        let mut max_header_size = opts.max_header_size;
+        let mut max_connections = opts.max_connections;
 
         #[cfg(feature = "fallback-page")]
         let mut page_fallback = opts.page_fallback;
@@ -361,16 +363,6 @@ impl Settings {
                 if let Some(v) = general.https_redirect_from_hosts {
                     https_redirect_from_hosts = v
                 }
-                #[cfg(feature = "tls")]
-                match general.security_headers {
-                    Some(v) => security_headers = v,
-                    _ => {
-                        if tls {
-                            security_headers = true;
-                        }
-                    }
-                }
-                #[cfg(not(feature = "tls"))]
                 if let Some(v) = general.security_headers {
                     security_headers = v
                 }
@@ -429,6 +421,12 @@ impl Settings {
                 }
                 if let Some(v) = general.idle_timeout {
                     idle_timeout = v
+                }
+                if let Some(v) = general.max_header_size {
+                    max_header_size = v
+                }
+                if let Some(v) = general.max_connections {
+                    max_connections = v
                 }
                 #[cfg(feature = "fallback-page")]
                 if let Some(v) = general.page_fallback {
@@ -737,6 +735,19 @@ impl Settings {
             bail!("HTTP/2 requires TLS; enable --tls along with --tls-cert and --tls-key");
         }
 
+        // Runtime validation: a zero limit would reject every request
+        if max_header_size == 0 {
+            bail!("--max-header-size must be greater than 0");
+        }
+
+        // Runtime validation: the connection limit is a Tokio semaphore, which has a maximum
+        if max_connections > tokio::sync::Semaphore::MAX_PERMITS {
+            bail!(
+                "--max-connections must be at most {}",
+                tokio::sync::Semaphore::MAX_PERMITS
+            );
+        }
+
         // Runtime validation: ANSI log output requires pretty format
         if log_with_ansi && log_format != logger::LogFormat::Pretty {
             bail!("--log-with-ansi requires --log-format=pretty");
@@ -746,12 +757,6 @@ impl Settings {
         #[cfg(feature = "tls")]
         if https_redirect && !tls {
             bail!("--https-redirect requires TLS to be enabled (--tls)");
-        }
-
-        // Auto-enable security headers when TLS is on (applies when no config file is present)
-        #[cfg(feature = "tls")]
-        if tls && !security_headers {
-            security_headers = true;
         }
 
         Ok(Settings {
@@ -829,6 +834,8 @@ impl Settings {
                 max_blocking_threads,
                 grace_period,
                 idle_timeout,
+                max_header_size,
+                max_connections,
                 #[cfg(feature = "fallback-page")]
                 page_fallback,
                 access_log_format,
@@ -921,6 +928,37 @@ mod tests {
             .expect("open path without open should be rejected");
 
         assert_eq!(error.to_string(), "--open-path requires --open");
+    }
+
+    #[test]
+    fn max_header_size_rejects_zero() {
+        let error = Settings::get_unparsed(false, &["static-web-server", "--max-header-size", "0"])
+            .err()
+            .expect("zero max header size should be rejected");
+
+        assert_eq!(
+            error.to_string(),
+            "--max-header-size must be greater than 0"
+        );
+    }
+
+    #[test]
+    fn max_connections_rejects_values_above_semaphore_max() {
+        let max = tokio::sync::Semaphore::MAX_PERMITS;
+        let above = (max + 1).to_string();
+        let error =
+            Settings::get_unparsed(false, &["static-web-server", "--max-connections", &above])
+                .err()
+                .expect("max connections above the semaphore maximum should be rejected");
+
+        assert_eq!(
+            error.to_string(),
+            format!("--max-connections must be at most {max}")
+        );
+
+        let max = max.to_string();
+        Settings::get_unparsed(false, &["static-web-server", "--max-connections", &max])
+            .expect("max connections at the semaphore maximum should be accepted");
     }
 
     #[cfg(windows)]

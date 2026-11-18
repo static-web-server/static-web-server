@@ -55,7 +55,9 @@ pub async fn wait_for_signals(
     });
 
     tokio::spawn(async move {
-        if let Some(recv) = &mut *cancel_recv.lock().await {
+        // Wait on a clone, so each waiter sharing the receiver sees the change.
+        let recv = cancel_recv.lock().await.clone();
+        if let Some(mut recv) = recv {
             recv.changed().await.ok();
             last_tx.send(()).await.ok();
             tracing::info!("signals interrupted manually by cancel_recv");
@@ -91,8 +93,9 @@ pub async fn wait_for_ctrl_c(
     grace_period_secs: u8,
     shutting_down: Arc<AtomicBool>,
 ) {
-    if let Some(receiver) = &mut *cancel_recv.lock().await {
-        receiver.changed().await.ok();
+    let recv = cancel_recv.lock().await.clone();
+    if let Some(mut recv) = recv {
+        recv.changed().await.ok();
     }
 
     delay_graceful_shutdown(grace_period_secs, &shutting_down).await;
@@ -116,14 +119,16 @@ pub async fn wait_for_ctrl_c_or_cancel(
 
     let tx1 = tx.clone();
     tokio::spawn(async move {
-        if let Some(recv) = &mut *ctrl_c_recv.lock().await {
+        let recv = ctrl_c_recv.lock().await.clone();
+        if let Some(mut recv) = recv {
             recv.changed().await.ok();
             tx1.send(()).await.ok();
         }
     });
 
     tokio::spawn(async move {
-        if let Some(recv) = &mut *cancel_recv.lock().await {
+        let recv = cancel_recv.lock().await.clone();
+        if let Some(mut recv) = recv {
             recv.changed().await.ok();
             tx.send(()).await.ok();
         }

@@ -12,11 +12,15 @@
 //! 2. **Symlink policy** — when `--follow-symlinks` is off (the default),
 //!    no path component may be a symlink.
 //! 3. **Hidden file policy** — when `--include-hidden` is off (the default),
-//!    dotfiles are reported as `404 Not Found`.
+//!    dotfiles, and 8.3 short-name aliases that could stand for one, are
+//!    reported as `404 Not Found`.
 //!
-//! The cheap string-only hidden check is intentionally evaluated *after*
-//! containment so a path that escapes the base is rejected first, but
-//! *before* file open so we never touch hidden files on disk.
+//! The hidden check is intentionally evaluated *after* containment so a path
+//! that escapes the base is rejected first, but *before* file open so we never
+//! read hidden files. The dotfile test is string-only. The alias test lists the
+//! parent directory of each path component containing `~`, for the file served,
+//! again for a pre-compressed variant, and once more during markdown
+//! negotiation; its cost grows with the size of that directory.
 
 use hyper::StatusCode;
 use std::cell::RefCell;
@@ -145,9 +149,49 @@ pub(super) fn enforce(
         enforce_symlink_policy(relative, opts.base_path, file_path)?;
     }
 
-    if !opts.include_hidden && relative.is_hidden() {
+    if !opts.include_hidden {
+        enforce_hidden_policy(relative, opts.base_path, file_path)?;
+    }
+
+    Ok(())
+}
+
+/// Rejects a path with a hidden component, spelled with a leading dot or as
+/// an 8.3 short-name alias (`GIT~1` for `.git` on NTFS and FAT volumes).
+///
+/// An alias is rejected whether or not its target is hidden: its target can't
+/// be resolved on every platform. The alias check lists the parent directory
+/// of each component containing `~`, so a file below an unreadable directory
+/// with such a name gets `404 Not Found`.
+fn enforce_hidden_policy(
+    relative: &Path,
+    base_path: &Path,
+    file_path: &Path,
+) -> Result<(), StatusCode> {
+    if relative.is_hidden() {
         tracing::trace!(
             "considering hidden file {} as not found",
+            file_path.display()
+        );
+        return Err(StatusCode::NOT_FOUND);
+    }
+
+    // Only a directory SWS can't list fails here, but a client can request it
+    // repeatedly, so don't log it as an error.
+    let has_alias = relative
+        .contains_short_name_alias(base_path)
+        .map_err(|err| {
+            tracing::warn!(
+                "unable to check file path '{}' for short-name aliases: {:#}",
+                relative.display(),
+                err,
+            );
+            StatusCode::NOT_FOUND
+        })?;
+
+    if has_alias {
+        tracing::trace!(
+            "considering short-name alias {} as not found",
             file_path.display()
         );
         return Err(StatusCode::NOT_FOUND);
@@ -252,4 +296,42 @@ fn enforce_symlink_policy(
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::enforce_hidden_policy;
+    use hyper::StatusCode;
+    use std::path::Path;
+
+    fn check(base: &Path, relative: &str) -> Result<(), StatusCode> {
+        enforce_hidden_policy(Path::new(relative), base, &base.join(relative))
+    }
+
+    #[test]
+    fn enforce_hidden_policy_rejects_dotfiles_and_short_name_aliases() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::create_dir(dir.path().join(".git")).unwrap();
+        std::fs::write(dir.path().join(".git/config"), "config").unwrap();
+        std::fs::write(dir.path().join(".env"), "env").unwrap();
+
+        for relative in [".git/config", ".env", "GIT~1/config", "GIT~1", "ENV~1"] {
+            assert_eq!(
+                check(dir.path(), relative),
+                Err(StatusCode::NOT_FOUND),
+                "{relative}"
+            );
+        }
+    }
+
+    #[test]
+    fn enforce_hidden_policy_accepts_names_with_tilde() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::create_dir(dir.path().join("a~b")).unwrap();
+        std::fs::write(dir.path().join("a~b/report~1.txt"), "report").unwrap();
+
+        for relative in ["a~b", "a~b/report~1.txt", "index.html"] {
+            assert_eq!(check(dir.path(), relative), Ok(()), "{relative}");
+        }
+    }
 }

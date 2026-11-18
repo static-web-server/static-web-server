@@ -51,7 +51,7 @@ mod tests {
                 let headers = res.headers();
 
                 assert_eq!(res.status(), 200);
-                assert!(!headers.contains_key("content-length"));
+                assert_eq!(headers["content-length"], archive_buf.len().to_string());
                 assert_eq!(headers["content-encoding"], "br");
                 assert_eq!(headers["accept-ranges"], "bytes");
                 assert!(!headers["last-modified"].is_empty());
@@ -107,7 +107,7 @@ mod tests {
                 let headers = res.headers();
 
                 assert_eq!(res.status(), 200);
-                assert!(!headers.contains_key("content-length"));
+                assert_eq!(headers["content-length"], archive_buf.len().to_string());
                 assert_eq!(headers["content-encoding"], "br");
                 assert_eq!(headers["accept-ranges"], "bytes");
                 assert!(!headers["last-modified"].is_empty());
@@ -265,7 +265,7 @@ mod tests {
                 let headers = res.headers();
 
                 assert_eq!(res.status(), 200);
-                assert!(!headers.contains_key("content-length"));
+                assert_eq!(headers["content-length"], archive_buf.len().to_string());
                 assert_eq!(headers["content-encoding"], "zstd");
                 assert_eq!(headers["accept-ranges"], "bytes");
                 assert!(!headers["last-modified"].is_empty());
@@ -658,5 +658,115 @@ mod tests {
             }
             Err(err) => panic!("unexpected error: {err}"),
         }
+    }
+
+    // A `304`, `412` or `416` for a pre-compressed variant has no content, so it gets
+    // no `Content-Encoding` either.
+    #[tokio::test]
+    async fn compression_static_skips_responses_without_content() {
+        let opts = fixture_settings("toml/handler_fixtures.toml");
+        let general = General {
+            #[cfg(any(
+                feature = "compression",
+                feature = "compression-gzip",
+                feature = "compression-brotli",
+                feature = "compression-zstd",
+                feature = "compression-deflate"
+            ))]
+            compression: false,
+            compression_static: true,
+            etag: true,
+            ..opts.general
+        };
+        let req_handler_opts = fixture_req_handler_opts(general, opts.advanced);
+        let req_handler = fixture_req_handler(req_handler_opts);
+        let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
+
+        let request = |name: &'static str, value: &str| {
+            let mut req = Request::new(());
+            *req.uri_mut() = "http://localhost/assets/index.html".parse().unwrap();
+            req.headers_mut()
+                .insert(http::header::ACCEPT_ENCODING, "gzip".parse().unwrap());
+            req.headers_mut()
+                .insert(name, value.parse::<http::HeaderValue>().unwrap());
+            req
+        };
+
+        let res = req_handler
+            .handle(&mut request("accept", "*/*"), remote_addr)
+            .await
+            .unwrap();
+        assert_eq!(res.status(), 200);
+        assert_eq!(res.headers()["content-encoding"], "gzip");
+        let etag = res.headers()["etag"].to_str().unwrap().to_owned();
+
+        for (name, value, status) in [
+            ("if-none-match", etag.as_str(), 304),
+            ("if-match", "\"x\"", 412),
+            ("range", "bytes=99999-", 416),
+        ] {
+            for method in [hyper::Method::GET, hyper::Method::HEAD] {
+                let mut req = request(name, value);
+                *req.method_mut() = method.clone();
+                let res = req_handler.handle(&mut req, remote_addr).await.unwrap();
+                assert_eq!(res.status(), status, "{method} {name}");
+                assert_eq!(
+                    res.headers().get("content-encoding"),
+                    None,
+                    "{method} {name}"
+                );
+            }
+        }
+    }
+
+    // `tiny.js.br` is larger than `tiny.js`, so the length can't be the original's
+    #[tokio::test]
+    async fn compression_static_variant_has_content_length() {
+        let variant_len = std::fs::metadata("tests/fixtures/public/assets/tiny.js.br")
+            .expect("unexpected error when reading the variant metadata")
+            .len();
+
+        let opts = fixture_settings("toml/handler_fixtures.toml");
+        let general = General {
+            compression_static: true,
+            ..opts.general
+        };
+        let req_handler_opts = fixture_req_handler_opts(general, opts.advanced);
+        let req_handler = fixture_req_handler(req_handler_opts);
+        let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
+
+        let request = |method: hyper::Method| {
+            let mut req = Request::new(());
+            *req.method_mut() = method;
+            *req.uri_mut() = "http://localhost/assets/tiny.js".parse().unwrap();
+            req.headers_mut()
+                .insert(http::header::ACCEPT_ENCODING, "br".parse().unwrap());
+            req
+        };
+
+        for method in [hyper::Method::GET, hyper::Method::HEAD] {
+            let res = req_handler
+                .handle(&mut request(method.clone()), remote_addr)
+                .await
+                .unwrap();
+            assert_eq!(res.status(), 200, "{method}");
+            assert_eq!(res.headers()["content-encoding"], "br", "{method}");
+            assert_eq!(
+                res.headers()["content-length"],
+                variant_len.to_string(),
+                "{method}"
+            );
+        }
+
+        let mut req = request(hyper::Method::GET);
+        req.headers_mut()
+            .insert(http::header::RANGE, "bytes=0-9".parse().unwrap());
+        let res = req_handler.handle(&mut req, remote_addr).await.unwrap();
+        assert_eq!(res.status(), 206);
+        assert_eq!(
+            res.headers()["content-range"],
+            format!("bytes 0-9/{variant_len}")
+        );
+        assert_eq!(res.headers()["content-length"], "10");
     }
 }

@@ -219,9 +219,10 @@ pub mod tests {
                 .starts_with("HTTP/1.1 200")
         );
 
+        // Only the file request is counted
         let metrics = fetch(port, "/metrics", "localhost").await;
-        assert!(metrics.contains(r#"host="file.test""#), "{metrics}");
-        assert!(!metrics.contains(r#"host="probe.test""#), "{metrics}");
+        let counted = r#"sws_http_requests_total{host="other",method="GET",status="2xx"} 1"#;
+        assert!(metrics.lines().any(|line| line == counted), "{metrics}");
 
         stop_server(cancel_tx, server).await;
     }

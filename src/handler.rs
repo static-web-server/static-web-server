@@ -42,7 +42,7 @@ use crate::mem_cache::cache::MemCacheOpts;
 use crate::{
     Error, Result, access_logs, control_headers, cors, custom_headers, error_page,
     exts::http::MethodExt,
-    health, log_addr, maintenance_mode, redirects, rewrites, security_headers,
+    health, maintenance_mode, redirects, rewrites, security_headers,
     settings::Advanced,
     static_files::{self, HandleOpts},
     text_charset, virtual_hosts,
@@ -95,6 +95,8 @@ pub struct RequestHandlerOpts {
     pub cors: Option<cors::Configured>,
     /// Security headers feature.
     pub security_headers: bool,
+    /// Send `Strict-Transport-Security` with the security headers. Only set when the server uses TLS.
+    pub hsts: bool,
     /// Cache control headers feature.
     pub cache_control_headers: bool,
     /// Weak ETag header feature.
@@ -179,6 +181,7 @@ impl Default for RequestHandlerOpts {
             #[cfg(feature = "mem-cache")]
             memory_cache: None,
             security_headers: false,
+            hsts: false,
             cache_control_headers: true,
             etag: true,
             page404: PathBuf::from("./404.html"),
@@ -245,18 +248,15 @@ impl RequestHandler {
         #[cfg(feature = "mem-cache")]
         let memory_cache = self.opts.memory_cache.as_ref();
 
-        if self.opts.access_log_format.is_none() {
-            log_addr::pre_process(&self.opts, req, remote_addr);
-        }
         // Rewrites replace the request URI and `Host`, so keep the ones the client sent for the
         // access log
-        let client_req = self
-            .opts
-            .access_log_format
-            .as_ref()
-            .map(|_| access_logs::ClientRequest::new(req));
+        let access_log = access_logs::enabled(&self.opts, req).then(|| {
+            let format = self.opts.access_log_format.as_ref();
+            access_logs::AccessLog::new(format, &self.opts, req, remote_addr)
+        });
 
         async move {
+            #[cfg(feature = "metrics")]
             let req_start = std::time::Instant::now();
             // Health probes are excluded, like they are from `info` logs
             #[cfg(feature = "metrics")]
@@ -345,7 +345,7 @@ impl RequestHandler {
                 let uri_path = uri_path_md.as_deref().unwrap_or(req.uri().path());
 
                 // Static files
-                let (resp, file_path) = match static_files::handle(&HandleOpts {
+                let (resp, file_path, is_dir_listing) = match static_files::handle(&HandleOpts {
                     method: req.method(),
                     headers: req.headers(),
                     #[cfg(feature = "mem-cache")]
@@ -370,7 +370,7 @@ impl RequestHandler {
                 })
                 .await
                 {
-                    Ok(result) => (result.resp, Some(result.file_path)),
+                    Ok(result) => (result.resp, result.file_path, result.is_dir_listing),
                     Err(status) => {
                         #[cfg(feature = "fallback-page")]
                         let will_serve_fallback = fallback_page::can_serve(&self.opts, req, status);
@@ -395,7 +395,7 @@ impl RequestHandler {
                             )?
                         };
 
-                        (resp, None)
+                        (resp, None, false)
                     }
                 };
 
@@ -406,8 +406,14 @@ impl RequestHandler {
                 // Append CORS headers if they are present
                 let resp = cors::post_process(&self.opts, req, resp)?;
 
-                // Set Content-Type for markdown files
-                let resp = crate::markdown::post_process(uri_path_md.is_some(), &self.opts, resp)?;
+                // Add `Vary: Accept` and set Content-Type for markdown files
+                let resp = crate::markdown::post_process(
+                    uri_path_md.is_some(),
+                    is_dir_listing,
+                    file_path.as_deref(),
+                    &self.opts,
+                    resp,
+                )?;
 
                 // Declare a default charset for `text/*` responses
                 let resp = text_charset::post_process(&self.opts, resp)?;
@@ -440,19 +446,11 @@ impl RequestHandler {
                 custom_headers::post_process(&self.opts, req, resp, file_path.as_ref(), early)
             });
 
-            if let (Some(format), Some(client_req), Ok(resp)) =
-                (&self.opts.access_log_format, &client_req, &result)
-            {
-                access_logs::log_response(
-                    format,
-                    &self.opts,
-                    req,
-                    client_req,
-                    remote_addr,
-                    resp,
-                    req_start.elapsed(),
-                );
-            }
+            // The access log line is written once the response body is sent
+            let result = match access_log {
+                Some(access_log) => result.map(|resp| access_log.wrap(resp)),
+                None => result,
+            };
 
             #[cfg(feature = "metrics")]
             if metrics_enabled {
@@ -465,6 +463,7 @@ impl RequestHandler {
                         .and_then(|v| v.parse::<u64>().ok())
                         .unwrap_or(0);
                     metrics::record_request(
+                        &self.opts,
                         req,
                         resp.status(),
                         bytes,

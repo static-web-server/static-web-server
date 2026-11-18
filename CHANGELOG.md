@@ -7,6 +7,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v3.0.0-beta.3] - 2026-11-11
+
+This beta adds Kubernetes-style health probes, configurable access logs, custom headers for early responses, connection and request header limits, alongside memory cache, compression and content negotiation fixes. It also includes security fixes. The related advisories will be published separately soon.
+
+### Added
+
+- **Configurable access log format.** Added `--access-log-format` to log one line per request from `%{token}` placeholders such as `%{remote_addr}`, `%{status}`, `%{bytes}` and `%{duration}`, with environment variable and TOML support. An invalid format fails at startup. ([#785](https://github.com/static-web-server/static-web-server/pull/785) by [@frenzzy](https://github.com/frenzzy) and [@chrissnell](https://github.com/chrissnell))
+- **Access log line on body completion.** The access log line is now written once the response body finishes, so `%{bytes}` counts the bytes sent, including on-the-fly compression, and `%{duration}` covers the whole transfer. Aborted downloads log the bytes sent so far. ([#795](https://github.com/static-web-server/static-web-server/pull/795) by [@joseluisq](https://github.com/joseluisq))
+- **Custom headers for early responses.** Added an optional `scope` to `[[advanced.headers]]` rules. `scope = "all"` also applies headers to responses returned before the static file handler, such as redirects, `405`, health probes, metrics, Basic auth challenges and the maintenance page. The default `scope = "files"` keeps the current behavior. ([#784](https://github.com/static-web-server/static-web-server/pull/784) by [@frenzzy](https://github.com/frenzzy))
+- **Connection limit.** Added `--max-connections` to limit the connections served at the same time across all listeners. New connections wait for a free slot instead of being rejected. The default `0` keeps connections unlimited. Connections closed by the idle or request header timeout are now logged at `debug`. ([#799](https://github.com/static-web-server/static-web-server/pull/799) by [@joseluisq](https://github.com/joseluisq))
+- **Request header size limit.** Added `--max-header-size` to limit the size of request headers in bytes, `16384` by default, with environment variable and TOML support. For HTTP/1 it includes the request line, for HTTP/2 it applies to the header list. Larger requests get `431 Request Header Fields Too Large`, and a value of `0` fails at startup. (by [@joseluisq](https://github.com/joseluisq))
+- **Readiness check for the root directory.** `/readyz` now returns `503` while the `--root` directory is missing or not a directory, for example on an unmounted volume, while `/livez` stays `200`. ([#793](https://github.com/static-web-server/static-web-server/pull/793) by [@joseluisq](https://github.com/joseluisq))
+
+### Changed
+
+- **Breaking:** **Kubernetes-style health probes.** `--health` now serves `/livez` (liveness) and `/readyz` (readiness) instead of `/health`. `/readyz` returns `503` once a shutdown signal arrives so load balancers can drain connections during `--grace-period`. ([#751](https://github.com/static-web-server/static-web-server/pull/751) by [@TheBigUserOne](https://github.com/TheBigUserOne))
+- **Breaking:** **Dual-stack default host.** The default `--host ::` now accepts IPv4 connections too on Windows, FreeBSD and Linux with `net.ipv6.bindv6only=1`, matching Linux and macOS. SWS fails to start if another service already listens on `0.0.0.0` with the same port, and logs a warning where the OS refuses dual-stack sockets. ([#804](https://github.com/static-web-server/static-web-server/pull/804) by [@joseluisq](https://github.com/joseluisq))
+- **Breaking:** **HSTS only over TLS.** `Strict-Transport-Security` is now sent only when `--tls` is enabled, as RFC 6797 requires, and its value no longer includes `preload`. Behind a TLS-terminating proxy, add the header at the proxy or with an `[[advanced.headers]]` rule. (by [@joseluisq](https://github.com/joseluisq))
+- **Breaking:** **Proxy headers require trusted proxies.** `--log-x-real-ip`, `--log-forwarded-for` and the `%{x_real_ip}` and `%{forwarded_for}` access log tokens now use the headers only for requests from `--trusted-proxies`, which trusts no proxy by default. SWS warns at startup when these headers are set to be logged without trusted proxies or on a Unix socket. (by [@joseluisq](https://github.com/joseluisq))
+- **Metrics label values.** Request metrics now label the host with the matching `[advanced.virtual-hosts]` name, without the port, or `other` when none matches, and the method as `GET`, `HEAD`, `OPTIONS` or `other`. (by [@joseluisq](https://github.com/joseluisq))
+- **One log line per request.** Without `--access-log-format`, each request now logs a single `response` line with its `status` after the response, replacing the `incoming request` line. Health probes stay at the `debug` level. ([#786](https://github.com/static-web-server/static-web-server/pull/786) by [@frenzzy](https://github.com/frenzzy) and [@TheBigUserOne](https://github.com/TheBigUserOne))
+- **Health probes excluded from metrics.** `/livez` and `/readyz` requests no longer count toward the `sws_http_*` request metrics. ([#792](https://github.com/static-web-server/static-web-server/pull/792) by [@joseluisq](https://github.com/joseluisq))
+- **Dependency updates.** Updated dependencies and made `chrono` optional again (`directory-listing`), reducing the `--no-default-features` binary by about 33 KB. ([#795](https://github.com/static-web-server/static-web-server/pull/795), [#806](https://github.com/static-web-server/static-web-server/pull/806) by [@joseluisq](https://github.com/joseluisq))
+- **Docker base image updates.** Updated Alpine images to `3.24.4`. ([#801](https://github.com/static-web-server/static-web-server/pull/801) by [@joseluisq](https://github.com/joseluisq))
+- **AI-assisted contributor guidance.** Improved the project skill files for AI-assisted tools. ([#800](https://github.com/static-web-server/static-web-server/pull/800) by [@joseluisq](https://github.com/joseluisq))
+
+### Fixed
+
+- **Memory cache with directory requests.** With `[advanced.memory-cache]`, directory listings, other `--index-files` entries and `<dir>.html` siblings no longer return `404`. Cached directory lookups now follow the `--index-files` order. ([#802](https://github.com/static-web-server/static-web-server/pull/802) by [@joseluisq](https://github.com/joseluisq))
+- **Content-Length for pre-compressed variants.** Pre-compressed files served from disk now include their `Content-Length`, also for byte ranges and `HEAD` requests, and count toward `sws_http_response_bytes_total`. ([#803](https://github.com/static-web-server/static-web-server/pull/803) by [@joseluisq](https://github.com/joseluisq))
+- **Fallback page for missing assets.** `--page-fallback` no longer replaces `404` responses for paths with a known non-HTML extension, such as `/favicon.ico`, unless the `Accept` header asks for HTML. Client-side routes and browser navigations still get the fallback page. ([#787](https://github.com/static-web-server/static-web-server/pull/787) by [@jadhavgaurav](https://github.com/jadhavgaurav))
+- **Vary header with markdown negotiation.** With `--accept-markdown`, HTML and markdown responses now include `Vary: Accept`, and existing `Vary: Accept-Encoding` values no longer prevent adding it. ([#789](https://github.com/static-web-server/static-web-server/pull/789) by [@davlgd](https://github.com/davlgd))
+- **Vary header on directory listings.** With `--accept-markdown`, directory listings in any format now include `Vary: Accept`, so shared caches keep JSON listings and markdown responses apart. ([#798](https://github.com/static-web-server/static-web-server/pull/798) by [@joseluisq](https://github.com/joseluisq))
+- **Access log filtering and CONNECT targets.** The access log is built only when its log level is enabled, and `%{uri}` logs the authority of `CONNECT` requests instead of `/`. ([#794](https://github.com/static-web-server/static-web-server/pull/794) by [@joseluisq](https://github.com/joseluisq))
+- **Compression headers on empty responses.** On-the-fly compression no longer sets `Content-Encoding` on `1xx`, `204`, `304` or empty responses, and pre-compressed files set it only on successful responses. HTTP/2 clients no longer reject `304` responses with compression enabled. (by [@joseluisq](https://github.com/joseluisq))
+- **Explicit security headers setting.** `--security-headers=false` is now respected together with `--tls`, and a config file without `security-headers` no longer turns the headers back on. (by [@joseluisq](https://github.com/joseluisq))
+- **IPv4 trusted proxies on dual-stack listeners.** IPv4 `--trusted-proxies` entries now match clients connecting through the default `::` host, which appear as IPv4-mapped IPv6 addresses. (by [@joseluisq](https://github.com/joseluisq))
+
+### Security
+
+- **Request handling hardening.** Hardened request handling in Basic auth, the memory cache, static file serving and markdown negotiation. Details will follow with the related advisories. (by [@joseluisq](https://github.com/joseluisq))
+
+For more details see the [v3.0.0-beta.3 milestone][v300beta3-milestone] and the full changelog [v3.0.0-beta.2...v3.0.0-beta.3][v300beta3-diff].
+
 ## [v3.0.0-beta.2] - 2026-10-18
 
 This beta adds browser launch, status-based custom headers and automatic directory listing formats, alongside compression fixes and container image updates. It also includes security fixes. The related advisories will be published separately soon.
@@ -102,8 +146,11 @@ Visit our updated website at [static-web-server.net](https://static-web-server.n
 
 - **Markdown content negotiation security hardening.** Added security policies for the markdown content negotiation module in a similar way to the static files module. ([#719](https://github.com/static-web-server/static-web-server/pull/719))
 
-[unreleased]: https://github.com/static-web-server/static-web-server/compare/v3.0.0-beta.2...HEAD
+[unreleased]: https://github.com/static-web-server/static-web-server/compare/v3.0.0-beta.3...HEAD
+[v3.0.0-beta.3]: https://github.com/static-web-server/static-web-server/compare/v3.0.0-beta.2...v3.0.0-beta.3
 [v3.0.0-beta.2]: https://github.com/static-web-server/static-web-server/compare/v3.0.0-beta.1...v3.0.0-beta.2
 [v3.0.0-beta.1]: https://github.com/static-web-server/static-web-server/releases/tag/v3.0.0-beta.1
 [v300beta2-diff]: https://github.com/static-web-server/static-web-server/compare/v3.0.0-beta.1...v3.0.0-beta.2
 [v300beta2-milestone]: https://github.com/static-web-server/static-web-server/milestone/42?closed=1
+[v300beta3-diff]: https://github.com/static-web-server/static-web-server/compare/v3.0.0-beta.2...v3.0.0-beta.3
+[v300beta3-milestone]: https://github.com/static-web-server/static-web-server/milestone/43?closed=1

@@ -48,7 +48,7 @@ settings/  →  server/opts.rs  →  service.rs  →  handler.rs  →  static_fi
 
 ### Request Pipeline (linear, 3 phases)
 
-**Pre-processing** (may short-circuit): method check → health → CORS → basic auth → metrics → maintenance → redirects → rewrites → virtual hosts → markdown negotiation
+**Pre-processing** (may short-circuit): method check → health probes (`/livez`, `/readyz`) → CORS → basic auth (all methods; CORS preflights exempt) → metrics → maintenance → redirects → rewrites → virtual hosts → markdown negotiation
 
 **Core**: `static_files::handle()` — memory cache, path sanitization, resolution (index files, pre-compressed variants), security checks, dir listing, conditional requests (ETag), byte-range
 
@@ -76,6 +76,8 @@ Rules: pre-processing steps return early when they handle the request. Post-proc
 | `fs/` | File system: path sanitization, metadata, streaming |
 | `directory_listing/` | HTML/JSON directory index |
 | `basic_auth.rs` | BCrypt-based HTTP basic auth |
+| `health.rs` | `/livez` and `/readyz` probes |
+| `access_logs.rs`, `log_addr.rs` | Per-request access log, trusted-proxy address logging |
 | `error.rs` | Crate error types (`Error`, `Result<T>`) |
 | `body.rs` | Unified response body (`BoxBody`) |
 | `testing.rs` | `testing::fixtures` helpers for tests |
@@ -174,12 +176,13 @@ Call `static_files::handle()` directly with `HandleOpts` for isolated file-servi
 
 ## Detailed Skill References
 
-For in-depth guidance, load the skill files in `.agents/skills/` (`.claude` is a symlink to `.agents`):
+For in-depth guidance, load the skill files in `.agents/skills/` (`.claude/skills` is a symlink to `.agents/skills`; Claude-specific files such as `.claude/settings.json` live beside it):
 
 | Skill | Load when |
 |-------|-----------|
 | `design/SKILL.md` | Adding a config option, pipeline step, feature flag, or cross-module feature. Canonical module map, pipeline table, defaults |
-| `rust-backend/SKILL.md` | Editing anything under `src/`; CI-parity commands, lints, feature-gating, module pattern |
+| `rust-conventions/SKILL.md` | Editing anything under `src/`; CI-parity commands, lints, feature-gating, module pattern |
+| `coding-style/SKILL.md` | Naming, function shape, nesting, comments, `#[cfg]` placement, log wording; code that reads as one author's |
 | `testing/SKILL.md` | Writing or fixing tests, fixtures, proptests, fuzz targets, benches |
 | `security/SKILL.md` | Touching path handling, auth, CORS, TLS, headers, or untrusted input |
 | `static-file-serving/SKILL.md` | Compression, caching, ETag, ranges, listing, TOML rules, user-facing examples |
@@ -187,6 +190,8 @@ For in-depth guidance, load the skill files in `.agents/skills/` (`.claude` is a
 | `code-quality/SKILL.md` | Reviewing a diff or checking a change is done |
 | `issue-tracking/SKILL.md` | Triaging, reproducing, and fixing bugs |
 | `prose/SKILL.md` | Commit messages, CHANGELOG, PR text, rustdoc, docs |
+| `pr-review/SKILL.md` | Reviewing a standard PR or an advisory (private-fork) PR |
+| `security-advisory/SKILL.md` | Drafting or updating a GitHub Security Advisory |
 
 ## Further Reading
 

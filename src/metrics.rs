@@ -16,7 +16,10 @@ use prometheus::{
 };
 
 use crate::body::Body;
-use crate::{Error, exts::http::MethodExt, handler::RequestHandlerOpts};
+use crate::{Error, exts::http::MethodExt, handler::RequestHandlerOpts, virtual_hosts};
+
+/// Label for a request method or host outside the known set
+const OTHER_LABEL: &str = "other";
 
 // Histogram buckets tuned for static file serving (50µs to 10s).
 // Sub-millisecond range captures cache hits and small in-memory responses.
@@ -176,16 +179,22 @@ pub fn pre_process<T>(
 }
 
 /// Records HTTP request metrics after a response is produced.
-pub fn record_request<T>(req: &Request<T>, status: StatusCode, bytes: u64, elapsed: f64) {
+///
+/// Labels taken from the request come from a fixed set, so clients can't
+/// create new series: `method` is `GET`, `HEAD`, `OPTIONS` or `other`, and
+/// `host` is a name from `[advanced.virtual-hosts]` or `other`.
+pub fn record_request<T>(
+    opts: &RequestHandlerOpts,
+    req: &Request<T>,
+    status: StatusCode,
+    bytes: u64,
+    elapsed: f64,
+) {
     if req.uri().path() == "/metrics" {
         return;
     }
-    let m = req.method().as_str();
-    let host = req
-        .headers()
-        .get(hyper::header::HOST)
-        .and_then(|v| v.to_str().ok())
-        .unwrap_or("");
+    let m = method_label(req);
+    let host = host_label(opts, req);
     let sc = status_class(status.as_u16());
     HTTP_REQUESTS_TOTAL.with_label_values(&[m, sc, host]).inc();
     HTTP_REQUEST_DURATION_SECONDS
@@ -218,6 +227,29 @@ pub fn dec_connections() {
     HTTP_CONNECTIONS_ACTIVE.dec();
 }
 
+fn method_label<T>(req: &Request<T>) -> &str {
+    let method = req.method();
+    if method.is_allowed() {
+        method.as_str()
+    } else {
+        OTHER_LABEL
+    }
+}
+
+fn host_label<'a, T>(opts: &'a RequestHandlerOpts, req: &Request<T>) -> &'a str {
+    let vhosts = opts
+        .advanced_opts
+        .as_ref()
+        .and_then(|advanced| advanced.virtual_hosts.as_deref());
+    let (Some(vhosts), Some(host)) = (vhosts, virtual_hosts::request_host(req)) else {
+        return OTHER_LABEL;
+    };
+    vhosts
+        .iter()
+        .find(|vhost| vhost.host == host)
+        .map_or(OTHER_LABEL, |vhost| vhost.host.as_str())
+}
+
 fn status_class(code: u16) -> &'static str {
     match code / 100 {
         1 => "1xx",
@@ -232,7 +264,11 @@ fn status_class(code: u16) -> &'static str {
 mod tests {
     use super::*;
     use crate::handler::RequestHandlerOpts;
+    use crate::settings::{Advanced, VirtualHosts};
     use hyper::Request;
+    use prometheus::core::Collector;
+    use std::path::PathBuf;
+    use std::sync::Mutex;
 
     fn make_request(method: &str, uri: &str) -> Request<Body> {
         Request::builder()
@@ -308,52 +344,114 @@ mod tests {
         assert_eq!(status_class(999), "5xx");
     }
 
-    #[test]
-    fn test_record_request() {
-        let before = HTTP_REQUESTS_TOTAL
-            .with_label_values(&["GET", "2xx", "example.com"])
-            .get();
-        let bytes_before = HTTP_RESPONSE_BYTES_TOTAL
-            .with_label_values(&["GET", "2xx", "example.com"])
-            .get();
+    /// The counters are global, so tests that record requests run one at a time
+    static RECORD_LOCK: Mutex<()> = Mutex::new(());
 
-        let req = Request::builder()
-            .method("GET")
+    fn vhost_opts(hosts: &[&str]) -> RequestHandlerOpts {
+        let virtual_hosts = hosts
+            .iter()
+            .map(|host| VirtualHosts {
+                host: host.to_string(),
+                root: PathBuf::from("/var/www"),
+            })
+            .collect();
+        RequestHandlerOpts {
+            advanced_opts: Some(Advanced {
+                virtual_hosts: Some(virtual_hosts),
+                ..Default::default()
+            }),
+            ..Default::default()
+        }
+    }
+
+    fn host_request(method: &str, host: &str) -> Request<Body> {
+        Request::builder()
+            .method(method)
             .uri("/index.html")
-            .header(hyper::header::HOST, "example.com")
+            .header(hyper::header::HOST, host)
             .body(crate::body::empty())
-            .unwrap();
-        record_request(&req, StatusCode::OK, 1024, 0.005);
+            .unwrap()
+    }
 
+    fn requests_total(labels: [&str; 3]) -> u64 {
+        HTTP_REQUESTS_TOTAL.with_label_values(&labels).get()
+    }
+
+    fn label_values(name: &str) -> Vec<String> {
+        HTTP_REQUESTS_TOTAL
+            .collect()
+            .iter()
+            .flat_map(|family| family.get_metric())
+            .flat_map(|metric| metric.get_label())
+            .filter(|label| label.name() == name)
+            .map(|label| label.value().to_owned())
+            .collect()
+    }
+
+    #[test]
+    fn test_record_request_labels_virtual_host() {
+        let _lock = RECORD_LOCK.lock().unwrap_or_else(|err| err.into_inner());
+        let opts = vhost_opts(&["example.com"]);
+        let labels = ["GET", "2xx", "example.com"];
+        let before = requests_total(labels);
+        let bytes_before = HTTP_RESPONSE_BYTES_TOTAL.with_label_values(&labels).get();
+
+        let req = host_request("GET", "example.com:8080");
+        record_request(&opts, &req, StatusCode::OK, 1024, 0.005);
+
+        assert_eq!(requests_total(labels), before + 1);
         assert_eq!(
-            HTTP_REQUESTS_TOTAL
-                .with_label_values(&["GET", "2xx", "example.com"])
-                .get(),
-            before + 1
-        );
-        assert_eq!(
-            HTTP_RESPONSE_BYTES_TOTAL
-                .with_label_values(&["GET", "2xx", "example.com"])
-                .get(),
+            HTTP_RESPONSE_BYTES_TOTAL.with_label_values(&labels).get(),
             bytes_before + 1024
         );
     }
 
     #[test]
+    fn test_record_request_labels_unknown_host_as_other() {
+        let _lock = RECORD_LOCK.lock().unwrap_or_else(|err| err.into_inner());
+        let labels = ["GET", "2xx", "other"];
+        let before = requests_total(labels);
+
+        // With and without virtual hosts configured
+        let cases = [
+            (vhost_opts(&["example.com"]), "unknown-1.test"),
+            (RequestHandlerOpts::default(), "unknown-2.test"),
+        ];
+        for (opts, host) in &cases {
+            let req = host_request("GET", host);
+            record_request(opts, &req, StatusCode::OK, 0, 0.001);
+        }
+
+        assert_eq!(requests_total(labels), before + 2);
+        let hosts = label_values("host");
+        assert!(!hosts.iter().any(|h| h.starts_with("unknown-")));
+    }
+
+    #[test]
+    fn test_record_request_labels_unknown_method_as_other() {
+        let _lock = RECORD_LOCK.lock().unwrap_or_else(|err| err.into_inner());
+        let labels = ["other", "4xx", "other"];
+        let before = requests_total(labels);
+
+        let req = host_request("FOO", "example.com");
+        let opts = RequestHandlerOpts::default();
+        record_request(&opts, &req, StatusCode::METHOD_NOT_ALLOWED, 0, 0.001);
+
+        assert_eq!(requests_total(labels), before + 1);
+        assert!(!label_values("method").contains(&"FOO".to_owned()));
+    }
+
+    #[test]
     fn test_record_request_skips_metrics_path() {
-        let before = HTTP_REQUESTS_TOTAL
-            .with_label_values(&["GET", "2xx", ""])
-            .get();
+        let _lock = RECORD_LOCK.lock().unwrap_or_else(|err| err.into_inner());
+        let labels = ["GET", "2xx", "other"];
+        let before = requests_total(labels);
 
         let req = make_request("GET", "/metrics");
-        record_request(&req, StatusCode::OK, 0, 0.001);
+        let opts = RequestHandlerOpts::default();
+        record_request(&opts, &req, StatusCode::OK, 0, 0.001);
 
-        assert_eq!(
-            HTTP_REQUESTS_TOTAL
-                .with_label_values(&["GET", "2xx", ""])
-                .get(),
-            before
-        );
+        assert_eq!(requests_total(labels), before);
     }
 
     #[test]

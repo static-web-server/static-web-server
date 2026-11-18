@@ -86,7 +86,7 @@ pub(super) fn spawn(
 
         loop {
             tokio::select! {
-                result = redirect_listener.accept() => {
+                (result, slot) = cfg.conn.accept(redirect_listener.accept()) => {
                     let (stream, addr) = match result {
                         Ok(v) => v,
                         Err(e) => {
@@ -118,8 +118,8 @@ pub(super) fn spawn(
                             }
                         }
                     });
-                    let conn = http.serve_connection(cfg.conn.io(stream), svc);
-                    tokio::spawn(graceful.watch(conn));
+                    let conn = http.serve_connection(cfg.conn.io(stream, Some(addr)), svc);
+                    cfg.conn.serve(graceful.watch(conn), Some(addr), slot);
                 }
                 _ = &mut shutdown => { break; }
             }
@@ -157,7 +157,7 @@ pub(super) fn maybe_spawn(
         cfg.https_redirect_from_port,
     );
 
-    let tcp_listener = TcpListener::bind(addr)
+    let tcp_listener = super::listener::bind_tcp(addr)
         .with_context(|| format!("failed to bind redirect listener to {addr}"))?;
 
     tracing::info!("http1 redirect server is listening on http://{}", addr);

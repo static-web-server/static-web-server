@@ -391,6 +391,12 @@ pub struct General {
     /// Connection idle timeout in seconds.
     pub idle_timeout: Option<u16>,
 
+    /// Maximum request header size in bytes.
+    pub max_header_size: Option<u32>,
+
+    /// Maximum number of connections served at the same time.
+    pub max_connections: Option<usize>,
+
     /// Page fallback feature.
     #[cfg(feature = "fallback-page")]
     #[cfg_attr(docsrs, doc(cfg(feature = "fallback-page")))]
@@ -408,7 +414,8 @@ pub struct General {
     /// Log the X-Forwarded-For header.
     pub log_forwarded_for: Option<bool>,
 
-    /// Trusted IPs for remote addresses.
+    /// Proxy IPs to log the X-Real-IP and X-Forwarded-For headers from.
+    /// The headers are not logged when unset.
     pub trusted_proxies: Option<Vec<IpAddr>>,
 
     /// Redirect trailing slash feature.
