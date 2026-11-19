@@ -115,7 +115,10 @@ impl RequestHandler {
                 }
 
                 // CORS
-                if let Some(result) = cors::pre_process(&self.opts, req) {
+                let cors = self.opts.cors.as_ref();
+                if let Some(result) =
+                    cors::pre_process(cors, &self.opts.page404, &self.opts.page50x, req)
+                {
                     return result.map(early);
                 }
 
@@ -231,7 +234,7 @@ impl RequestHandler {
                 let resp = fallback_page::post_process(&self.opts, req, resp)?;
 
                 // Append CORS headers if they are present
-                let resp = cors::post_process(&self.opts, req, resp)?;
+                let resp = cors::post_process(self.opts.cors.as_ref(), req, resp)?;
 
                 // Add `Vary: Accept` and set Content-Type for markdown files
                 let resp = crate::markdown::post_process(

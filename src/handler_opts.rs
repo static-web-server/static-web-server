@@ -13,16 +13,33 @@ use std::{
     sync::{Arc, atomic::AtomicBool},
 };
 
-#[cfg(feature = "mem-cache")]
-use crate::mem_cache::cache::MemCacheOpts;
-
-use crate::{access_logs, cors, settings::Advanced};
+use crate::{access_log_format::AccessLogFormat, cors, settings::Advanced};
 
 #[cfg(feature = "directory-listing")]
 use crate::settings::file::DirListFmt;
 
 #[cfg(feature = "directory-listing-download")]
 use crate::settings::file::DirDownloadFmt;
+
+/// It defines the in-memory files cache options.
+#[cfg(feature = "mem-cache")]
+#[cfg_attr(docsrs, doc(cfg(feature = "mem-cache")))]
+pub struct MemCacheOpts {
+    /// The maximum size per file in bytes.
+    pub max_file_size: u64,
+}
+
+#[cfg(feature = "mem-cache")]
+impl MemCacheOpts {
+    /// Creates a new instance of `MemCacheOpts`.
+    /// `max_file_size` is in KiB and gets converted to bytes internally.
+    #[inline]
+    pub fn new(max_file_size: u64) -> Self {
+        Self {
+            max_file_size: max_file_size * 1024,
+        }
+    }
+}
 
 /// It defines options for a request handler.
 pub struct RequestHandlerOpts {
@@ -86,7 +103,7 @@ pub struct RequestHandlerOpts {
     /// Index files feature.
     pub index_files: Vec<String>,
     /// Compiled access log format.
-    pub access_log_format: Option<access_logs::AccessLogFormat>,
+    pub access_log_format: Option<AccessLogFormat>,
     /// Log remote address feature.
     pub log_remote_address: bool,
     /// Log the X-Real-IP header.

@@ -79,6 +79,7 @@ Rules: pre-processing steps return early when they handle the request. Post-proc
 | `basic_auth.rs` | BCrypt-based HTTP basic auth |
 | `health.rs` | `/livez` and `/readyz` probes |
 | `access_logs.rs`, `log_addr.rs` | Per-request access log, trusted-proxy address logging |
+| `access_log_format.rs` | `AccessLogFormat` and its `%{token}` parser (re-exported from `access_logs`) |
 | `error.rs` | Crate error types (`Error`, `Result<T>`) |
 | `body.rs` | Unified response body (`BoxBody`) |
 | `testing.rs` | `testing::fixtures` helpers for tests |

@@ -41,11 +41,7 @@ pub(crate) static X_CACHE: HeaderName = HeaderName::from_static("x-cache");
 /// Value for the `X-Cache` header when the response is a cache hit.
 pub(crate) static X_CACHE_HIT: HeaderValue = HeaderValue::from_static("HIT");
 
-/// It defines the in-memory files cache options.
-pub struct MemCacheOpts {
-    /// The maximum size per file in bytes.
-    pub max_file_size: u64,
-}
+pub use crate::handler_opts::MemCacheOpts;
 
 /// Default capacity (number of entries).
 pub const DEFAULT_CAPACITY: u64 = 100;
@@ -64,17 +60,6 @@ const MAX_TTL: u64 = 86_400;
 const MAX_TTI: u64 = 3_600;
 /// Maximum allowed file size in KiB (32 MiB = 32768 KiB).
 const MAX_FILE_SIZE: u64 = 32_768;
-
-impl MemCacheOpts {
-    /// Creates a new instance of `MemCacheOpts`.
-    /// `max_file_size` is in KiB and gets converted to bytes internally.
-    #[inline]
-    pub fn new(max_file_size: u64) -> Self {
-        Self {
-            max_file_size: max_file_size * 1024,
-        }
-    }
-}
 
 /// Initialize the in-memory cache store from handler options.
 ///

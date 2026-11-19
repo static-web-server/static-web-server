@@ -114,6 +114,7 @@ extern crate serde;
 // Public modules
 #[macro_use]
 pub mod logger;
+pub(crate) mod access_log_format;
 pub mod access_logs;
 #[cfg(feature = "basic-auth")]
 #[cfg_attr(docsrs, doc(cfg(feature = "basic-auth")))]
