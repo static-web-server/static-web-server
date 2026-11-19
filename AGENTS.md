@@ -88,7 +88,7 @@ Rules: pre-processing steps return early when they handle the request. Post-proc
 
 Three channels, one `General` struct. clap resolves CLI arg → `SERVER_*` env var → compiled default; then, if a config file is loaded (`sws.toml` by default), every key present in its `[general]` table **overrides** that value (`settings/mod.rs`). Advanced rules (`[[advanced.headers]]`, rewrites, redirects, virtual hosts, `[advanced.memory-cache]`) are TOML-only. Feature-gated settings use `#[cfg(feature = "...")]`. Validate everything at startup — never per-request.
 
-Adding an option touches `settings/cli.rs`, `settings/file.rs`, `settings/mod.rs`, `handler.rs` (`RequestHandlerOpts`), `server/opts.rs`, and `testing.rs`; see `.agents/skills/design/SKILL.md`.
+Adding an option touches `settings/cli.rs`, `settings/file.rs`, `settings/mod.rs`, `handler_opts.rs` (`RequestHandlerOpts`), `server/opts.rs`, and `testing.rs`; see `.agents/skills/design/SKILL.md`.
 
 ## Feature Flags (Cargo + `#[cfg]`)
 
