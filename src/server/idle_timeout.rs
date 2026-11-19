@@ -162,9 +162,11 @@ mod tests {
     use std::time::Duration;
     use tokio::io::{AsyncReadExt, AsyncWriteExt, duplex};
 
+    // Tests run on Tokio's paused clock, so scheduling delays on a loaded machine
+    // can't stretch the gaps between operations past the timeout.
     const TIMEOUT: Duration = Duration::from_millis(200);
 
-    #[tokio::test]
+    #[tokio::test(start_paused = true)]
     async fn read_fails_after_idle_timeout() {
         let (server, _client) = duplex(64);
         let mut io = IdleTimeout::new(server, Some(TIMEOUT), None);
@@ -176,7 +178,7 @@ mod tests {
         assert_eq!(err.kind(), std::io::ErrorKind::TimedOut);
     }
 
-    #[tokio::test]
+    #[tokio::test(start_paused = true)]
     async fn idle_timeout_is_logged_once_with_peer() {
         let (logs, _guard) = crate::server::tests::capture_debug_logs();
 
@@ -204,7 +206,7 @@ mod tests {
         assert!(lines[0].contains("peer=192.0.2.1:4321"), "{}", lines[0]);
     }
 
-    #[tokio::test]
+    #[tokio::test(start_paused = true)]
     async fn write_fails_after_idle_timeout() {
         // The peer never reads, so the write blocks once the buffer is full.
         let (server, _client) = duplex(64);
@@ -216,12 +218,12 @@ mod tests {
         assert_eq!(err.kind(), std::io::ErrorKind::TimedOut);
     }
 
-    #[tokio::test]
+    #[tokio::test(start_paused = true)]
     async fn flush_is_not_progress() {
         let (server, _client) = duplex(64);
         let mut io = IdleTimeout::new(server, Some(TIMEOUT), None);
         let mut buf = [0u8; 1];
-        let start = std::time::Instant::now();
+        let start = tokio::time::Instant::now();
         // Flush between reads, like Hyper's HTTP/2 connection does whenever it's polled.
         let err = loop {
             assert!(
@@ -236,7 +238,7 @@ mod tests {
         assert_eq!(err.kind(), std::io::ErrorKind::TimedOut);
     }
 
-    #[tokio::test]
+    #[tokio::test(start_paused = true)]
     async fn read_progress_restarts_idle_timeout() {
         let (server, mut client) = duplex(64);
         let mut io = IdleTimeout::new(server, Some(TIMEOUT), None);
@@ -252,12 +254,12 @@ mod tests {
         read.expect("read with progress failed");
     }
 
-    #[tokio::test]
+    #[tokio::test(start_paused = true)]
     async fn write_progress_restarts_idle_timeout() {
         assert_write_progress(false).await;
     }
 
-    #[tokio::test]
+    #[tokio::test(start_paused = true)]
     async fn vectored_write_progress_restarts_idle_timeout() {
         assert_write_progress(true).await;
     }
@@ -294,7 +296,7 @@ mod tests {
         write.expect("write with progress failed");
     }
 
-    #[tokio::test]
+    #[tokio::test(start_paused = true)]
     async fn disabled_timeout_never_fails() {
         let (server, _client) = duplex(64);
         let mut io = IdleTimeout::new(server, None, None);
