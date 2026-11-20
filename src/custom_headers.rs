@@ -12,7 +12,7 @@ use std::{ffi::OsStr, path::PathBuf};
 use crate::body::Body;
 use crate::{
     Error,
-    handler::RequestHandlerOpts,
+    handler_opts::RequestHandlerOpts,
     settings::{Headers, HeadersScope},
 };
 

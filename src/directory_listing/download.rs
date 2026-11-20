@@ -8,11 +8,9 @@
 
 use async_compression::tokio::write::GzipEncoder;
 use async_tar::Builder;
-use clap::ValueEnum;
 use headers::{ContentType, HeaderMapExt};
 use http::{HeaderValue, Method, Response};
 use mime_guess::Mime;
-use std::fmt::Display;
 use std::path::Path;
 use std::path::PathBuf;
 use std::str::FromStr;
@@ -23,24 +21,12 @@ use tokio_util::io::ReaderStream;
 use crate::Result;
 use crate::body::Body;
 use crate::exts::http::MethodExt;
-use crate::handler::RequestHandlerOpts;
+use crate::handler_opts::RequestHandlerOpts;
 
 /// query parameter key to download directory as tar.gz
 pub const DOWNLOAD_PARAM_KEY: &str = "download";
 
-/// Download format for directory
-#[derive(Debug, Serialize, Deserialize, Clone, ValueEnum, Eq, Hash, PartialEq)]
-#[serde(rename_all = "lowercase")]
-pub enum DirDownloadFmt {
-    /// Gunzip-compressed tarball (.tar.gz)
-    Targz,
-}
-
-impl Display for DirDownloadFmt {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Debug::fmt(self, f)
-    }
-}
+pub use crate::settings::file::DirDownloadFmt;
 
 /// Directory download options.
 pub struct DirDownloadOpts<'a> {

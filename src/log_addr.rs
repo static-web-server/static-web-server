@@ -9,7 +9,7 @@
 use hyper::Request;
 use std::net::{IpAddr, SocketAddr};
 
-use crate::handler::RequestHandlerOpts;
+use crate::handler_opts::RequestHandlerOpts;
 
 /// Initializes the log address module.
 pub(crate) fn init(enabled: bool, unix_socket: bool, handler_opts: &mut RequestHandlerOpts) {
@@ -201,7 +201,7 @@ mod tests {
         let unix = proxy_headers_warning(&opts(true, vec![proxy]), true);
         assert!(unix.is_some_and(|w| w.contains("Unix socket")));
 
-        let format = crate::access_logs::AccessLogFormat::parse("%{x_real_ip}").ok();
+        let format = crate::access_log_format::AccessLogFormat::parse("%{x_real_ip}").ok();
         let custom = RequestHandlerOpts {
             access_log_format: format,
             ..Default::default()

@@ -16,7 +16,7 @@ use hyper::{Request, Response, StatusCode, Uri, header::HOST};
 use crate::body::Body;
 use crate::{
     Error,
-    handler::RequestHandlerOpts,
+    handler_opts::RequestHandlerOpts,
     redirects::{handle_error, replace_placeholders},
     settings::{Rewrites, file::RedirectsKind},
 };
@@ -142,7 +142,7 @@ mod tests {
     use crate::body::Body;
     use crate::{
         Error,
-        handler::RequestHandlerOpts,
+        handler_opts::RequestHandlerOpts,
         settings::{Advanced, Rewrites, build_placeholder_replacer, file::RedirectsKind},
     };
     use hyper::{Request, Response, StatusCode, header::HOST};

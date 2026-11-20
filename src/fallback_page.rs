@@ -13,7 +13,7 @@ use std::path::Path;
 use crate::body::Body;
 use crate::error_page::build_html_response;
 use crate::exts::headers::Accept;
-use crate::{Error, exts::http::MethodExt, handler::RequestHandlerOpts, helpers};
+use crate::{Error, exts::http::MethodExt, handler_opts::RequestHandlerOpts, helpers};
 
 /// Initializes fallback page processing
 pub(crate) fn init(file_path: &Path, handler_opts: &mut RequestHandlerOpts) {
@@ -90,7 +90,7 @@ pub fn fallback_response(page_fallback: &[u8]) -> Response<Body> {
 mod tests {
     use super::post_process;
     use crate::body::Body;
-    use crate::{Error, error_page, handler::RequestHandlerOpts};
+    use crate::{Error, error_page, handler_opts::RequestHandlerOpts};
     use hyper::{Method, Request, Response, StatusCode, Uri};
     use std::path::PathBuf;
 

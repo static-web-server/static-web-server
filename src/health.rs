@@ -16,7 +16,7 @@ use hyper::{Method, Request, Response, StatusCode, Uri};
 use std::sync::atomic::Ordering;
 
 use crate::body::Body;
-use crate::{Error, handler::RequestHandlerOpts};
+use crate::{Error, handler_opts::RequestHandlerOpts};
 
 /// Path of the liveness probe endpoint.
 const LIVENESS_PATH: &str = "/livez";
@@ -96,7 +96,7 @@ pub(crate) fn is_health_endpoint(uri: &Uri) -> bool {
 mod tests {
     use super::{is_health_endpoint, pre_process};
     use crate::body::Body;
-    use crate::handler::RequestHandlerOpts;
+    use crate::handler_opts::RequestHandlerOpts;
     use http_body_util::BodyExt;
     use hyper::{Request, StatusCode, header::CONTENT_TYPE};
     use std::sync::atomic::Ordering;

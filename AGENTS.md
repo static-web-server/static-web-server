@@ -65,6 +65,7 @@ Rules: pre-processing steps return early when they handle the request. Post-proc
 | `settings/` | Parse CLI (clap) / env / TOML, merge, validate |
 | `server/` | Bind listener, HTTP/1 or HTTP/2+TLS, graceful shutdown |
 | `handler.rs` | Orchestrate request pipeline |
+| `handler_opts.rs` | `RequestHandlerOpts`, shared by the handler and feature modules (re-exported from `handler`) |
 | `static_files/` | `handle()` entry; `resolve.rs`, `security.rs`, `listing.rs`, `reply.rs` |
 | `conditional_headers.rs`, `etag.rs` | `If-*` preconditions (304/412), weak `ETag` |
 | `compression.rs` | On-the-fly gzip/deflate/brotli/zstd |
@@ -78,6 +79,7 @@ Rules: pre-processing steps return early when they handle the request. Post-proc
 | `basic_auth.rs` | BCrypt-based HTTP basic auth |
 | `health.rs` | `/livez` and `/readyz` probes |
 | `access_logs.rs`, `log_addr.rs` | Per-request access log, trusted-proxy address logging |
+| `access_log_format.rs` | `AccessLogFormat` and its `%{token}` parser (re-exported from `access_logs`) |
 | `error.rs` | Crate error types (`Error`, `Result<T>`) |
 | `body.rs` | Unified response body (`BoxBody`) |
 | `testing.rs` | `testing::fixtures` helpers for tests |
@@ -86,7 +88,7 @@ Rules: pre-processing steps return early when they handle the request. Post-proc
 
 Three channels, one `General` struct. clap resolves CLI arg → `SERVER_*` env var → compiled default; then, if a config file is loaded (`sws.toml` by default), every key present in its `[general]` table **overrides** that value (`settings/mod.rs`). Advanced rules (`[[advanced.headers]]`, rewrites, redirects, virtual hosts, `[advanced.memory-cache]`) are TOML-only. Feature-gated settings use `#[cfg(feature = "...")]`. Validate everything at startup — never per-request.
 
-Adding an option touches `settings/cli.rs`, `settings/file.rs`, `settings/mod.rs`, `handler.rs` (`RequestHandlerOpts`), `server/opts.rs`, and `testing.rs`; see `.agents/skills/design/SKILL.md`.
+Adding an option touches `settings/cli.rs`, `settings/file.rs`, `settings/mod.rs`, `handler_opts.rs` (`RequestHandlerOpts`), `server/opts.rs`, and `testing.rs`; see `.agents/skills/design/SKILL.md`.
 
 ## Feature Flags (Cargo + `#[cfg]`)
 
