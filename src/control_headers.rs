@@ -16,7 +16,7 @@ use hyper::{
 };
 
 use crate::body::Body;
-use crate::{Error, handler::RequestHandlerOpts};
+use crate::{Error, handler_opts::RequestHandlerOpts};
 
 // Pre-computed static Cache-Control header values
 static CACHE_CONTROL_DEFAULT: HeaderValue = HeaderValue::from_static("no-cache");

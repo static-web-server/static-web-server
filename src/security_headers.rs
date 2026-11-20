@@ -12,7 +12,7 @@ use http::header::{
 use hyper::{Request, Response, header::HeaderValue};
 
 use crate::body::Body;
-use crate::{Error, handler::RequestHandlerOpts};
+use crate::{Error, handler_opts::RequestHandlerOpts};
 
 // Pre-computed static header values to avoid per-response parsing
 static HSTS_VALUE: HeaderValue = HeaderValue::from_static("max-age=63072000; includeSubDomains");
@@ -77,7 +77,7 @@ mod tests {
     use hyper::{Response, StatusCode};
 
     use super::{append_headers, init};
-    use crate::handler::RequestHandlerOpts;
+    use crate::handler_opts::RequestHandlerOpts;
 
     #[test]
     fn init_enables_hsts_only_with_tls() {

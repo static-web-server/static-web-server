@@ -39,7 +39,7 @@ use std::time::UNIX_EPOCH;
 
 use headers::HeaderValue;
 
-use crate::handler::RequestHandlerOpts;
+use crate::handler_opts::RequestHandlerOpts;
 
 /// Maximum width of the generated header value:
 /// `W/"` (3) + 32 hex digits (mtime) + `-` (1) + 16 hex digits (len) + `"` (1).
