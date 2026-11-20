@@ -23,7 +23,7 @@ use std::io;
 /// - In-memory byte buffers (for generated HTML, Prometheus metrics, health checks)
 /// - File streams ([`crate::fs::stream::FileStream`])
 /// - Compressed streams (gzip/brotli/deflate/zstd encoders)
-/// - In-memory cached file streams ([`crate::mem_cache::stream::MemCacheFileStream`])
+/// - In-memory cached file streams (`MemCacheFileStream`)
 pub type Body = BoxBody<Bytes, io::Error>;
 
 /// Creates an empty body (zero bytes).
