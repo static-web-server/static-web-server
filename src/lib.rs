@@ -167,9 +167,9 @@ pub(crate) mod markdown;
 pub mod mem_cache;
 #[cfg(feature = "metrics")]
 pub(crate) mod metrics;
-pub mod redirects;
+pub(crate) mod redirects;
 pub(crate) mod response;
-pub mod rewrites;
+pub(crate) mod rewrites;
 pub mod security_headers;
 pub mod server;
 pub mod service;
@@ -182,6 +182,7 @@ pub(crate) mod text_charset;
 #[cfg(feature = "tls")]
 #[cfg_attr(docsrs, doc(cfg(feature = "tls")))]
 pub mod tls;
+pub mod url_rules;
 pub(crate) mod virtual_hosts;
 #[cfg(windows)]
 #[cfg_attr(docsrs, doc(cfg(windows)))]

@@ -141,7 +141,7 @@ pub enum HeadersScope {
     /// Responses of the static file handler only (default).
     #[default]
     Files,
-    /// Every response, including redirects, rewrite redirects, `/livez` and `/readyz`, metrics,
+    /// Every response, including redirects, `/livez` and `/readyz`, metrics,
     /// rejected CORS requests, Basic auth challenges, maintenance mode and the method check.
     All,
 }
@@ -191,12 +191,15 @@ pub struct Redirects {
 #[serde(rename_all = "kebab-case")]
 /// Represents rewrites types.
 pub struct Rewrites {
+    /// Optional host to match against an incoming URI host if specified
+    pub host: Option<String>,
     /// Source of the rewrite.
     pub source: String,
     /// Rewrite destination.
     pub destination: String,
-    /// Optional redirect type either 301 (Moved Permanently) or 302 (Found).
-    pub redirect: Option<RedirectsKind>,
+    /// Removed `redirect` option, kept only to reject configurations that still set it.
+    #[serde(default, skip_serializing)]
+    pub redirect: Option<toml::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

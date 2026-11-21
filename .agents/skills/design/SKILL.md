@@ -41,6 +41,7 @@ bin/server.rs → settings/ → server/ (mod.rs, opts.rs) → service.rs → han
 | `compression.rs`, `compression_static.rs` | On-the-fly encoding; pre-compressed `.br` `.gz` `.zst` selection |
 | `control_headers.rs`, `security_headers.rs`, `custom_headers.rs`, `text_charset.rs` | Post-processing header steps |
 | `health.rs`, `cors.rs`, `basic_auth.rs`, `metrics.rs`, `maintenance_mode.rs`, `redirects.rs`, `rewrites.rs`, `virtual_hosts.rs`, `markdown.rs` | Pre-processing steps |
+| `url_rules/` | Shared by redirects and rewrites: `UrlRule` and `find()` (`mod.rs`), glob → regex (`glob.rs`), `host` matching (`host.rs`), placeholders and query forwarding (`destination.rs`) |
 | `error_page.rs`, `fallback_page.rs` | 404/50x pages, SPA fallback |
 | `exts/` | `http.rs` (`MethodExt`, `HTTP_SUPPORTED_METHODS`), `headers/` (`Accept-Encoding`, q-values, `ContentCoding`), `mime.rs` (compressible detection) |
 | `mem_cache/` | In-memory file cache (`mini-moka`), keyed by `(path, ContentCoding)` |
@@ -64,7 +65,7 @@ bin/server.rs → settings/ → server/ (mod.rs, opts.rs) → service.rs → han
 | 5 | Metrics endpoint (after auth, so `/metrics` is protected) | Yes |
 | 6 | Maintenance mode | 503 or configured status |
 | 7 | Redirects | 301/302 |
-| 8 | Rewrites | Yes when the rule has `redirect`; else rewrites the URI and continues |
+| 8 | Rewrites | No (rewrites the URI, and `Host` for a destination with an authority); 500 only for an invalid destination |
 | 9 | Virtual hosts | No (swaps `base_path` by `Host`) |
 | 10 | Markdown negotiation (`--accept-markdown`) | No (swaps the URI path to the `.md` variant) |
 | 11 | `static_files::handle()`: mem-cache lookup (`GET`/`HEAD`), sanitize, resolve, security, `OPTIONS`/trailing-slash/listing, conditional + range reply | Errors become error pages |

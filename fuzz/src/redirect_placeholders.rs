@@ -10,7 +10,7 @@
 use aho_corasick::AhoCorasick;
 use libfuzzer_sys::fuzz_target;
 use regex_lite::Regex;
-use static_web_server::redirects::replace_placeholders;
+use static_web_server::url_rules::replace_placeholders;
 use std::sync::OnceLock;
 
 fn shared() -> &'static (Regex, AhoCorasick) {

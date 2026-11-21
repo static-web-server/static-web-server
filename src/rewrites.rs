@@ -3,101 +3,59 @@
 // See https://static-web-server.net/ for more information
 // Copyright (C) 2019-present Jose Quintana <joseluisq.net>
 
-//! Module that allows to rewrite request URLs with pattern matching support.
-//!
-//! See [`crate::redirects`] for the ReDoS / pattern-complexity notes that
-//! also apply to rewrites: patterns are admin-supplied, evaluated by the
-//! non-backtracking `regex_lite` engine, and URIs longer than
-//! [`crate::redirects::MAX_URI_LEN_FOR_REGEX`] are skipped.
+//! `[[advanced.rewrites]]`: replaces the URI of a matching request with the rule's
+//! destination and lets the pipeline serve it. Matching and destination building live in
+//! [`crate::url_rules`].
 
-use headers::HeaderValue;
-use hyper::{Request, Response, StatusCode, Uri, header::HOST};
+use hyper::{Request, Response, Uri, header::HOST, http::HeaderValue};
 
 use crate::body::Body;
-use crate::{
-    Error,
-    handler_opts::RequestHandlerOpts,
-    redirects::{handle_error, replace_placeholders},
-    settings::{Rewrites, file::RedirectsKind},
-};
+use crate::{Error, Result, handler_opts::RequestHandlerOpts, url_rules};
 
-/// Applies rewrite rules to a request if necessary.
+/// Rewrites the request URI if a rule matches it. Returns `Some` only for the error page
+/// of a destination that is not a valid URI.
 pub(crate) fn pre_process<T>(
     opts: &RequestHandlerOpts,
     req: &mut Request<T>,
 ) -> Option<Result<Response<Body>, Error>> {
     let rewrites = opts.advanced_opts.as_ref()?.rewrites.as_deref()?;
-    let uri_path = req.uri().path();
-    // SECURITY (ReDoS bound): mirror redirects' cap on regex input size.
-    if uri_path.len() > crate::redirects::MAX_URI_LEN_FOR_REGEX {
-        tracing::debug!(
-            "rewrites: skipping match, uri path length {} exceeds cap {}",
-            uri_path.len(),
-            crate::redirects::MAX_URI_LEN_FOR_REGEX
-        );
-        return None;
-    }
+    let rewrite = url_rules::find(rewrites, req)?;
 
-    let matched = rewrite_uri_path(uri_path, Some(rewrites))?;
-    let dest = match replace_placeholders(
-        uri_path,
-        &matched.source,
-        &matched.destination,
-        &matched.replacer,
-    ) {
-        Ok(dest) => dest,
-        Err(err) => return handle_error(err, opts, req),
-    };
-
-    if let Some(redirect_type) = &matched.redirect {
-        // Handle redirects
-        let loc = match HeaderValue::from_str(&dest) {
-            Ok(val) => val,
-            Err(err) => {
-                return handle_error(
-                    Error::new(err).context("invalid header value from current uri"),
-                    opts,
-                    req,
-                );
-            }
-        };
-        let mut resp = Response::new(crate::body::empty());
-        resp.headers_mut().insert(hyper::header::LOCATION, loc);
-        *resp.status_mut() = match redirect_type {
-            RedirectsKind::Permanent => StatusCode::MOVED_PERMANENTLY,
-            RedirectsKind::Temporary => StatusCode::FOUND,
-        };
-        Some(Ok(resp))
-    } else {
-        // Handle internal rewrites
-        *req.uri_mut() = match merge_uris(req.uri(), &dest) {
-            Ok(uri) => uri,
-            Err(err) => {
-                return handle_error(
-                    err.context("invalid rewrite target from current uri"),
-                    opts,
-                    req,
-                );
-            }
-        };
-
-        // Adjust Host header to allow rewriting to a different virtual host
-        if let Some(host) = req.uri().host() {
-            let mut host = host.to_owned();
-            if let Some(port) = req.uri().port_u16() {
-                host.push_str(&format!(":{port}"));
-            }
-            if let Ok(host) = host.parse() {
-                req.headers_mut().insert(HOST, host);
-            }
+    let uri = match rewrite
+        .rule
+        .resolve(req.uri())
+        .and_then(|dest| merge_uris(req.uri(), &dest))
+    {
+        Ok(uri) => uri,
+        Err(err) => {
+            return url_rules::error_response(
+                err.context("invalid rewrite destination"),
+                opts,
+                req,
+            );
         }
+    };
+    tracing::trace!("uri matches rewrites glob pattern, rewriting to '{uri}'");
+    *req.uri_mut() = uri;
 
-        None
+    // RFC 9112 §3.2.2: keep `Host` in line with the authority, which may now target
+    // another virtual host. `Host` has no user info, nor an empty port
+    if let Some(authority) = req.uri().authority() {
+        let host = match authority.port_u16() {
+            Some(port) => format!("{}:{port}", authority.host()),
+            None => authority.host().to_owned(),
+        };
+        if let Ok(host) = HeaderValue::from_str(&host) {
+            req.headers_mut().insert(HOST, host);
+        }
     }
+
+    None
 }
 
-fn merge_uris(orig_uri: &Uri, new_uri: &str) -> Result<Uri, Error> {
-    let mut parts = new_uri.parse::<Uri>()?.into_parts();
+/// Parses `dest`, taking the scheme, authority, and path it lacks from `orig_uri`.
+fn merge_uris(orig_uri: &Uri, dest: &str) -> Result<Uri> {
+    let mut parts = dest.parse::<Uri>()?.into_parts();
     if parts.scheme.is_none() {
         parts.scheme = orig_uri.scheme().cloned();
     }
@@ -107,231 +65,115 @@ fn merge_uris(orig_uri: &Uri, new_uri: &str) -> Result<Uri, Error> {
     if parts.path_and_query.is_none() {
         parts.path_and_query = orig_uri.path_and_query().cloned();
     }
-    if let Some(path_and_query) = &mut parts.path_and_query
-        && let (None, Some(query)) = (path_and_query.query(), orig_uri.query())
-    {
-        *path_and_query = [path_and_query.as_str(), "?", query]
-            .into_iter()
-            .collect::<String>()
-            .parse()?;
-    }
     Ok(Uri::from_parts(parts)?)
-}
-
-/// It returns a rewrite's destination path if the current request uri
-/// matches against the provided rewrites array.
-pub fn rewrite_uri_path<'a>(
-    uri_path: &'a str,
-    rewrites_opts: Option<&'a [Rewrites]>,
-) -> Option<&'a Rewrites> {
-    if let Some(rewrites_vec) = rewrites_opts {
-        for rewrites_entry in rewrites_vec {
-            // Match source glob pattern against request uri path
-            if rewrites_entry.source.is_match(uri_path) {
-                return Some(rewrites_entry);
-            }
-        }
-    }
-
-    None
 }
 
 #[cfg(test)]
 mod tests {
     use super::pre_process;
-    use crate::body::Body;
     use crate::{
-        Error,
         handler_opts::RequestHandlerOpts,
-        settings::{Advanced, Rewrites, build_placeholder_replacer, file::RedirectsKind},
+        settings::{Advanced, Rewrites},
+        url_rules::UrlRule,
     };
-    use hyper::{Request, Response, StatusCode, header::HOST};
-    use regex_lite::Regex;
+    use hyper::{Request, StatusCode, header::HOST};
 
-    fn make_request(host: &str, uri: &str) -> Request<Body> {
-        let mut builder = Request::builder();
-        if !host.is_empty() {
-            builder = builder.header("Host", host);
+    fn opts(rewrites: Option<Vec<Rewrites>>) -> RequestHandlerOpts {
+        RequestHandlerOpts {
+            advanced_opts: Some(Advanced {
+                rewrites,
+                ..Default::default()
+            }),
+            ..Default::default()
         }
-        builder
-            .method("GET")
-            .uri(uri)
-            .body(crate::body::empty())
-            .unwrap()
     }
 
-    fn get_rewrites() -> Vec<Rewrites> {
-        let s1 = Regex::new(r"/source1$").unwrap();
-        let r1 = build_placeholder_replacer(&s1);
-        let s2 = Regex::new(r"/source2$").unwrap();
-        let r2 = build_placeholder_replacer(&s2);
-        let s3 = Regex::new(r"/(prefix/)?(source3)/(.*)").unwrap();
-        let r3 = build_placeholder_replacer(&s3);
-        let s4 = Regex::new(r"/(source4)/(.*)").unwrap();
-        let r4 = build_placeholder_replacer(&s4);
-        vec![
-            Rewrites {
-                source: s1,
-                destination: "/destination1".into(),
-                redirect: None,
-                replacer: r1,
-            },
-            Rewrites {
-                source: s2,
-                destination: "/destination2".into(),
-                redirect: Some(RedirectsKind::Temporary),
-                replacer: r2,
-            },
-            Rewrites {
-                source: s3,
-                destination: "/destination3/$2/$3".into(),
-                redirect: Some(RedirectsKind::Permanent),
-                replacer: r3,
-            },
-            Rewrites {
-                source: s4,
-                destination: "http://example.net:1234/destination4/$1?$2".into(),
-                redirect: None,
-                replacer: r4,
-            },
-        ]
+    fn rewrite(source: &str, dest: &str) -> Rewrites {
+        Rewrites {
+            rule: UrlRule::new(None, source, dest).unwrap(),
+        }
     }
 
-    fn is_redirect(result: Option<Result<Response<Body>, Error>>) -> Option<(StatusCode, String)> {
-        if let Some(Ok(response)) = result {
-            let location = response.headers().get("Location")?.to_str().unwrap().into();
-            Some((response.status(), location))
-        } else {
-            None
-        }
+    fn rewritten(opts: &RequestHandlerOpts, uri: &str, host: &str) -> (String, String) {
+        let mut req = Request::get(uri).header(HOST, host).body(()).unwrap();
+        assert!(pre_process(opts, &mut req).is_none());
+        let host = req.headers()[HOST].to_str().unwrap().to_owned();
+        (req.uri().to_string(), host)
     }
 
     #[test]
-    fn test_no_rewrites() {
-        let mut req = make_request("", "/");
-        assert!(
-            pre_process(
-                &RequestHandlerOpts {
-                    advanced_opts: None,
-                    ..Default::default()
-                },
-                &mut req
-            )
-            .is_none()
-        );
-        assert_eq!(req.uri(), "/");
-
-        let mut req = make_request("", "/");
-        assert!(
-            pre_process(
-                &RequestHandlerOpts {
-                    advanced_opts: Some(Advanced {
-                        rewrites: None,
-                        ..Default::default()
-                    }),
-                    ..Default::default()
-                },
-                &mut req
-            )
-            .is_none()
-        );
+    fn rewrites_none_configured_passes_through() {
+        let mut req = Request::get("/").body(()).unwrap();
+        assert!(pre_process(&RequestHandlerOpts::default(), &mut req).is_none());
+        assert!(pre_process(&opts(None), &mut req).is_none());
         assert_eq!(req.uri(), "/");
     }
 
     #[test]
-    fn test_no_match() {
-        let mut req = make_request("example.com", "/source2/whatever");
-        assert!(
-            pre_process(
-                &RequestHandlerOpts {
-                    advanced_opts: Some(Advanced {
-                        rewrites: Some(get_rewrites()),
-                        ..Default::default()
-                    }),
-                    ..Default::default()
-                },
-                &mut req
-            )
-            .is_none()
+    fn rewrites_path_keeps_host() {
+        let opts = opts(Some(vec![rewrite("/a/{*}", "/b/$1")]));
+        assert_eq!(
+            rewritten(&opts, "/a/x?q=1", "example.com"),
+            ("/b/x?q=1".into(), "example.com".into())
         );
-        assert_eq!(req.uri(), "/source2/whatever");
+        assert_eq!(
+            rewritten(&opts, "/c", "example.com"),
+            ("/c".into(), "example.com".into())
+        );
     }
 
     #[test]
-    fn test_match() {
-        let mut req = make_request("", "/source1?query");
-        assert!(
-            pre_process(
-                &RequestHandlerOpts {
-                    advanced_opts: Some(Advanced {
-                        rewrites: Some(get_rewrites()),
-                        ..Default::default()
-                    }),
-                    ..Default::default()
-                },
-                &mut req
+    fn rewrites_absolute_destination_replaces_host() {
+        let opts = opts(Some(vec![rewrite(
+            "/{*}/{*}",
+            "http://example.net:1234/d/$1?$2",
+        )]));
+        assert_eq!(
+            rewritten(&opts, "/a/b?q=1", "example.com"),
+            (
+                "http://example.net:1234/d/a?b&q=1".into(),
+                "example.net:1234".into()
             )
-            .is_none()
         );
-        assert_eq!(req.uri(), "/destination1?query");
+    }
 
-        let mut req = make_request("", "/source2");
+    #[test]
+    fn rewrites_absolute_form_request_keeps_scheme_and_authority() {
+        let opts = opts(Some(vec![rewrite("/a", "/b")]));
         assert_eq!(
-            is_redirect(pre_process(
-                &RequestHandlerOpts {
-                    advanced_opts: Some(Advanced {
-                        rewrites: Some(get_rewrites()),
-                        ..Default::default()
-                    }),
-                    ..Default::default()
-                },
-                &mut req
-            )),
-            Some((StatusCode::FOUND, "/destination2".into()))
+            rewritten(&opts, "http://example.com:8080/a", "other.org"),
+            (
+                "http://example.com:8080/b".into(),
+                "example.com:8080".into()
+            ),
+            "the authority of an absolute-form target replaces `Host`"
         );
+    }
 
-        let mut req = make_request("", "/source3/whatever");
+    #[test]
+    fn rewrites_host_header_excludes_user_info() {
+        let opts = opts(Some(vec![rewrite("/a", "http://user@other.example:81/b")]));
         assert_eq!(
-            is_redirect(pre_process(
-                &RequestHandlerOpts {
-                    advanced_opts: Some(Advanced {
-                        rewrites: Some(get_rewrites()),
-                        ..Default::default()
-                    }),
-                    ..Default::default()
-                },
-                &mut req
-            )),
-            Some((
-                StatusCode::MOVED_PERMANENTLY,
-                "/destination3/source3/whatever".into()
-            ))
-        );
-
-        let mut req = make_request("example.com", "/source4/whatever?query");
-        assert!(
-            pre_process(
-                &RequestHandlerOpts {
-                    advanced_opts: Some(Advanced {
-                        rewrites: Some(get_rewrites()),
-                        ..Default::default()
-                    }),
-                    ..Default::default()
-                },
-                &mut req
+            rewritten(&opts, "/a", "example.com"),
+            (
+                "http://user@other.example:81/b".into(),
+                "other.example:81".into()
             )
-            .is_none()
         );
-        assert_eq!(
-            req.uri(),
-            "http://example.net:1234/destination4/source4?whatever"
-        );
-        assert_eq!(
-            req.headers()
-                .get(HOST)
-                .map(|h| h.to_str().unwrap())
-                .unwrap_or(""),
-            "example.net:1234"
-        );
+    }
+
+    #[test]
+    fn rewrites_host_header_omits_empty_port() {
+        let opts = opts(Some(vec![rewrite("/a", "http://other.example:/b")]));
+        assert_eq!(rewritten(&opts, "/a", "example.com").1, "other.example");
+    }
+
+    #[test]
+    fn rewrites_invalid_destination_is_500() {
+        let opts = opts(Some(vec![rewrite("/a", "http://[bad/")]));
+        let mut req = Request::get("/a").body(()).unwrap();
+        let resp = pre_process(&opts, &mut req).unwrap().unwrap();
+        assert_eq!(resp.status(), StatusCode::INTERNAL_SERVER_ERROR);
+        assert_eq!(req.uri(), "/a", "uri must stay untouched on error");
     }
 }

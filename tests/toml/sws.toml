@@ -131,7 +131,7 @@ headers = { Cache-Control = "public, max-age=31536000, immutable" }
 
 #### e. Also applied to early responses (optional `scope`)
 # By default (`scope = "files"`) headers apply to static file responses only.
-# `scope = "all"` also covers redirects, rewrite redirects, `/livez`, `/readyz`,
+# `scope = "all"` also covers redirects, `/livez`, `/readyz`,
 # rejected CORS requests, `/metrics`, `405`, Basic auth challenges and maintenance mode.
 # It can be combined with `status`.
 [[advanced.headers]]
@@ -162,17 +162,14 @@ kind = 302
 [[advanced.rewrites]]
 source = "/image.ico"
 destination = "/assets/favicon.ico"
-# redirect = 301
 
 [[advanced.rewrites]]
 source = "/{picture}.{ico,webp}"
 destination = "/assets/$1.$2"
-# redirect = 301
 
 [[advanced.rewrites]]
 source = "**/{*}.{png,gif}"
 destination = "/assets/$1.$2"
-# redirect = 301
 
 [[advanced.rewrites]]
 source = "/abc/**/*.{svg,jxl}"
@@ -181,6 +178,11 @@ destination = "/assets/favicon.ico"
 [[advanced.rewrites]]
 source = "/files/{*}"
 destination = "/$1"
+
+[[advanced.rewrites]]
+host = "example.com"
+source = "/docs/{*}"
+destination = "/assets/$1"
 
 ### Name-based virtual hosting
 

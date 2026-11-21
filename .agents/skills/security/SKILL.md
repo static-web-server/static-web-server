@@ -7,7 +7,7 @@ description: Review or implement security-sensitive code in the Static Web Serve
 
 SWS serves files from disk to untrusted clients. Every change on the request path is security-relevant.
 
-**When to load**: editing `src/fs/path.rs`, `src/static_files/` (especially `security.rs`, `resolve.rs`), `src/cors.rs`, `src/basic_auth.rs`, `src/tls.rs`, `src/security_headers.rs`, `src/access_logs.rs`, `src/log_addr.rs`, `src/redirects.rs`, `src/rewrites.rs`, `src/markdown.rs`, `src/directory_listing/download.rs`, `src/mem_cache/`, or handling a vulnerability report.
+**When to load**: editing `src/fs/path.rs`, `src/static_files/` (especially `security.rs`, `resolve.rs`), `src/cors.rs`, `src/basic_auth.rs`, `src/tls.rs`, `src/security_headers.rs`, `src/access_logs.rs`, `src/log_addr.rs`, `src/redirects.rs`, `src/rewrites.rs`, `src/url_rules/`, `src/markdown.rs`, `src/directory_listing/download.rs`, `src/mem_cache/`, or handling a vulnerability report.
 
 ## Principles
 

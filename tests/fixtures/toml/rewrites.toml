@@ -28,21 +28,3 @@ destination = "/assets/$1.$2"
 [[advanced.rewrites]]
 source = "/recursive/{**}"
 destination = "/$1"
-
-# Glob groups 5 (redirect)
-[[advanced.rewrites]]
-source = "**/{*}.{ico}"
-destination = "/assets/favicon.$3"
-redirect = 302
-
-# Glob groups 6 (redirect)
-[[advanced.rewrites]]
-source = "**/{*}.{ttf,otf,woff}"
-destination = "http://localhost/new-fonts/$2.woff"
-redirect = 302
-
-# Glob groups generic 1 (redirect)
-[[advanced.rewrites]]
-source = "**/{*}.{*}"
-destination = "http://localhost/new-generic/$2.$3"
-redirect = 301

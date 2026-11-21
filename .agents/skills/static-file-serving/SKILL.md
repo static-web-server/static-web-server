@@ -109,15 +109,18 @@ scope = "all"                  # default "files": static responses only.
                                # "all": also redirects, health, metrics, 401, 403, 405, maintenance
 headers = { X-Request-Id = "static" }
 
-# Redirects: short-circuit with 301 or 302; `host` is optional
+# Redirects: short-circuit with 301 or 302; `host` is optional and matches any case, and
+# any port unless it names one. The request query is appended to `destination`
 [[advanced.redirects]]
 host = "old.example.com"
 source = "/pages/{*}.html"
 destination = "https://example.com/?p=$1"
 kind = 301
 
-# Rewrites: change the path internally; add `redirect = 301` to redirect instead
+# Rewrites: change the path internally; `host` and the query work as for redirects.
+# To redirect, use `[[advanced.redirects]]` (`redirect` here is a startup error)
 [[advanced.rewrites]]
+host = "example.com"
 source = "/error-page/{404,50x}.html"
 destination = "/$1.html"
 
@@ -134,7 +137,7 @@ tti = 300             # idle seconds (max 3600)
 max-file-size = 8192  # KiB (default 8192, max 32768)
 ```
 
-Globs compile through `globset` with `literal_separator(true)`, then into capturing regex groups (`settings/mod.rs`): `{*}` within one segment, `{**}` across segments, `{a,b}` alternation. `$1`, `$2`, … reference captures in pattern order. Working rules: `tests/fixtures/toml/rewrites.toml`, `redirects.toml`, `custom_headers_*.toml`.
+Both rule tables compile into `url_rules::UrlRule` (`src/url_rules/`: `glob.rs`, `host.rs`, `destination.rs`). Globs compile through `globset` with `literal_separator(true)`, then into capturing regex groups: `{*}` within one segment, `{**}` across segments, `{a,b}` alternation. `$1`, `$2`, … reference captures in pattern order. Working rules: `tests/fixtures/toml/rewrites.toml`, `redirects.toml`, `url_rules.toml`, `custom_headers_*.toml`.
 
 ## Common Setups
 
