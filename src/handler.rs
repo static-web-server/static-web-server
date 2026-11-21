@@ -192,7 +192,7 @@ impl RequestHandler {
                     .unwrap_or(req.uri().path());
 
                 // Static files
-                let (resp, file_path, is_dir_listing) = match static_files::handle(&HandleOpts {
+                let mut handle_opts = HandleOpts {
                     method: req.method(),
                     headers: req.headers(),
                     #[cfg(feature = "mem-cache")]
@@ -214,9 +214,15 @@ impl RequestHandler {
                     include_hidden,
                     index_files,
                     follow_symlinks,
-                })
-                .await
-                {
+                };
+                let mut result = static_files::handle(&handle_opts).await;
+                // An image variant that can't be served (symlink policy,
+                // permissions) falls back to the original
+                if result.is_err() && uri_path_image.is_some() {
+                    handle_opts.uri_path = req.uri().path();
+                    result = static_files::handle(&handle_opts).await;
+                }
+                let (resp, file_path, is_dir_listing) = match result {
                     Ok(result) => (result.resp, result.file_path, result.is_dir_listing),
                     Err(status) => {
                         #[cfg(feature = "fallback-page")]

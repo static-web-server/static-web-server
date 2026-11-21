@@ -7,7 +7,7 @@ description: Review or implement security-sensitive code in the Static Web Serve
 
 SWS serves files from disk to untrusted clients. Every change on the request path is security-relevant.
 
-**When to load**: editing `src/fs/path.rs`, `src/static_files/` (especially `security.rs`, `resolve.rs`), `src/cors.rs`, `src/basic_auth.rs`, `src/tls.rs`, `src/security_headers.rs`, `src/access_logs.rs`, `src/log_addr.rs`, `src/redirects.rs`, `src/rewrites.rs`, `src/markdown.rs`, `src/directory_listing/download.rs`, `src/mem_cache/`, or handling a vulnerability report.
+**When to load**: editing `src/fs/path.rs`, `src/static_files/` (especially `security.rs`, `resolve.rs`), `src/cors.rs`, `src/basic_auth.rs`, `src/tls.rs`, `src/security_headers.rs`, `src/access_logs.rs`, `src/log_addr.rs`, `src/redirects.rs`, `src/rewrites.rs`, `src/markdown.rs`, `src/negotiation/`, `src/directory_listing/download.rs`, `src/mem_cache/`, or handling a vulnerability report.
 
 ## Principles
 
@@ -37,6 +37,7 @@ The base must already be canonical (root in `server/opts.rs`, virtual-host roots
 ### Other path consumers
 
 Every feature that maps a request to a file reuses these layers:
+- **Variant negotiation** (`negotiation::try_variant_uri`, image negotiation) accepts only `[A-Za-z0-9-]` suffixes, never probes the root's siblings, applies the same hidden-file policy as markdown, and rebuilds the URI from the resolved variant path
 - **Markdown negotiation** applies the hidden-file policy (dotfiles on the request, short-name aliases on the variant found) and strips the base before rewriting the URI
 - **Directory download** excludes symlinks pointing outside the root from archives regardless of `--follow-symlinks`
 - **Rewrites/redirects** substitute captures into destinations; the rewritten path still goes through layers 2–5. Redirect destinations must not become open redirects through placeholder injection

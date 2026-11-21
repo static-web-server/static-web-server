@@ -14,6 +14,14 @@
 
 pub(crate) mod image;
 
+/// Escape set used when converting a resolved file path back into a URI path.
+///
+/// The returned URI is percent-decoded again by `sanitize_path` in the
+/// static-files handler, so `%` must be escaped to keep the encode/decode
+/// round-trip lossless for file names that contain it.
+const URI_PATH_ESCAPE: &AsciiSet = &CONTROLS.add(b'%');
+
+use percent_encoding::{AsciiSet, CONTROLS, utf8_percent_encode};
 use std::path::{Path, PathBuf};
 
 use crate::fs::meta::try_metadata;
@@ -22,9 +30,9 @@ use crate::fs::path::{PathExt, sanitize_path};
 /// Returns the URI path of the first variant of the file at `uri_path`
 /// found on disk, trying `suffixes` in order.
 ///
-/// The URI path returned is `uri_path` with `.` and the suffix appended. The
-/// static-files handler sanitizes it and applies the containment, symlink and
-/// hidden-file checks again before serving it. `None` when no variant is
+/// The URI path returned is built from the variant path relative to
+/// `base_path`. The static-files handler sanitizes it and applies the
+/// containment, symlink and hidden-file checks again before serving it. `None` when no variant is
 /// found, the original is not a file, the path is hidden, or a suffix is not
 /// made of ASCII letters, digits and `-` only, which keeps a suffix taken from
 /// a request header from adding a path component.
@@ -47,10 +55,10 @@ pub(crate) fn try_variant_uri<'a>(
         return None;
     }
 
-    let (suffix, variant_path) = suffixes
+    let variant_path = suffixes
         .into_iter()
         .filter(|suffix| is_valid_suffix(suffix))
-        .find_map(|suffix| try_variant(&file_path, suffix).map(|path| (suffix, path)))?;
+        .find_map(|suffix| try_variant(&file_path, suffix))?;
     if !is_file(&file_path) {
         tracing::debug!(
             "negotiation: skipping variant of missing original {:?}",
@@ -75,7 +83,17 @@ pub(crate) fn try_variant_uri<'a>(
     }
     tracing::debug!("negotiation: found variant {:?}", variant_path);
 
-    Some([uri_path, ".", suffix].concat())
+    uri_path_from(relative_variant)
+}
+
+/// Converts a file path relative to the web root into a URI path that
+/// `sanitize_path` resolves back to the same file.
+pub(crate) fn uri_path_from(relative: &Path) -> Option<String> {
+    let relative = relative.to_str()?;
+    Some(format!(
+        "/{}",
+        utf8_percent_encode(relative, URI_PATH_ESCAPE)
+    ))
 }
 
 /// Whether a suffix is made of ASCII letters, digits and `-` only.
@@ -101,6 +119,62 @@ fn try_variant(file_path: &Path, suffix: &str) -> Option<PathBuf> {
 #[inline]
 fn is_file(path: &Path) -> bool {
     matches!(try_metadata(path), Ok((_, false)))
+}
+
+// Property-based regression test for `try_variant_uri`: whatever the request
+// tail, a returned URI path re-sanitizes to a file inside `base`.
+#[cfg(test)]
+mod prop_tests {
+    use super::{sanitize_path, try_variant_uri};
+    use proptest::prelude::*;
+    use std::path::PathBuf;
+
+    fn variant_root() -> (tempfile::TempDir, PathBuf) {
+        let tmp = tempfile::tempdir().unwrap();
+        let root = tmp.path().canonicalize().unwrap();
+        let base = root.join("public");
+        std::fs::create_dir_all(base.join("a")).unwrap();
+        for name in ["a.jpg", "a.jpg.webp", "a/a.jpg", "a/a.jpg.webp"] {
+            std::fs::write(base.join(name), name).unwrap();
+        }
+        std::fs::write(root.join("a.jpg"), "outside").unwrap();
+        std::fs::write(root.join("a.jpg.webp"), "outside").unwrap();
+        std::fs::write(root.join("public.webp"), "outside").unwrap();
+        (tmp, base)
+    }
+
+    proptest! {
+        #![proptest_config(ProptestConfig {
+            cases: 256, ..ProptestConfig::default()
+        })]
+
+        #[test]
+        fn prop_variant_uri_resolves_inside_base(
+            tail in proptest::collection::vec(
+                prop_oneof![
+                    Just("../".to_string()),
+                    Just("..\\".to_string()),
+                    Just("%2e%2e/".to_string()),
+                    Just("%2F".to_string()),
+                    Just("./".to_string()),
+                    Just("/".to_string()),
+                    Just("a".to_string()),
+                    Just("a.jpg".to_string()),
+                    "[a-zA-Z0-9_.%-]{1,6}".prop_map(String::from),
+                ],
+                0..12,
+            )
+        ) {
+            let (_tmp, base) = variant_root();
+            let uri_path = format!("/{}", tail.concat());
+            if let Some(result) = try_variant_uri(&base, &uri_path, false, ["webp"]) {
+                let resolved = sanitize_path(&base, &result).expect("returned URI must re-sanitize");
+                prop_assert!(resolved.starts_with(&base), "{resolved:?}");
+                prop_assert!(resolved.is_file(), "{resolved:?}");
+                prop_assert_eq!(std::fs::read_to_string(&resolved).unwrap(), resolved.strip_prefix(&base).unwrap().to_str().unwrap().replace('\\', "/"));
+            }
+        }
+    }
 }
 
 #[cfg(test)]
@@ -217,9 +291,23 @@ mod tests {
             "//a%20b//50%25.png",
         ] {
             let result = variant_uri(&base, uri_path, &["webp"]).expect(uri_path);
-            assert_eq!(result, [uri_path, ".webp"].concat());
+            assert_eq!(result, "/a b/50%25.png.webp", "{uri_path}");
             let resolved = sanitize_path(&base, &result).unwrap();
             assert_eq!(resolved, base.join("a b/50%.png.webp"), "{uri_path}");
+        }
+    }
+
+    #[test]
+    fn variant_uri_names_variant_not_request_tail() {
+        let (_tmp, base) = variant_root();
+        for uri_path in [
+            "/index.html/",
+            "/index.html%2F",
+            "/index.html/.",
+            "/./index.html",
+        ] {
+            let result = variant_uri(&base, uri_path, &["fr"]);
+            assert_eq!(result.as_deref(), Some("/index.html.fr"), "{uri_path}");
         }
     }
 

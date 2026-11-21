@@ -40,7 +40,8 @@ bin/server.rs → settings/ → server/ (mod.rs, opts.rs) → service.rs → han
 | `conditional_headers.rs`, `etag.rs` | `If-*` preconditions (304/412), weak `ETag` |
 | `compression.rs`, `compression_static.rs` | On-the-fly encoding; pre-compressed `.br` `.gz` `.zst` selection |
 | `control_headers.rs`, `security_headers.rs`, `custom_headers.rs`, `text_charset.rs` | Post-processing header steps |
-| `health.rs`, `cors.rs`, `basic_auth.rs`, `metrics.rs`, `maintenance_mode.rs`, `redirects.rs`, `rewrites.rs`, `virtual_hosts.rs`, `markdown.rs` | Pre-processing steps |
+| `health.rs`, `cors.rs`, `basic_auth.rs`, `metrics.rs`, `maintenance_mode.rs`, `redirects.rs`, `rewrites.rs`, `virtual_hosts.rs`, `markdown.rs`, `negotiation/image.rs` | Pre-processing steps |
+| `negotiation/` | `mod.rs::try_variant_uri()`: picks the first `file.ext.<suffix>` variant on disk from ranked suffixes, applies the hidden-file policy, rebuilds the URI; `image.rs` ranks AVIF/WebP from `Accept` |
 | `error_page.rs`, `fallback_page.rs` | 404/50x pages, SPA fallback |
 | `exts/` | `http.rs` (`MethodExt`, `HTTP_SUPPORTED_METHODS`), `headers/` (`Accept-Encoding`, q-values, `ContentCoding`), `mime.rs` (compressible detection) |
 | `mem_cache/` | In-memory file cache (`mini-moka`), keyed by `(path, ContentCoding)` |
@@ -66,11 +67,11 @@ bin/server.rs → settings/ → server/ (mod.rs, opts.rs) → service.rs → han
 | 7 | Redirects | 301/302 |
 | 8 | Rewrites | Yes when the rule has `redirect`; else rewrites the URI and continues |
 | 9 | Virtual hosts | No (swaps `base_path` by `Host`) |
-| 10 | Markdown negotiation (`--accept-markdown`) | No (swaps the URI path to the `.md` variant) |
+| 10 | Markdown negotiation (`--accept-markdown`), then image negotiation (`--image-negotiation`) | No (swaps the URI path to the `.md` or `.avif`/`.webp` variant; an image variant that fails in step 11 is retried as the original) |
 | 11 | `static_files::handle()`: mem-cache lookup (`GET`/`HEAD`), sanitize, resolve, security, `OPTIONS`/trailing-slash/listing, conditional + range reply | Errors become error pages |
 | 12 | Fallback page | — |
 | 13 | CORS response headers | — |
-| 14 | Markdown: `Vary: Accept` (HTML, markdown, listings) and `Content-Type` for the variant | — |
+| 14 | Markdown: `Vary: Accept` (HTML, markdown, listings) and `Content-Type` for the variant; image negotiation: `Vary: Accept` on `GET`/`HEAD` for `.jpg`/`.jpeg`/`.png`/`.gif` | — |
 | 15 | Text charset (`charset=utf-8` on `text/*`) | — |
 | 16 | Static compression `Vary` | — |
 | 17 | Dynamic compression | — |
@@ -127,7 +128,7 @@ Validate in `settings/` or `server/opts.rs`; fail startup with `bail!`/`with_con
 | `--directory-listing` | `false` (format `html`; `auto` negotiates via `Accept`; order `6` = unsorted) |
 | `--include-hidden` / `--follow-symlinks` | `false` |
 | `--cors-allow-origins` | empty (CORS off) |
-| `--health` / `--metrics` / `--accept-markdown` / `--open` / `--maintenance-mode` | `false` |
+| `--health` / `--metrics` / `--accept-markdown` / `--image-negotiation` / `--open` / `--maintenance-mode` | `false` |
 | `--log-remote-address` / `--log-x-real-ip` / `--log-forwarded-for` | `false`; proxy headers only from `--trusted-proxies` (default: none) |
 | `--access-log-format` | empty (structured fields) |
 | `--threads-multiplier` / `--max-blocking-threads` | `1` / `512` (`2` / `20` on wasm) |

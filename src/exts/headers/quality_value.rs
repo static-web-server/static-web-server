@@ -42,8 +42,9 @@ impl<'a> TryFrom<&'a str> for QualityMeta<'a> {
         // Only scan for q= after the first semicolon
         if let Some(rest) = val.split_once(';').map(|(_, r)| r) {
             for part in rest.split(';') {
-                let part = part.trim_start();
-                if let Some(value) = part.strip_prefix("q=")
+                // RFC 9110 §12.4.2: the weight name is case-insensitive
+                if let Some((name, value)) = part.split_once('=')
+                    && name.trim().eq_ignore_ascii_case("q")
                     && let Ok(parsed) = value.trim().parse::<f32>()
                 {
                     // Round (not truncate) so three-decimal q-values survive the
@@ -185,6 +186,17 @@ mod tests {
         assert_eq!(values.next(), Some("br"));
         assert_eq!(values.next(), Some("gzip"));
         assert_eq!(values.next(), Some("deflate"));
+        assert_eq!(values.next(), None);
+    }
+
+    #[test]
+    fn weight_name_is_case_insensitive() {
+        let val = HeaderValue::from_static("gzip;Q=0.5, br;Q=0, zstd ; q = 0.8");
+        let qual = QualityValue::from(val);
+
+        let mut values = qual.iter();
+        assert_eq!(values.next(), Some("zstd"));
+        assert_eq!(values.next(), Some("gzip"));
         assert_eq!(values.next(), None);
     }
 

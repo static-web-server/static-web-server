@@ -230,6 +230,30 @@ pub mod tests {
         assert_eq!(resp.status(), 404);
     }
 
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn image_negotiation_unservable_variant_falls_back_to_original() {
+        let tmp = tempfile::tempdir().unwrap();
+        let root = tmp.path().canonicalize().unwrap();
+        std::fs::write(root.join("target.webp"), "webp").unwrap();
+        std::fs::write(root.join("link.png"), "png").unwrap();
+        std::os::unix::fs::symlink(root.join("target.webp"), root.join("link.png.webp")).unwrap();
+
+        let opts = fixture_settings("toml/image_negotiation_enabled.toml");
+        let general = static_web_server::settings::cli::General {
+            root,
+            follow_symlinks: false,
+            ..opts.general
+        };
+        let handler = fixture_req_handler(fixture_req_handler_opts(general, opts.advanced));
+        let resp = get(&handler, "/link.png", CHROME).await;
+
+        assert_eq!(resp.status(), 200);
+        assert_eq!(header(&resp, "content-type"), Some("image/png"));
+        assert!(varies_on_accept(&resp));
+        assert_eq!(body(resp).await, "png");
+    }
+
     #[cfg(feature = "mem-cache")]
     #[tokio::test]
     async fn image_negotiation_mem_cache_keeps_formats_apart() {
