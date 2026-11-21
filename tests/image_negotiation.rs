@@ -9,6 +9,7 @@ pub mod tests {
     use http_body_util::BodyExt;
     use hyper::{Method, Request, Response};
     use std::net::SocketAddr;
+    use std::path::Path;
 
     use static_web_server::body::Body;
     use static_web_server::handler::RequestHandler;
@@ -60,86 +61,110 @@ pub mod tests {
         header(resp, "vary").is_some_and(|v| v.split(',').any(|n| n.trim() == "accept"))
     }
 
-    async fn body(resp: Response<Body>) -> String {
-        let bytes = resp.into_body().collect().await.unwrap().to_bytes();
-        String::from_utf8(bytes.to_vec()).unwrap()
+    async fn body(resp: Response<Body>) -> Vec<u8> {
+        resp.into_body()
+            .collect()
+            .await
+            .unwrap()
+            .to_bytes()
+            .to_vec()
+    }
+
+    fn fixture(name: &str) -> Vec<u8> {
+        std::fs::read(Path::new("tests/fixtures/images").join(name)).unwrap()
+    }
+
+    /// Whether the bytes start with the file signature of the image type.
+    fn has_signature(bytes: &[u8], content_type: &str) -> bool {
+        match content_type {
+            "image/jpeg" => bytes.starts_with(&[0xFF, 0xD8, 0xFF]),
+            "image/png" => bytes.starts_with(b"\x89PNG\r\n\x1a\n"),
+            "image/gif" => bytes.starts_with(b"GIF8"),
+            "image/webp" => bytes.get(..4) == Some(b"RIFF") && bytes.get(8..12) == Some(b"WEBP"),
+            "image/avif" => bytes.get(4..12) == Some(b"ftypavif"),
+            _ => false,
+        }
+    }
+
+    /// Asserts a `200` response serves the image fixture byte for byte, with
+    /// the content type its signature matches.
+    async fn assert_serves(resp: Response<Body>, name: &str, content_type: &str) {
+        let expected = fixture(name);
+        assert_eq!(resp.status(), 200, "{name}");
+        assert_eq!(header(&resp, "content-type"), Some(content_type), "{name}");
+        let len = expected.len().to_string();
+        assert_eq!(
+            header(&resp, "content-length"),
+            Some(len.as_str()),
+            "{name}"
+        );
+        let bytes = body(resp).await;
+        assert!(
+            has_signature(&bytes, content_type),
+            "{name} is not {content_type}"
+        );
+        assert!(bytes == expected, "{name} body differs from the fixture");
     }
 
     #[tokio::test]
     async fn image_negotiation_serves_avif_to_chrome() {
         let handler = handler("toml/image_negotiation_enabled.toml");
-        let resp = get(&handler, "/photo.jpg", CHROME).await;
+        let resp = get(&handler, "/sws.jpg", CHROME).await;
 
-        assert_eq!(resp.status(), 200);
-        assert_eq!(header(&resp, "content-type"), Some("image/avif"));
-        assert_eq!(header(&resp, "content-length"), Some("12"));
         assert_eq!(header(&resp, "cache-control"), Some("max-age=31536000"));
         assert!(varies_on_accept(&resp));
-        assert_eq!(body(resp).await, "avif-variant");
+        assert_serves(resp, "sws.jpg.avif", "image/avif").await;
     }
 
     #[tokio::test]
     async fn image_negotiation_serves_webp_when_avif_not_accepted() {
         let handler = handler("toml/image_negotiation_enabled.toml");
-        let resp = get(&handler, "/photo.jpg", "image/webp,*/*").await;
+        let resp = get(&handler, "/sws.jpg", "image/webp,*/*").await;
 
-        assert_eq!(resp.status(), 200);
-        assert_eq!(header(&resp, "content-type"), Some("image/webp"));
         assert!(varies_on_accept(&resp));
-        assert_eq!(body(resp).await, "webp-variant");
+        assert_serves(resp, "sws.jpg.webp", "image/webp").await;
     }
 
     #[tokio::test]
     async fn image_negotiation_serves_next_variant_on_disk() {
         let handler = handler("toml/image_negotiation_enabled.toml");
-        let resp = get(&handler, "/logo.png", CHROME).await;
+        let resp = get(&handler, "/sws.png", CHROME).await;
 
-        assert_eq!(resp.status(), 200);
-        assert_eq!(header(&resp, "content-type"), Some("image/webp"));
-        assert_eq!(body(resp).await, "webp");
+        assert!(varies_on_accept(&resp));
+        assert_serves(resp, "sws.png.webp", "image/webp").await;
     }
 
     #[tokio::test]
     async fn image_negotiation_serves_original_to_other_clients() {
         let handler = handler("toml/image_negotiation_enabled.toml");
         for accept in ["*/*", "image/*", "image/jpeg, image/webp;q=0.5"] {
-            let resp = get(&handler, "/photo.jpg", accept).await;
+            let resp = get(&handler, "/sws.jpg", accept).await;
 
-            assert_eq!(resp.status(), 200, "{accept}");
-            assert_eq!(
-                header(&resp, "content-type"),
-                Some("image/jpeg"),
-                "{accept}"
-            );
             assert!(varies_on_accept(&resp), "{accept}");
-            assert_eq!(body(resp).await, "jpeg", "{accept}");
+            assert_serves(resp, "sws.jpg", "image/jpeg").await;
         }
 
-        let resp = send(&handler, Method::GET, "/photo.jpg", &[]).await;
-        assert_eq!(header(&resp, "content-type"), Some("image/jpeg"));
+        let resp = send(&handler, Method::GET, "/sws.jpg", &[]).await;
         assert!(varies_on_accept(&resp));
+        assert_serves(resp, "sws.jpg", "image/jpeg").await;
     }
 
     #[tokio::test]
     async fn image_negotiation_serves_original_without_variants() {
         let handler = handler("toml/image_negotiation_enabled.toml");
-        let resp = get(&handler, "/plain.gif", CHROME).await;
+        let resp = get(&handler, "/sws.gif", CHROME).await;
 
-        assert_eq!(resp.status(), 200);
-        assert_eq!(header(&resp, "content-type"), Some("image/gif"));
         assert!(varies_on_accept(&resp));
-        assert_eq!(body(resp).await, "gif");
+        assert_serves(resp, "sws.gif", "image/gif").await;
     }
 
     #[tokio::test]
     async fn image_negotiation_disabled_serves_original() {
         let handler = handler("toml/image_negotiation_disabled.toml");
-        let resp = get(&handler, "/photo.jpg", CHROME).await;
+        let resp = get(&handler, "/sws.jpg", CHROME).await;
 
-        assert_eq!(resp.status(), 200);
-        assert_eq!(header(&resp, "content-type"), Some("image/jpeg"));
         assert!(!varies_on_accept(&resp));
-        assert_eq!(body(resp).await, "jpeg");
+        assert_serves(resp, "sws.jpg", "image/jpeg").await;
     }
 
     #[tokio::test]
@@ -148,14 +173,15 @@ pub mod tests {
         let resp = send(
             &handler,
             Method::HEAD,
-            "/photo.jpg",
+            "/sws.jpg",
             &[(hyper::header::ACCEPT, CHROME)],
         )
         .await;
 
+        let len = fixture("sws.jpg.avif").len().to_string();
         assert_eq!(resp.status(), 200);
         assert_eq!(header(&resp, "content-type"), Some("image/avif"));
-        assert_eq!(header(&resp, "content-length"), Some("12"));
+        assert_eq!(header(&resp, "content-length"), Some(len.as_str()));
         assert!(varies_on_accept(&resp));
     }
 
@@ -165,7 +191,7 @@ pub mod tests {
         let resp = send(
             &handler,
             Method::OPTIONS,
-            "/photo.jpg",
+            "/sws.jpg",
             &[(hyper::header::ACCEPT, CHROME)],
         )
         .await;
@@ -177,15 +203,15 @@ pub mod tests {
     #[tokio::test]
     async fn image_negotiation_etag_belongs_to_variant() {
         let handler = handler("toml/image_negotiation_enabled.toml");
-        let variant = get(&handler, "/photo.jpg", CHROME).await;
-        let original = get(&handler, "/photo.jpg", "*/*").await;
+        let variant = get(&handler, "/sws.jpg", CHROME).await;
+        let original = get(&handler, "/sws.jpg", "*/*").await;
         let variant_etag = header(&variant, "etag").unwrap().to_owned();
         let original_etag = header(&original, "etag").unwrap().to_owned();
         assert_ne!(variant_etag, original_etag);
 
         let variant_etag = HeaderValue::from_str(&variant_etag).unwrap();
         let mut req = Request::new(());
-        *req.uri_mut() = "http://localhost/photo.jpg".parse().unwrap();
+        *req.uri_mut() = "http://localhost/sws.jpg".parse().unwrap();
         req.headers_mut()
             .insert(hyper::header::ACCEPT, HeaderValue::from_static(CHROME));
         req.headers_mut()
@@ -199,8 +225,7 @@ pub mod tests {
         *req.headers_mut().get_mut(hyper::header::ACCEPT).unwrap() =
             HeaderValue::from_static("*/*");
         let resp = handler.handle(&mut req, remote_addr).await.unwrap();
-        assert_eq!(resp.status(), 200);
-        assert_eq!(body(resp).await, "jpeg");
+        assert_serves(resp, "sws.jpg", "image/jpeg").await;
     }
 
     #[tokio::test]
@@ -209,18 +234,20 @@ pub mod tests {
         let resp = send(
             &handler,
             Method::GET,
-            "/photo.jpg",
+            "/sws.jpg",
             &[
                 (hyper::header::ACCEPT, CHROME),
-                (hyper::header::RANGE, "bytes=0-3"),
+                (hyper::header::RANGE, "bytes=0-11"),
             ],
         )
         .await;
 
+        let avif = fixture("sws.jpg.avif");
+        let content_range = format!("bytes 0-11/{}", avif.len());
         assert_eq!(resp.status(), 206);
-        assert_eq!(header(&resp, "content-range"), Some("bytes 0-3/12"));
+        assert_eq!(header(&resp, "content-range"), Some(content_range.as_str()));
         assert!(varies_on_accept(&resp));
-        assert_eq!(body(resp).await, "avif");
+        assert_eq!(body(resp).await, &avif[..12]);
     }
 
     #[tokio::test]
@@ -235,9 +262,9 @@ pub mod tests {
     async fn image_negotiation_unservable_variant_falls_back_to_original() {
         let tmp = tempfile::tempdir().unwrap();
         let root = tmp.path().canonicalize().unwrap();
-        std::fs::write(root.join("target.webp"), "webp").unwrap();
-        std::fs::write(root.join("link.png"), "png").unwrap();
-        std::os::unix::fs::symlink(root.join("target.webp"), root.join("link.png.webp")).unwrap();
+        std::fs::write(root.join("sws.png"), fixture("sws.png")).unwrap();
+        std::fs::write(root.join("target.webp"), fixture("sws.png.webp")).unwrap();
+        std::os::unix::fs::symlink(root.join("target.webp"), root.join("sws.png.webp")).unwrap();
 
         let opts = fixture_settings("toml/image_negotiation_enabled.toml");
         let general = static_web_server::settings::cli::General {
@@ -246,12 +273,10 @@ pub mod tests {
             ..opts.general
         };
         let handler = fixture_req_handler(fixture_req_handler_opts(general, opts.advanced));
-        let resp = get(&handler, "/link.png", CHROME).await;
+        let resp = get(&handler, "/sws.png", CHROME).await;
 
-        assert_eq!(resp.status(), 200);
-        assert_eq!(header(&resp, "content-type"), Some("image/png"));
         assert!(varies_on_accept(&resp));
-        assert_eq!(body(resp).await, "png");
+        assert_serves(resp, "sws.png", "image/png").await;
     }
 
     #[cfg(feature = "mem-cache")]
@@ -264,20 +289,14 @@ pub mod tests {
 
         // Twice each, so the second round is served from the cache
         for _ in 0..2 {
-            for (accept, content_type, expected) in [
-                (CHROME, "image/avif", "avif-variant"),
-                ("*/*", "image/jpeg", "jpeg"),
-                ("image/webp", "image/webp", "webp-variant"),
+            for (accept, name, content_type) in [
+                (CHROME, "sws.jpg.avif", "image/avif"),
+                ("*/*", "sws.jpg", "image/jpeg"),
+                ("image/webp", "sws.jpg.webp", "image/webp"),
             ] {
-                let resp = get(&handler, "/photo.jpg", accept).await;
-                assert_eq!(resp.status(), 200, "{accept}");
-                assert_eq!(
-                    header(&resp, "content-type"),
-                    Some(content_type),
-                    "{accept}"
-                );
+                let resp = get(&handler, "/sws.jpg", accept).await;
                 assert!(varies_on_accept(&resp), "{accept}");
-                assert_eq!(body(resp).await, expected, "{accept}");
+                assert_serves(resp, name, content_type).await;
             }
         }
     }
