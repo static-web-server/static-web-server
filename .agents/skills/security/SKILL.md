@@ -89,6 +89,8 @@ Behind a TLS-terminating proxy, HSTS is added at the proxy or with an `[[advance
 Inputs: URI path and query, `Host`, `Origin`, `Accept`, `Accept-Encoding`, `Range`, `If-*`, `Authorization`, `Sec-Fetch-Dest`, `User-Agent`, `Referer`, `X-Forwarded-For` / `X-Real-IP`.
 
 - Proxy headers are logged only for requests from `--trusted-proxies` (empty by default: trust nobody). IPv4 entries also match `::ffff:a.b.c.d`
+- `X-Forwarded-For` is read from the right across all header lines, skipping trusted proxies: proxies append, so entries further left are client-controlled. A malformed or empty entry that is reached logs nothing rather than being skipped. Lines are split as bytes, so invalid bytes left of the client are never read
+- `X-Real-IP` must be overwritten by the proxy. More than one line logs nothing: the client's line can't be told apart from the proxy's
 - Parse without panicking: no indexing, `unwrap`, or unchecked arithmetic on attacker-controlled values. Byte-range math (`response/range.rs`) stays checked or saturating
 - Bound allocations by input size (header counts, q-value lists, range sets)
 - Access log values from the request are escaped (`\xHH` for non-printable, `"`, `\`) and cut at 4 KiB, so a client cannot inject lines or terminal escapes. Elsewhere, log attacker-controlled strings with `{:?}`

@@ -62,6 +62,7 @@ Use `--path-as-is`; plain `curl` normalizes `..` client-side and hides traversal
 | Fallback page not served | Request looks like an asset (`Sec-Fetch-Dest` not document/frame, or non-HTML extension without `Accept: text/html`); fixed in #787 to keep 404 for assets |
 | HSTS missing | Sent only with `--tls`; add it at the proxy or with a header rule |
 | Proxy IP not logged | `--trusted-proxies` empty (trusts nobody) or doesn't list the proxy; IPv4 entries match `::ffff:` forms |
+| `X-Forwarded-For` logs a proxy IP | A proxy of the chain is missing from `--trusted-proxies`; the rightmost untrusted entry is logged |
 | Header missing | Custom headers override; CORS headers only on a matched origin; `scope = "files"` rules skip early responses (redirects, 401, 405, health) |
 | Rewrite `$1` empty | Capture numbering follows pattern order; `{*}` stays within one segment, `{**}` spans segments |
 | Connection closed | `--idle-timeout` (30 s default) or `--max-header-size` (431) |

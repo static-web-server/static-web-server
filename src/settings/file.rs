@@ -435,13 +435,17 @@ pub struct General {
     pub log_remote_address: Option<bool>,
 
     /// Log the X-Real-IP header.
+    /// The proxy must overwrite the header. If the request has more than one X-Real-IP line, nothing is logged.
     pub log_x_real_ip: Option<bool>,
 
-    /// Log the X-Forwarded-For header.
+    /// Log the client address from the X-Forwarded-For header.
+    /// It is the rightmost address not in `trusted_proxies`, so every proxy in the chain must be listed
+    /// and must append to or overwrite the header itself.
+    /// Entries must be bare IP addresses. If one that is reached is empty or can't be parsed (e.g. `ip:port`), nothing is logged.
     pub log_forwarded_for: Option<bool>,
 
     /// Proxy IPs to log the X-Real-IP and X-Forwarded-For headers from.
-    /// The headers are not logged when unset.
+    /// Exact IPs only, no ranges. The headers are not logged when unset.
     pub trusted_proxies: Option<Vec<IpAddr>>,
 
     /// Redirect trailing slash feature.

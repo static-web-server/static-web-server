@@ -108,9 +108,10 @@ pub struct RequestHandlerOpts {
     pub log_remote_address: bool,
     /// Log the X-Real-IP header.
     pub log_x_real_ip: bool,
-    /// Log the X-Forwarded-For header.
+    /// Log the client address from the X-Forwarded-For header,
+    /// the rightmost address not in `trusted_proxies`. Entries must be bare IP addresses.
     pub log_forwarded_for: bool,
-    /// Trusted IPs for remote addresses.
+    /// Proxy IPs (exact, no ranges) to log the X-Real-IP and X-Forwarded-For headers from, none if empty.
     pub trusted_proxies: Vec<IpAddr>,
     /// Redirect trailing slash feature.
     pub redirect_trailing_slash: bool,

@@ -198,7 +198,13 @@ mod tests {
         }
     }
 
+    /// The proxy between the client and the one at `REMOTE_ADDR`.
+    const INNER_PROXY: &str = "198.51.100.1";
+
     /// Sends a request with `X-Real-IP` and `X-Forwarded-For` from `REMOTE_ADDR`.
+    ///
+    /// The client `203.0.113.195` sends `X-Forwarded-For: 6.6.6.6`, `INNER_PROXY`
+    /// appends the client to that line, and `REMOTE_ADDR` adds a line with `INNER_PROXY`.
     async fn proxy_request_log_line(trusted_proxies: Vec<IpAddr>) -> serde_json::Value {
         let handler = handler("toml/handler.toml", |general| General {
             log_x_real_ip: true,
@@ -208,7 +214,8 @@ mod tests {
         });
         let req = Request::get("http://localhost/index.html")
             .header("X-Real-IP", "203.0.113.7")
-            .header("X-Forwarded-For", "203.0.113.195, 198.51.100.1")
+            .header("X-Forwarded-For", "6.6.6.6, 203.0.113.195")
+            .header("X-Forwarded-For", INNER_PROXY)
             .body(())
             .unwrap();
 
@@ -221,13 +228,22 @@ mod tests {
     async fn request_logging_trusted_proxy_logs_real_client_ips() {
         let proxy = REMOTE_ADDR.parse::<SocketAddr>().unwrap().ip();
 
-        let line = proxy_request_log_line(vec![proxy]).await;
+        let line = proxy_request_log_line(vec![proxy, INNER_PROXY.parse().unwrap()]).await;
 
         assert_eq!(line["x_real_ip"], "203.0.113.7");
         assert_eq!(
             line["real_remote_ip"], "203.0.113.195",
-            "first X-Forwarded-For entry"
+            "rightmost X-Forwarded-For entry that is not a trusted proxy"
         );
+    }
+
+    #[tokio::test]
+    async fn request_logging_unlisted_inner_proxy_is_logged_as_the_client() {
+        let proxy = REMOTE_ADDR.parse::<SocketAddr>().unwrap().ip();
+
+        let line = proxy_request_log_line(vec![proxy]).await;
+
+        assert_eq!(line["real_remote_ip"], INNER_PROXY);
     }
 
     #[tokio::test]

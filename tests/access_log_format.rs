@@ -343,10 +343,13 @@ mod tests {
         );
     }
 
+    /// A request from client `203.0.113.195`, which sent `X-Forwarded-For: 6.6.6.6`,
+    /// through proxy `10.0.0.1`, which appended the client, then the proxy at `REMOTE_ADDR`.
     fn proxied_request() -> Request<()> {
         Request::get("http://localhost/index.html")
             .header("x-real-ip", "203.0.113.7")
-            .header("x-forwarded-for", "203.0.113.195, 10.0.0.1")
+            .header("x-forwarded-for", "6.6.6.6, 203.0.113.195")
+            .header("x-forwarded-for", "10.0.0.1")
             .body(())
             .unwrap()
     }
@@ -355,7 +358,10 @@ mod tests {
     async fn access_log_format_proxy_tokens_need_no_log_flags() {
         let format = "%{x_real_ip} %{forwarded_for}";
         let general = |general| General {
-            trusted_proxies: vec![REMOTE_ADDR.parse::<SocketAddr>().unwrap().ip()],
+            trusted_proxies: vec![
+                REMOTE_ADDR.parse::<SocketAddr>().unwrap().ip(),
+                "10.0.0.1".parse().unwrap(),
+            ],
             ..with_format(format)(general)
         };
 
@@ -376,6 +382,45 @@ mod tests {
         let access = access_log_lines(&lines);
         assert_eq!(access.len(), 1, "{lines:?}");
         assert_eq!(access[0]["message"], "- -", "no proxy is trusted");
+    }
+
+    #[tokio::test]
+    async fn access_log_format_forwarded_for_stops_at_a_malformed_entry() {
+        let format = "%{forwarded_for}";
+        let general = |general| General {
+            trusted_proxies: vec![REMOTE_ADDR.parse::<SocketAddr>().unwrap().ip()],
+            ..with_format(format)(general)
+        };
+        let req = Request::get("http://localhost/index.html")
+            .header("x-forwarded-for", "6.6.6.6, 203.0.113.195, unknown")
+            .body(())
+            .unwrap();
+
+        let (_, lines) = log_lines("toml/handler.toml", general, req).await;
+
+        let access = access_log_lines(&lines);
+        assert_eq!(access.len(), 1, "{lines:?}");
+        assert_eq!(access[0]["message"], "-");
+    }
+
+    #[tokio::test]
+    async fn access_log_format_x_real_ip_more_than_one_line_logs_nothing() {
+        let format = "%{x_real_ip}";
+        let general = |general| General {
+            trusted_proxies: vec![REMOTE_ADDR.parse::<SocketAddr>().unwrap().ip()],
+            ..with_format(format)(general)
+        };
+        let req = Request::get("http://localhost/index.html")
+            .header("x-real-ip", "6.6.6.6")
+            .header("x-real-ip", "203.0.113.7")
+            .body(())
+            .unwrap();
+
+        let (_, lines) = log_lines("toml/handler.toml", general, req).await;
+
+        let access = access_log_lines(&lines);
+        assert_eq!(access.len(), 1, "{lines:?}");
+        assert_eq!(access[0]["message"], "-", "a client line and a proxy line");
     }
 
     #[tokio::test]
