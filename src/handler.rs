@@ -8,6 +8,7 @@
 
 use hyper::{Request, Response, StatusCode};
 use std::{future::Future, net::SocketAddr, path::PathBuf, sync::Arc};
+use tracing::Instrument;
 
 use crate::body::Body;
 
@@ -36,7 +37,7 @@ use crate::{
     exts::http::MethodExt,
     health, maintenance_mode, redirects, rewrites, security_headers,
     static_files::{self, HandleOpts},
-    text_charset, virtual_hosts,
+    text_charset, trace_context, virtual_hosts,
 };
 
 pub use crate::handler_opts::RequestHandlerOpts;
@@ -75,11 +76,12 @@ impl RequestHandler {
         #[cfg(feature = "mem-cache")]
         let memory_cache = self.opts.memory_cache.as_ref();
 
+        let span = trace_context::span(&self.opts, req.headers());
         // Rewrites replace the request URI and `Host`, so keep the ones the client sent for the
         // access log
         let access_log = access_logs::enabled(&self.opts, req).then(|| {
             let format = self.opts.access_log_format.as_ref();
-            access_logs::AccessLog::new(format, &self.opts, req, remote_addr)
+            access_logs::AccessLog::new(format, &self.opts, req, remote_addr, span.clone())
         });
 
         async move {
@@ -304,6 +306,7 @@ impl RequestHandler {
 
             result
         }
+        .instrument(span)
     }
 }
 

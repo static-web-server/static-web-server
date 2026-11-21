@@ -112,6 +112,8 @@ pub struct RequestHandlerOpts {
     pub log_forwarded_for: bool,
     /// Trusted IPs for remote addresses.
     pub trusted_proxies: Vec<IpAddr>,
+    /// Log the trace context of the `traceparent` header.
+    pub log_trace_context: bool,
     /// Redirect trailing slash feature.
     pub redirect_trailing_slash: bool,
     /// Ignore hidden files feature.
@@ -183,6 +185,7 @@ impl Default for RequestHandlerOpts {
             log_x_real_ip: false,
             log_forwarded_for: false,
             trusted_proxies: Vec::new(),
+            log_trace_context: false,
             redirect_trailing_slash: true,
             include_hidden: true,
             follow_symlinks: true,
