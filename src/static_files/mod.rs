@@ -31,7 +31,7 @@ mod security;
 #[cfg(feature = "directory-listing")]
 mod listing;
 
-pub use opts::{HandleOpts, StaticFileResponse};
+pub use opts::{HandleOpts, RewrittenFrom, StaticFileResponse};
 
 // Re-export for benches/fuzzers/external integration tests that exercise
 // the path-sanitisation invariant directly.
@@ -128,11 +128,12 @@ pub async fn handle(opts: &HandleOpts<'_>) -> Result<StaticFileResponse, StatusC
 /// Returns `Some(response)` on a cache hit, `None` otherwise (cache disabled
 /// in the runtime config, no entry yet, or a non-UTF-8 path).
 ///
-/// With trailing-slash redirect on and a request path ending in `/`, only
-/// the first `--index-files` entry joined to that path is looked up. Any
-/// other file is served only when that entry doesn't exist, which takes a
-/// disk check, so a directory served by a later entry or by its `.html`
-/// sibling never hits the cache.
+/// With trailing-slash redirect on and both the request path and the
+/// redirect path ending in `/`, only the first `--index-files` entry joined
+/// to the request path is looked up. Any other file is served only when that
+/// entry doesn't exist, which takes a disk check, so a directory served by a
+/// later entry or by its `.html` sibling never hits the cache. A redirect
+/// path without the `/` goes to disk for the redirect.
 #[cfg(feature = "mem-cache")]
 fn try_memory_cache(
     opts: &HandleOpts<'_>,
@@ -147,7 +148,10 @@ fn try_memory_cache(
         return None;
     }
 
-    let index_path = (opts.redirect_trailing_slash && opts.uri_path.ends_with('/')).then(|| {
+    let index_path = (opts.redirect_trailing_slash
+        && opts.uri_path.ends_with('/')
+        && opts.redirect_path_and_query().0.ends_with('/'))
+    .then(|| {
         let index = opts.index_files.first().unwrap_or(&DEFAULT_INDEX_FILES[0]);
         file_path.join(index)
     });

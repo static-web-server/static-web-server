@@ -183,6 +183,7 @@ impl RequestHandler {
                     base_path,
                     uri_path,
                     uri_query: req.uri().query(),
+                    rewritten_from: rewrites::rewritten_from(&self.opts, req),
                     #[cfg(feature = "directory-listing")]
                     dir_listing,
                     #[cfg(feature = "directory-listing")]

@@ -1,0 +1,18 @@
+[general]
+
+root = "tests/fixtures/public"
+index-files = "index.htm,index.html"
+redirect-trailing-slash = true
+
+[advanced]
+
+# Serves the root under a path prefix (#387)
+[[advanced.rewrites]]
+source = "/value/manage{**}"
+destination = "/$1"
+
+[advanced.memory-cache]
+capacity = 10
+ttl = 600
+tti = 120
+max-file-size = 4
