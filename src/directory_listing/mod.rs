@@ -19,7 +19,7 @@ pub mod download;
 pub(crate) use autoindex::*;
 pub use dir::*;
 
-use crate::handler::RequestHandlerOpts;
+use crate::handler_opts::RequestHandlerOpts;
 
 /// Initializes directory listings.
 pub fn init(enabled: bool, order: u8, format: DirListFmt, handler_opts: &mut RequestHandlerOpts) {

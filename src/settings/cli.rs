@@ -10,11 +10,11 @@ use hyper::StatusCode;
 use std::{net::IpAddr, path::PathBuf};
 
 #[cfg(feature = "directory-listing")]
-use crate::directory_listing::DirListFmt;
+use crate::settings::file::DirListFmt;
 
-#[cfg(feature = "directory-listing-download")]
-use crate::directory_listing::download::DirDownloadFmt;
 use crate::logger::LogFormat;
+#[cfg(feature = "directory-listing-download")]
+use crate::settings::file::DirDownloadFmt;
 
 use crate::Result;
 

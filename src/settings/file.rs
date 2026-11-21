@@ -12,12 +12,6 @@ use std::net::IpAddr;
 use std::path::Path;
 use std::{collections::BTreeSet, path::PathBuf};
 
-#[cfg(feature = "directory-listing")]
-use crate::directory_listing::DirListFmt;
-
-#[cfg(feature = "directory-listing-download")]
-use crate::directory_listing::download::DirDownloadFmt;
-
 use crate::logger::LogFormat;
 use crate::{Context, Result, helpers};
 
@@ -47,6 +41,38 @@ impl LogLevel {
             LogLevel::Debug => "debug",
             LogLevel::Trace => "trace",
         }
+    }
+}
+
+/// Directory listing output format for file entries.
+#[cfg(feature = "directory-listing")]
+#[cfg_attr(docsrs, doc(cfg(feature = "directory-listing")))]
+#[derive(Debug, PartialEq, Serialize, Deserialize, Clone, clap::ValueEnum)]
+#[serde(rename_all = "lowercase")]
+pub enum DirListFmt {
+    /// HTML format to display (default).
+    Html,
+    /// JSON format to display.
+    Json,
+    /// Automatically choose the format via the request `Accept` header.
+    /// HTML is used by default when no supported media type is present.
+    Auto,
+}
+
+/// Download format for directory
+#[cfg(feature = "directory-listing-download")]
+#[cfg_attr(docsrs, doc(cfg(feature = "directory-listing-download")))]
+#[derive(Debug, Serialize, Deserialize, Clone, clap::ValueEnum, Eq, Hash, PartialEq)]
+#[serde(rename_all = "lowercase")]
+pub enum DirDownloadFmt {
+    /// Gunzip-compressed tarball (.tar.gz)
+    Targz,
+}
+
+#[cfg(feature = "directory-listing-download")]
+impl std::fmt::Display for DirDownloadFmt {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Debug::fmt(self, f)
     }
 }
 

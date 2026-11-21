@@ -11,7 +11,7 @@ use std::path::{Path, PathBuf};
 
 use crate::body::Body;
 use crate::error_page::build_html_response;
-use crate::{Error, Result, handler::RequestHandlerOpts, helpers};
+use crate::{Error, Result, handler_opts::RequestHandlerOpts, helpers};
 
 const DEFAULT_BODY_CONTENT: &str = "The server is in maintenance mode.";
 
@@ -93,7 +93,7 @@ pub fn get_response(
 mod tests {
     use super::pre_process;
     use crate::body::Body;
-    use crate::{Error, handler::RequestHandlerOpts};
+    use crate::{Error, handler_opts::RequestHandlerOpts};
     use hyper::{Request, Response, StatusCode};
 
     fn make_request() -> Request<Body> {
