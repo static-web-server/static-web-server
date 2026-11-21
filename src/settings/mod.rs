@@ -236,6 +236,7 @@ impl Settings {
         let mut follow_symlinks = opts.follow_symlinks;
         let mut use_relative_root = opts.use_relative_root;
         let mut accept_markdown = opts.accept_markdown;
+        let mut image_negotiation = opts.image_negotiation;
         let mut text_charset = opts.text_charset;
         let mut index_files = opts.index_files;
         let mut health = opts.health;
@@ -468,6 +469,9 @@ impl Settings {
                 }
                 if let Some(v) = general.accept_markdown {
                     accept_markdown = v
+                }
+                if let Some(v) = general.image_negotiation {
+                    image_negotiation = v
                 }
                 if let Some(v) = general.text_charset {
                     text_charset = v
@@ -869,6 +873,7 @@ impl Settings {
                 follow_symlinks,
                 use_relative_root,
                 accept_markdown,
+                image_negotiation,
                 text_charset,
                 index_files,
                 health,

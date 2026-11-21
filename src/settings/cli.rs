@@ -692,6 +692,18 @@ pub struct General {
 
     #[arg(
         long,
+        default_value = "false",
+        default_missing_value("true"),
+        num_args(0..=1),
+        require_equals(false),
+        action = clap::ArgAction::Set,
+        env = "SERVER_IMAGE_NEGOTIATION",
+    )]
+    /// Enable image format negotiation. A request for a JPEG, PNG or GIF image is served from its `.avif` or `.webp` variant next to it (e.g. `photo.jpg.avif`) when the client's Accept header explicitly lists that format.
+    pub image_negotiation: bool,
+
+    #[arg(
+        long,
         default_value = "true",
         default_missing_value("true"),
         num_args(0..=1),

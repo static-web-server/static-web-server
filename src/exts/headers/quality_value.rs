@@ -83,6 +83,18 @@ impl QualityValue {
         items.into_iter().map(|pair| pair.data)
     }
 
+    /// Returns each listed value with its weight (`0` to `1000`) in header
+    /// order, keeping the weight-`0` ("not acceptable") ones.
+    pub(crate) fn iter_weighted(&self) -> impl Iterator<Item = (&str, u16)> + use<'_> {
+        self.value
+            .to_str()
+            .ok()
+            .into_iter()
+            .flat_map(|value_str| value_str.split(','))
+            .filter_map(|v| QualityMeta::try_from(v).ok())
+            .map(|meta| (meta.data, meta.quality))
+    }
+
     pub(crate) fn try_from_values<'i, I>(values: &mut I) -> Result<Self, Error>
     where
         I: Iterator<Item = &'i HeaderValue>,
