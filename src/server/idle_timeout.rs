@@ -312,6 +312,30 @@ mod tests {
     }
 
     #[tokio::test(start_paused = true)]
+    async fn shutdown_is_not_progress() {
+        poll_limited(async {
+            let start = Instant::now();
+            let (server, _client) = duplex(64);
+            let mut io = IdleTimeout::new(server, Some(TIMEOUT), None);
+            let mut buf = [0u8; 1];
+            // Shut down halfway through the timeout: the read still fails a timeout after the start.
+            tokio::time::sleep(TIMEOUT / 2).await;
+            io.shutdown().await.expect("shutdown");
+            let err = tokio::time::timeout(Duration::from_secs(5), io.read(&mut buf))
+                .await
+                .expect("idle read did not time out")
+                .expect_err("idle read succeeded");
+            assert_eq!(err.kind(), ErrorKind::TimedOut);
+            assert_eq!(
+                start.elapsed(),
+                TIMEOUT,
+                "shutdown restarted the idle timeout"
+            );
+        })
+        .await;
+    }
+
+    #[tokio::test(start_paused = true)]
     async fn read_progress_restarts_idle_timeout() {
         poll_limited(async {
             let (server, mut client) = duplex(64);
