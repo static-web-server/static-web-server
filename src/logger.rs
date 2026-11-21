@@ -197,6 +197,28 @@ fn split_path(path: &Path) -> Result<(&Path, &std::ffi::OsStr)> {
     Ok((dir, file_name))
 }
 
+/// Keep two subscribers that enable nothing registered until the tests end.
+/// Tests must call this before registering a subscriber of their own.
+///
+/// While a single subscriber is registered, tracing-core caches whether a callsite is enabled
+/// from the current thread's subscriber alone and without a lock. A thread without a subscriber
+/// can then overwrite the cache that registering another thread's subscriber just rebuilt,
+/// and that subscriber never sees the callsite's events.
+/// With two or more registered, both run under a lock.
+/// These two leave the max level at `OFF`, so no callsite is cached before both are registered.
+#[cfg(test)]
+pub(crate) fn register_test_subscribers() {
+    static SUBSCRIBERS: std::sync::LazyLock<[tracing::Dispatch; 2]> =
+        std::sync::LazyLock::new(|| {
+            [(); 2].map(|()| {
+                let subscriber = tracing_subscriber::registry()
+                    .with(tracing_subscriber::filter::LevelFilter::OFF);
+                tracing::Dispatch::new(subscriber)
+            })
+        });
+    std::sync::LazyLock::force(&SUBSCRIBERS);
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -263,6 +285,7 @@ mod tests {
     #[test]
     fn file_writer_streams_events_to_disk() {
         use std::io::Read;
+        register_test_subscribers();
 
         let tmp = tempfile::tempdir().expect("tempdir");
         let log_path = tmp.path().join("server.log");

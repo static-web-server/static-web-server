@@ -17,7 +17,7 @@ use crate::body::Body;
 use crate::exts::headers::{AcceptEncoding, ContentCoding};
 use crate::exts::http::append_vary_accept_encoding;
 use crate::fs::meta::try_metadata;
-use crate::handler::RequestHandlerOpts;
+use crate::handler_opts::RequestHandlerOpts;
 
 /// It defines the pre-compressed file variant metadata of a particular file path.
 pub struct CompressedFileVariant {

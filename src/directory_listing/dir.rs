@@ -4,13 +4,11 @@
 // Copyright (C) 2019-present Jose Quintana <joseluisq.net>
 
 use chrono::{DateTime, Local};
-use clap::ValueEnum;
 use headers::{ContentLength, ContentType, HeaderMapExt};
 use http::Method;
 use hyper::Response;
 use mime_guess::mime;
 use percent_encoding::{AsciiSet, NON_ALPHANUMERIC, percent_encode};
-use serde::{Deserialize, Serialize};
 use std::path::Path;
 
 use crate::body::Body;
@@ -32,18 +30,7 @@ const PERCENT_ENCODE_SET: &AsciiSet = &NON_ALPHANUMERIC
     .remove(b'.')
     .remove(b'~');
 
-/// Directory listing output format for file entries.
-#[derive(Debug, PartialEq, Serialize, Deserialize, Clone, ValueEnum)]
-#[serde(rename_all = "lowercase")]
-pub enum DirListFmt {
-    /// HTML format to display (default).
-    Html,
-    /// JSON format to display.
-    Json,
-    /// Automatically choose the format via the request `Accept` header.
-    /// HTML is used by default when no supported media type is present.
-    Auto,
-}
+pub use crate::settings::file::DirListFmt;
 
 /// Directory listing options.
 pub struct DirListOpts<'a> {

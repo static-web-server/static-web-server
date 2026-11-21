@@ -137,6 +137,7 @@ windows-service = "0.8"
 unicode-normalization = { version = "0.1.26", default-features = false }
 
 [dev-dependencies]
+tokio = { version = "1", default-features = false, features = ["test-util"] }
 bytes = "1.12.1"
 serde_json = "1.0"
 hyper = { version = "1", default-features = false, features = ["http1", "http2", "client"] }

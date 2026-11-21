@@ -626,14 +626,8 @@ pub(crate) mod tests {
     }
 
     /// Capture the DEBUG logs of the current thread until the guard is dropped.
-    ///
-    /// While a single subscriber is registered, tracing-core asks only the current thread's subscriber
-    /// whether a callsite is enabled, so a callsite first hit by a parallel test is never enabled here.
-    /// A second subscriber that stays alive makes it ask all of them.
     pub(super) fn capture_debug_logs() -> (Capture, tracing::subscriber::DefaultGuard) {
-        static SECOND: std::sync::LazyLock<tracing::Dispatch> =
-            std::sync::LazyLock::new(|| tracing::Dispatch::new(tracing_subscriber::registry()));
-        std::sync::LazyLock::force(&SECOND);
+        crate::logger::register_test_subscribers();
 
         let capture = Capture::default();
         let writer = capture.clone();
