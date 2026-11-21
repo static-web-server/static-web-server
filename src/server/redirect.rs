@@ -136,6 +136,27 @@ pub(super) fn spawn(
     Ok(handle)
 }
 
+/// Bind the redirect TCP listener to the server host and the redirect port.
+fn bind(cfg: &super::TlsConfig) -> Result<TcpListener> {
+    let addr = SocketAddr::new(
+        cfg.host
+            .parse()
+            .with_context(|| format!("failed to parse {} as IP address", cfg.host))?,
+        cfg.https_redirect_from_port,
+    );
+
+    let tcp_listener = super::listener::bind_tcp(addr, cfg.ipv6_only)
+        .with_context(|| format!("failed to bind redirect listener to {addr}"))?;
+
+    tracing::info!(
+        ipv6_only = cfg.ipv6_only,
+        "http1 redirect server is listening on http://{}",
+        addr
+    );
+
+    Ok(tcp_listener)
+}
+
 /// Build [`RedirectOpts`] and bind the redirect TCP listener from a [`super::TlsConfig`].
 ///
 /// Returns `None` when HTTPS redirect is disabled in the configuration.
@@ -150,17 +171,7 @@ pub(super) fn maybe_spawn(
         return Ok(None);
     }
 
-    let addr = SocketAddr::new(
-        cfg.host
-            .parse()
-            .with_context(|| format!("failed to parse {} as IP address", cfg.host))?,
-        cfg.https_redirect_from_port,
-    );
-
-    let tcp_listener = super::listener::bind_tcp(addr)
-        .with_context(|| format!("failed to bind redirect listener to {addr}"))?;
-
-    tracing::info!("http1 redirect server is listening on http://{}", addr);
+    let tcp_listener = bind(cfg)?;
 
     let allowed_hosts = cfg
         .https_redirect_from_hosts
@@ -192,4 +203,42 @@ pub(super) fn maybe_spawn(
     )?;
 
     Ok(Some(task))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::bind;
+    use crate::server::TlsConfig;
+    use std::path::PathBuf;
+
+    /// TLS settings for a redirect listener on `::` and a free port.
+    fn tls_config(ipv6_only: bool) -> TlsConfig {
+        TlsConfig {
+            tls_cert: PathBuf::new(),
+            tls_key: PathBuf::new(),
+            https_redirect: true,
+            https_redirect_host: "localhost".to_owned(),
+            https_redirect_from_port: 0,
+            https_redirect_from_hosts: "localhost".to_owned(),
+            host: "::".to_owned(),
+            ipv6_only,
+            port: 443,
+            page404: PathBuf::new(),
+            page50x: PathBuf::new(),
+        }
+    }
+
+    #[test]
+    fn redirect_bind_unspecified_ipv6_is_dual_stack() {
+        let listener = bind(&tls_config(false)).unwrap();
+
+        assert!(!socket2::SockRef::from(&listener).only_v6().unwrap());
+    }
+
+    #[test]
+    fn redirect_bind_ipv6_only_sets_only_v6() {
+        let listener = bind(&tls_config(true)).unwrap();
+
+        assert!(socket2::SockRef::from(&listener).only_v6().unwrap());
+    }
 }

@@ -184,12 +184,49 @@ pub(crate) struct TlsConfig {
     pub https_redirect_from_hosts: String,
     /// Server host address (needed to bind the redirect listener).
     pub host: String,
+    /// Accept IPv6 connections only on the unspecified IPv6 host.
+    pub ipv6_only: bool,
     /// HTTPS port (used in redirect target URLs).
     pub port: u16,
     /// Resolved 404 error page (used by the redirect server).
     pub page404: std::path::PathBuf,
     /// Resolved 50x error page (used by the redirect server).
     pub page50x: std::path::PathBuf,
+}
+
+#[cfg(feature = "tls")]
+impl TlsConfig {
+    /// Build the TLS configuration from `general` and the resolved error pages.
+    ///
+    /// Fails when the TLS certificate or key path is missing.
+    fn new(
+        general: &General,
+        page404: std::path::PathBuf,
+        page50x: std::path::PathBuf,
+    ) -> Result<Self> {
+        let tls_cert = general
+            .tls_cert
+            .clone()
+            .ok_or_else(|| anyhow!("TLS cert file path is required when --tls is enabled"))?;
+        let tls_key = general
+            .tls_key
+            .clone()
+            .ok_or_else(|| anyhow!("TLS key file path is required when --tls is enabled"))?;
+
+        Ok(Self {
+            tls_cert,
+            tls_key,
+            https_redirect: general.https_redirect,
+            https_redirect_host: general.https_redirect_host.clone(),
+            https_redirect_from_port: general.https_redirect_from_port,
+            https_redirect_from_hosts: general.https_redirect_from_hosts.clone(),
+            host: general.host.clone(),
+            ipv6_only: general.ipv6_only,
+            port: general.port,
+            page404,
+            page50x,
+        })
+    }
 }
 
 /// Shutdown context passed to each server sub-module so they can respond to
@@ -521,25 +558,7 @@ impl Server {
         // Dispatch to a TLS-enabled server (HTTP/1+TLS or HTTP/2+TLS) when --tls is set
         #[cfg(feature = "tls")]
         if general.tls {
-            let tls_cert = general
-                .tls_cert
-                .ok_or_else(|| anyhow!("TLS cert file path is required when --tls is enabled"))?;
-            let tls_key = general
-                .tls_key
-                .ok_or_else(|| anyhow!("TLS key file path is required when --tls is enabled"))?;
-
-            let tls_cfg = TlsConfig {
-                tls_cert,
-                tls_key,
-                https_redirect: general.https_redirect,
-                https_redirect_host: general.https_redirect_host,
-                https_redirect_from_port: general.https_redirect_from_port,
-                https_redirect_from_hosts: general.https_redirect_from_hosts,
-                host: general.host,
-                port: general.port,
-                page404: opts_result.page404,
-                page50x: opts_result.page50x,
-            };
+            let tls_cfg = TlsConfig::new(&general, opts_result.page404, opts_result.page50x)?;
 
             // If HTTP/2 is also enabled, use the HTTP/2+TLS accept loop
             #[cfg(feature = "http2")]
@@ -590,6 +609,26 @@ pub(crate) mod tests {
     fn conn_config_idle_timeout_defaults_to_30_seconds() {
         let conn = conn_config(&["static-web-server"]);
         assert_eq!(conn.idle_timeout, Some(Duration::from_secs(30)));
+    }
+
+    #[test]
+    #[cfg(feature = "tls")]
+    fn tls_config_takes_ipv6_only_from_settings() {
+        let args = [
+            "static-web-server",
+            "--tls",
+            "--tls-cert",
+            "cert.pem",
+            "--tls-key",
+            "key.pem",
+            "--ipv6-only",
+        ];
+        let settings = crate::Settings::get_unparsed(false, &args).expect("settings parse");
+        let tls =
+            super::TlsConfig::new(&settings.general, "404.html".into(), "50x.html".into()).unwrap();
+
+        assert_eq!(tls.host, "::");
+        assert!(tls.ipv6_only);
     }
 
     #[test]
