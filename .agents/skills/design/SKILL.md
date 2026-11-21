@@ -116,6 +116,7 @@ Validate in `settings/` or `server/opts.rs`; fail startup with `bail!`/`with_con
 | Option | Default |
 |--------|---------|
 | `--host` / `--port` | `::` / `8080` |
+| `--ipv6-only` | `false` (`::` accepts IPv4 too where the OS supports dual-stack) |
 | `--root` | `.` |
 | `--index-files` | `index.html` |
 | `--log-level` (`-g`) / `--log-format` | `error` / `json` (`pretty` for development) |

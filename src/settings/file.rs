@@ -246,6 +246,8 @@ pub struct Advanced {
 pub struct General {
     /// Server address.
     pub host: Option<String>,
+    /// Accept IPv6 connections only on the unspecified IPv6 host.
+    pub ipv6_only: Option<bool>,
     /// Server port.
     pub port: Option<u16>,
     /// Root directory path.

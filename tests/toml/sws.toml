@@ -2,6 +2,7 @@
 
 #### Address & Root dir
 host = "::"
+ipv6-only = false
 port = 4433
 root = "docker/public"
 

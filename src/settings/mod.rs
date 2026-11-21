@@ -139,6 +139,7 @@ impl Settings {
         // Define the general CLI/file options
         let version = opts.version;
         let mut host = opts.host;
+        let mut ipv6_only = opts.ipv6_only;
         let mut port = opts.port;
         let mut root = opts.root;
         let mut open = opts.open;
@@ -271,6 +272,9 @@ impl Settings {
             if let Some(general) = settings.general {
                 if let Some(v) = general.host {
                     host = v
+                }
+                if let Some(v) = general.ipv6_only {
+                    ipv6_only = v
                 }
                 if let Some(v) = general.port {
                     port = v
@@ -718,6 +722,22 @@ impl Settings {
             bail!("--open cannot be used with --unix-socket");
         }
 
+        // Runtime validation: --ipv6-only needs a host bound by SWS that can be ipv6
+        if ipv6_only {
+            if fd.is_some() {
+                bail!("--ipv6-only cannot be used with --fd");
+            }
+            #[cfg(unix)]
+            if unix_socket.is_some() {
+                bail!("--ipv6-only cannot be used with --unix-socket");
+            }
+            if let Ok(ip) = host.parse::<std::net::IpAddr>()
+                && ip.to_canonical().is_ipv4()
+            {
+                bail!("--ipv6-only cannot be used with the ipv4 host {host}");
+            }
+        }
+
         // Runtime validation: --open-path only applies when --open is enabled
         if open_path.is_some() && !open {
             bail!("--open-path requires --open");
@@ -763,6 +783,7 @@ impl Settings {
             general: General {
                 version,
                 host,
+                ipv6_only,
                 port,
                 root,
                 open,
@@ -919,6 +940,65 @@ mod tests {
             error.to_string(),
             "--open cannot be used with --unix-socket"
         );
+    }
+
+    /// The error of settings parsed from `args`, which must be rejected.
+    fn settings_error(args: &[&str]) -> String {
+        Settings::get_unparsed(false, args)
+            .err()
+            .expect("settings should be rejected")
+            .to_string()
+    }
+
+    #[test]
+    fn ipv6_only_rejects_fd() {
+        let error = settings_error(&["static-web-server", "--ipv6-only", "--fd", "0"]);
+        assert_eq!(error, "--ipv6-only cannot be used with --fd");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn ipv6_only_rejects_unix_socket() {
+        let error = settings_error(&[
+            "static-web-server",
+            "--ipv6-only",
+            "--unix-socket",
+            "/tmp/sws-ipv6-only-test.sock",
+        ]);
+        assert_eq!(error, "--ipv6-only cannot be used with --unix-socket");
+    }
+
+    #[test]
+    fn ipv6_only_rejects_ipv4_host() {
+        let error = settings_error(&["static-web-server", "--ipv6-only", "--host", "0.0.0.0"]);
+        assert_eq!(
+            error,
+            "--ipv6-only cannot be used with the ipv4 host 0.0.0.0"
+        );
+    }
+
+    #[test]
+    fn ipv6_only_rejects_ipv4_mapped_host() {
+        let error = settings_error(&[
+            "static-web-server",
+            "--ipv6-only",
+            "--host",
+            "::ffff:0.0.0.0",
+        ]);
+        assert_eq!(
+            error,
+            "--ipv6-only cannot be used with the ipv4 host ::ffff:0.0.0.0"
+        );
+    }
+
+    #[test]
+    fn ipv6_only_allows_specific_ipv6_host() {
+        let settings = Settings::get_unparsed(
+            false,
+            &["static-web-server", "--ipv6-only", "--host", "::1"],
+        )
+        .unwrap();
+        assert!(settings.general.ipv6_only);
     }
 
     #[test]

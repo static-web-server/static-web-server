@@ -23,8 +23,20 @@ use crate::Result;
 #[command(author, about, long_about)]
 pub struct General {
     #[arg(long, short = 'a', default_value = "::", env = "SERVER_HOST")]
-    /// Host address (E.g 127.0.0.1 or ::1). The default `::` accepts both IPv6 and IPv4 connections where the OS supports dual-stack sockets
+    /// Host address (E.g 127.0.0.1 or ::1). The default `::` accepts both IPv6 and IPv4 connections where the OS supports dual-stack sockets, unless `--ipv6-only` is enabled
     pub host: String,
+
+    #[arg(
+        long,
+        default_value = "false",
+        default_missing_value("true"),
+        num_args(0..=1),
+        require_equals(false),
+        action = clap::ArgAction::Set,
+        env = "SERVER_IPV6_ONLY",
+    )]
+    /// Make the unspecified IPv6 host `::` accept IPv6 connections only, leaving the port free for IPv4. It has no effect on a specific IPv6 host and cannot be used with an IPv4 host, `--fd` or `--unix-socket`.
+    pub ipv6_only: bool,
 
     #[arg(long, short = 'p', default_value = "8080", env = "SERVER_PORT")]
     /// Host port
@@ -831,6 +843,7 @@ mod default_tests {
         let general = General::try_parse_from(["static-web-server"]).unwrap();
 
         assert_eq!(general.port, 8080);
+        assert!(!general.ipv6_only);
         assert_eq!(general.root, PathBuf::from("."));
         assert!(!general.open);
         assert_eq!(general.open_path, None);
@@ -841,6 +854,12 @@ mod default_tests {
         assert_eq!(general.https_redirect_from_port, 8080);
         #[cfg(feature = "directory-listing")]
         assert!(!general.directory_listing);
+    }
+
+    #[test]
+    fn ipv6_only_flag_enables_ipv6_only() {
+        let general = General::try_parse_from(["static-web-server", "--ipv6-only"]).unwrap();
+        assert!(general.ipv6_only);
     }
 
     #[test]
@@ -873,6 +892,17 @@ mod default_tests {
             .unwrap();
 
         assert_eq!(argument.get_env(), Some(OsStr::new("SERVER_OPEN")));
+    }
+
+    #[test]
+    fn ipv6_only_flag_uses_server_ipv6_only_environment_variable() {
+        let command = General::command();
+        let argument = command
+            .get_arguments()
+            .find(|argument| argument.get_id() == "ipv6_only")
+            .unwrap();
+
+        assert_eq!(argument.get_env(), Some(OsStr::new("SERVER_IPV6_ONLY")));
     }
 
     #[test]
