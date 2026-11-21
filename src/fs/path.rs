@@ -8,7 +8,11 @@
 use anyhow::Context;
 use hyper::StatusCode;
 use percent_encoding::percent_decode_str;
+use std::ffi::OsStr;
+use std::fs::DirEntry;
 use std::path::{Component, Path, PathBuf};
+#[cfg(target_os = "macos")]
+use unicode_normalization::char::{canonical_combining_class, decompose_canonical};
 
 use crate::Result;
 
@@ -18,6 +22,8 @@ pub(crate) trait PathExt {
     fn is_hidden(&self) -> bool;
     /// If the path is a symlink or contains intermediate symlink components.
     fn contains_symlink(&self, base: &Path) -> Result<bool>;
+    /// If a path component may be an 8.3 short-name alias of another entry.
+    fn contains_short_name_alias(&self, base: &Path) -> Result<bool>;
 }
 
 impl PathExt for Path {
@@ -56,6 +62,165 @@ impl PathExt for Path {
             }
         }
         Ok(false)
+    }
+
+    /// Checks if a component of the path, relative to `base`, contains `~` but
+    /// has no entry of that name (ignoring case, and on macOS Unicode
+    /// normalization) in its parent directory.
+    ///
+    /// NTFS and FAT volumes give each entry an 8.3 short name, such as `GIT~1`
+    /// for `.git`, and open the entry by either name. The directory lists the
+    /// long name only, so a short-name alias has no entry of its own.
+    /// Canonicalization can't detect it: Linux keeps the alias spelling.
+    ///
+    /// Only components containing `~` cost a directory read. Returns an error
+    /// when that directory can't be listed. Matching ignores case, so on a
+    /// case-sensitive volume that keeps short names, a real entry spelled like
+    /// an alias in another case hides that alias. A name matched ignoring
+    /// normalization must also open the file listed for the entry.
+    fn contains_short_name_alias(&self, base: &Path) -> Result<bool> {
+        let mut dir = base.to_path_buf();
+        dir.reserve(self.as_os_str().len());
+        for component in self.components() {
+            let Component::Normal(name) = component else {
+                continue;
+            };
+            if name.as_encoded_bytes().contains(&b'~') && !has_dir_entry(&dir, name)? {
+                return Ok(true);
+            }
+            dir.push(name);
+        }
+        Ok(false)
+    }
+}
+
+/// Checks if `dir` has an entry named `name` once both are folded by
+/// `fold_name`, and `name` opens that entry (`opens_entry`). `name` is folded
+/// once; only a non-ASCII entry on macOS allocates to be compared.
+fn has_dir_entry(dir: &Path, name: &OsStr) -> Result<bool> {
+    let folded = name.to_str().map(fold_name);
+    let entries = std::fs::read_dir(dir)
+        .with_context(|| format!("unable to read directory '{}'", dir.display()))?;
+    for entry in entries {
+        let entry =
+            entry.with_context(|| format!("unable to read entry of '{}'", dir.display()))?;
+        let entry_name = entry.file_name();
+        if entry_name == name {
+            return Ok(true);
+        }
+        if folds_to(&entry_name, folded.as_deref()) && opens_entry(dir, name, &entry) {
+            return Ok(true);
+        }
+    }
+    Ok(false)
+}
+
+/// Folds `name` for comparison: lowercase. Unicode lowercasing approximates
+/// the case folding of NTFS and FAT.
+///
+/// Normalization is kept: Linux vfat tells the forms apart, so a real entry
+/// in another form than a non-ASCII alias such as `RÉSUMÉ~1` would hide it.
+#[cfg(not(target_os = "macos"))]
+fn fold_name(name: &str) -> Vec<char> {
+    name.chars().flat_map(char::to_lowercase).collect()
+}
+
+/// Folds `name` for comparison: lowercase, in canonical decomposition (NFD).
+///
+/// APFS, HFS+ and the macOS FAT and exFAT drivers open a name in either
+/// normalization form but list it as stored, so a request for a precomposed
+/// `é` opens an entry listed as `e` and U+0301. A lowercase mapping is
+/// decomposed again, since it may be precomposed.
+///
+/// Ignoring normalization alone could hide an alias, so `opens_entry` checks
+/// a name matched this way.
+#[cfg(target_os = "macos")]
+fn fold_name(name: &str) -> Vec<char> {
+    let mut folded = Vec::with_capacity(name.len());
+    for c in name.chars() {
+        decompose_canonical(c, |c| {
+            for c in c.to_lowercase() {
+                decompose_canonical(c, |c| push_in_canonical_order(&mut folded, c));
+            }
+        });
+    }
+    folded
+}
+
+/// Appends `c`, moving a combining mark before the preceding marks of a
+/// higher combining class, the order NFD requires.
+#[cfg(target_os = "macos")]
+fn push_in_canonical_order(folded: &mut Vec<char>, c: char) {
+    let class = canonical_combining_class(c);
+    let mut at = folded.len();
+    while class != 0 && at > 0 && canonical_combining_class(folded[at - 1]) > class {
+        at -= 1;
+    }
+    folded.insert(at, c);
+}
+
+/// Checks if `name`, which folds to the name of `entry`, opens that entry. It
+/// does: folding ignores case only, as NTFS and FAT do.
+#[cfg(not(target_os = "macos"))]
+fn opens_entry(_dir: &Path, _name: &OsStr, _entry: &DirEntry) -> bool {
+    true
+}
+
+/// Checks if `name`, which folds to the name of `entry`, opens that entry.
+///
+/// A name in another case is taken as the entry's, as on other platforms. A
+/// name in another normalization form must open the inode listed for the
+/// entry. The macOS NTFS driver opens 8.3 short names, and so may an SMB or
+/// NFS server, so the short name `RÉSUMÉ~1` of a hidden file would otherwise
+/// pass for an entry listed as `re\u{301}sume\u{301}~1`.
+///
+/// The inode opened by the entry name can't be compared instead: the NTFS
+/// driver composes a name before looking it up, so that entry name opens
+/// the hidden file too. The macOS FAT and exFAT drivers list an empty file
+/// under another inode than it opens with, so one isn't matched.
+#[cfg(target_os = "macos")]
+fn opens_entry(dir: &Path, name: &OsStr, entry: &DirEntry) -> bool {
+    use std::os::unix::fs::{DirEntryExt, MetadataExt};
+
+    is_same_ignoring_case(name, &entry.file_name())
+        || std::fs::symlink_metadata(dir.join(name)).is_ok_and(|meta| meta.ino() == entry.ino())
+}
+
+/// Checks if both names lowercase to the same name.
+#[cfg(target_os = "macos")]
+fn is_same_ignoring_case(name: &OsStr, other: &OsStr) -> bool {
+    match (name.to_str(), other.to_str()) {
+        (Some(name), Some(other)) => name
+            .chars()
+            .flat_map(char::to_lowercase)
+            .eq(other.chars().flat_map(char::to_lowercase)),
+        _ => false,
+    }
+}
+
+/// Checks if `name` folds to `folded`, without allocating.
+#[cfg(not(target_os = "macos"))]
+fn folds_to(name: &OsStr, folded: Option<&[char]>) -> bool {
+    match (name.to_str(), folded) {
+        (Some(name), Some(folded)) => name
+            .chars()
+            .flat_map(char::to_lowercase)
+            .eq(folded.iter().copied()),
+        _ => false,
+    }
+}
+
+/// Checks if `name` folds to `folded`. An ASCII name is compared without
+/// allocating: folding only lowercases it.
+#[cfg(target_os = "macos")]
+fn folds_to(name: &OsStr, folded: Option<&[char]>) -> bool {
+    match (name.to_str(), folded) {
+        (Some(name), Some(folded)) if name.is_ascii() => name
+            .chars()
+            .map(|c| c.to_ascii_lowercase())
+            .eq(folded.iter().copied()),
+        (Some(name), Some(folded)) => fold_name(name) == folded,
+        _ => false,
     }
 }
 
@@ -138,7 +303,7 @@ pub fn is_path_within_base(path: &Path, base_path: &Path) -> bool {
 #[cfg(test)]
 mod tests {
     use super::{PathExt, is_path_within_base, sanitize_path};
-    use std::path::PathBuf;
+    use std::path::{Path, PathBuf};
 
     fn root_dir() -> PathBuf {
         PathBuf::from("docker/public/")
@@ -243,6 +408,210 @@ mod tests {
         }
     }
 
+    fn short_name_fixture() -> tempfile::TempDir {
+        let base = tempfile::tempdir().unwrap();
+        let root = base.path();
+        std::fs::create_dir_all(root.join(".git")).unwrap();
+        std::fs::create_dir_all(root.join("a~b/.env")).unwrap();
+        std::fs::write(root.join(".git/config"), "config").unwrap();
+        std::fs::write(root.join("report~1.txt"), "report").unwrap();
+        base
+    }
+
+    #[test]
+    fn contains_short_name_alias_detects_alias_of_hidden_dir() {
+        let base = short_name_fixture();
+
+        for path in ["GIT~1/config", "git~1", "a~b/ENV~1"] {
+            assert!(
+                Path::new(path)
+                    .contains_short_name_alias(base.path())
+                    .unwrap(),
+                "{path} must be reported as a short-name alias"
+            );
+        }
+    }
+
+    #[test]
+    fn contains_short_name_alias_accepts_names_with_tilde() {
+        let base = short_name_fixture();
+
+        for path in ["report~1.txt", "REPORT~1.TXT", "a~b", "a~b/.env"] {
+            assert!(
+                !Path::new(path)
+                    .contains_short_name_alias(base.path())
+                    .unwrap(),
+                "{path} is an entry name, not an alias"
+            );
+        }
+    }
+
+    /// Names with `é` stored decomposed and precomposed. HFS+ and the macOS
+    /// FAT driver list both decomposed.
+    fn normalization_fixture() -> tempfile::TempDir {
+        let base = tempfile::tempdir().unwrap();
+        let root = base.path();
+        std::fs::create_dir(root.join("de\u{301}~x")).unwrap();
+        std::fs::write(root.join("de\u{301}~x/file.txt"), "file").unwrap();
+        std::fs::write(root.join("cafe\u{301}~.txt"), "decomposed").unwrap();
+        std::fs::write(root.join("r\u{e9}sum\u{e9}~1.txt"), "precomposed").unwrap();
+        base
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn contains_short_name_alias_ignores_unicode_normalization() {
+        let base = normalization_fixture();
+        if !base.path().join("caf\u{e9}~.txt").exists() {
+            eprintln!("skipped: this volume tells normalization forms apart");
+            return;
+        }
+        let in_another_case: &[&str] = if base.path().join("CAFE\u{301}~.TXT").exists() {
+            &["CAF\u{c9}~.TXT", "RE\u{301}SUM\u{c9}~1.TXT"]
+        } else {
+            &[]
+        };
+
+        for path in [
+            "caf\u{e9}~.txt",
+            "cafe\u{301}~.txt",
+            "d\u{e9}~x/file.txt",
+            "r\u{e9}sum\u{e9}~1.txt",
+            "re\u{301}sume\u{301}~1.txt",
+        ]
+        .iter()
+        .chain(in_another_case)
+        {
+            assert!(
+                !Path::new(path)
+                    .contains_short_name_alias(base.path())
+                    .unwrap(),
+                "{path:?} is an entry name in another normalization form, not an alias"
+            );
+        }
+    }
+
+    #[cfg(target_os = "macos")]
+    fn dir_entry(dir: &Path, name: &str) -> std::fs::DirEntry {
+        let mut entries = std::fs::read_dir(dir).unwrap().map(Result::unwrap);
+        entries.find(|entry| entry.file_name() == name).unwrap()
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn opens_entry_accepts_name_in_another_case_or_normalization_form() {
+        let base = normalization_fixture();
+        let entry = dir_entry(base.path(), "cafe\u{301}~.txt");
+        if !base.path().join("caf\u{e9}~.txt").exists() {
+            eprintln!("skipped: this volume tells normalization forms apart");
+            return;
+        }
+
+        for name in ["CAFE\u{301}~.TXT", "caf\u{e9}~.txt"] {
+            assert!(
+                super::opens_entry(base.path(), name.as_ref(), &entry),
+                "{name:?} opens the entry"
+            );
+        }
+    }
+
+    /// A short name opens another file than the entry it is spelled like:
+    /// here `r\u{e9}sum\u{e9}~1.txt` stands in for the file it is an alias of.
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn opens_entry_rejects_name_opening_another_file() {
+        let base = normalization_fixture();
+        let entry = dir_entry(base.path(), "cafe\u{301}~.txt");
+
+        for name in ["r\u{e9}sum\u{e9}~1.txt", "de\u{301}~x", "missing~1.txt"] {
+            assert!(
+                !super::opens_entry(base.path(), name.as_ref(), &entry),
+                "{name:?} doesn't open the entry"
+            );
+        }
+    }
+
+    #[test]
+    fn contains_short_name_alias_detects_alias_with_other_letters() {
+        let base = normalization_fixture();
+
+        for path in [
+            "cafe~.txt",
+            "caf\u{e8}~.txt",
+            "cafe\u{300}~.txt",
+            "CAF\u{c9}~1.TXT",
+            "de\u{301}~x/FILE~1.TXT",
+        ] {
+            assert!(
+                Path::new(path)
+                    .contains_short_name_alias(base.path())
+                    .unwrap(),
+                "{path:?} must be reported as a short-name alias"
+            );
+        }
+    }
+
+    /// Linux vfat tells normalization forms apart and opens a non-ASCII short
+    /// name such as `RÉSUMÉ~1`, so an entry in another form can't hide it.
+    #[cfg(not(target_os = "macos"))]
+    #[test]
+    fn contains_short_name_alias_detects_alias_in_another_normalization_form() {
+        let base = normalization_fixture();
+
+        for path in [
+            "caf\u{e9}~.txt",
+            "CAF\u{c9}~.TXT",
+            "re\u{301}sume\u{301}~1.txt",
+            "RE\u{301}SUME\u{301}~1.TXT",
+        ] {
+            assert!(
+                Path::new(path)
+                    .contains_short_name_alias(base.path())
+                    .unwrap(),
+                "{path:?} must be reported as a short-name alias"
+            );
+        }
+    }
+
+    #[test]
+    fn contains_short_name_alias_skips_names_without_tilde() {
+        let base = short_name_fixture();
+
+        assert!(
+            !Path::new("missing/dir/file.txt")
+                .contains_short_name_alias(base.path())
+                .unwrap()
+        );
+    }
+
+    #[test]
+    fn contains_short_name_alias_errors_on_missing_dir() {
+        let base = short_name_fixture();
+
+        assert!(
+            Path::new("missing/x~1")
+                .contains_short_name_alias(base.path())
+                .is_err()
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn contains_short_name_alias_skips_base_components() {
+        use std::fs::Permissions;
+        use std::os::unix::fs::PermissionsExt;
+
+        let parent = tempfile::tempdir().unwrap();
+        let base = parent.path().join("r~1");
+        std::fs::create_dir(&base).unwrap();
+        std::fs::set_permissions(parent.path(), Permissions::from_mode(0o311)).unwrap();
+
+        let result = Path::new("file.txt").contains_short_name_alias(&base);
+        std::fs::set_permissions(parent.path(), Permissions::from_mode(0o755)).unwrap();
+
+        assert!(!result.unwrap());
+    }
+
     // Property-based regression tests for `sanitize_path`
     //
     // These properties encode the security invariants of path
@@ -284,6 +653,27 @@ mod tests {
             if let Ok(full) = sanitize_path(&base, &tail) {
                 assert_under_base(&base, &full);
             }
+        }
+
+        /// `fold_name` must agree with the reference NFD implementation,
+        /// including the order of stacked combining marks: the second
+        /// alternative mixes marks of classes 10, 202, 220, 230 and 240.
+        #[cfg(target_os = "macos")]
+        #[test]
+        fn prop_fold_name_matches_reference_nfd(
+            name in prop_oneof![
+                "\\PC{0,24}",
+                "[aE\u{e9}\u{c5}\u{212b}\u{1e69}\u{1f88}\u{ac01}\u{5b0}\u{328}\u{323}\u{307}\u{301}\u{345}]{0,12}",
+            ]
+        ) {
+            use unicode_normalization::UnicodeNormalization;
+
+            let expected = name
+                .nfd()
+                .flat_map(char::to_lowercase)
+                .nfd()
+                .collect::<Vec<_>>();
+            prop_assert_eq!(super::fold_name(&name), expected);
         }
 
         /// Targeted traversal patterns: many `../` segments interleaved

@@ -88,6 +88,10 @@ pub mod fixtures {
             // TODO: add support or `cors` when required
             cors: None,
             security_headers: general.security_headers,
+            #[cfg(feature = "tls")]
+            hsts: general.security_headers && general.tls,
+            #[cfg(not(feature = "tls"))]
+            hsts: false,
             cache_control_headers: general.cache_control_headers,
             etag: general.etag,
             page404: general.page404,
@@ -97,6 +101,9 @@ pub mod fixtures {
             page_fallback: vec![],
             #[cfg(feature = "basic-auth")]
             basic_auth: general.basic_auth,
+            access_log_format: (!general.access_log_format.is_empty()).then(|| {
+                crate::access_logs::AccessLogFormat::parse(&general.access_log_format).unwrap()
+            }),
             log_remote_address: general.log_remote_address,
             log_x_real_ip: general.log_x_real_ip,
             log_forwarded_for: general.log_forwarded_for,
@@ -113,6 +120,7 @@ pub mod fixtures {
                 .map(|s| s.trim().to_owned())
                 .collect(),
             health: general.health,
+            shutting_down: Default::default(),
             #[cfg(feature = "metrics")]
             metrics_enabled: general.metrics,
             maintenance_mode: general.maintenance_mode,

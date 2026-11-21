@@ -9,8 +9,8 @@ use crate::handler::RequestHandlerOpts;
 use crate::settings::Advanced;
 use crate::settings::cli::General;
 use crate::{
-    Context, Result, compression_static, control_headers, cors, etag, health, helpers, log_addr,
-    maintenance_mode, security_headers,
+    Context, Result, access_logs, compression_static, control_headers, cors, etag, health, helpers,
+    log_addr, maintenance_mode, security_headers,
 };
 
 #[cfg(feature = "directory-listing")]
@@ -120,10 +120,26 @@ pub(super) fn init(general: &General, advanced: Option<Advanced>) -> Result<Hand
     }
     tracing::info!(index_files = %general.index_files, "index files");
 
+    // Access log format option
+    let access_log_format = if general.access_log_format.is_empty() {
+        None
+    } else {
+        Some(
+            access_logs::AccessLogFormat::parse(&general.access_log_format)
+                .with_context(|| "invalid access log format")?,
+        )
+    };
+    tracing::info!(
+        enabled = access_log_format.is_some(),
+        "access log: custom format"
+    );
+
     let mut handler_opts = RequestHandlerOpts {
         root_dir,
+        shutting_down: Default::default(),
         page404: page404.clone(),
         page50x: page50x.clone(),
+        access_log_format,
         log_remote_address: general.log_remote_address,
         log_x_real_ip: general.log_x_real_ip,
         log_forwarded_for: general.log_forwarded_for,
@@ -165,18 +181,21 @@ pub(super) fn init(general: &General, advanced: Option<Advanced>) -> Result<Hand
     health::init(general.health, &mut handler_opts);
 
     // Log remote address
-    log_addr::init(general.log_remote_address, &mut handler_opts);
+    #[cfg(unix)]
+    let unix_socket = general.unix_socket.is_some();
+    #[cfg(not(unix))]
+    let unix_socket = false;
+    log_addr::init(general.log_remote_address, unix_socket, &mut handler_opts);
 
     // Metrics endpoint
     #[cfg(feature = "metrics")]
     metrics::init(general.metrics, &mut handler_opts);
 
     // CORS
-    cors::init(
+    handler_opts.cors = cors::init(
         &general.cors_allow_origins,
         &general.cors_allow_headers,
         &general.cors_expose_headers,
-        &mut handler_opts,
     );
 
     // Basic HTTP Authentication
@@ -215,7 +234,11 @@ pub(super) fn init(general: &General, advanced: Option<Advanced>) -> Result<Hand
     etag::init(general.etag, &mut handler_opts);
 
     // Security headers
-    security_headers::init(general.security_headers, &mut handler_opts);
+    #[cfg(feature = "tls")]
+    let tls = general.tls;
+    #[cfg(not(feature = "tls"))]
+    let tls = false;
+    security_headers::init(general.security_headers, tls, &mut handler_opts);
 
     // In-memory cache
     #[cfg(feature = "mem-cache")]
@@ -228,4 +251,33 @@ pub(super) fn init(general: &General, advanced: Option<Advanced>) -> Result<Hand
         #[cfg(feature = "tls")]
         page50x,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::init;
+    use crate::Settings;
+
+    #[test]
+    fn access_log_format_invalid_fails_at_startup() {
+        let settings = Settings::get_unparsed(
+            false,
+            &[
+                "static-web-server",
+                "--root",
+                "tests/fixtures/public",
+                "--access-log-format",
+                "%{method} %{bogus}",
+            ],
+        )
+        .unwrap();
+
+        let err = init(&settings.general, None)
+            .err()
+            .expect("startup must fail");
+
+        let err = format!("{err:#}");
+        assert!(err.contains("invalid access log format"), "{err}");
+        assert!(err.contains("%{bogus}"), "{err}");
+    }
 }

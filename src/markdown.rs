@@ -9,14 +9,16 @@
 //! an Accept header that includes text/markdown.
 
 use headers::HeaderMapExt;
-use hyper::{Request, Response};
+use hyper::{Request, Response, StatusCode};
 use percent_encoding::{AsciiSet, CONTROLS, utf8_percent_encode};
 use std::path::Path;
 
 use crate::body::Body;
+use crate::exts::http::{MethodExt, append_vary_accept};
 use crate::fs::path::{PathExt, sanitize_path};
+use crate::response::content_type_for;
 use crate::{
-    Error, exts::headers::Accept, fs::meta::try_markdown_variant, handler::RequestHandlerOpts,
+    Error, exts::headers::Accept, fs::meta::try_markdown_variant, handler_opts::RequestHandlerOpts,
 };
 
 /// Escape set used when converting a resolved file path back into a URI path.
@@ -43,6 +45,12 @@ pub(crate) fn pre_process<T>(
     uri_path: &str,
     include_hidden: bool,
 ) -> Option<String> {
+    // Only a `GET` or `HEAD` gets a representation to negotiate
+    let method = req.method();
+    if !method.is_get() && !method.is_head() {
+        return None;
+    }
+
     let accepts_markdown = req
         .headers()
         .typed_get::<Accept>()
@@ -66,11 +74,24 @@ pub(crate) fn pre_process<T>(
     }
 
     let md_path = try_markdown_variant(&file_path)?;
+    let relative_md = md_path.strip_prefix(base_path).ok()?;
+
+    // 8.3 short-name aliases such as `GIT~1` are checked on the variant found:
+    // the requested path may have no entry of its own (`/guide~v2` for
+    // `guide~v2.md`). A failed check counts as an alias.
+    if !include_hidden
+        && relative_md
+            .contains_short_name_alias(base_path)
+            .unwrap_or(true)
+    {
+        tracing::debug!("markdown: skipping short-name alias {:?}", relative_md);
+        return None;
+    }
     tracing::debug!("markdown: found variant {:?}", md_path);
 
     // Convert the variant path back into a URI path, escaping `%` so the
     // static-files handler's re-decode resolves to the same file.
-    let relative_md = md_path.strip_prefix(base_path).ok()?.to_str()?;
+    let relative_md = relative_md.to_str()?;
     Some(format!(
         "/{}",
         utf8_percent_encode(relative_md, URI_PATH_ESCAPE)
@@ -78,14 +99,38 @@ pub(crate) fn pre_process<T>(
 }
 
 /// Post-process the response to set the correct Content-Type for markdown files.
+///
+/// When the feature is enabled, HTML and markdown responses get
+/// `Vary: Accept` since the same URI may resolve to either the HTML or the
+/// markdown variant depending on the `Accept` request header. Both
+/// representations must carry it, otherwise a shared cache could serve the
+/// first cached one to every client. A markdown variant only makes sense for
+/// HTML, so other assets (CSS, JS, images) don't get it and shared caches
+/// don't store one copy per `Accept` value. Directory listings get it in any
+/// format, since a directory may have a markdown index. Custom headers can
+/// still override it.
+///
+/// `file_path` is the file resolved by the static files handler, `None` for
+/// error and fallback pages.
 pub(crate) fn post_process(
     is_markdown_variant: bool,
+    is_dir_listing: bool,
+    file_path: Option<&Path>,
     opts: &RequestHandlerOpts,
     mut resp: Response<Body>,
 ) -> Result<Response<Body>, Error> {
-    if !is_markdown_variant || !opts.accept_markdown {
+    if !opts.accept_markdown {
         return Ok(resp);
     }
+
+    if !is_markdown_variant {
+        if is_dir_listing || is_html(file_path, &resp) {
+            append_vary_accept(&mut resp);
+        }
+        return Ok(resp);
+    }
+
+    append_vary_accept(&mut resp);
 
     resp.headers_mut().insert(
         http::header::CONTENT_TYPE,
@@ -93,6 +138,28 @@ pub(crate) fn post_process(
     );
 
     Ok(resp)
+}
+
+/// Whether the response is an HTML representation.
+///
+/// The `Content-Type` decides when there is one. A `304 Not Modified` carries
+/// none but must repeat the `Vary` of the `200` (RFC 9110, section 15.4.5), so
+/// the file resolved by the static files handler decides for it. A
+/// trailing-slash `308` carries none either and always counts: a directory with
+/// only a markdown index redirects HTML clients but serves markdown ones, so
+/// the selected response depends on `Accept` (RFC 9110, section 12.5.5).
+#[inline]
+fn is_html(file_path: Option<&Path>, resp: &Response<Body>) -> bool {
+    if let Some(content_type) = resp.headers().get(http::header::CONTENT_TYPE) {
+        return content_type
+            .to_str()
+            .ok()
+            .and_then(|v| v.split(';').next())
+            .is_some_and(|essence| essence.trim().eq_ignore_ascii_case("text/html"));
+    }
+    file_path.is_some_and(|path| {
+        resp.status() == StatusCode::PERMANENT_REDIRECT || content_type_for(path) == "text/html"
+    })
 }
 
 // Property-based regression test for `pre_process`
@@ -266,6 +333,95 @@ mod tests {
         assert!(result.is_none());
     }
 
+    #[cfg(windows)]
+    #[test]
+    fn test_hidden_dir_short_name_alias_rejected() {
+        use std::os::windows::process::CommandExt;
+
+        let dir = tempfile::tempdir().unwrap();
+        let hidden = dir.path().join(".hidden-dir");
+        std::fs::create_dir(&hidden).unwrap();
+        std::fs::write(hidden.join("page.md"), "# page").unwrap();
+        let out = std::process::Command::new("cmd")
+            .arg("/C")
+            .raw_arg(format!(
+                "for %I in (\"{}\") do @echo %~snxI",
+                hidden.display()
+            ))
+            .output()
+            .expect("unable to run cmd");
+        let alias = String::from_utf8(out.stdout).unwrap().trim().to_owned();
+        if alias == ".hidden-dir" {
+            eprintln!("skipped: no 8.3 short names on this volume");
+            return;
+        }
+        assert!(
+            out.status.success() && alias.contains('~'),
+            "unexpected short name {alias:?}"
+        );
+        let uri = format!("/{alias}/page");
+        let req = markdown_request(&uri);
+
+        assert!(pre_process(&req, dir.path(), &uri, true).is_some());
+        assert!(pre_process(&req, dir.path(), &uri, false).is_none());
+    }
+
+    #[test]
+    fn test_name_with_tilde_negotiates_variant() {
+        let tmp = tempfile::tempdir().unwrap();
+        let base = tmp.path().canonicalize().unwrap();
+        std::fs::write(base.join("guide~v2.md"), "# guide").unwrap();
+        let req = markdown_request("/guide~v2");
+
+        let result = pre_process(&req, &base, "/guide~v2", false);
+
+        assert_eq!(result, Some("/guide~v2.md".to_string()));
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn test_name_with_tilde_in_another_normalization_form_negotiates_variant() {
+        let tmp = tempfile::tempdir().unwrap();
+        let base = tmp.path().canonicalize().unwrap();
+        std::fs::write(base.join("gue\u{301}~v2.md"), "# guide").unwrap();
+        if !base.join("gu\u{e9}~v2.md").exists() {
+            eprintln!("skipped: this volume tells normalization forms apart");
+            return;
+        }
+        let req = markdown_request("/gu%C3%A9~v2");
+
+        let result = pre_process(&req, &base, "/gu%C3%A9~v2", false);
+
+        assert_eq!(result, Some("/gu%C3%A9~v2.md".to_string()));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn test_variant_with_tilde_in_unlistable_dir_rejected() {
+        use std::fs::Permissions;
+        use std::os::unix::fs::PermissionsExt;
+
+        let tmp = tempfile::tempdir().unwrap();
+        let base = tmp.path().canonicalize().unwrap();
+        let locked = base.join("locked");
+        std::fs::create_dir(&locked).unwrap();
+        std::fs::write(locked.join("a~b.md"), "# page").unwrap();
+        std::fs::set_permissions(&locked, Permissions::from_mode(0o311)).unwrap();
+        let listable = std::fs::read_dir(&locked).is_ok();
+        let req = markdown_request("/locked/a~b");
+
+        let included = pre_process(&req, &base, "/locked/a~b", true);
+        let excluded = pre_process(&req, &base, "/locked/a~b", false);
+        std::fs::set_permissions(&locked, Permissions::from_mode(0o755)).unwrap();
+
+        if listable {
+            eprintln!("skipped: this user can list a directory without read permission");
+            return;
+        }
+        assert_eq!(included, Some("/locked/a~b.md".to_string()));
+        assert_eq!(excluded, None);
+    }
+
     #[test]
     fn test_symlink_path_defers_to_static_handler() {
         // The markdown pre-processor doesn't enforce the symlink policy itself;
@@ -320,5 +476,48 @@ mod tests {
         assert_eq!(result, "/a%252fb.html.md");
         let resolved = sanitize_path(&base, &result).unwrap();
         assert_eq!(resolved, base.join("a%2fb.html.md"));
+    }
+
+    #[test]
+    fn is_html_uses_content_type_when_present() {
+        for (content_type, expected) in [
+            ("text/html", true),
+            ("text/html; charset=utf-8", true),
+            ("Text/HTML ;charset=utf-8", true),
+            ("text/markdown; charset=utf-8", false),
+            ("text/css", false),
+            ("text/html-sandboxed", false),
+        ] {
+            let mut resp = Response::new(crate::body::empty());
+            resp.headers_mut().insert(
+                http::header::CONTENT_TYPE,
+                http::HeaderValue::from_static(content_type),
+            );
+            assert_eq!(is_html(None, &resp), expected, "{content_type}");
+        }
+
+        // The `Content-Type` wins over the resolved file, e.g. a directory
+        // listing resolved to a custom non-HTML index file
+        let mut resp = Response::new(crate::body::empty());
+        resp.headers_mut().insert(
+            http::header::CONTENT_TYPE,
+            http::HeaderValue::from_static("text/html; charset=utf-8"),
+        );
+        assert!(is_html(Some(Path::new("/srv/dir/index.txt")), &resp));
+    }
+
+    #[test]
+    fn is_html_uses_resolved_file_without_content_type() {
+        let mut resp = Response::new(crate::body::empty());
+        *resp.status_mut() = StatusCode::NOT_MODIFIED;
+        assert!(is_html(Some(Path::new("/srv/article.html")), &resp));
+        assert!(is_html(Some(Path::new("/srv/dir/index.htm")), &resp));
+        assert!(!is_html(Some(Path::new("/srv/style.css")), &resp));
+        assert!(!is_html(None, &resp));
+
+        // A trailing-slash redirect counts whatever the index file
+        *resp.status_mut() = StatusCode::PERMANENT_REDIRECT;
+        assert!(is_html(Some(Path::new("/srv/dir/index.txt")), &resp));
+        assert!(!is_html(None, &resp));
     }
 }

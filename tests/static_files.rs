@@ -732,6 +732,53 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn handle_options_reply_does_not_depend_on_path() {
+        // An existing file, a missing path, a directory without trailing slash,
+        // a symlink and a hidden file
+        let paths = ["index.htm", "missing.html", "assets", "symlink", ".dotfile"];
+        let mut replies = Vec::new();
+        for uri_path in paths {
+            let result = static_files::handle(&HandleOpts {
+                method: &Method::OPTIONS,
+                headers: &HeaderMap::new(),
+                base_path: &root_dir(),
+                uri_path,
+                uri_query: None,
+                #[cfg(feature = "mem-cache")]
+                memory_cache: None,
+                #[cfg(feature = "directory-listing")]
+                dir_listing: false,
+                #[cfg(feature = "directory-listing")]
+                dir_listing_order: 6,
+                #[cfg(feature = "directory-listing")]
+                dir_listing_format: &DirListFmt::Html,
+                #[cfg(feature = "directory-listing-download")]
+                dir_listing_download: &[],
+                redirect_trailing_slash: true,
+                compression_static: false,
+                etag: true,
+                include_hidden: false,
+                follow_symlinks: false,
+                index_files: &["index.htm"],
+            })
+            .await;
+            let resp = match result {
+                Ok(result) => {
+                    assert!(result.file_path.is_none(), "{uri_path}");
+                    result.resp
+                }
+                Err(status) => panic!("{uri_path}: unexpected status {status}"),
+            };
+            replies.push((resp.status(), resp.headers().clone()));
+        }
+
+        assert_eq!(replies[0].0, StatusCode::NO_CONTENT);
+        for (reply, uri_path) in replies.iter().zip(paths) {
+            assert_eq!(reply, &replies[0], "{uri_path}");
+        }
+    }
+
+    #[tokio::test]
     async fn handle_file_allowed_disallowed_methods() {
         for method in METHODS {
             match static_files::handle(&HandleOpts {
@@ -1944,6 +1991,425 @@ mod tests {
                     }
                 }
             }
+        }
+    }
+}
+
+/// Files served in place of the requested path (index files, `.html`
+/// siblings and pre-compressed variants) must pass the same containment and
+/// symlink checks as the requested path itself.
+#[cfg(all(test, unix))]
+mod substitute_file_security_tests {
+    use headers::HeaderMap;
+    use http::{Method, StatusCode, header::ACCEPT_ENCODING};
+    use http_body_util::BodyExt;
+    use std::os::unix::fs::symlink;
+    use std::path::{Path, PathBuf};
+
+    #[cfg(feature = "directory-listing")]
+    use static_web_server::directory_listing::DirListFmt;
+    use static_web_server::static_files::{self, HandleOpts};
+
+    const OUTSIDE_BODY: &str = "outside-root-marker";
+    const INSIDE_BODY: &str = "inside-root-target";
+
+    /// A canonical web root plus symlink targets outside and inside it.
+    struct Fixture {
+        _dir: tempfile::TempDir,
+        root: PathBuf,
+        outside: PathBuf,
+        inside: PathBuf,
+    }
+
+    impl Fixture {
+        fn new() -> Self {
+            let dir = tempfile::tempdir().expect("unable to create a temp dir");
+            let base = dir
+                .path()
+                .canonicalize()
+                .expect("unable to resolve the temp dir");
+            let root = base.join("www");
+            std::fs::create_dir_all(root.join("targets")).expect("unable to create the root");
+            let outside = base.join("outside-marker");
+            std::fs::write(&outside, OUTSIDE_BODY).expect("unable to write the outside file");
+            let inside = root.join("targets").join("inside-target");
+            std::fs::write(&inside, INSIDE_BODY).expect("unable to write the inside file");
+            Self {
+                _dir: dir,
+                root,
+                outside,
+                inside,
+            }
+        }
+
+        fn write(&self, name: &str, body: &str) {
+            std::fs::write(self.root.join(name), body).expect("unable to write a fixture file");
+        }
+
+        fn link(&self, name: &str, target: &Path) {
+            symlink(target, self.root.join(name)).expect("unable to create a symlink");
+        }
+    }
+
+    /// Requests `uri_path` with `compression-static` on and returns the
+    /// status and the body (empty on error).
+    async fn get(
+        root: &Path,
+        uri_path: &str,
+        accept_encoding: Option<&str>,
+        follow_symlinks: bool,
+    ) -> (StatusCode, String) {
+        let mut headers = HeaderMap::new();
+        if let Some(coding) = accept_encoding {
+            headers.insert(ACCEPT_ENCODING, coding.parse().unwrap());
+        }
+        let base_path = root.to_path_buf();
+        let result = static_files::handle(&HandleOpts {
+            method: &Method::GET,
+            headers: &headers,
+            base_path: &base_path,
+            uri_path,
+            uri_query: None,
+            #[cfg(feature = "mem-cache")]
+            memory_cache: None,
+            #[cfg(feature = "directory-listing")]
+            dir_listing: false,
+            #[cfg(feature = "directory-listing")]
+            dir_listing_order: 6,
+            #[cfg(feature = "directory-listing")]
+            dir_listing_format: &DirListFmt::Html,
+            #[cfg(feature = "directory-listing-download")]
+            dir_listing_download: &[],
+            redirect_trailing_slash: true,
+            compression_static: true,
+            etag: false,
+            include_hidden: false,
+            follow_symlinks,
+            index_files: &["index.html"],
+        })
+        .await;
+        match result {
+            Ok(res) => {
+                let status = res.resp.status();
+                let body = res.resp.into_body().collect().await.unwrap().to_bytes();
+                (status, String::from_utf8_lossy(&body).into_owned())
+            }
+            Err(status) => (status, String::new()),
+        }
+    }
+
+    /// Asserts how a substitute symlink is handled in both symlink modes:
+    /// outside the root it's never served, inside the root it follows the
+    /// symlink policy.
+    async fn assert_symlink_checked(
+        uri_path: &str,
+        accept_encoding: Option<&str>,
+        link_outside: impl Fn(&Fixture),
+        link_inside: impl Fn(&Fixture),
+    ) {
+        for follow_symlinks in [false, true] {
+            let fixture = Fixture::new();
+            link_outside(&fixture);
+            let (status, body) =
+                get(&fixture.root, uri_path, accept_encoding, follow_symlinks).await;
+            assert_eq!(
+                status,
+                StatusCode::NOT_FOUND,
+                "symlink outside the root must not be served (follow_symlinks={follow_symlinks})"
+            );
+            assert!(!body.contains(OUTSIDE_BODY));
+
+            let fixture = Fixture::new();
+            link_inside(&fixture);
+            let (status, body) =
+                get(&fixture.root, uri_path, accept_encoding, follow_symlinks).await;
+            if follow_symlinks {
+                assert_eq!(status, StatusCode::OK);
+                assert_eq!(body, INSIDE_BODY);
+            } else {
+                assert_eq!(
+                    status,
+                    StatusCode::FORBIDDEN,
+                    "symlink inside the root must follow the symlink policy"
+                );
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn precompressed_variant_symlink_is_checked() {
+        for (ext, coding) in [("gz", "gzip"), ("br", "br"), ("zst", "zstd")] {
+            let variant = format!("app.js.{ext}");
+            assert_symlink_checked(
+                "/app.js",
+                Some(coding),
+                |f| {
+                    f.write("app.js", "original");
+                    f.link(&variant, &f.outside);
+                },
+                |f| {
+                    f.write("app.js", "original");
+                    f.link(&variant, &f.inside);
+                },
+            )
+            .await;
+        }
+    }
+
+    #[tokio::test]
+    async fn precompressed_variant_regular_file_is_served() {
+        let fixture = Fixture::new();
+        fixture.write("app.js", "original");
+        fixture.write("app.js.gz", "gzip variant");
+        let (status, body) = get(&fixture.root, "/app.js", Some("gzip"), false).await;
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(body, "gzip variant");
+    }
+
+    #[tokio::test]
+    async fn index_file_symlink_is_checked() {
+        assert_symlink_checked(
+            "/docs/",
+            None,
+            |f| {
+                std::fs::create_dir(f.root.join("docs")).unwrap();
+                f.link("docs/index.html", &f.outside);
+            },
+            |f| {
+                std::fs::create_dir(f.root.join("docs")).unwrap();
+                f.link("docs/index.html", &f.inside);
+            },
+        )
+        .await;
+    }
+
+    #[tokio::test]
+    async fn index_file_regular_file_is_served() {
+        let fixture = Fixture::new();
+        std::fs::create_dir(fixture.root.join("docs")).unwrap();
+        fixture.write("docs/index.html", "index");
+        let (status, body) = get(&fixture.root, "/docs/", None, false).await;
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(body, "index");
+    }
+
+    #[tokio::test]
+    async fn html_sibling_of_directory_symlink_is_checked() {
+        assert_symlink_checked(
+            "/docs/",
+            None,
+            |f| {
+                std::fs::create_dir(f.root.join("docs")).unwrap();
+                f.link("docs.html", &f.outside);
+            },
+            |f| {
+                std::fs::create_dir(f.root.join("docs")).unwrap();
+                f.link("docs.html", &f.inside);
+            },
+        )
+        .await;
+    }
+
+    #[tokio::test]
+    async fn html_sibling_of_directory_regular_file_is_served() {
+        let fixture = Fixture::new();
+        std::fs::create_dir(fixture.root.join("docs")).unwrap();
+        fixture.write("docs.html", "sibling");
+        let (status, body) = get(&fixture.root, "/docs/", None, false).await;
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(body, "sibling");
+    }
+}
+
+/// A hidden file or directory must not be served through its 8.3 short name
+/// (`GIT~1` for `.git`), which NTFS and FAT volumes resolve on open.
+#[cfg(test)]
+mod short_name_alias_tests {
+    use headers::HeaderMap;
+    use http::{Method, StatusCode};
+    use std::path::Path;
+
+    #[cfg(feature = "directory-listing")]
+    use static_web_server::directory_listing::DirListFmt;
+    #[cfg(feature = "directory-listing-download")]
+    use static_web_server::directory_listing::download::DirDownloadFmt;
+    use static_web_server::static_files::{self, HandleOpts};
+
+    /// Requests `uri_path` with directory listing and archive download on,
+    /// when built in, and returns the status.
+    async fn request(
+        root: &Path,
+        uri_path: &str,
+        uri_query: Option<&str>,
+        include_hidden: bool,
+    ) -> StatusCode {
+        let headers = HeaderMap::new();
+        let base_path = root.to_path_buf();
+        let result = static_files::handle(&HandleOpts {
+            method: &Method::GET,
+            headers: &headers,
+            base_path: &base_path,
+            uri_path,
+            uri_query,
+            #[cfg(feature = "mem-cache")]
+            memory_cache: None,
+            #[cfg(feature = "directory-listing")]
+            dir_listing: true,
+            #[cfg(feature = "directory-listing")]
+            dir_listing_order: 6,
+            #[cfg(feature = "directory-listing")]
+            dir_listing_format: &DirListFmt::Html,
+            #[cfg(feature = "directory-listing-download")]
+            dir_listing_download: &[DirDownloadFmt::Targz],
+            redirect_trailing_slash: true,
+            compression_static: false,
+            etag: false,
+            include_hidden,
+            follow_symlinks: false,
+            index_files: &["index.html"],
+        })
+        .await;
+        match result {
+            Ok(res) => res.resp.status(),
+            Err(status) => status,
+        }
+    }
+
+    #[tokio::test]
+    async fn short_name_check_serves_names_with_tilde() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::create_dir(dir.path().join("a~b")).unwrap();
+        std::fs::write(dir.path().join("a~b/file.txt"), "file").unwrap();
+        std::fs::write(dir.path().join("report~1.txt"), "report").unwrap();
+        std::fs::create_dir(dir.path().join("c~d")).unwrap();
+        std::fs::write(dir.path().join("c~d/index.html"), "index").unwrap();
+
+        for uri_path in ["/report~1.txt", "/a~b/file.txt", "/c~d/"] {
+            let status = request(dir.path(), uri_path, None, false).await;
+            assert_eq!(status, StatusCode::OK, "{uri_path}");
+        }
+        assert_eq!(
+            request(dir.path(), "/c~d", None, false).await,
+            StatusCode::PERMANENT_REDIRECT
+        );
+        #[cfg(feature = "directory-listing")]
+        assert_eq!(
+            request(dir.path(), "/a~b/", None, false).await,
+            StatusCode::OK
+        );
+    }
+
+    /// APFS, HFS+ and the macOS FAT driver open a name in any normalization
+    /// form but list it as stored, here with a decomposed `é`.
+    #[cfg(target_os = "macos")]
+    #[tokio::test]
+    async fn short_name_check_serves_names_in_another_normalization_form() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::create_dir(dir.path().join("de\u{301}~x")).unwrap();
+        std::fs::write(dir.path().join("de\u{301}~x/file.txt"), "file").unwrap();
+        std::fs::write(dir.path().join("cafe\u{301}~.txt"), "file").unwrap();
+        if !dir.path().join("caf\u{e9}~.txt").exists() {
+            eprintln!("skipped: this volume tells normalization forms apart");
+            return;
+        }
+
+        for uri_path in [
+            "/caf%C3%A9~.txt",
+            "/cafe%CC%81~.txt",
+            "/d%C3%A9~x/file.txt",
+            "/de%CC%81~x/file.txt",
+        ] {
+            let status = request(dir.path(), uri_path, None, false).await;
+            assert_eq!(status, StatusCode::OK, "{uri_path}");
+        }
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn short_name_check_refuses_names_with_tilde_in_unlistable_dir() {
+        use std::fs::Permissions;
+        use std::os::unix::fs::PermissionsExt;
+
+        let dir = tempfile::tempdir().unwrap();
+        let locked = dir.path().join("locked");
+        std::fs::create_dir(&locked).unwrap();
+        std::fs::write(locked.join("a~b.txt"), "file").unwrap();
+        std::fs::set_permissions(&locked, Permissions::from_mode(0o311)).unwrap();
+        let listable = std::fs::read_dir(&locked).is_ok();
+
+        let included = request(dir.path(), "/locked/a~b.txt", None, true).await;
+        let excluded = request(dir.path(), "/locked/a~b.txt", None, false).await;
+        std::fs::set_permissions(&locked, Permissions::from_mode(0o755)).unwrap();
+
+        if listable {
+            eprintln!("skipped: this user can list a directory without read permission");
+            return;
+        }
+        assert_eq!(included, StatusCode::OK);
+        assert_eq!(excluded, StatusCode::NOT_FOUND);
+    }
+
+    /// Returns the 8.3 short name of `path`, or `None` when the volume has
+    /// short names disabled and `cmd` prints the long name back.
+    #[cfg(windows)]
+    fn short_name(path: &Path) -> Option<String> {
+        use std::os::windows::process::CommandExt;
+
+        let out = std::process::Command::new("cmd")
+            .arg("/C")
+            .raw_arg(format!(
+                "for %I in (\"{}\") do @echo %~snxI",
+                path.display()
+            ))
+            .output()
+            .expect("unable to run cmd");
+        let name = String::from_utf8(out.stdout).expect("cmd printed a non-UTF-8 name");
+        let name = name.trim();
+        let long_name = path.file_name().unwrap().to_str().unwrap();
+        if name == long_name {
+            eprintln!("skipped: no 8.3 short names on this volume (cmd printed {name:?})");
+            return None;
+        }
+        assert!(
+            out.status.success() && name.contains('~'),
+            "unexpected short name {name:?} for {long_name:?}"
+        );
+        Some(name.to_owned())
+    }
+
+    #[cfg(windows)]
+    #[tokio::test]
+    async fn short_name_alias_of_hidden_path_returns_404() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path();
+        std::fs::create_dir(root.join(".hidden-dir")).unwrap();
+        std::fs::write(root.join(".hidden-dir/file.txt"), "secret").unwrap();
+        std::fs::write(root.join(".env"), "secret").unwrap();
+        let (Some(dir_alias), Some(file_alias)) = (
+            short_name(&root.join(".hidden-dir")),
+            short_name(&root.join(".env")),
+        ) else {
+            return;
+        };
+        let file_in_dir = format!("/{dir_alias}/file.txt");
+
+        let status = request(root, &file_in_dir, None, true).await;
+        assert_eq!(
+            status,
+            StatusCode::OK,
+            "{dir_alias} must resolve on this volume"
+        );
+
+        let requests = [
+            (file_in_dir.clone(), None),
+            (format!("/{file_alias}"), None),
+            (format!("/{dir_alias}"), None),
+            (format!("/{dir_alias}/"), None),
+            (format!("/{dir_alias}/"), Some("download=targz")),
+        ];
+        for (uri_path, uri_query) in requests {
+            let status = request(root, &uri_path, uri_query, false).await;
+            assert_eq!(status, StatusCode::NOT_FOUND, "{uri_path} {uri_query:?}");
         }
     }
 }

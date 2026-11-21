@@ -1,139 +1,163 @@
 ---
 name: design
-description: Design or review software architecture, API contracts, data models, and module boundaries for the Static Web Server (SWS) project
+description: Design or review architecture for the Static Web Server (SWS) project — module boundaries, the request pipeline, configuration options, Cargo feature flags, and defaults. Use when adding a feature that spans modules, adding or changing a config option, inserting a pipeline step, introducing a feature flag, or reviewing an architecture decision.
 ---
 
 # Software Design
 
-Load this skill when designing new features, refactoring modules, defining configuration interfaces, or reviewing architecture decisions for SWS.
+Canonical reference for SWS architecture: module map, pipeline order, configuration model, feature flags, defaults. Other skills link here instead of repeating it. Values below are taken from the source; re-check the cited file before relying on one.
 
-**When to load**: a new feature spans more than one module, a config option is being added or changed, a new step is needed in the request pipeline, a Cargo feature flag is being introduced, or an architecture decision needs review.
+**When to load**: a change spans modules, a config option is added or changed, a pipeline step is added or moved, a Cargo feature is introduced, or a design proposal needs review.
 
 ## Principles
 
-- **Static file server first**: Every design decision starts from "how does this improve serving static files securely and efficiently?"
-- **Small, static binary**: Release binary is ~4MB (uncompressed, musl). New dependencies must not increase it by more than 100KB unless they replace existing functionality or gate behind a feature flag
-- **Feature-gate optional functionality**: Every non-core feature lives behind a Cargo feature flag AND a `#[cfg(feature = "...")]` gate. Users compile only what they need
-- **Three channels, one source of truth**: CLI args, env vars, and TOML config all map to the same `General` struct. Precedence (highest→lowest): CLI args → env vars → TOML config → compiled defaults
-- **Pre-compute at startup, serve at speed**: Resolve, canonicalize, and validate everything possible at server startup. The request hot path is allocation-light and syscall-minimal
+- **Static file server first**: a feature belongs in SWS only if it improves serving static files securely and efficiently
+- **Small binary**: a new dependency must not grow the release binary by more than 100KB unless it replaces existing functionality or sits behind a feature flag
+- **Feature-gate optional functionality**: a Cargo feature plus `#[cfg(feature = "...")]` in code
+- **Pre-compute at startup**: canonicalize paths, compile regex/globs, build automata, validate config once in `settings/` and `server/opts.rs`. The request path reads `Arc<RequestHandlerOpts>` and never re-validates
+- **Secure defaults**: hidden files and symlinks refused, CORS and directory listing off, proxy headers trusted from nobody, HSTS only over TLS
 
-## Module Architecture
-
-### Core Pipeline
+## Module Map
 
 ```
-settings/     →  server/opts.rs  →  handler.rs  →  static_files.rs
-  (parse)         (init)              (pipeline)      (serve file)
+bin/server.rs → settings/ → server/ (mod.rs, opts.rs) → service.rs → handler.rs → static_files/
+                (parse+merge)  (bind, init handler opts)  (hyper Service)  (pipeline)   (serve file)
 ```
-
-### Module Responsibilities
 
 | Module | Responsibility |
 |--------|---------------|
-| `settings/` | Parse CLI/env/TOML, merge, validate |
-| `server/` | Bind listener, start HTTP/1 or HTTP/2+TLS, graceful shutdown |
-| `handler.rs` | Orchestrate request pre/post processing pipeline |
-| `static_files.rs` | Path resolution, index files, directory listing, byte-range, pre-compressed variants |
-| `compression.rs` | On-the-fly gzip/deflate/brotli/zstd compression |
-| `compression_static.rs` | Serve pre-compressed `.br`/`.gz`/`.zst` files from disk |
-| `security_headers.rs` | Append HSTS, CSP, X-Frame-Options, X-Content-Type-Options, Referrer-Policy |
-| `control_headers.rs` | Append Cache-Control based on file extension |
-| `cors.rs` | CORS pre-flight and header injection |
-| `fs/` | File system utilities: path sanitization (`fs/path.rs`), metadata (`fs/meta.rs`), streaming (`fs/stream.rs`) |
-| `exts/` | HTTP extensions: `Accept-Encoding` parsing, content-coding negotiation (`exts/http.rs`, `exts/headers/`, `exts/mime.rs`) |
-| `directory_listing/` | HTML/JSON directory index generation |
-| `body.rs` | Unified response body type — `pub type Body = BoxBody<Bytes, io::Error>` (alias, not a struct) |
-| `service.rs` | Hyper `Service` bridge: `RouterService` → `RequestService` → `RequestHandler` |
+| `settings/cli.rs` | `General`: clap CLI args + `SERVER_*` env vars; `///` docs are the `--help` text |
+| `settings/file.rs` | TOML `Settings`: `General` (all `Option<T>`) + `Advanced` (headers, rewrites, redirects, virtual hosts, memory cache). Unknown keys reported via `serde_ignored` |
+| `settings/mod.rs` | Merge CLI/env with TOML, compile advanced rules (globs → regex, Aho-Corasick), build `Settings { general, advanced }` |
+| `server/opts.rs` | Build `RequestHandlerOpts`: canonicalize root, call each feature's `init()` |
+| `server/` | `listener.rs` (TCP, `--fd`, Unix socket), `http1.rs`, `http1_tls.rs`, `http2.rs`, `uds.rs` accept loops; `redirect.rs` (HTTP→HTTPS server); `idle_timeout.rs` (connection IO wrapper); `conn_limit.rs` (`--max-connections` slots); `browser.rs` (`--open`); graceful shutdown in `mod.rs` |
+| `service.rs` | `RouterService` → `RequestService` → `RequestHandler::handle()` |
+| `handler.rs` | The request pipeline |
+| `handler_opts.rs` | `RequestHandlerOpts`, read by the handler and every pipeline step (re-exported from `handler`) |
+| `static_files/` | `mod.rs::handle()` entry; `resolve.rs` (metadata, index files, pre-compressed variant), `security.rs` (containment, symlink, hidden), `listing.rs`, `reply.rs`, `opts.rs` (`HandleOpts`, `StaticFileResponse`) |
+| `fs/` | `path.rs` (`sanitize_path`), `meta.rs` (metadata → `StatusCode`), `stream.rs` (file streaming, buffer sizing) |
+| `response/` | Byte ranges (`range.rs`) and file response building |
+| `conditional_headers.rs`, `etag.rs` | `If-*` preconditions (304/412), weak `ETag` |
+| `compression.rs`, `compression_static.rs` | On-the-fly encoding; pre-compressed `.br` `.gz` `.zst` selection |
+| `control_headers.rs`, `security_headers.rs`, `custom_headers.rs`, `text_charset.rs` | Post-processing header steps |
+| `health.rs`, `cors.rs`, `basic_auth.rs`, `metrics.rs`, `maintenance_mode.rs`, `redirects.rs`, `rewrites.rs`, `virtual_hosts.rs`, `markdown.rs` | Pre-processing steps |
+| `error_page.rs`, `fallback_page.rs` | 404/50x pages, SPA fallback |
+| `exts/` | `http.rs` (`MethodExt`, `HTTP_SUPPORTED_METHODS`), `headers/` (`Accept-Encoding`, q-values, `ContentCoding`), `mime.rs` (compressible detection) |
+| `mem_cache/` | In-memory file cache (`mini-moka`), keyed by `(path, ContentCoding)` |
+| `directory_listing/` | HTML/JSON index, sorting, tar.gz download |
+| `access_logs.rs`, `access_log_format.rs`, `log_addr.rs`, `logger.rs` | Per-request access log and its compiled format, trusted-proxy address logging, tracing setup |
+| `body.rs` | `Body = BoxBody<Bytes, io::Error>` with `empty()`, `full()`, `stream()` |
+| `error.rs` | `Result<T>`, `Error` (anyhow); re-exports `Context`, `anyhow!`, `bail!` |
+| `testing.rs` | `testing::fixtures` helpers (`#[doc(hidden)]`) |
+| `https_redirect.rs`, `tls.rs`, `winservice.rs`, `signals.rs` | HTTPS redirect handler, TLS config, Windows service, signals |
 
-### Feature Flags as Module Boundaries
+## Request Pipeline
 
-Every optional feature is both a Cargo feature AND a `#[cfg(feature = "...")]` gate:
+`RequestHandler::handle()` in `src/handler.rs`. Order as implemented:
 
-- `compression` → `compression.rs` + `compression_static.rs` (meta-feature: `compression-brotli`/`-deflate`/`-gzip`/`-zstd`)
-- `directory-listing` → `directory_listing/`
-- `http2` → `server/http2.rs` (requires `tls`)
-- `tls` (base plumbing, no crypto provider) → `tls.rs` + `server/http1_tls.rs`. `tls-ring` (default) or `tls-fips` selects the provider
-- `basic-auth` → `basic_auth.rs`
-- `fallback-page` → `fallback_page.rs`
-- `metrics` → `metrics.rs`. `experimental` adds `tokio-metrics-collector` and requires `RUSTFLAGS="--cfg tokio_unstable"`
-- `mem-cache` → `mem_cache/` (LFU admission + LRU eviction via `mini-moka`, `CompactString` keys)
+| # | Step | Short-circuits? |
+|---|------|-----------------|
+| 1 | Method check (`GET`, `HEAD`, `OPTIONS`) | 405 |
+| 2 | Health probes `/livez`, `/readyz` (`--health`) | 200, or 503 from `/readyz` during shutdown or when the root is missing |
+| 3 | CORS (`cors::pre_process`) | Preflight reply, or 403 for a disallowed origin |
+| 4 | Basic auth | 401. Applies to `OPTIONS` too, except a CORS preflight (CORS on, `Origin` + `Access-Control-Request-Method`) |
+| 5 | Metrics endpoint (after auth, so `/metrics` is protected) | Yes |
+| 6 | Maintenance mode | 503 or configured status |
+| 7 | Redirects | 301/302 |
+| 8 | Rewrites | Yes when the rule has `redirect`; else rewrites the URI and continues |
+| 9 | Virtual hosts | No (swaps `base_path` by `Host`) |
+| 10 | Markdown negotiation (`--accept-markdown`) | No (swaps the URI path to the `.md` variant) |
+| 11 | `static_files::handle()`: mem-cache lookup (`GET`/`HEAD`), sanitize, resolve, security, `OPTIONS`/trailing-slash/listing, conditional + range reply | Errors become error pages |
+| 12 | Fallback page | — |
+| 13 | CORS response headers | — |
+| 14 | Markdown: `Vary: Accept` (HTML, markdown, listings) and `Content-Type` for the variant | — |
+| 15 | Text charset (`charset=utf-8` on `text/*`) | — |
+| 16 | Static compression `Vary` | — |
+| 17 | Dynamic compression | — |
+| 18 | `Cache-Control` | — |
+| 19 | Security headers | — |
+| 20 | Custom headers (final precedence). Steps 1–8 return *early* responses; only `scope = "all"` rules reach them | — |
 
-## Request Pipeline Design
+Around the pipeline: metrics (request count, inflight, duration, bytes; health probes excluded) and `access_logs::AccessLog`, which wraps the body and logs one line per request when the body is dropped, with the status and the request values the client sent (before rewrites).
 
-The handler's `handle()` method is the single entry point. The pipeline is linear with three phases:
+### Pipeline Rules
 
-| # | Step | Phase | Can Short-Circuit? |
-|---|------|-------|--------------------|
-| 1 | Method check | Pre | Yes (405) |
-| 2 | Health/metrics | Pre | Yes |
-| 3 | CORS validation | Pre | Yes (preflight 204) |
-| 4 | Basic auth | Pre | Yes (401) |
-| 5 | Maintenance mode | Pre | Yes (503) |
-| 6 | Redirects | Pre | Yes (301/302) |
-| 7 | Rewrites | Pre | No (modifies URI, continues) |
-| 8 | Virtual hosts | Pre | No (selects config, continues) |
-| 9 | Markdown negotiation | Pre | No (sets content-type hint, continues) |
-| 10 | `static_files::handle()` | Core | No (always produces a response) |
-| 11 | Fallback page | Post | No |
-| 12 | CORS headers | Post | No |
-| 13 | Markdown content-type | Post | No |
-| 14 | Text charset | Post | No |
-| 15 | Static compression vary | Post | No |
-| 16 | Dynamic compression | Post | No |
-| 17 | Cache-Control | Post | No |
-| 18 | Security headers | Post | No |
-| 19 | Custom headers | Post | No |
+1. Pre-processing: `module::pre_process(&opts, req) -> Option<Result<Response<Body>, Error>>`; `Some` short-circuits
+2. Post-processing: `module::post_process(&opts, req, resp) -> Result<Response<Body>, Error>`; always returns a response
+3. Post-processing is additive: a step may overwrite a header it owns, never remove another step's. Custom headers run last
+4. Pre-compressed variants are chosen inside `static_files`, so dynamic compression skips bodies that already have `Content-Encoding`
+5. A new step is placed by number and justified against auth (step 4): anything that exposes data runs after it
 
-When adding a new step, specify its position relative to an existing step by number.
-
-### Design Rules for the Pipeline
-
-1. **Pre-processing steps return early** when they handle the request (CORS preflight, redirect, health check)
-2. **Post-processing steps are additive** — they append or modify headers. No step removes headers set by prior steps
-3. **Order matters**: static compression runs before dynamic compression (pre-compressed files avoid CPU cost), cache-control runs before security headers (custom headers — applied last — take final precedence)
-
-## Configuration Design
-
-### The `General` struct
-
-CLI arguments, environment variables, and TOML keys all resolve to the same `General` struct:
+## Configuration Model
 
 ```
---port 8787  ↔  SERVER_PORT=8787  ↔  [general] port = 8787
+--port 8080  ↔  SERVER_PORT=8080  ↔  [general] port = 8080
 ```
 
-### TOML Config File
+**Precedence** (`settings/mod.rs`): clap resolves CLI arg → `SERVER_*` env → compiled default; then every key present in the loaded file's `[general]` table **overwrites** it. Advanced options (`[[advanced.headers]]`, `[[advanced.rewrites]]`, `[[advanced.redirects]]`, `[[advanced.virtual-hosts]]`, `[advanced.memory-cache]`) are TOML-only.
 
-Advanced features (custom headers, rewrites, redirects, virtual hosts) are TOML-only. They live in a separate `Advanced` struct and require glob/regex patterns.
+TOML keys are kebab-case. Default file `./sws.toml` (`--config-file` / `-w`); `./config.toml` still loads with a deprecation warning.
 
-### Default Values Philosophy
+### Adding a Config Option
 
-- **Secure by default**: Hidden files ignored, symlinks disabled, security headers enabled when TLS is active
-- **Performant by default**: Compression, cache-control, and HTTP/2 are default-on Cargo features (opt-out via `--no-default-features`). Disable them to reduce binary size if not needed
-- **Conservative where it matters**: Grace period at 0 (explicit opt-in), directory listing off, CORS off
+1. `settings/cli.rs`: field on `General` with `#[arg(long, default_value = ..., env = "SERVER_...")]` and a `///` doc. Booleans use `default_missing_value("true"), num_args(0..=1), action = ArgAction::Set` so `--flag`, `--flag true`, `--flag=false` all work
+2. `settings/file.rs`: `Option<T>` field on file `General` (or `Advanced`)
+3. `settings/mod.rs`: `let mut x = opts.x;`, the `if let Some(v) = general.x { x = v }` merge, the field in the final `General { .. }`
+4. `handler_opts.rs`: field on `RequestHandlerOpts` and its `Default`, if the request path needs it
+5. `server/opts.rs`: `module::init(value, &mut handler_opts)`, which logs the effective value with `tracing::info!`
+6. `testing.rs`: map it in `fixture_req_handler_opts()` or the crate fails to compile
+7. Tests: parsing in `tests/settings.rs` or a TOML fixture under `tests/fixtures/toml/`, plus behavior tests
+8. Docs: user docs live in `static-web-server/docs` (`src/v3/`); note the follow-up in the PR. `CHANGELOG.md` is written by the maintainer
 
-## File Serving Design
+Validate in `settings/` or `server/opts.rs`; fail startup with `bail!`/`with_context`. Never validate per request.
 
-### Index File Resolution
+### Defaults (`settings/cli.rs`)
 
-1. Request for `/` or `/dir/` → directory detected via metadata
-2. Try each index file in the user-configured order (default: `["index.html", "index.htm"]`)
-3. For each index candidate: check pre-compressed variant, then regular file, then `.html` suffix fallback
-4. If no index found → directory listing (if enabled) or 404
+| Option | Default |
+|--------|---------|
+| `--host` / `--port` | `::` / `8080` |
+| `--ipv6-only` | `false` (`::` accepts IPv4 too where the OS supports dual-stack) |
+| `--root` | `.` |
+| `--index-files` | `index.html` |
+| `--log-level` (`-g`) / `--log-format` | `error` / `json` (`pretty` for development) |
+| `--compression` / `--compression-level` / `--compression-static` | `true` / `default` / `true` |
+| `--cache-control-headers` / `--etag` / `--text-charset` | `true` |
+| `--redirect-trailing-slash` | `true` |
+| `--security-headers` | `true` when built with `tls`, else `false`. HSTS only with `--tls` |
+| `--directory-listing` | `false` (format `html`; `auto` negotiates via `Accept`; order `6` = unsorted) |
+| `--include-hidden` / `--follow-symlinks` | `false` |
+| `--cors-allow-origins` | empty (CORS off) |
+| `--health` / `--metrics` / `--accept-markdown` / `--open` / `--maintenance-mode` | `false` |
+| `--log-remote-address` / `--log-x-real-ip` / `--log-forwarded-for` | `false`; proxy headers only from `--trusted-proxies` (default: none) |
+| `--access-log-format` | empty (structured fields) |
+| `--threads-multiplier` / `--max-blocking-threads` | `1` / `512` (`2` / `20` on wasm) |
+| `--grace-period` / `--idle-timeout` / `--max-header-size` | `0` / `30` s (`0` disables) / `16384` bytes (431 when exceeded) |
+| `--page404` / `--page50x` / `--page-fallback` | `./404.html` / `./50x.html` / unset |
+| `--max-connections` | `0` (no limit) |
+| Memory cache | off unless `[advanced.memory-cache]` exists |
 
-### Pre-compressed Variant Priority
+## Feature Flags
 
-Static (on-disk) compression is tried before dynamic (on-the-fly). The client's `Accept-Encoding` header determines variant selection. SWS honors quality values.
+| Feature | Gates | Notes |
+|---------|-------|-------|
+| `compression` | `compression.rs` | Meta-feature for `compression-{brotli,deflate,gzip,zstd}`; code gates on `any(...)` of all five |
+| `http2` | `server/http2.rs` | Implies `tls` |
+| `tls` | `tls.rs`, `server/http1_tls.rs`, HTTPS redirect | No crypto provider by itself |
+| `tls-ring` / `tls-fips` | provider | Mutually exclusive: `src/tls.rs` `compile_error!`s if both or neither |
+| `directory-listing` | `directory_listing/` | |
+| `directory-listing-download` | tar.gz download | Implies `directory-listing`, `compression-gzip` |
+| `basic-auth`, `fallback-page`, `metrics`, `mem-cache` | the module of the same name | |
+| `experimental` | tokio runtime metrics | Needs `--cfg tokio_unstable` (`.cargo/config.toml`) |
 
-### Byte-Range Serving
+Aliases: `default`, `all` (= `default` + `experimental`), `default-fips`, `all-fips`. Use `--features all`, never `--all-features`.
 
-`static_files.rs` supports `Range: bytes=` for partial content delivery. Multi-range responses use `multipart/byteranges`.
+CI builds `--no-default-features`, `--features all`, and `--no-default-features --features all-fips`; all must compile with zero warnings. `#![deny(dead_code)]` makes an item used under one feature an error under the others. Gating mechanics: `rust-conventions/SKILL.md`, Feature-Gated Code.
 
 ## Review Checklist
 
-- [ ] Is the new code behind an appropriate feature flag if optional?
-- [ ] Does the request pipeline order make sense (pre → core → post)?
-- [ ] Are paths canonicalized once, not per-request?
-- [ ] Can every public function be tested with the existing fixture infrastructure?
-- [ ] Are error states mapped to appropriate HTTP status codes?
-- [ ] Does the config change work across all three channels (CLI, env, TOML)?
+- [ ] Optional functionality is feature-gated and builds under all three CI feature sets
+- [ ] New pipeline steps are placed by number and respect the auth boundary
+- [ ] Post-processing remains additive; custom headers still apply last, including `scope = "all"` on early responses
+- [ ] Paths, regexes, globs prepared at startup, not per request
+- [ ] New config options cover CLI, env, TOML, `testing.rs`, and tests
+- [ ] Error states map to status codes without leaking layout (404 over 403 for traversal)

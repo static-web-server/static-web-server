@@ -65,10 +65,16 @@ pub(crate) fn append_vary_accept_encoding<B>(resp: &mut Response<B>) {
 
 /// Append `accept` to the response's `Vary` header, creating it if absent.
 /// Skips the update if `accept` is already listed.
-#[cfg(feature = "directory-listing")]
 pub(crate) fn append_vary_accept<B>(resp: &mut Response<B>) {
     static VARY_ACCEPT: HeaderValue = HeaderValue::from_static("accept");
     append_vary(resp, "accept", &VARY_ACCEPT);
+}
+
+/// Append `origin` to the response's `Vary` header, creating it if absent.
+/// Skips the update if `origin` is already listed.
+pub(crate) fn append_vary_origin<B>(resp: &mut Response<B>) {
+    static VARY_ORIGIN: HeaderValue = HeaderValue::from_static("origin");
+    append_vary(resp, "origin", &VARY_ORIGIN);
 }
 
 /// Append a value to the response's `Vary` header, creating it if absent.
@@ -81,7 +87,10 @@ fn append_vary<B>(resp: &mut Response<B>, value: &str, static_value: &HeaderValu
         }
         Some(existing) => {
             let s = existing.to_str().unwrap_or_default();
-            if s.contains(value) {
+            // Compare whole field names, so that `accept` is not mistaken for `accept-encoding`
+            if s.split(',')
+                .any(|name| name.trim().eq_ignore_ascii_case(value))
+            {
                 return;
             }
             // Append to existing value
@@ -102,7 +111,7 @@ fn append_vary<B>(resp: &mut Response<B>, value: &str, static_value: &HeaderValu
 mod tests {
     use hyper::{Method, Response, StatusCode};
 
-    use super::{MethodExt, append_vary_accept_encoding};
+    use super::{MethodExt, append_vary_accept, append_vary_accept_encoding};
 
     #[test]
     fn method_get_is_allowed() {
@@ -185,5 +194,16 @@ mod tests {
         append_vary_accept_encoding(&mut resp);
         let vary = resp.headers().get(hyper::header::VARY).unwrap();
         assert_eq!(vary.to_str().unwrap(), "origin, accept-encoding");
+    }
+
+    #[test]
+    fn vary_accept_appended_after_accept_encoding() {
+        let mut resp = Response::new(crate::body::empty());
+        *resp.status_mut() = StatusCode::OK;
+        resp.headers_mut()
+            .insert(hyper::header::VARY, "accept-encoding".parse().unwrap());
+        append_vary_accept(&mut resp);
+        let vary = resp.headers().get(hyper::header::VARY).unwrap();
+        assert_eq!(vary.to_str().unwrap(), "accept-encoding, accept");
     }
 }

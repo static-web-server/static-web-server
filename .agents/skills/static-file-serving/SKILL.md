@@ -1,212 +1,155 @@
 ---
 name: static-file-serving
-description: Serve static files and web assets with optimal headers, MIME types, compression, and caching for the Static Web Server (SWS) project
+description: Explain or change how the Static Web Server (SWS) serves files — index resolution, MIME types, pre-compressed and on-the-fly compression, Cache-Control, ETag and conditional requests, byte ranges, directory listing, SPA fallback, markdown negotiation, memory cache, and TOML headers/rewrites/redirects/virtual hosts. Use when working on static_files/, compression, control_headers, custom_headers, directory_listing, mem_cache, or writing user-facing config examples.
 ---
 
-# Static File Serving Standards
+# Static File Serving
 
-Load this skill when configuring MIME types, selecting compression formats, setting cache headers, organizing static file directories, or optimizing file delivery with SWS.
+How SWS turns a request path into a response, and how users configure it. Values are taken from the source; re-check the cited file before changing a default.
 
-**When to load**: documenting or reviewing compression setup, cache-control strategy, MIME-type overrides, SPA vs. multi-page file layout, directory listing, or pre-compression build steps.
+**When to load**: changing file resolution, compression, caching, conditional or range handling, directory listing, memory cache, or custom headers; answering "how do I serve X with SWS"; writing CLI or TOML examples.
 
-## General Principles
+## Resolution (`static_files::handle()`)
 
-- **Serve the right Content-Type**: SWS uses `mime_guess` to determine MIME types from file extensions. If the wrong type is served, rename the file or add a custom header rule
-- **Compress where it helps**: Text-based formats compress well (HTML, CSS, JS, JSON, SVG, XML). Pre-compress at build time for zero-CPU serving
-- **Cache aggressively for versioned assets**: Use fingerprinting in filenames (`app.a1b2c3d.js`) with `Cache-Control: max-age=31536000` (1 year)
-- **Don't cache HTML entry points**: HTML files that reference versioned assets should have short or no cache TTL
-- **Use a CDN for production**: Put SWS behind a CDN (Cloudflare, Fastly, CloudFront) for edge caching and DDoS protection
+1. Method check: `GET`, `HEAD`, `OPTIONS`
+2. `sanitize_path()` maps the URI path under the root (`security/SKILL.md`)
+3. Memory cache lookup (`GET`/`HEAD`, only with `[advanced.memory-cache]`): a hit picks the cached variant matching `Accept-Encoding` and returns without disk access
+4. `resolve::file_metadata()`: directory → each `--index-files` entry in order; missing file → `<path>.html`; with `--compression-static`, a pre-compressed sibling
+5. `security::enforce()` on the resolved file and, separately, on the pre-compressed variant
+6. Short-circuits: directory without trailing slash → 308 (`--redirect-trailing-slash`, default `true`); `OPTIONS` → 204 with `Allow` and `Accept-Ranges`; directory listing or archive download
+7. File reply: conditional checks, byte range, streamed body
 
-## MIME Types
+## MIME Types and Charset
 
-SWS determines `Content-Type` from file extension. Ensure files have correct extensions:
-
-| Extension | MIME Type | Category |
-|-----------|-----------|----------|
-| `.html`, `.htm` | `text/html` | Document |
-| `.css` | `text/css` | Stylesheet |
-| `.js`, `.mjs` | `text/javascript` (or `application/javascript`) | Script |
-| `.json` | `application/json` | Data |
-| `.xml` | `application/xml` | Data |
-| `.svg` | `image/svg+xml` | Vector image |
-| `.png` | `image/png` | Raster image |
-| `.jpg`, `.jpeg` | `image/jpeg` | Raster image |
-| `.webp` | `image/webp` | Raster image |
-| `.avif` | `image/avif` | Raster image |
-| `.gif` | `image/gif` | Raster image |
-| `.ico` | `image/x-icon` | Icon |
-| `.woff2` | `font/woff2` | Web font |
-| `.woff` | `font/woff` | Web font |
-| `.pdf` | `application/pdf` | Document |
-| `.wasm` | `application/wasm` | WebAssembly |
-| `.txt` | `text/plain` | Text |
-| `.md` | `text/markdown` | Markdown |
-| `.zip` | `application/zip` | Archive |
-| `.tar` | `application/x-tar` | Archive |
-| `.gz` | `application/gzip` | Compressed |
-| `.br` | `application/brotli` | Compressed |
-| `.zst` | `application/zstd` | Compressed |
-
-### Custom MIME Types
-
-Use the TOML config file to override or add MIME types for specific paths:
-
-```toml
-[advanced.headers]
-source = "**/*.yaml"
-headers = { Content-Type = "application/yaml" }
-```
+- `Content-Type` from `mime_guess` on the extension. No override flag; use a custom header rule
+- `--text-charset` (default `true`) appends `charset=utf-8` to `text/*` responses lacking one
+- `exts/mime.rs` decides which types are compressible (`text/*`, `+json`/`+xml` suffixes, a fixed list of `application/*`)
 
 ## Compression
 
-### Static (Pre-compressed) Compression
+### Pre-compressed (`--compression-static`, default `true`)
 
-Pre-compress files at build time. SWS serves `.br`, `.gz`, or `.zst` variants automatically based on the client's `Accept-Encoding` header:
-
-| Variant | Extension | Encoding Header | Build Command |
-|---------|-----------|-----------------|---------------|
-| Brotli | `.br` | `br` | `brotli -q 11 -f file` |
-| Gzip | `.gz` | `gzip` | `gzip -9 -k file` |
-| Zstandard | `.zst` | `zstd` | `zstd -19 -k file` |
-
-**Compression ratios** (typical for text files):
-
-| Format | Level | Ratio | Speed |
-|--------|-------|-------|-------|
-| Brotli | 11 | ~75% | Slowest |
-| Zstandard | 19 | ~72% | Medium |
-| Gzip | 9 | ~68% | Fastest |
-
-### Dynamic (On-the-fly) Compression
-
-SWS compresses responses in real-time when the client sends `Accept-Encoding` and no pre-compressed variant exists:
-
-- Only text-based MIME types are compressed (HTML, CSS, JS, JSON, XML, SVG, etc.)
-- Responses below 860 bytes skip compression (overhead exceeds savings)
-- Compression level is configurable: `fastest`, `default`, `best`
-
-### SWS CLI Examples
+For `file.ext`, SWS looks for `file.ext.br`, `.gz`, or `.zst` in the client's `Accept-Encoding` q-value order (`q=0` means not acceptable; `gzip` and `deflate` both map to `.gz`). The variant is served with `Content-Encoding` on success (not on 304/412/416) and `Vary: Accept-Encoding`; dynamic compression then skips it.
 
 ```bash
-# Serve with Brotli pre-compressed variants only (no on-the-fly compression)
-static-web-server --root ./dist --compression-static --compression=false
-
-# Serve with both pre-compressed variants and on-the-fly gzip fallback
-static-web-server --root ./dist --compression-static --compression
-
-# Serve with only on-the-fly compression at fastest level
-static-web-server --root ./dist --compression --compression-level fastest
+brotli -q 11 -k dist/app.js && gzip -9 -k dist/app.js && zstd -19 -k dist/app.js
 ```
 
-## Caching Strategy
+### On-the-fly (`--compression`, default `true`)
 
-### Cache-Control Headers
+`compression::auto()` encodes when all hold:
+- method is not `OPTIONS`
+- status is not 1xx, 204, 304, or 206, and there is no `Content-Range`
+- no `Content-Encoding` yet
+- the client accepts a compiled-in encoding (`zstd`, `br`, `gzip`, `deflate`)
+- the MIME type is compressible
+- `Content-Length` is absent or ≥ **200 bytes** (`MIN_COMPRESS_SIZE`)
 
-SWS sets `Cache-Control` based on file extension. Enable with `--cache-control-headers` (default: enabled):
+`HEAD` gets the same `Content-Encoding` header as `GET` and no body. `--compression-level`: `fastest`, `default`, `best`; `default` is level 4 (gzip, deflate, brotli) or 3 (zstd).
 
-| Category | Extensions | `max-age` |
-|----------|-----------|-----------|
-| Static assets | `.css`, `.js`, `.png`, `.woff2`, `.avif`, `.webp`, `.pdf`, `.ico`, `.gz`, `.bz2`, `.zip`, `.tar` | **1 year** (31536000) |
-| Data/feeds | `.json`, `.xml`, `.rss`, `.atom` | **1 hour** (3600) |
-| Everything else | unknown extensions | **1 hour** (3600) |
+## Cache-Control (`--cache-control-headers`, default `true`)
 
-### Custom Cache Headers
+Set by URI extension (case-insensitive), **only for `2xx` and `304`**; every other status gets `no-cache`.
 
-Override `Cache-Control` for specific paths via TOML:
+| Extensions | Value |
+|-----------|-------|
+| `avif bmp bz2 css doc gif gz htc ico jpeg jpg js jxl map mjs mp3 mp4 ogg ogv pdf png rar rtf tar tgz wav weba webm webp woff woff2 zip` | `max-age=31536000` |
+| `atom rss` | `max-age=3600` |
+| anything else (`html`, `json`, `svg`, no extension, …) | `no-cache` |
+
+Both arrays in `control_headers.rs` must stay sorted (`binary_search`). Override per path with a custom header rule.
+
+## ETag and Conditional Requests (`--etag`, default `true`)
+
+- Weak validator `W/"<mtime_ns_hex>-<len_hex>"` (`etag.rs`)
+- `conditional_headers.rs`: `If-Match` / `If-Unmodified-Since` → 412, then `If-None-Match` / `If-Modified-Since` → 304 (`If-None-Match` wins). `If-Range` honored for byte ranges
+- `Last-Modified` sent when the filesystem reports a modification time
+
+## Byte Ranges (`response/range.rs`)
+
+`Range: bytes=` → 206 with `Content-Range`; unsatisfiable → 416. Partial responses are never dynamically compressed.
+
+## Memory Cache (`[advanced.memory-cache]`, `mem-cache` feature)
+
+Entries are keyed by `(path, ContentCoding)`, so a pre-compressed variant is cached under its own encoding and served only to clients that accept it. Only `GET`/`HEAD` hits are served; a cached entry whose evaluation fails (bad `Range`) falls through to the normal path. Hits carry `X-Cache: HIT`.
+
+## Directory Listing (`--directory-listing`, default `false`)
+
+- `--directory-listing-format html|json|auto`; `auto` picks via `Accept` and adds `Vary: Accept`
+- `--directory-listing-order 0..5` (name/modified/size, asc/desc); `6` (default) unsorted; `?sort=N` per request
+- `--directory-listing-download targz` adds a tar.gz link (`directory-listing-download` feature); archives exclude symlinks pointing outside the root
+
+## Fallback and Error Pages
+
+- `--page-fallback <file>` (`fallback-page` feature; path **not** relative to the root): served with 200 for `GET` requests that would 404, except missing assets, which keep 404: `Sec-Fetch-Dest` other than a document or frame, or, without that header, a non-HTML extension (`/favicon.ico`) not asking for `text/html`
+- `--page404` (`./404.html`), `--page50x` (`./50x.html`): loaded at startup; relative paths resolve under the root; missing file → generic message
+
+## Markdown Negotiation (`--accept-markdown`, default `false`)
+
+- `Accept: text/markdown` → look for `<path>.md`, `<path>.html.md`, `<path>/index.html.md`; serve as `text/markdown`; hidden-file policy applies to the variant
+- When enabled, HTML and markdown responses, directory listings (any format), a `304` whose resolved file is HTML, and a trailing-slash `308` carry `Vary: Accept`. Other assets and pre-processing short-circuits don't
+- A `[[advanced.headers]]` rule that sets `Vary` replaces it
+
+## Advanced TOML Rules
+
+TOML-only, glob `source` matched against the URI path, arrays of tables:
 
 ```toml
-[advanced.headers]
-source = "**/*.html"
-headers = { Cache-Control = "no-cache" }
+[advanced]
+
+# Custom headers: applied last, override earlier headers
+[[advanced.headers]]
+source = "/assets/**"
+status = [200, 206, 304]       # optional; default: every status
+headers = { Cache-Control = "public, max-age=31536000, immutable" }
+
+[[advanced.headers]]
+source = "**"
+scope = "all"                  # default "files": static responses only.
+                               # "all": also redirects, health, metrics, 401, 403, 405, maintenance
+headers = { X-Request-Id = "static" }
+
+# Redirects: short-circuit with 301 or 302; `host` is optional
+[[advanced.redirects]]
+host = "old.example.com"
+source = "/pages/{*}.html"
+destination = "https://example.com/?p=$1"
+kind = 301
+
+# Rewrites: change the path internally; add `redirect = 301` to redirect instead
+[[advanced.rewrites]]
+source = "/error-page/{404,50x}.html"
+destination = "/$1.html"
+
+# Virtual hosts: pick a root by Host
+[[advanced.virtual-hosts]]
+host = "example.com"
+root = "./sites/example"
+
+# In-memory cache; values above the maximums are clamped silently
+[advanced.memory-cache]
+capacity = 100        # entries (max 100000)
+ttl = 1800            # seconds (max 86400)
+tti = 300             # idle seconds (max 3600)
+max-file-size = 8192  # KiB (default 8192, max 32768)
 ```
 
-### Versioned Assets Pattern
+Globs compile through `globset` with `literal_separator(true)`, then into capturing regex groups (`settings/mod.rs`): `{*}` within one segment, `{**}` across segments, `{a,b}` alternation. `$1`, `$2`, … reference captures in pattern order. Working rules: `tests/fixtures/toml/rewrites.toml`, `redirects.toml`, `custom_headers_*.toml`.
 
-For production deployments, use content-hash filenames and cache aggressively:
-
-```
-dist/
-  index.html              ← short cache (or no-cache)
-  assets/
-    app.a1b2c3d.js        ← 1-year cache (fingerprinted)
-    style.e4f5g6h.css     ← 1-year cache (fingerprinted)
-    logo.h7i8j9k.png      ← 1-year cache (fingerprinted)
-```
-
-This way, when `app.a1b2c3d.js` changes, the new filename `app.x9y0z1.js` triggers a fresh download. The HTML entry point changes to reference the new filename.
-
-## Security Headers for Static Sites
-
-Enable `--security-headers` (auto-enabled with `--tls`) for production static sites:
+## Common Setups
 
 ```bash
-static-web-server \
-    --root ./dist \
-    --tls --tls-cert cert.pem --tls-key key.pem \
-    --security-headers \
-    --cache-control-headers
+static-web-server -d ./dist --page-fallback ./dist/index.html              # SPA
+static-web-server -d ./dist --tls --tls-cert cert.pem --tls-key key.pem    # TLS + HTTP/2, security headers, HSTS
+static-web-server -d . --directory-listing --directory-listing-format auto --open
 ```
 
-Headers sent: `Strict-Transport-Security`, `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Content-Security-Policy: frame-ancestors 'self'`, `Referrer-Policy: strict-origin-when-cross-origin`.
+Versioned assets (`app.3f9a2c.js`) get the one-year `max-age`; HTML gets `no-cache` and revalidates via ETag.
 
-## File Organization
+## Checklist for Changes
 
-### Single-Page Application (SPA)
-
-```
-dist/
-  index.html              ← entry point (served for all routes)
-  assets/
-    app.js
-    style.css
-  favicon.ico
-  robots.txt
-```
-
-SWS configuration:
-```bash
-static-web-server --root ./dist --page-fallback ./index.html
-```
-
-The `--page-fallback` option serves `index.html` for any 404, enabling client-side routing.
-
-### Multi-Page Static Site
-
-```
-dist/
-  index.html
-  about.html
-  blog/
-    index.html
-    post-1.html
-  assets/
-    main.css
-    main.js
-  images/
-    hero.png
-```
-
-SWS configuration:
-```bash
-static-web-server --root ./dist --index-files "index.html,index.htm"
-```
-
-### Directory Listing (Development)
-
-For development or internal tools, enable directory listing:
-
-```bash
-static-web-server --root ./public --directory-listing
-```
-
-Options: `--directory-listing-order` (0–6), `--directory-listing-format html|json`, `--directory-listing-download targz`.
-
-## Checklist
-
-- [ ] Do all files have correct extensions for MIME type detection?
-- [ ] Are pre-compressed variants (`.br`/`.gz`/`.zst`) generated at build time?
-- [ ] Are versioned assets using fingerprint filenames for cache busting?
-- [ ] Is `Cache-Control` appropriate for the content type?
-- [ ] Is the HTML entry point not cached (or has short TTL)?
-- [ ] Are security headers enabled for production?
-- [ ] Is TLS enabled for production deployments?
+- [ ] Header changes respect pipeline order and leave custom headers last (`design/SKILL.md`)
+- [ ] Cache-Control arrays stay sorted; the 2xx/304 rule holds
+- [ ] Pre-compressed, dynamic, and cached responses never double-encode or mislabel `Content-Encoding`
+- [ ] `HEAD` returns `GET`'s headers without a body; `OPTIONS` and bodiless statuses get no `Content-Encoding`
+- [ ] Tests cover feature-on and feature-off paths

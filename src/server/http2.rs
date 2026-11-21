@@ -5,8 +5,6 @@
 
 //! HTTP/2 + TLS server accept-loop with optional HTTP to HTTPS redirect.
 
-use hyper::server::conn::http2;
-use hyper_util::rt::{TokioExecutor, TokioIo};
 use hyper_util::server::graceful::GracefulShutdown;
 use std::net::TcpListener;
 use std::sync::Arc;
@@ -19,7 +17,7 @@ use crate::{Context, Result};
 #[cfg(any(unix, windows))]
 use crate::signals;
 
-use super::{ShutdownCtx, TlsConfig, redirect};
+use super::{ServerRunConfig, ShutdownCtx, TlsConfig, browser, redirect};
 
 /// HTTP/2 graceful shutdown drain timeout in seconds.
 const HTTP2_DRAIN_TIMEOUT: u64 = 5;
@@ -28,8 +26,7 @@ const HTTP2_DRAIN_TIMEOUT: u64 = 5;
 pub(super) async fn run<F: FnOnce()>(
     tcp_listener: TcpListener,
     router: RouterService,
-    addr_str: &str,
-    threads: usize,
+    run_cfg: ServerRunConfig<'_>,
     cfg: TlsConfig,
     ctx: ShutdownCtx,
     _cancel_fn: F,
@@ -48,6 +45,7 @@ pub(super) async fn run<F: FnOnce()>(
         .with_context(|| "failed to create tokio::net::TcpListener")?;
 
     let grace_period = ctx.grace_period;
+    let shutting_down = ctx.shutting_down.clone();
 
     #[cfg(unix)]
     let signals =
@@ -80,35 +78,44 @@ pub(super) async fn run<F: FnOnce()>(
         #[cfg(windows)]
         redirect_ctrl_c_recv,
         grace_period,
+        run_cfg.conn.clone(),
     )?
     .unwrap_or_else(|| tokio::spawn(async { Ok::<_, crate::Error>(()) }));
-
+    let browser_url = browser::listener_url("https", &listener, &run_cfg);
+    let conn_cfg = run_cfg.conn.clone();
     // HTTP/2 + TLS accept-loop task
     let http2_task = tokio::spawn({
         let router = router.clone();
         async move {
             let graceful = GracefulShutdown::new();
-            let builder = http2::Builder::new(TokioExecutor::new());
+            let builder = conn_cfg.http2_builder();
 
             #[cfg(unix)]
-            let shutdown = signals::wait_for_signals(signals, grace_period, cancel_recv);
+            let shutdown =
+                signals::wait_for_signals(signals, grace_period, cancel_recv, shutting_down);
             #[cfg(unix)]
             tokio::pin!(shutdown);
 
             #[cfg(windows)]
             let shutdown = async move {
-                signals::wait_for_ctrl_c_or_cancel(ctrl_c_recv, cancel_recv, grace_period).await;
+                signals::wait_for_ctrl_c_or_cancel(
+                    ctrl_c_recv,
+                    cancel_recv,
+                    grace_period,
+                    shutting_down,
+                )
+                .await;
             };
             #[cfg(windows)]
             tokio::pin!(shutdown);
-
             loop {
                 tokio::select! {
-                    result = listener.accept() => {
+                    (result, slot) = conn_cfg.accept(listener.accept()) => {
                         let (stream, addr) = match result {
                             Ok(v) => v,
                             Err(e) => {
                                 tracing::error!("failed to accept TCP connection: {:?}", e);
+                                super::accept_error_backoff(&e).await;
                                 continue;
                             }
                         };
@@ -119,8 +126,9 @@ pub(super) async fn run<F: FnOnce()>(
                         let svc = router.build(Some(addr));
                         match tls_acceptor.accept(stream).await {
                             Ok(tls_stream) => {
-                                let conn = builder.serve_connection(TokioIo::new(tls_stream), svc);
-                                tokio::spawn(graceful.watch(conn));
+                                let conn = builder
+                                    .serve_connection(conn_cfg.io(tls_stream, Some(addr)), svc);
+                                conn_cfg.serve(graceful.watch(conn), Some(addr), slot);
                             }
                             Err(e) => {
                                 tracing::debug!(
@@ -155,11 +163,18 @@ pub(super) async fn run<F: FnOnce()>(
     });
 
     tracing::info!(
-        parent: tracing::info_span!("Server::start_server", ?addr_str, ?threads),
+        parent: tracing::info_span!(
+            "Server::start_server",
+            addr_str = ?run_cfg.addr_str,
+            threads = ?run_cfg.threads
+        ),
         "http2 server is listening on https://{}",
-        addr_str
+        run_cfg.addr_str
     );
     tracing::info!("press ctrl+c to shut down the servers");
+    if let Some(url) = browser_url {
+        browser::open(url);
+    }
 
     #[cfg(windows)]
     {

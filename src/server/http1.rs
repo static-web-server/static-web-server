@@ -5,8 +5,6 @@
 
 //! HTTP/1 server accept-loop.
 
-use hyper::server::conn::http1;
-use hyper_util::rt::TokioIo;
 use hyper_util::server::graceful::GracefulShutdown;
 use std::net::TcpListener;
 use std::sync::Arc;
@@ -18,14 +16,13 @@ use crate::{Context, Result};
 #[cfg(any(unix, windows))]
 use crate::signals;
 
-use super::ShutdownCtx;
+use super::{ServerRunConfig, ShutdownCtx, browser};
 
 /// Run the HTTP/1 accept loop until a shutdown signal is received.
 pub(super) async fn run<F: FnOnce()>(
     tcp_listener: TcpListener,
     router: RouterService,
-    addr_str: &str,
-    threads: usize,
+    run_cfg: ServerRunConfig<'_>,
     ctx: ShutdownCtx,
     _cancel_fn: F,
 ) -> Result {
@@ -36,7 +33,7 @@ pub(super) async fn run<F: FnOnce()>(
         .with_context(|| "failed to create tokio::net::TcpListener")?;
 
     let graceful = GracefulShutdown::new();
-    let builder = http1::Builder::new();
+    let builder = run_cfg.conn.http1_builder();
 
     #[cfg(unix)]
     let signals =
@@ -47,7 +44,12 @@ pub(super) async fn run<F: FnOnce()>(
     #[cfg(unix)]
     let cancel_recv = Arc::new(Mutex::new(ctx.cancel_recv));
     #[cfg(unix)]
-    let shutdown = signals::wait_for_signals(signals, ctx.grace_period, cancel_recv);
+    let shutdown = signals::wait_for_signals(
+        signals,
+        ctx.grace_period,
+        cancel_recv,
+        ctx.shutting_down.clone(),
+    );
     #[cfg(unix)]
     tokio::pin!(shutdown);
 
@@ -60,25 +62,42 @@ pub(super) async fn run<F: FnOnce()>(
         }));
         let cancel_recv = Arc::new(Mutex::new(ctx.cancel_recv));
         let grace_period = ctx.grace_period;
-        async move { signals::wait_for_ctrl_c_or_cancel(ctrl_c_recv, cancel_recv, grace_period).await }
+        let shutting_down = ctx.shutting_down.clone();
+        async move {
+            signals::wait_for_ctrl_c_or_cancel(
+                ctrl_c_recv,
+                cancel_recv,
+                grace_period,
+                shutting_down,
+            )
+            .await
+        }
     };
     #[cfg(windows)]
     tokio::pin!(shutdown);
 
     tracing::info!(
-        parent: tracing::info_span!("Server::start_server", ?addr_str, ?threads),
+        parent: tracing::info_span!(
+            "Server::start_server",
+            addr_str = ?run_cfg.addr_str,
+            threads = ?run_cfg.threads
+        ),
         "http1 server is listening on http://{}",
-        addr_str
+        run_cfg.addr_str
     );
-    tracing::info!("press ctrl+c to shut down the server");
 
+    tracing::info!("press ctrl+c to shut down the server");
+    if let Some(url) = browser::listener_url("http", &listener, &run_cfg) {
+        browser::open(url);
+    }
     loop {
         tokio::select! {
-            result = listener.accept() => {
+            (result, slot) = run_cfg.conn.accept(listener.accept()) => {
                 let (stream, addr) = match result {
                     Ok(v) => v,
                     Err(e) => {
                         tracing::error!("failed to accept TCP connection: {:?}", e);
+                        super::accept_error_backoff(&e).await;
                         continue;
                     }
                 };
@@ -86,8 +105,8 @@ pub(super) async fn run<F: FnOnce()>(
                     tracing::warn!("failed to enable TCP_NODELAY for {}: {:?}", addr, e);
                 }
                 let svc = router.build(Some(addr));
-                let conn = builder.serve_connection(TokioIo::new(stream), svc);
-                tokio::spawn(graceful.watch(conn));
+                let conn = builder.serve_connection(run_cfg.conn.io(stream, Some(addr)), svc);
+                run_cfg.conn.serve(graceful.watch(conn), Some(addr), slot);
             }
             _ = &mut shutdown => { break; }
         }

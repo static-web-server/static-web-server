@@ -15,9 +15,11 @@ use headers::{
 use http::header;
 use hyper::{Request, Response, StatusCode};
 use std::collections::HashSet;
+use std::path::Path;
 
 use crate::body::Body;
-use crate::{Error, error_page, handler::RequestHandlerOpts};
+use crate::exts::http::append_vary_origin;
+use crate::{Error, error_page};
 
 /// It defines CORS instance.
 #[derive(Clone, Debug)]
@@ -433,13 +435,12 @@ pub(crate) fn init(
     cors_allow_origins: &str,
     cors_allow_headers: &str,
     cors_expose_headers: &str,
-    handler_opts: &mut RequestHandlerOpts,
-) {
-    handler_opts.cors = new(
+) -> Option<Configured> {
+    new(
         cors_allow_origins.trim(),
         cors_allow_headers.trim(),
         cors_expose_headers.trim(),
-    );
+    )
 }
 
 /// Cached CORS headers stored in request extensions to avoid
@@ -449,10 +450,12 @@ pub(crate) struct CorsHeaders(pub(crate) HeaderMap);
 
 /// Rejects requests with wrong CORS headers
 pub(crate) fn pre_process<T>(
-    opts: &RequestHandlerOpts,
+    cors: Option<&Configured>,
+    page404: &Path,
+    page50x: &Path,
     req: &mut Request<T>,
 ) -> Option<Result<Response<Body>, Error>> {
-    let cors = opts.cors.as_ref()?;
+    let cors = cors?;
     match cors.check_request(req.method(), req.headers()) {
         Ok((headers, state)) => {
             tracing::debug!("cors state: {:?}", state);
@@ -468,8 +471,8 @@ pub(crate) fn pre_process<T>(
                 req.uri(),
                 req.method(),
                 &StatusCode::FORBIDDEN,
-                &opts.page404,
-                &opts.page50x,
+                page404,
+                page50x,
             ))
         }
     }
@@ -477,20 +480,17 @@ pub(crate) fn pre_process<T>(
 
 /// Adds CORS headers to response
 pub(crate) fn post_process<T>(
-    opts: &RequestHandlerOpts,
+    cors: Option<&Configured>,
     req: &Request<T>,
     mut resp: Response<Body>,
 ) -> Result<Response<Body>, Error> {
-    if opts.cors.is_some()
+    if cors.is_some()
         && let Some(cors_headers) = req.extensions().get::<CorsHeaders>()
     {
         for (k, v) in cors_headers.0.iter() {
             resp.headers_mut().insert(k, v.to_owned());
         }
-        resp.headers_mut().insert(
-            http::header::VARY,
-            HeaderValue::from_name(http::header::ORIGIN),
-        );
+        append_vary_origin(&mut resp);
         resp.headers_mut().remove(http::header::ALLOW);
     }
     Ok(resp)
@@ -498,10 +498,29 @@ pub(crate) fn post_process<T>(
 
 #[cfg(test)]
 mod tests {
-    use super::{Configured, Cors, post_process, pre_process};
+    use super::{Configured, Cors};
+    use crate::Error;
     use crate::body::Body;
-    use crate::{Error, handler::RequestHandlerOpts};
     use hyper::{Request, Response, StatusCode};
+    use std::path::Path;
+
+    /// The request handler options a test runs the CORS steps with.
+    struct Opts {
+        cors: Option<Configured>,
+    }
+
+    fn pre_process(opts: &Opts, req: &mut Request<Body>) -> Option<Result<Response<Body>, Error>> {
+        let (page404, page50x) = (Path::new("./404.html"), Path::new("./50x.html"));
+        super::pre_process(opts.cors.as_ref(), page404, page50x, req)
+    }
+
+    fn post_process(
+        opts: &Opts,
+        req: &Request<Body>,
+        resp: Response<Body>,
+    ) -> Result<Response<Body>, Error> {
+        super::post_process(opts.cors.as_ref(), req, resp)
+    }
 
     fn make_request(method: &str, origin: &str) -> Request<Body> {
         let mut builder = Request::builder();
@@ -547,10 +566,7 @@ mod tests {
 
     #[test]
     fn test_cors_disabled() -> Result<(), Error> {
-        let opts = RequestHandlerOpts {
-            cors: None,
-            ..Default::default()
-        };
+        let opts = Opts { cors: None };
         let mut req = make_request("GET", "https://example.com/");
 
         assert!(pre_process(&opts, &mut req).is_none());
@@ -563,9 +579,8 @@ mod tests {
 
     #[test]
     fn test_non_cors_request() -> Result<(), Error> {
-        let opts = RequestHandlerOpts {
+        let opts = Opts {
             cors: make_cors_config(),
-            ..Default::default()
         };
         let mut req = make_request("GET", "");
 
@@ -579,9 +594,8 @@ mod tests {
 
     #[test]
     fn test_forbidden_request() {
-        let opts = RequestHandlerOpts {
+        let opts = Opts {
             cors: make_cors_config(),
-            ..Default::default()
         };
 
         assert!(is_403(pre_process(
@@ -610,9 +624,8 @@ mod tests {
 
     #[test]
     fn test_allowed_request() -> Result<(), Error> {
-        let opts = RequestHandlerOpts {
+        let opts = Opts {
             cors: make_cors_config(),
-            ..Default::default()
         };
 
         let mut req = make_request("GET", "https://example.com");
@@ -632,6 +645,25 @@ mod tests {
 
         let resp = post_process(&opts, &req, make_response())?;
         assert_eq!(get_allowed_origin(resp), Some("https://example.com".into()));
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_allowed_request_keeps_existing_vary() -> Result<(), Error> {
+        let opts = Opts {
+            cors: make_cors_config(),
+        };
+
+        let mut req = make_request("GET", "https://example.com");
+        assert!(pre_process(&opts, &mut req).is_none());
+
+        let resp = Response::builder()
+            .header("Vary", "accept")
+            .body(crate::body::empty())
+            .unwrap();
+        let resp = post_process(&opts, &req, resp)?;
+        assert_eq!(resp.headers()["vary"], "accept, origin");
 
         Ok(())
     }

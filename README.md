@@ -60,7 +60,7 @@ SWS is available for a variety of platforms like `Linux`, `macOS`, `Windows`, `F
 - Fallback page for 404 errors (SPA support).
 - Custom error pages.
 - Built-in HTTP to HTTPS redirect.
-- [Health check](https://static-web-server.net/features/health-endpoint/) endpoint (GET/HEAD).
+- [Health check](https://static-web-server.net/features/health-endpoint/) endpoints `/livez` and `/readyz` (GET/HEAD) for Kubernetes-style probes.
 - [Prometheus metrics](https://static-web-server.net/features/metrics/) endpoint with request counts, latency histograms, and connection tracking.
 - [Maintenance mode](https://static-web-server.net/features/maintenance-mode/) with configurable status.
 - Configuration via CLI arguments, environment variables, or a TOML file.

@@ -16,6 +16,8 @@ pub mod tests {
     use hyper::Request;
     use std::net::SocketAddr;
 
+    #[cfg(any(feature = "compression", feature = "compression-deflate"))]
+    use static_web_server::settings::CompressionLevel;
     use static_web_server::{
         settings::cli::General,
         testing::fixtures::{
@@ -83,5 +85,262 @@ pub mod tests {
             }
             Err(err) => panic!("unexpected error: {err}"),
         };
+    }
+
+    // The HTTP `deflate` coding is the zlib format (RFC 9110, section 8.4.1.2),
+    // not a raw DEFLATE stream.
+    #[cfg(any(feature = "compression", feature = "compression-deflate"))]
+    async fn deflate_body(level: CompressionLevel) -> Vec<u8> {
+        use http_body_util::BodyExt;
+
+        let opts = fixture_settings("toml/handler_fixtures.toml");
+        let general = General {
+            compression: true,
+            compression_static: false,
+            compression_level: level,
+            ..opts.general
+        };
+        let req_handler_opts = fixture_req_handler_opts(general, opts.advanced);
+        let req_handler = fixture_req_handler(req_handler_opts);
+        let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
+
+        let mut req = Request::new(());
+        *req.method_mut() = hyper::Method::GET;
+        *req.uri_mut() = "http://localhost/assets/index.html".parse().unwrap();
+        req.headers_mut()
+            .insert(http::header::ACCEPT_ENCODING, "deflate".parse().unwrap());
+
+        let res = req_handler.handle(&mut req, remote_addr).await.unwrap();
+        assert_eq!(res.status(), 200);
+        assert_eq!(res.headers()["content-encoding"], "deflate");
+
+        res.into_body().collect().await.unwrap().to_bytes().to_vec()
+    }
+
+    #[cfg(any(feature = "compression", feature = "compression-deflate"))]
+    async fn zlib_decode(body: &[u8]) -> Vec<u8> {
+        use async_compression::tokio::bufread::ZlibDecoder;
+        use tokio::io::AsyncReadExt;
+
+        let mut decoded = Vec::new();
+        ZlibDecoder::new(body)
+            .read_to_end(&mut decoded)
+            .await
+            .expect("deflate body must decode as zlib");
+        decoded
+    }
+
+    #[cfg(any(feature = "compression", feature = "compression-deflate"))]
+    #[tokio::test]
+    async fn compression_deflate_uses_zlib_format() {
+        let body = deflate_body(CompressionLevel::Default).await;
+        // zlib header: CM = 8 (deflate), CINFO = 7 (32K window)
+        assert_eq!(
+            body.first(),
+            Some(&0x78),
+            "deflate body must start with a zlib header"
+        );
+
+        let expected = std::fs::read("tests/fixtures/public/assets/index.html").unwrap();
+        assert_eq!(zlib_decode(&body).await, expected);
+    }
+
+    #[cfg(any(feature = "compression", feature = "compression-deflate"))]
+    #[tokio::test]
+    async fn compression_deflate_uses_zlib_format_at_every_level() {
+        let expected = std::fs::read("tests/fixtures/public/assets/index.html").unwrap();
+
+        for level in [
+            CompressionLevel::Fastest,
+            CompressionLevel::Default,
+            CompressionLevel::Best,
+        ] {
+            let body = deflate_body(level).await;
+            assert_eq!(
+                body.first(),
+                Some(&0x78),
+                "deflate body must start with a zlib header ({level:?})"
+            );
+            // RFC 1950: CMF * 256 + FLG is a multiple of 31
+            let header = body
+                .get(..2)
+                .map(|b| (u16::from(b[0]) << 8) | u16::from(b[1]));
+            assert!(
+                header.is_some_and(|h| h % 31 == 0),
+                "deflate body must start with a valid zlib header ({level:?})"
+            );
+            assert_eq!(zlib_decode(&body).await, expected, "{level:?}");
+        }
+    }
+
+    // A `206 Partial Content` response carries a byte range of the identity
+    // representation (its `Content-Range` counts identity bytes), so it must not
+    // be compressed afterwards.
+    #[tokio::test]
+    async fn compression_skips_partial_content() {
+        use http_body_util::BodyExt;
+
+        let codings = [
+            #[cfg(any(feature = "compression", feature = "compression-deflate"))]
+            "deflate",
+            #[cfg(any(feature = "compression", feature = "compression-gzip"))]
+            "gzip",
+            #[cfg(any(feature = "compression", feature = "compression-brotli"))]
+            "br",
+            #[cfg(any(feature = "compression", feature = "compression-zstd"))]
+            "zstd",
+        ];
+        let file = std::fs::read("tests/fixtures/public/assets/index.html").unwrap();
+
+        for coding in codings {
+            let opts = fixture_settings("toml/handler_fixtures.toml");
+            let general = General {
+                compression: true,
+                compression_static: false,
+                ..opts.general
+            };
+            let req_handler_opts = fixture_req_handler_opts(general, opts.advanced);
+            let req_handler = fixture_req_handler(req_handler_opts);
+            let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
+
+            let mut req = Request::new(());
+            *req.method_mut() = hyper::Method::GET;
+            *req.uri_mut() = "http://localhost/assets/index.html".parse().unwrap();
+            req.headers_mut()
+                .insert(http::header::ACCEPT_ENCODING, coding.parse().unwrap());
+            req.headers_mut()
+                .insert(http::header::RANGE, "bytes=0-399".parse().unwrap());
+
+            let res = req_handler.handle(&mut req, remote_addr).await.unwrap();
+            assert_eq!(res.status(), 206, "{coding}");
+            assert_eq!(
+                res.headers().get("content-encoding"),
+                None,
+                "a 206 response must not be compressed ({coding})"
+            );
+            assert_eq!(
+                res.headers()["content-range"],
+                format!("bytes 0-399/{}", file.len()),
+                "{coding}"
+            );
+            assert_eq!(res.headers()["content-length"], "400", "{coding}");
+
+            let body = res.into_body().collect().await.unwrap().to_bytes();
+            assert_eq!(body, file[..400], "{coding}");
+        }
+    }
+
+    // A HEAD response carries the header fields of the GET response
+    // (RFC 9110, section 9.3.2), including `Content-Encoding`.
+    #[tokio::test]
+    async fn compression_head_matches_get_headers() {
+        let codings = [
+            #[cfg(any(feature = "compression", feature = "compression-deflate"))]
+            "deflate",
+            #[cfg(any(feature = "compression", feature = "compression-gzip"))]
+            "gzip",
+            #[cfg(any(feature = "compression", feature = "compression-brotli"))]
+            "br",
+            #[cfg(any(feature = "compression", feature = "compression-zstd"))]
+            "zstd",
+        ];
+
+        for coding in codings {
+            let opts = fixture_settings("toml/handler_fixtures.toml");
+            let general = General {
+                compression: true,
+                compression_static: false,
+                ..opts.general
+            };
+            let req_handler_opts = fixture_req_handler_opts(general, opts.advanced);
+            let req_handler = fixture_req_handler(req_handler_opts);
+            let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
+
+            let mut responses = Vec::new();
+            for method in [hyper::Method::GET, hyper::Method::HEAD] {
+                let mut req = Request::new(());
+                *req.method_mut() = method;
+                *req.uri_mut() = "http://localhost/assets/index.html".parse().unwrap();
+                req.headers_mut()
+                    .insert(http::header::ACCEPT_ENCODING, coding.parse().unwrap());
+                let res = req_handler.handle(&mut req, remote_addr).await.unwrap();
+                assert_eq!(res.status(), 200, "{coding}");
+                responses.push(res);
+            }
+            let (get, head) = (&responses[0], &responses[1]);
+
+            assert_eq!(
+                get.headers().get("content-encoding"),
+                Some(&HeaderValue::from_static(coding))
+            );
+            assert_eq!(
+                head.headers().get("content-encoding"),
+                get.headers().get("content-encoding"),
+                "HEAD must send the content-encoding of GET ({coding})"
+            );
+            assert_eq!(
+                head.headers().get("vary"),
+                get.headers().get("vary"),
+                "{coding}"
+            );
+            assert_eq!(
+                head.headers().get("content-length"),
+                None,
+                "HEAD must not send the identity content-length ({coding})"
+            );
+        }
+    }
+
+    // A `Content-Encoding` on a response without content describes nothing, and
+    // a cache would merge it from a `304` into its stored identity response.
+    #[tokio::test]
+    async fn compression_skips_responses_without_content() {
+        let opts = fixture_settings("toml/handler_fixtures.toml");
+        let general = General {
+            compression: true,
+            compression_static: false,
+            etag: true,
+            redirect_trailing_slash: true,
+            ..opts.general
+        };
+        let req_handler_opts = fixture_req_handler_opts(general, opts.advanced);
+        let req_handler = fixture_req_handler(req_handler_opts);
+        let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
+
+        let mut req = Request::new(());
+        *req.uri_mut() = "http://localhost/assets/index.html".parse().unwrap();
+        let res = req_handler.handle(&mut req, remote_addr).await.unwrap();
+        let etag = res.headers()["etag"].clone();
+
+        let cases = [
+            ("/assets/index.html", "if-none-match", etag, 304),
+            (
+                "/assets/index.html",
+                "if-match",
+                HeaderValue::from_static("\"x\""),
+                412,
+            ),
+            ("/assets", "accept", HeaderValue::from_static("*/*"), 308),
+        ];
+        for (path, name, value, status) in cases {
+            for method in [hyper::Method::GET, hyper::Method::HEAD] {
+                let mut req = Request::new(());
+                *req.method_mut() = method.clone();
+                *req.uri_mut() = format!("http://localhost{path}").parse().unwrap();
+                req.headers_mut().insert(
+                    http::header::ACCEPT_ENCODING,
+                    "gzip, deflate, br, zstd".parse().unwrap(),
+                );
+                req.headers_mut().insert(name, value.clone());
+
+                let res = req_handler.handle(&mut req, remote_addr).await.unwrap();
+                assert_eq!(res.status(), status, "{method} {path}");
+                assert_eq!(
+                    res.headers().get("content-encoding"),
+                    None,
+                    "{method} {path}"
+                );
+            }
+        }
     }
 }

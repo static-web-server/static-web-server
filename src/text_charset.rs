@@ -15,7 +15,7 @@ use mime_guess::{Mime, mime};
 
 use crate::body::Body;
 use crate::exts::mime::MimeExt;
-use crate::{Error, handler::RequestHandlerOpts};
+use crate::{Error, handler_opts::RequestHandlerOpts};
 
 /// MIME types requiring an explicit `; charset=utf-8` header.
 ///

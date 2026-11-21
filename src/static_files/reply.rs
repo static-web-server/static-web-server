@@ -9,10 +9,7 @@
 //! [`super`](super) pairs the response with the file path it relates to.
 
 use headers::{AcceptRanges, HeaderMapExt, HeaderValue};
-use hyper::{
-    Response, StatusCode,
-    header::{CONTENT_ENCODING, CONTENT_LENGTH},
-};
+use hyper::{Response, StatusCode, header::CONTENT_ENCODING};
 use std::fs::{File, Metadata};
 use std::io;
 use std::path::{Path, PathBuf};
@@ -21,6 +18,8 @@ use crate::body::Body;
 use crate::conditional_headers::ConditionalHeaders;
 use crate::exts::headers::ContentCoding;
 use crate::exts::http::HTTP_SUPPORTED_METHODS;
+#[cfg(feature = "mem-cache")]
+use crate::mem_cache::cache::Representation;
 use crate::response::response_body;
 
 use super::opts::HandleOpts;
@@ -85,8 +84,9 @@ pub(super) fn file_or_precompressed(
     file_reply(opts, file_path, metadata, None, pre_opened)
 }
 
-/// Serves a pre-compressed variant and adjusts headers (`Content-Length`
-/// removed, `Content-Encoding` set) accordingly.
+/// Serves a pre-compressed variant with its `Content-Encoding`. `metadata`
+/// is the variant's, so `Content-Length` is the variant's length. Responses
+/// without content such as `304`, `412` and `416` are left as they are.
 fn precompressed_reply(
     opts: &HandleOpts<'_>,
     file_path: &Path,
@@ -94,9 +94,18 @@ fn precompressed_reply(
     precomp_path: PathBuf,
     precomp_encoding: ContentCoding,
 ) -> Result<Response<Body>, StatusCode> {
-    let mut resp = file_reply(opts, file_path, metadata, Some(precomp_path), None)?;
+    let mut resp = file_reply(
+        opts,
+        file_path,
+        metadata,
+        Some((precomp_path, precomp_encoding)),
+        None,
+    )?;
 
-    resp.headers_mut().remove(CONTENT_LENGTH);
+    if !resp.status().is_success() {
+        return Ok(resp);
+    }
+
     let encoding = HeaderValue::from_str(precomp_encoding.as_str()).map_err(|err| {
         tracing::error!(
             "unable to parse header value from content encoding: {:?}",
@@ -109,7 +118,7 @@ fn precompressed_reply(
     Ok(resp)
 }
 
-/// Opens `file_path` (or `path_precompressed` when present), wires up
+/// Opens `file_path` (or the `precompressed` variant when present), wires up
 /// conditional headers, and produces a streaming response body.
 ///
 /// When `pre_opened` is `Some(file)` and no precompressed variant is being
@@ -118,10 +127,18 @@ fn file_reply(
     opts: &HandleOpts<'_>,
     path: &Path,
     meta: &Metadata,
-    path_precompressed: Option<PathBuf>,
+    precompressed: Option<(PathBuf, ContentCoding)>,
     pre_opened: Option<File>,
 ) -> Result<Response<Body>, StatusCode> {
     let conditionals = ConditionalHeaders::new(opts.headers);
+    #[cfg(feature = "mem-cache")]
+    let representation = Representation {
+        content_encoding: precompressed
+            .as_ref()
+            .map_or(ContentCoding::IDENTITY, |(_, encoding)| *encoding),
+        compression_static: opts.compression_static,
+    };
+    let path_precompressed = precompressed.map(|(precomp_path, _)| precomp_path);
 
     // Reuse the pre-opened handle when serving the original file. For
     // precompressed variants the open target differs, so the helper opens
@@ -138,7 +155,15 @@ fn file_reply(
             #[cfg(feature = "mem-cache")]
             {
                 let _ = open_path;
-                response_body(file, path, meta, conditionals, opts.etag, opts.memory_cache)
+                response_body(
+                    file,
+                    path,
+                    meta,
+                    conditionals,
+                    opts.etag,
+                    opts.memory_cache,
+                    representation,
+                )
             }
 
             #[cfg(not(feature = "mem-cache"))]

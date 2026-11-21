@@ -46,6 +46,8 @@ use crate::fs::meta::FileMetadata;
 
 #[cfg(feature = "mem-cache")]
 use crate::mem_cache::cache;
+#[cfg(feature = "mem-cache")]
+use opts::DEFAULT_INDEX_FILES;
 
 /// The server entry point to handle incoming requests which map to specific files
 /// on file system and return a file response.
@@ -54,13 +56,25 @@ pub async fn handle(opts: &HandleOpts<'_>) -> Result<StaticFileResponse, StatusC
         return Err(StatusCode::METHOD_NOT_ALLOWED);
     }
 
+    // Answered before the path is resolved, so the reply doesn't tell whether
+    // a path exists, is a directory, or is denied
+    if opts.method.is_options() {
+        return Ok(StaticFileResponse {
+            resp: reply::options_reply(),
+            file_path: None,
+            is_dir_listing: false,
+        });
+    }
+
     let mut file_path = sanitize_path(opts.base_path, opts.uri_path)?;
 
     // In-memory file cache lookup. A hit short-circuits the pipeline.
     // On miss, the file is read from disk and the streaming pipeline
     // populates the cache opportunistically (see `mem_cache::stream`).
+    // With `compression-static`, the cached representation is negotiated
+    // from the pre-compressed variants recorded in the cache entries.
     #[cfg(feature = "mem-cache")]
-    if let Some(resp) = try_memory_cache(opts, &mut file_path) {
+    if let Some(resp) = try_memory_cache(opts, &file_path) {
         return Ok(resp);
     }
 
@@ -77,7 +91,18 @@ pub async fn handle(opts: &HandleOpts<'_>) -> Result<StaticFileResponse, StatusC
         opts.index_files,
     )?;
 
-    security::enforce(file_path, is_dir, opts)?;
+    // A directory request is served from its index file (or `.html` sibling)
+    // when one was resolved, so that file is checked. Only a directory
+    // listing, where `metadata` still describes the directory, checks the
+    // directory itself.
+    let is_dir_listing = is_dir && metadata.is_dir();
+    security::enforce(file_path, is_dir_listing, opts)?;
+
+    // A pre-compressed variant is served instead of `file_path`, so it must
+    // pass the same checks before it is opened.
+    if let Some((precomp_path, _)) = &precompressed_variant {
+        security::enforce(precomp_path, false, opts)?;
+    }
 
     let resp_file_path = file_path.to_owned();
 
@@ -85,16 +110,12 @@ pub async fn handle(opts: &HandleOpts<'_>) -> Result<StaticFileResponse, StatusC
         return Ok(StaticFileResponse::new(resp, resp_file_path));
     }
 
-    if opts.method.is_options() {
-        return Ok(StaticFileResponse::new(
-            reply::options_reply(),
-            resp_file_path,
-        ));
-    }
-
     #[cfg(feature = "directory-listing")]
     if let Some(resp) = listing::try_listing(file_path, is_dir, opts)? {
-        return Ok(StaticFileResponse::new(resp, resp_file_path));
+        return Ok(StaticFileResponse {
+            is_dir_listing: true,
+            ..StaticFileResponse::new(resp, resp_file_path)
+        });
     }
 
     let resp =
@@ -107,28 +128,37 @@ pub async fn handle(opts: &HandleOpts<'_>) -> Result<StaticFileResponse, StatusC
 /// Returns `Some(response)` on a cache hit, `None` otherwise (cache disabled
 /// in the runtime config, no entry yet, or a non-UTF-8 path).
 ///
-/// When a memory cache is configured and the request targets a directory
-/// with trailing-slash redirect on, the cache key is the implicit
-/// `<dir>/index.html`. The function may push that segment onto
-/// `file_path` before performing the lookup.
+/// With trailing-slash redirect on and a request path ending in `/`, only
+/// the first `--index-files` entry joined to that path is looked up. Any
+/// other file is served only when that entry doesn't exist, which takes a
+/// disk check, so a directory served by a later entry or by its `.html`
+/// sibling never hits the cache.
 #[cfg(feature = "mem-cache")]
 fn try_memory_cache(
     opts: &HandleOpts<'_>,
-    file_path: &mut std::path::PathBuf,
+    file_path: &std::path::Path,
 ) -> Option<StaticFileResponse> {
     // Runtime gate: if `[advanced.memory-cache]` is not configured in TOML,
     // `opts.memory_cache` is `None` and we skip the lookup entirely.
     opts.memory_cache.as_ref()?;
 
-    // NOTE: only the default auto-index is supported for directory
-    // requests inside the memory-cache context.
-    if opts.redirect_trailing_slash && opts.uri_path.ends_with('/') {
-        file_path.push("index.html");
+    // A hit returns the file content, which only `GET` and `HEAD` may get
+    if !opts.method.is_get() && !opts.method.is_head() {
+        return None;
     }
 
-    let result = cache::lookup(file_path.as_path(), opts.headers)?;
+    let index_path = (opts.redirect_trailing_slash && opts.uri_path.ends_with('/')).then(|| {
+        let index = opts.index_files.first().unwrap_or(&DEFAULT_INDEX_FILES[0]);
+        file_path.join(index)
+    });
+    let cache_path = index_path.as_deref().unwrap_or(file_path);
+
+    let result = cache::lookup(cache_path, opts.headers, opts.compression_static)?;
     match result {
-        Ok(resp) => Some(StaticFileResponse::new(resp, file_path.clone())),
+        Ok(resp) => {
+            let resp_file_path = index_path.unwrap_or_else(|| file_path.to_path_buf());
+            Some(StaticFileResponse::new(resp, resp_file_path))
+        }
         // Hit, but the cached entry returned an error status (e.g. malformed Range).
         // Fall through to the regular pipeline so the error path is consistent.
         Err(_) => None,

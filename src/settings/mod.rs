@@ -27,6 +27,7 @@ use cli::General;
 
 use self::file::MemoryCache;
 
+pub(crate) use self::file::HeadersScope;
 use self::file::{RedirectsKind, Settings as FileSettings};
 
 #[cfg(any(
@@ -42,6 +43,11 @@ pub use file::CompressionLevel;
 pub struct Headers {
     /// Source pattern glob matcher
     pub source: GlobMatcher,
+    /// Optional list of response status codes the headers apply to.
+    /// If `None`, the headers apply to any response status.
+    pub status: Option<Vec<StatusCode>>,
+    /// Which responses the headers apply to.
+    pub scope: HeadersScope,
     /// Map of custom HTTP headers
     pub headers: HeaderMap,
 }
@@ -133,8 +139,11 @@ impl Settings {
         // Define the general CLI/file options
         let version = opts.version;
         let mut host = opts.host;
+        let mut ipv6_only = opts.ipv6_only;
         let mut port = opts.port;
         let mut root = opts.root;
+        let mut open = opts.open;
+        let mut open_path = opts.open_path;
         let mut log_level = opts.log_level;
         let mut log_with_ansi = opts.log_with_ansi;
         let mut log_format = opts.log_format;
@@ -210,10 +219,14 @@ impl Settings {
         let mut threads_multiplier = opts.threads_multiplier;
         let mut max_blocking_threads = opts.max_blocking_threads;
         let mut grace_period = opts.grace_period;
+        let mut idle_timeout = opts.idle_timeout;
+        let mut max_header_size = opts.max_header_size;
+        let mut max_connections = opts.max_connections;
 
         #[cfg(feature = "fallback-page")]
         let mut page_fallback = opts.page_fallback;
 
+        let mut access_log_format = opts.access_log_format;
         let mut log_remote_address = opts.log_remote_address;
         let mut log_x_real_ip = opts.log_x_real_ip;
         let mut log_forwarded_for = opts.log_forwarded_for;
@@ -260,11 +273,20 @@ impl Settings {
                 if let Some(v) = general.host {
                     host = v
                 }
+                if let Some(v) = general.ipv6_only {
+                    ipv6_only = v
+                }
                 if let Some(v) = general.port {
                     port = v
                 }
                 if let Some(v) = general.root {
                     root = v
+                }
+                if let Some(value) = general.open {
+                    open = value;
+                }
+                if let Some(value) = general.open_path {
+                    open_path = Some(value);
                 }
                 if let Some(ref v) = general.log_level {
                     log_level = v.name().to_lowercase();
@@ -345,16 +367,6 @@ impl Settings {
                 if let Some(v) = general.https_redirect_from_hosts {
                     https_redirect_from_hosts = v
                 }
-                #[cfg(feature = "tls")]
-                match general.security_headers {
-                    Some(v) => security_headers = v,
-                    _ => {
-                        if tls {
-                            security_headers = true;
-                        }
-                    }
-                }
-                #[cfg(not(feature = "tls"))]
                 if let Some(v) = general.security_headers {
                     security_headers = v
                 }
@@ -411,9 +423,21 @@ impl Settings {
                 if let Some(v) = general.grace_period {
                     grace_period = v
                 }
+                if let Some(v) = general.idle_timeout {
+                    idle_timeout = v
+                }
+                if let Some(v) = general.max_header_size {
+                    max_header_size = v
+                }
+                if let Some(v) = general.max_connections {
+                    max_connections = v
+                }
                 #[cfg(feature = "fallback-page")]
                 if let Some(v) = general.page_fallback {
                     page_fallback = v
+                }
+                if let Some(ref v) = general.access_log_format {
+                    v.clone_into(&mut access_log_format)
                 }
                 if let Some(v) = general.log_remote_address {
                     log_remote_address = v
@@ -511,8 +535,16 @@ impl Settings {
                                 })?
                                 .compile_matcher();
 
+                            let status = headers_entry
+                                .status
+                                .as_deref()
+                                .map(|codes| parse_header_status(codes, &headers_entry.source))
+                                .transpose()?;
+
                             headers_vec.push(Headers {
                                 source,
+                                status,
+                                scope: headers_entry.scope,
                                 headers: headers_entry.headers.to_owned(),
                             });
                         }
@@ -684,10 +716,56 @@ impl Settings {
             )?;
         }
 
+        // Runtime validation: --open cannot be used with --unix-socket
+        #[cfg(unix)]
+        if open && unix_socket.is_some() {
+            bail!("--open cannot be used with --unix-socket");
+        }
+
+        // Runtime validation: --ipv6-only needs a host bound by SWS that can be ipv6
+        if ipv6_only {
+            if fd.is_some() {
+                bail!("--ipv6-only cannot be used with --fd");
+            }
+            #[cfg(unix)]
+            if unix_socket.is_some() {
+                bail!("--ipv6-only cannot be used with --unix-socket");
+            }
+            if let Ok(ip) = host.parse::<std::net::IpAddr>()
+                && ip.to_canonical().is_ipv4()
+            {
+                bail!("--ipv6-only cannot be used with the ipv4 host {host}");
+            }
+        }
+
+        // Runtime validation: --open-path only applies when --open is enabled
+        if open_path.is_some() && !open {
+            bail!("--open-path requires --open");
+        }
+
+        // Runtime validation: --open cannot be used with --windows-service
+        #[cfg(windows)]
+        if open && windows_service {
+            bail!("--open cannot be used with --windows-service");
+        }
+
         // Runtime validation: HTTP/2 requires TLS
         #[cfg(all(feature = "http2", feature = "tls"))]
         if http2 && !tls {
             bail!("HTTP/2 requires TLS; enable --tls along with --tls-cert and --tls-key");
+        }
+
+        // Runtime validation: a zero limit would reject every request
+        if max_header_size == 0 {
+            bail!("--max-header-size must be greater than 0");
+        }
+
+        // Runtime validation: the connection limit is a Tokio semaphore, which has a maximum
+        if max_connections > tokio::sync::Semaphore::MAX_PERMITS {
+            bail!(
+                "--max-connections must be at most {}",
+                tokio::sync::Semaphore::MAX_PERMITS
+            );
         }
 
         // Runtime validation: ANSI log output requires pretty format
@@ -701,18 +779,15 @@ impl Settings {
             bail!("--https-redirect requires TLS to be enabled (--tls)");
         }
 
-        // Auto-enable security headers when TLS is on (applies when no config file is present)
-        #[cfg(feature = "tls")]
-        if tls && !security_headers {
-            security_headers = true;
-        }
-
         Ok(Settings {
             general: General {
                 version,
                 host,
+                ipv6_only,
                 port,
                 root,
+                open,
+                open_path,
                 log_level,
                 log_with_ansi,
                 log_format,
@@ -779,8 +854,12 @@ impl Settings {
                 threads_multiplier,
                 max_blocking_threads,
                 grace_period,
+                idle_timeout,
+                max_header_size,
+                max_connections,
                 #[cfg(feature = "fallback-page")]
                 page_fallback,
+                access_log_format,
                 log_remote_address,
                 log_x_real_ip,
                 log_forwarded_for,
@@ -822,4 +901,157 @@ fn read_file_settings(config_file: &Path) -> Result<Option<(FileSettings, PathBu
         return Ok(Some((settings, file_path_resolved)));
     }
     Ok(None)
+}
+
+/// Parses the optional `status` list of a custom headers entry.
+fn parse_header_status(codes: &[u16], source: &str) -> Result<Vec<StatusCode>> {
+    if codes.is_empty() {
+        bail!("empty status list for header source: {source}");
+    }
+    codes
+        .iter()
+        .map(|code| {
+            StatusCode::from_u16(*code)
+                .with_context(|| format!("invalid status code {code} for header source: {source}"))
+        })
+        .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Settings;
+
+    #[cfg(unix)]
+    #[test]
+    fn open_rejects_unix_socket() {
+        let error = Settings::get_unparsed(
+            false,
+            &[
+                "static-web-server",
+                "--open",
+                "--unix-socket",
+                "/tmp/sws-open-test.sock",
+            ],
+        )
+        .err()
+        .expect("open with a Unix socket should be rejected");
+
+        assert_eq!(
+            error.to_string(),
+            "--open cannot be used with --unix-socket"
+        );
+    }
+
+    /// The error of settings parsed from `args`, which must be rejected.
+    fn settings_error(args: &[&str]) -> String {
+        Settings::get_unparsed(false, args)
+            .err()
+            .expect("settings should be rejected")
+            .to_string()
+    }
+
+    #[test]
+    fn ipv6_only_rejects_fd() {
+        let error = settings_error(&["static-web-server", "--ipv6-only", "--fd", "0"]);
+        assert_eq!(error, "--ipv6-only cannot be used with --fd");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn ipv6_only_rejects_unix_socket() {
+        let error = settings_error(&[
+            "static-web-server",
+            "--ipv6-only",
+            "--unix-socket",
+            "/tmp/sws-ipv6-only-test.sock",
+        ]);
+        assert_eq!(error, "--ipv6-only cannot be used with --unix-socket");
+    }
+
+    #[test]
+    fn ipv6_only_rejects_ipv4_host() {
+        let error = settings_error(&["static-web-server", "--ipv6-only", "--host", "0.0.0.0"]);
+        assert_eq!(
+            error,
+            "--ipv6-only cannot be used with the ipv4 host 0.0.0.0"
+        );
+    }
+
+    #[test]
+    fn ipv6_only_rejects_ipv4_mapped_host() {
+        let error = settings_error(&[
+            "static-web-server",
+            "--ipv6-only",
+            "--host",
+            "::ffff:0.0.0.0",
+        ]);
+        assert_eq!(
+            error,
+            "--ipv6-only cannot be used with the ipv4 host ::ffff:0.0.0.0"
+        );
+    }
+
+    #[test]
+    fn ipv6_only_allows_specific_ipv6_host() {
+        let settings = Settings::get_unparsed(
+            false,
+            &["static-web-server", "--ipv6-only", "--host", "::1"],
+        )
+        .unwrap();
+        assert!(settings.general.ipv6_only);
+    }
+
+    #[test]
+    fn open_path_requires_open() {
+        let error = Settings::get_unparsed(false, &["static-web-server", "--open-path", "/docs"])
+            .err()
+            .expect("open path without open should be rejected");
+
+        assert_eq!(error.to_string(), "--open-path requires --open");
+    }
+
+    #[test]
+    fn max_header_size_rejects_zero() {
+        let error = Settings::get_unparsed(false, &["static-web-server", "--max-header-size", "0"])
+            .err()
+            .expect("zero max header size should be rejected");
+
+        assert_eq!(
+            error.to_string(),
+            "--max-header-size must be greater than 0"
+        );
+    }
+
+    #[test]
+    fn max_connections_rejects_values_above_semaphore_max() {
+        let max = tokio::sync::Semaphore::MAX_PERMITS;
+        let above = (max + 1).to_string();
+        let error =
+            Settings::get_unparsed(false, &["static-web-server", "--max-connections", &above])
+                .err()
+                .expect("max connections above the semaphore maximum should be rejected");
+
+        assert_eq!(
+            error.to_string(),
+            format!("--max-connections must be at most {max}")
+        );
+
+        let max = max.to_string();
+        Settings::get_unparsed(false, &["static-web-server", "--max-connections", &max])
+            .expect("max connections at the semaphore maximum should be accepted");
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn open_rejects_windows_service() {
+        let error =
+            Settings::get_unparsed(false, &["static-web-server", "--open", "--windows-service"])
+                .err()
+                .expect("open in Windows Service mode should be rejected");
+
+        assert_eq!(
+            error.to_string(),
+            "--open cannot be used with --windows-service"
+        );
+    }
 }

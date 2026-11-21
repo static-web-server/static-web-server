@@ -2,8 +2,13 @@
 
 #### Address & Root dir
 host = "::"
+ipv6-only = false
 port = 4433
 root = "docker/public"
+
+#### Open browser after startup
+open = true
+open-path = "/docs"
 
 #### Logging
 log-level = "trace"
@@ -52,8 +57,25 @@ threads-multiplier = 1
 #### Grace period after a graceful shutdown
 grace-period = 0
 
+#### Connection idle timeout
+idle-timeout = 30
+
+#### Maximum request header size in bytes
+max-header-size = 16384
+
+#### Maximum connections served at the same time (0 means no limit)
+max-connections = 0
+
 #### Page fallback for 404s
 page-fallback = ""
+
+#### Custom access log format (replaces default logging when set)
+#### Tokens: %{method}, %{uri}, %{status}, %{bytes}, %{duration}, %{remote_addr},
+####         %{x_real_ip}, %{forwarded_for}, %{host}, %{user_agent}, %{referer},
+####         %{timestamp}, %{version}. Use %% for literal %.
+####         %{timestamp} uses local time, honoring the TZ environment variable.
+#### e.g. '%{remote_addr} - [%{timestamp}] "%{method} %{uri} %{version}" %{status} %{bytes} "%{referer}" "%{user_agent}"'
+access-log-format = ""
 
 #### Log request Remote Address if available
 log-remote-address = false
@@ -100,6 +122,22 @@ Strict-Transport-Security = "max-age=63072000; includeSubDomains; preload"
 [[advanced.headers]]
 source = "**/*.{jpg,jpeg,png,ico,gif}"
 headers.Strict-Transport-Security = "max-age=63072000; includeSubDomains; preload"
+
+#### d. Limited to specific response status codes (optional `status`)
+[[advanced.headers]]
+source = "/assets/**"
+status = [200, 206, 304]
+headers = { Cache-Control = "public, max-age=31536000, immutable" }
+
+#### e. Also applied to early responses (optional `scope`)
+# By default (`scope = "files"`) headers apply to static file responses only.
+# `scope = "all"` also covers redirects, rewrite redirects, `/livez`, `/readyz`,
+# rejected CORS requests, `/metrics`, `405`, Basic auth challenges and maintenance mode.
+# It can be combined with `status`.
+[[advanced.headers]]
+source = "**"
+scope = "all"
+headers = { X-Content-Type-Options = "nosniff" }
 
 
 ### URL Redirects

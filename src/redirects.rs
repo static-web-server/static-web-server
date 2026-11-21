@@ -23,7 +23,7 @@ use hyper::{Request, Response, StatusCode};
 use regex_lite::Regex;
 
 use crate::body::Body;
-use crate::{Error, error_page, handler::RequestHandlerOpts, settings::Redirects};
+use crate::{Error, error_page, handler_opts::RequestHandlerOpts, settings::Redirects};
 
 /// Maximum URI length (bytes) that will be fed to the redirect regex
 /// engine. Requests above this size skip redirect matching entirely.
@@ -182,7 +182,7 @@ mod tests {
     use crate::body::Body;
     use crate::{
         Error,
-        handler::RequestHandlerOpts,
+        handler_opts::RequestHandlerOpts,
         settings::{Advanced, Redirects, build_placeholder_replacer},
     };
     use hyper::{Request, Response, StatusCode};

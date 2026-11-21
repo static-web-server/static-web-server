@@ -67,6 +67,8 @@ impl QualityValue {
             .into_iter()
             .flat_map(|value_str| value_str.split(','))
             .filter_map(|v| QualityMeta::try_from(v).ok())
+            // RFC 9110 §12.4.2: a weight of 0 means "not acceptable".
+            .filter(|meta| meta.quality > 0)
             .collect();
         items.sort_unstable_by(|a, b| {
             let quality_cmp = b.quality.cmp(&a.quality);
@@ -182,7 +184,6 @@ mod tests {
         let mut values = qual.iter();
         assert_eq!(values.next(), Some("gzip"));
         assert_eq!(values.next(), Some("br"));
-        assert_eq!(values.next(), Some("zstd"));
         assert_eq!(values.next(), None);
     }
 
@@ -269,6 +270,16 @@ mod tests {
         // Both clamp to 1000; tie broken by ContentCoding priority (br > gzip).
         assert_eq!(values.next(), Some("br"));
         assert_eq!(values.next(), Some("gzip"));
+        assert_eq!(values.next(), None);
+    }
+
+    #[test]
+    fn zero_quality_is_not_acceptable() {
+        let val = HeaderValue::from_static("gzip;q=0, br, zstd;q=0.000, deflate;q=0.0");
+        let qual = QualityValue::from(val);
+
+        let mut values = qual.iter();
+        assert_eq!(values.next(), Some("br"));
         assert_eq!(values.next(), None);
     }
 

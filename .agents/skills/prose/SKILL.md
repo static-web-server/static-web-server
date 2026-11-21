@@ -1,65 +1,101 @@
 ---
 name: prose
-description: Author or edit any prose for the Static Web Server (SWS) project — documentation, design docs, READMEs, PR descriptions, issue bodies, commit message bodies, or other human-readable text — following project writing conventions
+description: Write or edit human-readable text for the Static Web Server (SWS) project — commit messages, CHANGELOG entries, PR descriptions, issue bodies, rustdoc comments, CLI help text, READMEs, and user docs — following project style and conventions. Use whenever producing text a person will read, not only Markdown files.
 ---
 
 # Writing SWS Prose
 
-Load this skill whenever writing or editing prose for this project: documentation in `docs/`, READMEs, design docs, PR descriptions, issue bodies, commit message bodies, or any other human-readable markdown.
+**When to load**: writing a commit message, CHANGELOG entry, PR description, issue body, advisory text, `///` doc comment, `--help` text, README section, or documentation for the `static-web-server/docs` repo.
 
-**When to load**: editing any file under `docs/`, writing a commit message body, drafting a PR description or issue body, or producing any user-facing markdown for the SWS project.
+## Style
 
-## Writing Style
-
-- **Avoid ambiguous characters**: Do not use ambiguous Unicode characters, homoglyphs, and confusables in identifiers, code, code comments/docs or user input as they can lead to security issues.
-- **Be fact-focused**: State what things are and what they do
-- **Avoid buzzwords**: No "leverage", "synergy", "paradigm", etc.
-- **Avoid fluff**: Every sentence should convey information
-- **Avoid weasel words**: No "very", "really", "quite", "somewhat"
-- **Avoid dramatic terms**: No "critical", "crucial", "vital", "essential" unless something will actually break
-- **Avoid figurative metaphors**: Pick the literal word for the thing, not the analogy. "Blazing fast" → "sub-millisecond latency" or "serves files at line rate". "Battle-tested" → "used in production since 2019". Other recurring offenders: "under the hood" (just describe what's there), "out of the box" (just say "by default"), "first-class" (say what's actually supported). If you can't replace the metaphor with a literal noun or verb without losing meaning, you probably don't know what you mean yet.
-- **Be direct**: Say what you mean without hedging
-- **Use concrete examples**: Show, don't tell. Include CLI invocations and HTTP response snippets
-- **Use active voice**: "SWS appends security headers to the response" not "Security headers are appended by SWS"
-- **Use present tense**: Describe how the system works now, not how it was designed or how it will work
-- **Document current behavior only**: Omit historical decisions, deprecated approaches, and planned future work
-
-### Examples
-
-**Bad**: "This feature is critical for ensuring optimal web server performance."
-
-**Good**: "Static compression serves pre-compressed `.br` files from disk with zero CPU overhead, avoiding on-the-fly compression."
+- **Fact-focused and direct**: what a thing is and does. No hedging, buzzwords ("leverage", "seamless", "robust"), or weasel words ("very", "really")
+- **No dramatic terms**: "critical", "crucial", "essential" only when something breaks without it. In security text the CVSS score carries severity
+- **Literal over figurative**: "out of the box" → "by default"; "under the hood" → describe the mechanism
+- **Concrete**: the flag, the env var, the TOML key, the header, the status code
+- **Active voice, present tense**: "SWS appends `Vary: Accept-Encoding`"
+- **Current behavior only** in docs and doc comments; history belongs in commit messages
+- **Plain characters in code**: no homoglyphs or invisible Unicode in identifiers, code, or config examples
 
 **Bad**: "SWS leverages advanced algorithms to enhance delivery."
+**Good**: "SWS picks `zstd`, `br`, `gzip`, or `deflate` from the client's `Accept-Encoding` q-values."
 
-**Good**: "SWS uses `accept-encoding` header negotiation to select the best compression algorithm (zstd, brotli, gzip, deflate) supported by the client."
+## Commit Messages (`docs/COMMITS.md`)
 
-**Bad**: "## Features that work out of the box"
+```
+<type>(<scope>): <subject>
 
-**Good**: "## Enabled by default"
+<body>
 
-## Document Structure
+<footer>
+```
 
-- Start with what the thing is
-- Explain why it exists (what problem it solves)
-- Explain what it does
-- Show how to use it (if applicable)
-- Provide examples (CLI invocations, config snippets, HTTP headers)
+- **Types**: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `chore`
+- **Scope**: the module touched (`server`, `tls`, `compression`, `fs`, `handler`, `static_files`, `control_headers`, `custom_headers`, `cors`, `rewrites`, `directory_listing`, `access_logs`, `health`, …). Omit when cross-cutting
+- **Subject**: imperative, lowercase first letter, no trailing period
+- **Body**: imperative; what was wrong or missing, and how behavior differs now
+- **Footer**: `Fixes #123`; `BREAKING CHANGE: <description>` for breaking changes. No AI `Co-authored-by:` trailers or "Generated with …" lines
+- Every line ≤ 100 characters
 
-## Feature Documentation
+The body follows the kernel's patch-description rules, adapted:
 
-When documenting an SWS feature in `docs/content/features/`:
+- **Problem first, then the change.** Open with what was wrong and how a user noticed it (the request, the status, the header). The second paragraph says what the code does now and why that approach. A reader should be able to judge the fix without opening the diff
+- **One problem per commit.** A commit that fixes two things, or fixes one and reformats another, is two commits. Unrelated whitespace, import ordering, or rename churn goes in its own `style:`/`refactor:` commit or not at all
+- **Orders, not narration.** Write as if telling the codebase what to do: "skip auth only for CORS preflights", not "this commit skips", "I changed", or "now it skips". Never "this patch" or "this PR"
+- **Quantify.** A `perf:` commit names the benchmark and the before/after numbers; a size change names the bytes. "Faster" and "smaller" alone are not claims
+- **State the user-visible effect** when there is one: new flag, changed default, changed status code, removed endpoint. A `BREAKING CHANGE:` footer repeats it
+- **Reference, don't repeat.** Cite the RFC section, the issue, or the earlier commit hash instead of restating them
+- **Security fixes**: describe the defect plainly, without the GHSA ID, severity words, or exploit steps; the message becomes public on merge
 
-1. **One sentence summary** at the top of what the feature does
-2. **Default state**: Whether enabled by default, and the flag to toggle it
-3. **CLI example**: A `static-web-server` invocation with the relevant flags
-4. **Behavior**: What happens when enabled vs disabled
-5. **Related features**: Cross-link to features that interact (e.g., compression-static → compression)
+## PR Descriptions
+
+Follow `.github/PULL_REQUEST_TEMPLATE.md`: what changes, why (link the issue or GHSA), how it was tested (commands and results), user-visible effects including new flags and defaults, and whether the docs repo needs an update.
+
+A few lines per section, each fact checkable. No file-by-file recap of the diff, no filler, no AI attribution or credits. Only related changes; `CHANGELOG.md` is written by the maintainer, not in the PR.
+
+## CHANGELOG Entries (`CHANGELOG.md`, maintainer-only)
+
+Written by the maintainer at release time; PRs don't touch it. When asked to draft one, use Keep a Changelog sections as already used in the file (`### Breaking Changes`, `### New Features`, `### Bug Fixes`, `### Security & Hardening`, `### Performance`, `### Refactoring`, `### Testing`, `### Documentation`, `### Maintenance`):
+
+```markdown
+- **Short bold title.** One or two sentences on what changed for users, naming flags, env vars, or TOML keys. ([#758](https://github.com/static-web-server/static-web-server/pull/758) by [@user](https://github.com/user))
+```
+
+Describe the effect on users, not the implementation. For a breaking change, state old and new behavior. For a security fix, describe the impact without a ready-made exploit.
+
+## Rustdoc and CLI Help
+
+- `#![deny(missing_docs)]`: every public item, field, and variant needs `///`
+- The `///` on a `General` field in `settings/cli.rs` is the `--help` text: what the option does, accepted values, and the default when not obvious from `default_value`
+- Module docs (`//!`) state the module's responsibility and non-obvious invariants (`etag.rs`, `access_logs.rs`)
+- A function's `///` is its contract: what it does, what it returns on failure, what it assumes; never a restatement of the signature. Inline `//` comments default to none; the ones that stay cite a constraint, a trap, or a measured cost (`coding-style/SKILL.md`, Comments)
+- Log message wording lives in `coding-style/SKILL.md`, Log Messages: lowercase, subject first, no trailing punctuation
+
+## User Documentation
+
+User docs live in `static-web-server/docs` (`src/v3/`, `src/v2/`). A feature page contains:
+
+1. One-sentence summary
+2. Default state and how to toggle it
+3. CLI, env var, and TOML forms:
+   ```bash
+   static-web-server --compression-static true
+   SERVER_COMPRESSION_STATIC=true static-web-server
+   ```
+   ```toml
+   [general]
+   compression-static = true
+   ```
+4. Behavior when enabled and disabled, with a `curl -I` example
+5. Interactions with related features
 
 ## Terminology
 
-- **SWS**: Static Web Server (the project). Use "SWS" after the first mention
-- **Pre-compressed / static compression**: Serving `.br`/`.gz`/`.zst` files from disk
-- **On-the-fly / dynamic compression**: Compressing responses in real-time
-- **Root directory**: The `--root` directory from which files are served
-- **Base path**: The canonicalized root directory used for path containment checks
+- **SWS**: Static Web Server; spell out on first mention
+- **Root directory**: the `--root` / `-d` directory
+- **Pre-compressed / static compression**: serving `.br`, `.gz`, `.zst` files from disk
+- **On-the-fly / dynamic compression**: encoding at request time
+- **Config file**: the TOML file (`sws.toml` by default, `--config-file` / `-w`)
+- **Advanced options**: TOML-only `[advanced]` rules (headers, rewrites, redirects, virtual hosts, memory cache)
+- **Early response**: a response from pipeline steps before the static file handler (405, health, CORS rejection, 401, metrics, maintenance, redirects)
+- **Health probes**: `/livez` and `/readyz` (`--health`)

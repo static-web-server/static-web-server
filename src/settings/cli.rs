@@ -10,11 +10,11 @@ use hyper::StatusCode;
 use std::{net::IpAddr, path::PathBuf};
 
 #[cfg(feature = "directory-listing")]
-use crate::directory_listing::DirListFmt;
+use crate::settings::file::DirListFmt;
 
-#[cfg(feature = "directory-listing-download")]
-use crate::directory_listing::download::DirDownloadFmt;
 use crate::logger::LogFormat;
+#[cfg(feature = "directory-listing-download")]
+use crate::settings::file::DirDownloadFmt;
 
 use crate::Result;
 
@@ -23,12 +23,40 @@ use crate::Result;
 #[command(author, about, long_about)]
 pub struct General {
     #[arg(long, short = 'a', default_value = "::", env = "SERVER_HOST")]
-    /// Host address (E.g 127.0.0.1 or ::1)
+    /// Host address (E.g 127.0.0.1 or ::1). The default `::` accepts both IPv6 and IPv4 connections where the OS supports dual-stack sockets, unless `--ipv6-only` is enabled
     pub host: String,
+
+    #[arg(
+        long,
+        default_value = "false",
+        default_missing_value("true"),
+        num_args(0..=1),
+        require_equals(false),
+        action = clap::ArgAction::Set,
+        env = "SERVER_IPV6_ONLY",
+    )]
+    /// Make the unspecified IPv6 host `::` accept IPv6 connections only, leaving the port free for IPv4. It has no effect on a specific IPv6 host and cannot be used with an IPv4 host, `--fd` or `--unix-socket`.
+    pub ipv6_only: bool,
 
     #[arg(long, short = 'p', default_value = "8080", env = "SERVER_PORT")]
     /// Host port
     pub port: u16,
+
+    #[arg(
+        long,
+        default_value = "false",
+        default_missing_value("true"),
+        num_args(0..=1),
+        require_equals(false),
+        action = clap::ArgAction::Set,
+        env = "SERVER_OPEN",
+    )]
+    /// Open the server URL in the system default web browser after startup.
+    pub open: bool,
+
+    #[arg(long, env = "SERVER_OPEN_PATH")]
+    /// URL path opened in the browser. Requires the open option.
+    pub open_path: Option<String>,
 
     #[cfg_attr(
         feature = "tls",
@@ -189,7 +217,7 @@ pub struct General {
     #[cfg(feature = "fallback-page")]
     #[cfg_attr(docsrs, doc(cfg(feature = "fallback-page")))]
     #[arg(long, default_value = "", value_parser = value_parser_pathbuf, env = "SERVER_FALLBACK_PAGE")]
-    /// A HTML file path (not relative to the root) used for GET requests when the requested path doesn't exist. The fallback page is served with a 200 status code, useful when using client routers. If the path doesn't exist then the feature is not activated.
+    /// A HTML file path (not relative to the root) used for GET requests when the requested path doesn't exist. The fallback page is served with a 200 status code, useful when using client routers. Requests for missing assets keep their 404: those whose `Sec-Fetch-Dest` is not a document or frame or, without that header, a non-HTML extension (like `/favicon.ico`) not asking for `text/html`. If the path doesn't exist then the feature is not activated.
     pub page_fallback: PathBuf,
 
     #[arg(long, short = 'g', default_value = "error", env = "SERVER_LOG_LEVEL")]
@@ -470,7 +498,6 @@ pub struct General {
             num_args(0..=1),
             require_equals(false),
             action = clap::ArgAction::Set,
-            default_value_if("tls", "true", Some("true")),
             env = "SERVER_SECURITY_HEADERS",
         )
     )]
@@ -486,9 +513,10 @@ pub struct General {
             env = "SERVER_SECURITY_HEADERS",
         )
     )]
-    /// Enable security headers by default when TLS feature is activated.
-    /// Headers included: "Strict-Transport-Security: max-age=63072000; includeSubDomains; preload" (2 years max-age),
-    /// "X-Frame-Options: DENY" and "Content-Security-Policy: frame-ancestors 'self'".
+    /// Enable security headers. Enabled by default when the TLS feature is activated.
+    /// Headers included: "X-Frame-Options: DENY", "X-Content-Type-Options: nosniff", "Content-Security-Policy: frame-ancestors 'self'"
+    /// and "Referrer-Policy: strict-origin-when-cross-origin". With `--tls`, also "Strict-Transport-Security: max-age=63072000; includeSubDomains" (2 years max-age).
+    /// Behind a TLS-terminating proxy, add `Strict-Transport-Security` at the proxy or with an `[[advanced.headers]]` rule.
     pub security_headers: bool,
 
     #[arg(
@@ -531,6 +559,18 @@ pub struct General {
     /// Defines a grace period in seconds after a `SIGTERM` signal is caught which will delay the server before to shut it down gracefully. The maximum value is 255 seconds.
     pub grace_period: u8,
 
+    #[arg(long, default_value = "30", env = "SERVER_IDLE_TIMEOUT")]
+    /// Defines the time in seconds after which a connection without any reads or writes is closed. An HTTP/1 request header must also arrive within this time. Use `0` to disable it. The maximum value is 65535 seconds.
+    pub idle_timeout: u16,
+
+    #[arg(long, default_value = "16384", env = "SERVER_MAX_HEADER_SIZE")]
+    /// Defines the maximum size in bytes of the request headers. For HTTP/1 it includes the request line, for HTTP/2 it applies to the header list. Larger requests get `431 Request Header Fields Too Large`. The value must be greater than `0`.
+    pub max_header_size: u32,
+
+    #[arg(long, default_value = "0", env = "SERVER_MAX_CONNECTIONS")]
+    /// Defines the maximum number of connections served at the same time, across all listeners. Once reached, new connections wait until another one closes. Use `0` for no limit.
+    pub max_connections: usize,
+
     #[arg(
         long,
         short = 'w',
@@ -541,6 +581,15 @@ pub struct General {
     /// Server TOML configuration file path.
     pub config_file: PathBuf,
 
+    #[arg(long, default_value = "", env = "SERVER_ACCESS_LOG_FORMAT")]
+    /// Custom access log format string using %{token} syntax. When set, replaces the default
+    /// request logging with a configurable format that includes response data.
+    /// Tokens: method, uri, status, bytes, duration, remote_addr, x_real_ip,
+    /// forwarded_for, host, user_agent, referer, timestamp, version.
+    /// x_real_ip and forwarded_for are logged only for requests from --trusted-proxies.
+    /// Example: '%{remote_addr} "%{method} %{uri}" %{status} %{bytes}'
+    pub access_log_format: String,
+
     #[arg(
         long,
         default_value = "false",
@@ -550,7 +599,7 @@ pub struct General {
         action = clap::ArgAction::Set,
         env = "SERVER_LOG_REMOTE_ADDRESS",
     )]
-    /// Log incoming requests information along with its remote address if available using the `info` log level.
+    /// Log the remote address of each request, if available.
     pub log_remote_address: bool,
 
     #[arg(
@@ -562,7 +611,8 @@ pub struct General {
         action = clap::ArgAction::Set,
         env = "SERVER_LOG_X_REAL_IP",
     )]
-    /// Log the X-Real-IP header for remote IP information.
+    /// Log the X-Real-IP header of requests from --trusted-proxies.
+    /// The proxy must overwrite the header. If the request has more than one X-Real-IP line, nothing is logged.
     pub log_x_real_ip: bool,
 
     #[arg(
@@ -574,7 +624,10 @@ pub struct General {
         action = clap::ArgAction::Set,
         env = "SERVER_LOG_FORWARDED_FOR",
     )]
-    /// Log the X-Forwarded-For header for remote IP information
+    /// Log the client address from X-Forwarded-For of requests from --trusted-proxies.
+    /// It is the rightmost address not in --trusted-proxies, so every proxy in the chain must be listed
+    /// and must append to or overwrite the header itself. Otherwise the address of an unlisted proxy is logged.
+    /// Entries must be bare IP addresses. If one that is reached is empty or can't be parsed (e.g. `ip:port`), nothing is logged.
     pub log_forwarded_for: bool,
 
     #[arg(
@@ -584,7 +637,9 @@ pub struct General {
         action = clap::ArgAction::Set,
         env = "SERVER_TRUSTED_PROXIES",
     )]
-    /// List of IPs to use X-Forwarded-For from. The default is to trust all
+    /// List of proxy IPs to use the X-Real-IP and X-Forwarded-For headers from.
+    /// The default trusts no one, so the headers are not logged unless set.
+    /// Exact IPs only, no ranges. IPv4 entries also match their IPv4-mapped IPv6 form (`::ffff:a.b.c.d`).
     pub trusted_proxies: Vec<IpAddr>,
 
     #[arg(
@@ -656,8 +711,9 @@ pub struct General {
         action = clap::ArgAction::Set,
         env = "SERVER_HEALTH",
     )]
-    /// Add a /health endpoint that doesn't generate any log entry and returns a 200 status code.
-    /// This is especially useful with Kubernetes liveness and readiness probes.
+    /// Add the `/livez` (liveness) and `/readyz` (readiness) endpoints for Kubernetes-style probes.
+    /// They answer `GET` and `HEAD` with `200 OK` (`/readyz` returns `503` once shutdown starts or
+    /// while the root directory is missing) and log requests at `debug` level only.
     pub health: bool,
 
     #[cfg(feature = "metrics")]
@@ -779,19 +835,85 @@ fn value_parser_status_code(s: &str) -> Result<StatusCode, String> {
 #[cfg(test)]
 mod default_tests {
     use super::General;
-    use clap::Parser;
-    use std::path::PathBuf;
+    use clap::{CommandFactory, Parser};
+    use std::{ffi::OsStr, path::PathBuf};
 
     #[test]
     fn uses_zero_configuration_defaults() {
         let general = General::try_parse_from(["static-web-server"]).unwrap();
 
         assert_eq!(general.port, 8080);
+        assert!(!general.ipv6_only);
         assert_eq!(general.root, PathBuf::from("."));
+        assert!(!general.open);
+        assert_eq!(general.open_path, None);
+        assert_eq!(general.idle_timeout, 30);
+        assert_eq!(general.max_header_size, 16384);
+        assert_eq!(general.max_connections, 0);
         #[cfg(feature = "tls")]
         assert_eq!(general.https_redirect_from_port, 8080);
         #[cfg(feature = "directory-listing")]
         assert!(!general.directory_listing);
+    }
+
+    #[test]
+    fn ipv6_only_flag_enables_ipv6_only() {
+        let general = General::try_parse_from(["static-web-server", "--ipv6-only"]).unwrap();
+        assert!(general.ipv6_only);
+    }
+
+    #[test]
+    fn open_flag_enables_browser_launch() {
+        let general = General::try_parse_from(["static-web-server", "--open"]).unwrap();
+        assert!(general.open);
+    }
+
+    #[test]
+    fn open_flag_accepts_explicit_false() {
+        let general = General::try_parse_from(["static-web-server", "--open=false"]).unwrap();
+        assert!(!general.open);
+    }
+
+    #[test]
+    fn open_path_flag_sets_browser_url_path() {
+        let general =
+            General::try_parse_from(["static-web-server", "--open", "--open-path", "/docs"])
+                .unwrap();
+
+        assert_eq!(general.open_path.as_deref(), Some("/docs"));
+    }
+
+    #[test]
+    fn open_flag_uses_server_open_environment_variable() {
+        let command = General::command();
+        let argument = command
+            .get_arguments()
+            .find(|argument| argument.get_id() == "open")
+            .unwrap();
+
+        assert_eq!(argument.get_env(), Some(OsStr::new("SERVER_OPEN")));
+    }
+
+    #[test]
+    fn ipv6_only_flag_uses_server_ipv6_only_environment_variable() {
+        let command = General::command();
+        let argument = command
+            .get_arguments()
+            .find(|argument| argument.get_id() == "ipv6_only")
+            .unwrap();
+
+        assert_eq!(argument.get_env(), Some(OsStr::new("SERVER_IPV6_ONLY")));
+    }
+
+    #[test]
+    fn open_path_flag_uses_server_open_path_environment_variable() {
+        let command = General::command();
+        let argument = command
+            .get_arguments()
+            .find(|argument| argument.get_id() == "open_path")
+            .unwrap();
+
+        assert_eq!(argument.get_env(), Some(OsStr::new("SERVER_OPEN_PATH")));
     }
 }
 

@@ -49,14 +49,39 @@ mod settings_tests {
         );
     }
 
-    /// Enabling TLS must automatically set `security_headers = true` even if
-    /// the user did not supply `--security-headers`.
+    /// Builds with the `tls` feature enable security headers by default,
+    /// with or without `--tls`. Only HSTS depends on `--tls`.
     #[cfg(feature = "tls")]
     #[test]
-    fn tls_auto_enables_security_headers() {
-        let settings = static_web_server::Settings::get_unparsed(
-            false,
-            &[
+    fn tls_build_enables_security_headers_by_default() {
+        let plain = ["static-web-server", "--root", "tests/fixtures/public"];
+        let tls = [
+            "static-web-server",
+            "--root",
+            "tests/fixtures/public",
+            "--tls",
+            "--tls-cert",
+            CERT,
+            "--tls-key",
+            KEY,
+        ];
+        for args in [&plain[..], &tls[..]] {
+            let settings = static_web_server::Settings::get_unparsed(false, args)
+                .expect("settings must parse");
+            assert!(
+                settings.general.security_headers,
+                "security headers should be on by default: {args:?}"
+            );
+        }
+    }
+
+    /// An explicit `--security-headers=false` must win over the TLS default,
+    /// also when a config file without `security-headers` is loaded.
+    #[cfg(feature = "tls")]
+    #[test]
+    fn tls_respects_security_headers_false() {
+        for config in [None, Some("tests/fixtures/toml/handler.toml")] {
+            let mut args = vec![
                 "static-web-server",
                 "--root",
                 "tests/fixtures/public",
@@ -67,14 +92,19 @@ mod settings_tests {
                 CERT,
                 "--tls-key",
                 KEY,
-            ],
-        )
-        .expect("settings with --tls must parse");
+                "--security-headers=false",
+            ];
+            if let Some(path) = config {
+                args.extend(["--config-file", path]);
+            }
+            let settings = static_web_server::Settings::get_unparsed(false, &args)
+                .expect("settings with --tls must parse");
 
-        assert!(
-            settings.general.security_headers,
-            "--tls should automatically enable security_headers"
-        );
+            assert!(
+                !settings.general.security_headers,
+                "--security-headers=false was overridden (config file: {config:?})"
+            );
+        }
     }
 
     /// `--https-redirect` requires `--tls`; without it the settings parsing
@@ -182,6 +212,22 @@ mod test_helpers {
             .local_addr()
             .unwrap()
             .port()
+    }
+
+    /// Open a TLS connection to the server on `port`, offering the `alpn` protocols.
+    pub async fn tls_connect(
+        port: u16,
+        alpn: &[&str],
+    ) -> tokio_rustls::client::TlsStream<tokio::net::TcpStream> {
+        let connector = tokio_rustls::TlsConnector::from(tls_client_config(alpn));
+        let stream = tokio::net::TcpStream::connect(("127.0.0.1", port))
+            .await
+            .expect("TCP connect");
+        let domain = ServerName::try_from("localhost").unwrap().to_owned();
+        connector
+            .connect(domain, stream)
+            .await
+            .expect("TLS handshake")
     }
 
     /// Wait until the server is accepting TCP connections on `port`.
@@ -371,7 +417,7 @@ mod test_helpers {
         let _ = cancel_tx.send(());
         // Join in a blocking task to avoid starving the async runtime.
         let join_result = tokio::time::timeout(
-            std::time::Duration::from_secs(5),
+            TIMEOUT,
             tokio::task::spawn_blocking(move || handle.join().expect("server thread panicked")),
         )
         .await;
@@ -381,10 +427,7 @@ mod test_helpers {
                 server_result.ok();
             }
             Ok(Err(e)) => panic!("spawn_blocking panicked: {e:?}"),
-            Err(_) => {
-                // Server didn't shut down within 5s — not ideal but don't block the test.
-                eprintln!("warning: server did not shut down within 5s after cancel");
-            }
+            Err(_) => panic!("server did not shut down after cancel"),
         }
     }
 }
@@ -395,11 +438,16 @@ mod live_http1_plain_tests {
     use http::StatusCode;
     use http_body_util::Empty;
     use hyper::Request;
+    use hyper::body::Incoming;
     use hyper_util::rt::TokioIo;
 
     use super::test_helpers::*;
 
     async fn http_get(port: u16, path: &str) -> StatusCode {
+        http_get_response(port, path).await.status()
+    }
+
+    async fn http_get_response(port: u16, path: &str) -> hyper::Response<Incoming> {
         let stream = tokio::net::TcpStream::connect(("127.0.0.1", port))
             .await
             .expect("TCP connect");
@@ -415,11 +463,25 @@ mod live_http1_plain_tests {
             .body(Empty::<bytes::Bytes>::new())
             .unwrap();
 
-        sender
-            .send_request(req)
+        sender.send_request(req).await.expect("send request")
+    }
+
+    #[tokio::test]
+    async fn http1_plain_omits_hsts() {
+        let (port, cancel_tx, handle) = spawn_plain_server(&["--security-headers=true"]);
+        wait_for_server(port).await;
+
+        let resp = tokio::time::timeout(TIMEOUT, http_get_response(port, "/index.htm"))
             .await
-            .expect("send request")
-            .status()
+            .expect("request timed out");
+        assert_eq!(resp.status(), StatusCode::OK);
+        assert!(resp.headers().contains_key("x-frame-options"));
+        assert!(
+            !resp.headers().contains_key("strict-transport-security"),
+            "HSTS must not be sent over plain HTTP"
+        );
+
+        shutdown_server(cancel_tx, handle).await;
     }
 
     #[tokio::test]
@@ -455,13 +517,20 @@ mod live_http1_tls_tests {
     use http::StatusCode;
     use http_body_util::Empty;
     use hyper::Request;
+    use hyper::body::Incoming;
     use hyper_util::rt::TokioIo;
     use rustls_pki_types::ServerName;
+    use std::time::Duration;
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
     use tokio_rustls::TlsConnector;
 
     use super::test_helpers::*;
 
     async fn https_get_http1(port: u16, path: &str) -> StatusCode {
+        https_get_http1_response(port, path).await.status()
+    }
+
+    async fn https_get_http1_response(port: u16, path: &str) -> hyper::Response<Incoming> {
         let cfg = tls_client_config(&["http/1.1"]);
         let connector = TlsConnector::from(cfg);
         let stream = tokio::net::TcpStream::connect(("127.0.0.1", port))
@@ -484,11 +553,41 @@ mod live_http1_tls_tests {
             .body(Empty::<bytes::Bytes>::new())
             .unwrap();
 
-        sender
-            .send_request(req)
+        sender.send_request(req).await.expect("send request")
+    }
+
+    #[tokio::test]
+    async fn sends_hsts_without_preload() {
+        let (port, cancel_tx, handle) = spawn_server(&[]);
+        wait_for_server(port).await;
+
+        let resp = tokio::time::timeout(TIMEOUT, https_get_http1_response(port, "/index.htm"))
             .await
-            .expect("send request")
-            .status()
+            .expect("request timed out");
+        assert_eq!(resp.status(), StatusCode::OK);
+        assert_eq!(
+            resp.headers()
+                .get("strict-transport-security")
+                .and_then(|v| v.to_str().ok()),
+            Some("max-age=63072000; includeSubDomains")
+        );
+
+        shutdown_server(cancel_tx, handle).await;
+    }
+
+    #[tokio::test]
+    async fn security_headers_false_disables_them() {
+        let (port, cancel_tx, handle) = spawn_server(&["--security-headers=false"]);
+        wait_for_server(port).await;
+
+        let resp = tokio::time::timeout(TIMEOUT, https_get_http1_response(port, "/index.htm"))
+            .await
+            .expect("request timed out");
+        assert_eq!(resp.status(), StatusCode::OK);
+        assert!(!resp.headers().contains_key("strict-transport-security"));
+        assert!(!resp.headers().contains_key("x-frame-options"));
+
+        shutdown_server(cancel_tx, handle).await;
     }
 
     #[tokio::test]
@@ -573,6 +672,133 @@ mod live_http1_tls_tests {
             "server with mismatched cert/key should fail to start"
         );
     }
+
+    #[tokio::test]
+    async fn idle_timeout_closes_connection_without_handshake() {
+        let (port, cancel_tx, handle) = spawn_server(&["--idle-timeout", "1"]);
+        let mut stream = tokio::net::TcpStream::connect(("127.0.0.1", port))
+            .await
+            .expect("TCP connect");
+
+        // The client never starts the TLS handshake, so the server must close the connection.
+        let mut buf = [0u8; 1];
+        let read = tokio::time::timeout(TIMEOUT, stream.read(&mut buf))
+            .await
+            .expect("connection without a handshake was not closed");
+        assert!(
+            matches!(read, Ok(0) | Err(_)),
+            "server sent data instead of closing the connection"
+        );
+
+        shutdown_server(cancel_tx, handle).await;
+    }
+
+    /// Whether the server on `port` answers with a redirect to `host`.
+    async fn redirects_to(port: u16, host: &str) -> bool {
+        let probe = async {
+            let mut stream = tokio::net::TcpStream::connect(("127.0.0.1", port)).await?;
+            stream
+                .write_all(b"GET / HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n")
+                .await?;
+            let mut response = Vec::new();
+            stream.read_to_end(&mut response).await?;
+            std::io::Result::Ok(response)
+        };
+        match tokio::time::timeout(Duration::from_secs(1), probe).await {
+            Ok(Ok(response)) => {
+                String::from_utf8_lossy(&response).contains(&format!("https://{host}:"))
+            }
+            _ => false,
+        }
+    }
+
+    /// Spawn a TLS server with its HTTPS redirect server on a free port.
+    ///
+    /// The redirect port isn't pre-bound, so another server can take it before this one binds it.
+    /// The server then exits, and it's spawned again on another port.
+    async fn spawn_redirect_server(
+        extra_args: &[&str],
+    ) -> (
+        u16,
+        u16,
+        tokio::sync::watch::Sender<()>,
+        std::thread::JoinHandle<static_web_server::Result>,
+    ) {
+        static SERVERS: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+
+        for _ in 0..3 {
+            let redirect_port = free_port();
+            // A redirect host unique to this server tells it apart from one that took the port.
+            let id = SERVERS.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            let host = format!("redirect-{}-{id}.test", std::process::id());
+            let redirect_port_arg = redirect_port.to_string();
+            let mut args = vec![
+                "--https-redirect",
+                "--https-redirect-from-port",
+                &redirect_port_arg,
+                "--https-redirect-host",
+                &host,
+            ];
+            args.extend_from_slice(extra_args);
+            let (port, cancel_tx, handle) = spawn_server(&args);
+
+            let deadline = tokio::time::Instant::now() + TIMEOUT;
+            while !handle.is_finished() {
+                if redirects_to(redirect_port, &host).await {
+                    return (port, redirect_port, cancel_tx, handle);
+                }
+                assert!(
+                    tokio::time::Instant::now() < deadline,
+                    "redirect server on port {redirect_port} did not start"
+                );
+                tokio::time::sleep(Duration::from_millis(50)).await;
+            }
+            // Only a lost redirect port is retried, any other startup error fails the test.
+            let err = handle
+                .join()
+                .expect("server thread panicked")
+                .expect_err("server exited during startup without an error");
+            assert!(
+                format!("{err:#}").contains("failed to bind redirect listener"),
+                "server failed to start: {err:#}"
+            );
+            eprintln!("redirect port {redirect_port} was taken, retrying: {err:#}");
+        }
+        panic!("redirect port was taken 3 times");
+    }
+
+    #[tokio::test]
+    async fn max_connections_is_shared_with_https_redirect() {
+        let (port, redirect_port, cancel_tx, handle) =
+            spawn_redirect_server(&["--max-connections", "1"]).await;
+
+        // The HTTPS connection takes the only slot, so the redirect server doesn't answer.
+        let https = tls_connect(port, &["http/1.1"]).await;
+        let mut http = tokio::net::TcpStream::connect(("127.0.0.1", redirect_port))
+            .await
+            .expect("TCP connect");
+        http.write_all(b"GET / HTTP/1.1\r\nHost: localhost\r\n\r\n")
+            .await
+            .expect("write request");
+        let mut buf = [0u8; 1024];
+        assert!(
+            tokio::time::timeout(Duration::from_millis(500), http.read(&mut buf))
+                .await
+                .is_err(),
+            "redirect server answered past the shared limit"
+        );
+
+        drop(https);
+        let n = tokio::time::timeout(TIMEOUT, http.read(&mut buf))
+            .await
+            .expect("redirect server did not answer after the HTTPS connection closed")
+            .expect("read response");
+        let response = String::from_utf8_lossy(&buf[..n]);
+        assert!(response.starts_with("HTTP/1.1 301"), "{response}");
+
+        drop(http);
+        shutdown_server(cancel_tx, handle).await;
+    }
 }
 
 #[cfg(all(feature = "tls", feature = "http2"))]
@@ -583,11 +809,20 @@ mod live_http2_tls_tests {
     use hyper::Request;
     use hyper_util::rt::{TokioExecutor, TokioIo};
     use rustls_pki_types::ServerName;
+    use tokio::io::AsyncReadExt;
     use tokio_rustls::TlsConnector;
 
     use super::test_helpers::*;
 
     async fn https_get_http2(port: u16, path: &str) -> StatusCode {
+        let req = Request::builder()
+            .uri(format!("https://localhost:{port}{path}"))
+            .body(Empty::<bytes::Bytes>::new())
+            .unwrap();
+        https_send_http2(port, req).await
+    }
+
+    async fn https_send_http2(port: u16, req: Request<Empty<bytes::Bytes>>) -> StatusCode {
         let cfg = tls_client_config(&["h2"]);
         let connector = TlsConnector::from(cfg);
         let stream = tokio::net::TcpStream::connect(("127.0.0.1", port))
@@ -604,11 +839,6 @@ mod live_http2_tls_tests {
                 .await
                 .expect("HTTP/2 handshake");
         tokio::spawn(conn);
-
-        let req = Request::builder()
-            .uri(format!("https://localhost:{port}{path}"))
-            .body(Empty::<bytes::Bytes>::new())
-            .unwrap();
 
         sender
             .send_request(req)
@@ -644,6 +874,30 @@ mod live_http2_tls_tests {
     }
 
     #[tokio::test]
+    async fn max_header_size_limits_header_list() {
+        let (port, cancel_tx, handle) = spawn_server(&["--http2", "--max-header-size", "32768"]);
+        wait_for_server(port).await;
+
+        // 20 KB is above the 16 KiB HTTP/2 default but within the configured limit.
+        for (pad, expected) in [
+            (20_000, StatusCode::OK),
+            (40_000, StatusCode::REQUEST_HEADER_FIELDS_TOO_LARGE),
+        ] {
+            let req = Request::builder()
+                .uri(format!("https://localhost:{port}/index.htm"))
+                .header("x-pad", "a".repeat(pad))
+                .body(Empty::<bytes::Bytes>::new())
+                .unwrap();
+            let status = tokio::time::timeout(TIMEOUT, https_send_http2(port, req))
+                .await
+                .expect("request timed out");
+            assert_eq!(status, expected, "x-pad header of {pad} bytes");
+        }
+
+        shutdown_server(cancel_tx, handle).await;
+    }
+
+    #[tokio::test]
     async fn tls_handshake_with_h2_alpn() {
         let (port, cancel_tx, handle) = spawn_server(&["--http2"]);
         wait_for_server(port).await;
@@ -660,6 +914,101 @@ mod live_http2_tls_tests {
             "TLS handshake with h2 ALPN should succeed"
         );
 
+        shutdown_server(cancel_tx, handle).await;
+    }
+
+    #[tokio::test]
+    async fn idle_timeout_closes_connection_without_preface() {
+        let (port, cancel_tx, handle) = spawn_server(&["--http2", "--idle-timeout", "1"]);
+        wait_for_server(port).await;
+
+        let connector = TlsConnector::from(tls_client_config(&["h2"]));
+        let stream = tokio::net::TcpStream::connect(("127.0.0.1", port))
+            .await
+            .expect("TCP connect");
+        let domain = ServerName::try_from("localhost").unwrap().to_owned();
+        let mut tls_stream = connector
+            .connect(domain, stream)
+            .await
+            .expect("TLS handshake");
+
+        // The client never sends the HTTP/2 preface, so the server must close the connection.
+        let mut buf = [0u8; 1024];
+        let read = tokio::time::timeout(TIMEOUT, async {
+            loop {
+                match tls_stream.read(&mut buf).await {
+                    Ok(0) | Err(_) => break,
+                    Ok(_) => {}
+                }
+            }
+        })
+        .await;
+        assert!(read.is_ok(), "connection without a preface was not closed");
+
+        shutdown_server(cancel_tx, handle).await;
+    }
+
+    #[tokio::test]
+    async fn idle_timeout_closes_idle_connection() {
+        let (port, cancel_tx, handle) = spawn_server(&["--http2", "--idle-timeout", "1"]);
+        wait_for_server(port).await;
+
+        let connector = TlsConnector::from(tls_client_config(&["h2"]));
+        let stream = tokio::net::TcpStream::connect(("127.0.0.1", port))
+            .await
+            .expect("TCP connect");
+        let domain = ServerName::try_from("localhost").unwrap().to_owned();
+        let tls_stream = connector
+            .connect(domain, stream)
+            .await
+            .expect("TLS handshake");
+        let (mut sender, conn) =
+            hyper::client::conn::http2::handshake(TokioExecutor::new(), TokioIo::new(tls_stream))
+                .await
+                .expect("HTTP/2 handshake");
+        let conn = tokio::spawn(conn);
+
+        let req = Request::builder()
+            .uri(format!("https://localhost:{port}/index.htm"))
+            .body(Empty::<bytes::Bytes>::new())
+            .unwrap();
+        let status = sender
+            .send_request(req)
+            .await
+            .expect("send request")
+            .status();
+        assert_eq!(status, StatusCode::OK);
+
+        // The connection stays idle after the response, so the server must close it.
+        let closed = tokio::time::timeout(TIMEOUT, conn).await;
+        assert!(closed.is_ok(), "idle connection was not closed");
+
+        shutdown_server(cancel_tx, handle).await;
+    }
+
+    #[tokio::test]
+    async fn max_connections_holds_new_connections_until_one_closes() {
+        let (port, cancel_tx, handle) = spawn_server(&["--http2", "--max-connections", "1"]);
+        wait_for_server(port).await;
+
+        let first = tls_connect(port, &["h2"]).await;
+
+        // The first connection takes the only slot, so the second handshake doesn't complete.
+        let second = tls_connect(port, &["h2"]);
+        tokio::pin!(second);
+        assert!(
+            tokio::time::timeout(std::time::Duration::from_millis(500), &mut second)
+                .await
+                .is_err(),
+            "second connection accepted past the limit"
+        );
+
+        drop(first);
+        let second = tokio::time::timeout(TIMEOUT, second)
+            .await
+            .expect("second connection not accepted after the first one closed");
+
+        drop(second);
         shutdown_server(cancel_tx, handle).await;
     }
 }

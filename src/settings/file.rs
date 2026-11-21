@@ -12,12 +12,6 @@ use std::net::IpAddr;
 use std::path::Path;
 use std::{collections::BTreeSet, path::PathBuf};
 
-#[cfg(feature = "directory-listing")]
-use crate::directory_listing::DirListFmt;
-
-#[cfg(feature = "directory-listing-download")]
-use crate::directory_listing::download::DirDownloadFmt;
-
 use crate::logger::LogFormat;
 use crate::{Context, Result, helpers};
 
@@ -47,6 +41,38 @@ impl LogLevel {
             LogLevel::Debug => "debug",
             LogLevel::Trace => "trace",
         }
+    }
+}
+
+/// Directory listing output format for file entries.
+#[cfg(feature = "directory-listing")]
+#[cfg_attr(docsrs, doc(cfg(feature = "directory-listing")))]
+#[derive(Debug, PartialEq, Serialize, Deserialize, Clone, clap::ValueEnum)]
+#[serde(rename_all = "lowercase")]
+pub enum DirListFmt {
+    /// HTML format to display (default).
+    Html,
+    /// JSON format to display.
+    Json,
+    /// Automatically choose the format via the request `Accept` header.
+    /// HTML is used by default when no supported media type is present.
+    Auto,
+}
+
+/// Download format for directory
+#[cfg(feature = "directory-listing-download")]
+#[cfg_attr(docsrs, doc(cfg(feature = "directory-listing-download")))]
+#[derive(Debug, Serialize, Deserialize, Clone, clap::ValueEnum, Eq, Hash, PartialEq)]
+#[serde(rename_all = "lowercase")]
+pub enum DirDownloadFmt {
+    /// Gunzip-compressed tarball (.tar.gz)
+    Targz,
+}
+
+#[cfg(feature = "directory-listing-download")]
+impl std::fmt::Display for DirDownloadFmt {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Debug::fmt(self, f)
     }
 }
 
@@ -108,12 +134,30 @@ impl CompressionLevel {
     }
 }
 
+#[derive(Debug, Default, Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
+#[serde(rename_all = "kebab-case")]
+/// Represents which responses a custom headers entry applies to.
+pub enum HeadersScope {
+    /// Responses of the static file handler only (default).
+    #[default]
+    Files,
+    /// Every response, including redirects, rewrite redirects, `/livez` and `/readyz`, metrics,
+    /// rejected CORS requests, Basic auth challenges, maintenance mode and the method check.
+    All,
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "kebab-case")]
 /// Represents an HTTP headers map.
 pub struct Headers {
     /// Header source.
     pub source: String,
+    /// Optional list of HTTP response status codes the headers apply to.
+    /// If not specified, the headers apply to any response status.
+    pub status: Option<Vec<u16>>,
+    /// Which responses the headers apply to. Defaults to `files`.
+    #[serde(default)]
+    pub scope: HeadersScope,
     #[serde(rename(deserialize = "headers"), with = "http_serde::header_map")]
     /// headers list.
     pub headers: HeaderMap,
@@ -202,10 +246,17 @@ pub struct Advanced {
 pub struct General {
     /// Server address.
     pub host: Option<String>,
+    /// Accept IPv6 connections only on the unspecified IPv6 host.
+    pub ipv6_only: Option<bool>,
     /// Server port.
     pub port: Option<u16>,
     /// Root directory path.
     pub root: Option<PathBuf>,
+
+    /// Open the server URL in the system default web browser after startup.
+    pub open: Option<bool>,
+    /// URL path opened in the browser.
+    pub open_path: Option<String>,
 
     /// Logging level.
     pub log_level: Option<LogLevel>,
@@ -365,21 +416,38 @@ pub struct General {
     /// Grace period feature.
     pub grace_period: Option<u8>,
 
+    /// Connection idle timeout in seconds.
+    pub idle_timeout: Option<u16>,
+
+    /// Maximum request header size in bytes.
+    pub max_header_size: Option<u32>,
+
+    /// Maximum number of connections served at the same time.
+    pub max_connections: Option<usize>,
+
     /// Page fallback feature.
     #[cfg(feature = "fallback-page")]
     #[cfg_attr(docsrs, doc(cfg(feature = "fallback-page")))]
     pub page_fallback: Option<PathBuf>,
 
+    /// Custom access log format string.
+    pub access_log_format: Option<String>,
+
     /// Log remote address feature.
     pub log_remote_address: Option<bool>,
 
     /// Log the X-Real-IP header.
+    /// The proxy must overwrite the header. If the request has more than one X-Real-IP line, nothing is logged.
     pub log_x_real_ip: Option<bool>,
 
-    /// Log the X-Forwarded-For header.
+    /// Log the client address from the X-Forwarded-For header.
+    /// It is the rightmost address not in `trusted_proxies`, so every proxy in the chain must be listed
+    /// and must append to or overwrite the header itself.
+    /// Entries must be bare IP addresses. If one that is reached is empty or can't be parsed (e.g. `ip:port`), nothing is logged.
     pub log_forwarded_for: Option<bool>,
 
-    /// Trusted IPs for remote addresses.
+    /// Proxy IPs to log the X-Real-IP and X-Forwarded-For headers from.
+    /// Exact IPs only, no ranges. The headers are not logged when unset.
     pub trusted_proxies: Option<Vec<IpAddr>>,
 
     /// Redirect trailing slash feature.
@@ -394,7 +462,7 @@ pub struct General {
     /// Resolve the web root directory at request time rather than at startup.
     pub use_relative_root: Option<bool>,
 
-    /// Health endpoint feature.
+    /// Health endpoints feature (`/livez` and `/readyz`).
     pub health: Option<bool>,
 
     /// Accept markdown content negotiation feature.

@@ -5,8 +5,6 @@
 
 //! Shared HTTP to HTTPS redirect server used by both the HTTP/1+TLS and HTTP/2+TLS modes.
 
-use hyper::server::conn::http1;
-use hyper_util::rt::TokioIo;
 use hyper_util::server::graceful::GracefulShutdown;
 use std::net::{SocketAddr, TcpListener};
 use std::path::PathBuf;
@@ -29,6 +27,8 @@ pub(super) struct RedirectConfig {
     pub page50x: PathBuf,
     /// Grace period in seconds.
     pub grace_period: u8,
+    /// Connection settings.
+    pub conn: super::ConnConfig,
     /// Programmatic cancel receiver shared with the main TLS server.
     pub cancel_recv: Arc<Mutex<Option<Receiver<()>>>>,
     #[cfg(windows)]
@@ -58,13 +58,14 @@ pub(super) fn spawn(
         let redirect_listener = tokio::net::TcpListener::from_std(tcp_listener)
             .with_context(|| "failed to create redirect TcpListener")?;
         let graceful = GracefulShutdown::new();
-        let http = http1::Builder::new();
+        let http = cfg.conn.http1_builder();
 
         let grace_period = cfg.grace_period;
         let cancel_recv = cfg.cancel_recv;
 
         #[cfg(unix)]
-        let shutdown = signals::wait_for_signals(redirect_signals, grace_period, cancel_recv);
+        let shutdown =
+            signals::wait_for_signals(redirect_signals, grace_period, cancel_recv, Arc::default());
         #[cfg(unix)]
         tokio::pin!(shutdown);
 
@@ -72,20 +73,27 @@ pub(super) fn spawn(
         let ctrl_c_recv = cfg.ctrl_c_recv;
         #[cfg(windows)]
         let shutdown = async move {
-            signals::wait_for_ctrl_c_or_cancel(ctrl_c_recv, cancel_recv, grace_period).await;
+            signals::wait_for_ctrl_c_or_cancel(
+                ctrl_c_recv,
+                cancel_recv,
+                grace_period,
+                Arc::default(),
+            )
+            .await;
         };
         #[cfg(windows)]
         tokio::pin!(shutdown);
 
         loop {
             tokio::select! {
-                result = redirect_listener.accept() => {
+                (result, slot) = cfg.conn.accept(redirect_listener.accept()) => {
                     let (stream, addr) = match result {
                         Ok(v) => v,
                         Err(e) => {
                             tracing::error!(
                                 "failed to accept redirect TCP connection: {:?}", e
                             );
+                            super::accept_error_backoff(&e).await;
                             continue;
                         }
                     };
@@ -110,8 +118,8 @@ pub(super) fn spawn(
                             }
                         }
                     });
-                    let conn = http.serve_connection(TokioIo::new(stream), svc);
-                    tokio::spawn(graceful.watch(conn));
+                    let conn = http.serve_connection(cfg.conn.io(stream, Some(addr)), svc);
+                    cfg.conn.serve(graceful.watch(conn), Some(addr), slot);
                 }
                 _ = &mut shutdown => { break; }
             }
@@ -128,6 +136,27 @@ pub(super) fn spawn(
     Ok(handle)
 }
 
+/// Bind the redirect TCP listener to the server host and the redirect port.
+fn bind(cfg: &super::TlsConfig) -> Result<TcpListener> {
+    let addr = SocketAddr::new(
+        cfg.host
+            .parse()
+            .with_context(|| format!("failed to parse {} as IP address", cfg.host))?,
+        cfg.https_redirect_from_port,
+    );
+
+    let tcp_listener = super::listener::bind_tcp(addr, cfg.ipv6_only)
+        .with_context(|| format!("failed to bind redirect listener to {addr}"))?;
+
+    tracing::info!(
+        ipv6_only = cfg.ipv6_only,
+        "http1 redirect server is listening on http://{}",
+        addr
+    );
+
+    Ok(tcp_listener)
+}
+
 /// Build [`RedirectOpts`] and bind the redirect TCP listener from a [`super::TlsConfig`].
 ///
 /// Returns `None` when HTTPS redirect is disabled in the configuration.
@@ -136,22 +165,13 @@ pub(super) fn maybe_spawn(
     cancel_recv: Arc<Mutex<Option<Receiver<()>>>>,
     #[cfg(windows)] ctrl_c_recv: Arc<Mutex<Option<Receiver<()>>>>,
     grace_period: u8,
+    conn: super::ConnConfig,
 ) -> Result<Option<tokio::task::JoinHandle<crate::Result<()>>>> {
     if !cfg.https_redirect {
         return Ok(None);
     }
 
-    let addr = SocketAddr::new(
-        cfg.host
-            .parse()
-            .with_context(|| format!("failed to parse {} as IP address", cfg.host))?,
-        cfg.https_redirect_from_port,
-    );
-
-    let tcp_listener = TcpListener::bind(addr)
-        .with_context(|| format!("failed to bind redirect listener to {addr}"))?;
-
-    tracing::info!("http1 redirect server is listening on http://{}", addr);
+    let tcp_listener = bind(cfg)?;
 
     let allowed_hosts = cfg
         .https_redirect_from_hosts
@@ -175,6 +195,7 @@ pub(super) fn maybe_spawn(
             page404: cfg.page404.clone(),
             page50x: cfg.page50x.clone(),
             grace_period,
+            conn,
             cancel_recv,
             #[cfg(windows)]
             ctrl_c_recv,
@@ -182,4 +203,42 @@ pub(super) fn maybe_spawn(
     )?;
 
     Ok(Some(task))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::bind;
+    use crate::server::TlsConfig;
+    use std::path::PathBuf;
+
+    /// TLS settings for a redirect listener on `::` and a free port.
+    fn tls_config(ipv6_only: bool) -> TlsConfig {
+        TlsConfig {
+            tls_cert: PathBuf::new(),
+            tls_key: PathBuf::new(),
+            https_redirect: true,
+            https_redirect_host: "localhost".to_owned(),
+            https_redirect_from_port: 0,
+            https_redirect_from_hosts: "localhost".to_owned(),
+            host: "::".to_owned(),
+            ipv6_only,
+            port: 443,
+            page404: PathBuf::new(),
+            page50x: PathBuf::new(),
+        }
+    }
+
+    #[test]
+    fn redirect_bind_unspecified_ipv6_is_dual_stack() {
+        let listener = bind(&tls_config(false)).unwrap();
+
+        assert!(!socket2::SockRef::from(&listener).only_v6().unwrap());
+    }
+
+    #[test]
+    fn redirect_bind_ipv6_only_sets_only_v6() {
+        let listener = bind(&tls_config(true)).unwrap();
+
+        assert!(socket2::SockRef::from(&listener).only_v6().unwrap());
+    }
 }
