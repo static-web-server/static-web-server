@@ -79,6 +79,7 @@ let result = static_files::handle(&HandleOpts {
     base_path: &PathBuf::from("tests/fixtures/public/"),
     uri_path: "index.htm",
     uri_query: None,
+    rewritten_from: None,
     index_files: &["index.htm"],
     #[cfg(feature = "mem-cache")]
     memory_cache: None,

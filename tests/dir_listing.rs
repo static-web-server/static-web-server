@@ -47,6 +47,7 @@ mod tests {
                 base_path: &root_dir("tests/fixtures/public"),
                 uri_path: "/symlink",
                 uri_query: None,
+                rewritten_from: None,
                 #[cfg(feature = "mem-cache")]
                 memory_cache: None,
                 dir_listing: true,
@@ -85,6 +86,7 @@ mod tests {
                 base_path: &root_dir("tests/fixtures"),
                 uri_path: "/",
                 uri_query: None,
+                rewritten_from: None,
                 #[cfg(feature = "mem-cache")]
                 memory_cache: None,
                 dir_listing: true,
@@ -136,6 +138,7 @@ mod tests {
                 base_path: &root_dir("tests/fixtures"),
                 uri_path: "/",
                 uri_query: None,
+                rewritten_from: None,
                 #[cfg(feature = "mem-cache")]
                 memory_cache: None,
                 dir_listing: true,
@@ -187,6 +190,7 @@ mod tests {
                 base_path: &root_dir("tests/fixtures/markdown/"),
                 uri_path: "/article.html.md",
                 uri_query: None,
+                rewritten_from: None,
                 #[cfg(feature = "mem-cache")]
                 memory_cache: None,
                 dir_listing: true,
@@ -225,6 +229,7 @@ mod tests {
                 base_path: &root_dir("tests/fixtures/public/"),
                 uri_path: "/",
                 uri_query: None,
+                rewritten_from: None,
                 #[cfg(feature = "mem-cache")]
                 memory_cache: None,
                 dir_listing: true,
@@ -287,6 +292,7 @@ mod tests {
                 base_path: &root_dir("tests/fixtures/public/"),
                 uri_path: "/",
                 uri_query: None,
+                rewritten_from: None,
                 #[cfg(feature = "mem-cache")]
                 memory_cache: None,
                 dir_listing: true,
@@ -367,6 +373,7 @@ mod tests {
                 base_path: &root_dir(&empty_dir),
                 uri_path: "/",
                 uri_query: None,
+                rewritten_from: None,
                 #[cfg(feature = "mem-cache")]
                 memory_cache: None,
                 dir_listing: true,
@@ -420,6 +427,7 @@ mod tests {
                 base_path: &root_dir("tests/fixtures/public"),
                 uri_path: "/",
                 uri_query: None,
+                rewritten_from: None,
                 #[cfg(feature = "mem-cache")]
                 memory_cache: None,
                 dir_listing: true,
@@ -473,6 +481,7 @@ mod tests {
                 base_path: &root_dir("tests/fixtures/public"),
                 uri_path: "/",
                 uri_query: None,
+                rewritten_from: None,
                 #[cfg(feature = "mem-cache")]
                 memory_cache: None,
                 dir_listing: true,
@@ -525,6 +534,7 @@ mod tests {
                 base_path: &root_dir("tests/fixtures/public"),
                 uri_path: "/",
                 uri_query: None,
+                rewritten_from: None,
                 #[cfg(feature = "mem-cache")]
                 memory_cache: None,
                 dir_listing: true,
@@ -600,6 +610,7 @@ mod tests {
             base_path: &tmp,
             uri_path: "/",
             uri_query: None,
+            rewritten_from: None,
             #[cfg(feature = "mem-cache")]
             memory_cache: None,
             dir_listing: true,
@@ -651,6 +662,7 @@ mod tests {
             base_path: &root_dir("tests/fixtures/public"),
             uri_path: "/",
             uri_query: None,
+            rewritten_from: None,
             #[cfg(feature = "mem-cache")]
             memory_cache: None,
             dir_listing: true,
@@ -684,6 +696,7 @@ mod tests {
             base_path: &root_dir("tests/fixtures/public"),
             uri_path: "/",
             uri_query: None,
+            rewritten_from: None,
             #[cfg(feature = "mem-cache")]
             memory_cache: None,
             dir_listing: true,
@@ -722,6 +735,7 @@ mod tests {
                 base_path: &root_dir("tests/fixtures/public"),
                 uri_path: "/",
                 uri_query: None,
+                rewritten_from: None,
                 #[cfg(feature = "mem-cache")]
                 memory_cache: None,
                 dir_listing: true,

@@ -6,13 +6,8 @@
 //! Request handler module intended to manage incoming HTTP requests.
 //!
 
-use hyper::{Request, Response, StatusCode, Uri, header::HeaderValue};
-use std::{
-    future::Future,
-    net::SocketAddr,
-    path::{Path, PathBuf},
-    sync::Arc,
-};
+use hyper::{Request, Response, StatusCode};
+use std::{future::Future, net::SocketAddr, path::PathBuf, sync::Arc};
 
 use crate::body::Body;
 
@@ -149,27 +144,6 @@ impl RequestHandler {
                     return result.map(early);
                 }
 
-                // Trailing-slash redirect (before rewrites).
-                //
-                // When `redirect_trailing_slash` is enabled, a request to a
-                // directory path without a trailing slash (e.g. `/assets`)
-                // must receive a 308 redirect to `/assets/`.
-                //
-                // This check must run *before* rewrite rules because a
-                // catch-all rewrite (`/*` → `/index.html`) would otherwise
-                // consume the request and prevent the redirect from ever
-                // firing (see issue #387).
-                if redirect_trailing_slash
-                    && let Some(resp) = trailing_slash_pre_check(
-                        base_path,
-                        req.uri(),
-                        include_hidden,
-                        follow_symlinks,
-                    )?
-                {
-                    return Ok(early(resp));
-                }
-
                 // Rewrites
                 if let Some(result) = rewrites::pre_process(&self.opts, req) {
                     return result.map(early);
@@ -209,6 +183,7 @@ impl RequestHandler {
                     base_path,
                     uri_path,
                     uri_query: req.uri().query(),
+                    rewritten_from: rewrites::rewritten_from(&self.opts, req),
                     #[cfg(feature = "directory-listing")]
                     dir_listing,
                     #[cfg(feature = "directory-listing")]
@@ -339,71 +314,4 @@ type Early = (Response<Body>, Option<PathBuf>, bool);
 /// Marks a response that was returned before the static file handler ran.
 fn early(resp: Response<Body>) -> Early {
     (resp, None, true)
-}
-
-/// Early trailing-slash check that runs before rewrite rules.
-///
-/// Returns `Some(308 Permanent Redirect)` when the URI path maps to an
-/// existing directory on disk but does not end with `/`. Returns `None`
-/// for file paths, already-slashed directories, or any path that cannot
-/// be resolved.
-///
-/// This duplicates a small part of `static_files::reply::trailing_slash_redirect`,
-/// but it must run earlier in the pipeline to prevent rewrite rules from
-/// consuming directory requests before the redirect fires (see #387).
-fn trailing_slash_pre_check(
-    base_path: &Path,
-    uri: &Uri,
-    include_hidden: bool,
-    follow_symlinks: bool,
-) -> Result<Option<Response<Body>>, Error> {
-    let uri_path = uri.path();
-
-    // Already has a trailing slash — nothing to do.
-    if uri_path.ends_with('/') {
-        return Ok(None);
-    }
-
-    // Resolve the filesystem path using the same sanitizer as static_files.
-    let file_path = match static_files::sanitize_path(base_path, uri_path) {
-        Ok(p) => p,
-        // Malformed or traversal path — let the normal pipeline handle it.
-        Err(_) => return Ok(None),
-    };
-
-    // Skip hidden directories when the feature is disabled.
-    if !include_hidden
-        && let Some(name) = file_path.file_name().and_then(|n| n.to_str())
-        && name.starts_with('.')
-    {
-        return Ok(None);
-    }
-
-    // When symlinks are not followed, do not issue a redirect for a
-    // symlinked directory — let the security module reject it later.
-    if !follow_symlinks && file_path.symlink_metadata().is_ok_and(|m| m.is_symlink()) {
-        return Ok(None);
-    }
-
-    // Check if the path is an existing directory.
-    if !file_path.is_dir() {
-        return Ok(None);
-    }
-
-    // Build the redirect location.
-    let query = uri.query().map_or(String::new(), |s| ["?", s].concat());
-    let location = [uri_path, "/", query.as_str()].concat();
-    let loc = HeaderValue::from_str(&location).map_err(|err| {
-        Error::new(err).context("invalid header value for trailing-slash redirect")
-    })?;
-
-    let mut resp = Response::new(crate::body::empty());
-    resp.headers_mut().insert(hyper::header::LOCATION, loc);
-    *resp.status_mut() = StatusCode::PERMANENT_REDIRECT;
-    tracing::trace!(
-        "early trailing-slash redirect (before rewrites) for {}",
-        uri_path
-    );
-
-    Ok(Some(resp))
 }
