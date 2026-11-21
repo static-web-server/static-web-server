@@ -29,7 +29,6 @@ use std::pin::Pin;
 use std::task::{Context, Poll, ready};
 use std::time::Instant;
 use time::{OffsetDateTime, format_description::BorrowedFormatItem, macros::format_description};
-use tracing::Span;
 
 use crate::{body::Body, handler_opts::RequestHandlerOpts, health, log_addr};
 
@@ -78,9 +77,6 @@ pub(crate) struct AccessLog {
     forwarded_for: Option<IpAddr>,
     health: bool,
     start: Instant,
-    /// The span of the request handler: the line is written outside of it, when hyper drops the
-    /// body, so it enters the span itself to keep the trace context fields.
-    span: Span,
 }
 
 impl AccessLog {
@@ -90,7 +86,6 @@ impl AccessLog {
         opts: &RequestHandlerOpts,
         req: &Request<T>,
         remote_addr: Option<SocketAddr>,
-        span: Span,
     ) -> Self {
         let headers = req.headers();
         // The default line logs only the addresses its options enable
@@ -112,7 +107,6 @@ impl AccessLog {
                 .flatten(),
             health: opts.health && health::is_health_endpoint(req.uri()),
             start: Instant::now(),
-            span,
         }
     }
 
@@ -236,9 +230,7 @@ impl http_body::Body for LoggedBody {
 impl Drop for LoggedBody {
     fn drop(&mut self) {
         let bytes = if self.sends_body { self.bytes } else { 0 };
-        self.log
-            .span
-            .in_scope(|| self.log.write(self.status, bytes));
+        self.log.write(self.status, bytes);
     }
 }
 

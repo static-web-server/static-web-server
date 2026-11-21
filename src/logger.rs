@@ -294,6 +294,8 @@ mod tests {
     /// server (`trace_context_format = true`) or with the built-in one, and
     /// returns the output.
     fn capture_json(level: Level, trace_context_format: bool, f: impl FnOnce()) -> String {
+        register_test_subscribers();
+
         let buf = Arc::new(Mutex::new(Vec::new()));
         let writer = {
             let buf = buf.clone();

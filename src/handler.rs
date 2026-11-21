@@ -76,13 +76,14 @@ impl RequestHandler {
         #[cfg(feature = "mem-cache")]
         let memory_cache = self.opts.memory_cache.as_ref();
 
-        let span = trace_context::span(&self.opts, req.headers());
         // Rewrites replace the request URI and `Host`, so keep the ones the client sent for the
         // access log
         let access_log = access_logs::enabled(&self.opts, req).then(|| {
             let format = self.opts.access_log_format.as_ref();
-            access_logs::AccessLog::new(format, &self.opts, req, remote_addr, span.clone())
+            access_logs::AccessLog::new(format, &self.opts, req, remote_addr)
         });
+        let span = trace_context::span(&self.opts, req.headers());
+        let body_span = span.clone();
 
         async move {
             #[cfg(feature = "metrics")]
@@ -283,6 +284,8 @@ impl RequestHandler {
                 Some(access_log) => result.map(|resp| access_log.wrap(resp)),
                 None => result,
             };
+            // hyper polls and drops the body after this future, so outside of its span
+            let result = result.map(|resp| trace_context::wrap(body_span, resp));
 
             #[cfg(feature = "metrics")]
             if metrics_enabled {
