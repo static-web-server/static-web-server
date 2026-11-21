@@ -36,15 +36,6 @@
       ]
     },
     {
-      "name": "Layer 8",
-      "workspace_paths": [
-        [
-          "static-web-server",
-          "handler"
-        ]
-      ]
-    },
-    {
       "name": "Layer 7",
       "workspace_paths": [
         [
@@ -284,15 +275,6 @@
         "layer": "Layer 10"
       },
       "to": {
-        "layer": "Layer 8"
-      },
-      "description": "Layer 10 → Layer 8"
-    },
-    {
-      "from": {
-        "layer": "Layer 10"
-      },
-      "to": {
         "layer": "Layer 6"
       },
       "description": "Layer 10 → Layer 6"
@@ -356,15 +338,6 @@
         "layer": "Layer 9"
       },
       "to": {
-        "layer": "Layer 8"
-      },
-      "description": "Layer 9 → Layer 8"
-    },
-    {
-      "from": {
-        "layer": "Layer 9"
-      },
-      "to": {
         "layer": "Layer 6"
       },
       "description": "Layer 9 → Layer 6"
@@ -404,78 +377,6 @@
         "layer": "Core"
       },
       "description": "Layer 9 → Core"
-    },
-    {
-      "from": {
-        "layer": "Layer 8"
-      },
-      "to": {
-        "layer": "Layer 7"
-      },
-      "description": "Layer 8 → Layer 7"
-    },
-    {
-      "from": {
-        "layer": "Layer 8"
-      },
-      "to": {
-        "layer": "Layer 6"
-      },
-      "description": "Layer 8 → Layer 6"
-    },
-    {
-      "from": {
-        "layer": "Layer 8"
-      },
-      "to": {
-        "layer": "Layer 5"
-      },
-      "description": "Layer 8 → Layer 5"
-    },
-    {
-      "from": {
-        "layer": "Layer 8"
-      },
-      "to": {
-        "layer": "Layer 4"
-      },
-      "description": "Layer 8 → Layer 4"
-    },
-    {
-      "from": {
-        "layer": "Layer 8"
-      },
-      "to": {
-        "layer": "Layer 3"
-      },
-      "description": "Layer 8 → Layer 3"
-    },
-    {
-      "from": {
-        "layer": "Layer 8"
-      },
-      "to": {
-        "layer": "Layer 2"
-      },
-      "description": "Layer 8 → Layer 2"
-    },
-    {
-      "from": {
-        "layer": "Layer 8"
-      },
-      "to": {
-        "layer": "Layer 1"
-      },
-      "description": "Layer 8 → Layer 1"
-    },
-    {
-      "from": {
-        "layer": "Layer 8"
-      },
-      "to": {
-        "layer": "Core"
-      },
-      "description": "Layer 8 → Core"
     },
     {
       "from": {
