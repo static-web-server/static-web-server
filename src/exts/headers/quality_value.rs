@@ -42,8 +42,9 @@ impl<'a> TryFrom<&'a str> for QualityMeta<'a> {
         // Only scan for q= after the first semicolon
         if let Some(rest) = val.split_once(';').map(|(_, r)| r) {
             for part in rest.split(';') {
-                let part = part.trim_start();
-                if let Some(value) = part.strip_prefix("q=")
+                // RFC 9110 §12.4.2: the weight name is case-insensitive
+                if let Some((name, value)) = part.split_once('=')
+                    && name.trim().eq_ignore_ascii_case("q")
                     && let Ok(parsed) = value.trim().parse::<f32>()
                 {
                     // Round (not truncate) so three-decimal q-values survive the
@@ -81,6 +82,18 @@ impl QualityValue {
             }
         });
         items.into_iter().map(|pair| pair.data)
+    }
+
+    /// Returns each listed value with its weight (`0` to `1000`) in header
+    /// order, keeping the weight-`0` ("not acceptable") ones.
+    pub(crate) fn iter_weighted(&self) -> impl Iterator<Item = (&str, u16)> + use<'_> {
+        self.value
+            .to_str()
+            .ok()
+            .into_iter()
+            .flat_map(|value_str| value_str.split(','))
+            .filter_map(|v| QualityMeta::try_from(v).ok())
+            .map(|meta| (meta.data, meta.quality))
     }
 
     pub(crate) fn try_from_values<'i, I>(values: &mut I) -> Result<Self, Error>
@@ -173,6 +186,17 @@ mod tests {
         assert_eq!(values.next(), Some("br"));
         assert_eq!(values.next(), Some("gzip"));
         assert_eq!(values.next(), Some("deflate"));
+        assert_eq!(values.next(), None);
+    }
+
+    #[test]
+    fn weight_name_is_case_insensitive() {
+        let val = HeaderValue::from_static("gzip;Q=0.5, br;Q=0, zstd ; q = 0.8");
+        let qual = QualityValue::from(val);
+
+        let mut values = qual.iter();
+        assert_eq!(values.next(), Some("zstd"));
+        assert_eq!(values.next(), Some("gzip"));
         assert_eq!(values.next(), None);
     }
 

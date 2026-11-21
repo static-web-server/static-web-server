@@ -48,11 +48,11 @@ settings/  →  server/opts.rs  →  service.rs  →  handler.rs  →  static_fi
 
 ### Request Pipeline (linear, 3 phases)
 
-**Pre-processing** (may short-circuit): method check → health probes (`/livez`, `/readyz`) → CORS → basic auth (all methods; CORS preflights exempt) → metrics → maintenance → redirects → rewrites → virtual hosts → markdown negotiation
+**Pre-processing** (may short-circuit): method check → health probes (`/livez`, `/readyz`) → CORS → basic auth (all methods; CORS preflights exempt) → metrics → maintenance → redirects → rewrites → virtual hosts → markdown negotiation → image negotiation
 
 **Core**: `static_files::handle()` — memory cache, path sanitization, resolution (index files, pre-compressed variants), security checks, dir listing, conditional requests (ETag), byte-range
 
-**Post-processing** (additive, runs on every response): fallback page → CORS headers → markdown content-type → text charset → static compression `Vary` → dynamic compression → cache-control → security headers → custom headers
+**Post-processing** (additive, runs on every response): fallback page → CORS headers → markdown content-type → image `Vary` → text charset → static compression `Vary` → dynamic compression → cache-control → security headers → custom headers
 
 The numbered table with short-circuit behavior lives in `.agents/skills/design/SKILL.md`.
 
@@ -68,6 +68,7 @@ Rules: pre-processing steps return early when they handle the request. Post-proc
 | `handler_opts.rs` | `RequestHandlerOpts`, shared by the handler and feature modules (re-exported from `handler`) |
 | `static_files/` | `handle()` entry; `resolve.rs`, `security.rs`, `listing.rs`, `reply.rs` |
 | `conditional_headers.rs`, `etag.rs` | `If-*` preconditions (304/412), weak `ETag` |
+| `negotiation/` | Variant lookup for content negotiation (`file.ext.<suffix>`); `image.rs` picks AVIF/WebP from `Accept` |
 | `compression.rs` | On-the-fly gzip/deflate/brotli/zstd |
 | `compression_static.rs` | Serve pre-compressed `.br`/`.gz`/`.zst` files |
 | `security_headers.rs` | HSTS, CSP, X-Frame-Options, etc. |

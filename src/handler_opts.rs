@@ -123,6 +123,8 @@ pub struct RequestHandlerOpts {
     pub use_relative_root: bool,
     /// Accept markdown content negotiation feature.
     pub accept_markdown: bool,
+    /// Image format negotiation feature.
+    pub image_negotiation: bool,
     /// Default `charset=utf-8` parameter applied to certain `text` responses without one.
     pub text_charset: bool,
     /// Health endpoints feature (`/livez` and `/readyz`).
@@ -189,6 +191,7 @@ impl Default for RequestHandlerOpts {
             follow_symlinks: true,
             use_relative_root: false,
             accept_markdown: false,
+            image_negotiation: false,
             text_charset: true,
             health: false,
             shutting_down: Arc::default(),

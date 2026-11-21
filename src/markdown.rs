@@ -10,23 +10,16 @@
 
 use headers::HeaderMapExt;
 use hyper::{Request, Response, StatusCode};
-use percent_encoding::{AsciiSet, CONTROLS, utf8_percent_encode};
 use std::path::Path;
 
 use crate::body::Body;
 use crate::exts::http::{MethodExt, append_vary_accept};
 use crate::fs::path::{PathExt, sanitize_path};
+use crate::negotiation::uri_path_from;
 use crate::response::content_type_for;
 use crate::{
     Error, exts::headers::Accept, fs::meta::try_markdown_variant, handler_opts::RequestHandlerOpts,
 };
-
-/// Escape set used when converting a resolved file path back into a URI path.
-///
-/// The returned URI is percent-decoded again by `sanitize_path` in the
-/// static-files handler, so `%` must be escaped to keep the encode/decode
-/// round-trip lossless for file names that contain it.
-const URI_PATH_ESCAPE: &AsciiSet = &CONTROLS.add(b'%');
 
 /// Pre-process a request to check if a markdown variant URI should be used.
 ///
@@ -89,13 +82,7 @@ pub(crate) fn pre_process<T>(
     }
     tracing::debug!("markdown: found variant {:?}", md_path);
 
-    // Convert the variant path back into a URI path, escaping `%` so the
-    // static-files handler's re-decode resolves to the same file.
-    let relative_md = relative_md.to_str()?;
-    Some(format!(
-        "/{}",
-        utf8_percent_encode(relative_md, URI_PATH_ESCAPE)
-    ))
+    uri_path_from(relative_md)
 }
 
 /// Post-process the response to set the correct Content-Type for markdown files.

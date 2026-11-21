@@ -34,7 +34,9 @@ use crate::metrics;
 use crate::{
     Error, Result, access_logs, control_headers, cors, custom_headers, error_page,
     exts::http::MethodExt,
-    health, maintenance_mode, redirects, rewrites, security_headers,
+    health, maintenance_mode,
+    negotiation::image as image_negotiation,
+    redirects, rewrites, security_headers,
     static_files::{self, HandleOpts},
     text_charset, virtual_hosts,
 };
@@ -172,10 +174,25 @@ impl RequestHandler {
                 } else {
                     None
                 };
-                let uri_path = uri_path_md.as_deref().unwrap_or(req.uri().path());
+
+                // Check for image format negotiation (only if enabled)
+                let uri_path_image = if self.opts.image_negotiation && uri_path_md.is_none() {
+                    image_negotiation::pre_process(
+                        req,
+                        base_path,
+                        req.uri().path(),
+                        self.opts.include_hidden,
+                    )
+                } else {
+                    None
+                };
+                let uri_path = uri_path_md
+                    .as_deref()
+                    .or(uri_path_image.as_deref())
+                    .unwrap_or(req.uri().path());
 
                 // Static files
-                let (resp, file_path, is_dir_listing) = match static_files::handle(&HandleOpts {
+                let mut handle_opts = HandleOpts {
                     method: req.method(),
                     headers: req.headers(),
                     #[cfg(feature = "mem-cache")]
@@ -197,9 +214,15 @@ impl RequestHandler {
                     include_hidden,
                     index_files,
                     follow_symlinks,
-                })
-                .await
-                {
+                };
+                let mut result = static_files::handle(&handle_opts).await;
+                // An image variant that can't be served (symlink policy,
+                // permissions) falls back to the original
+                if result.is_err() && uri_path_image.is_some() {
+                    handle_opts.uri_path = req.uri().path();
+                    result = static_files::handle(&handle_opts).await;
+                }
+                let (resp, file_path, is_dir_listing) = match result {
                     Ok(result) => (result.resp, result.file_path, result.is_dir_listing),
                     Err(status) => {
                         #[cfg(feature = "fallback-page")]
@@ -244,6 +267,9 @@ impl RequestHandler {
                     &self.opts,
                     resp,
                 )?;
+
+                // Add `Vary: Accept` for images with format variants
+                let resp = image_negotiation::post_process(&self.opts, req, resp)?;
 
                 // Declare a default charset for `text/*` responses
                 let resp = text_charset::post_process(&self.opts, resp)?;
