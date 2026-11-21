@@ -101,7 +101,7 @@ Keep the testable logic in a plain function (`append_headers(resp, hsts)`, `auto
 ## Feature-Gated Code
 
 - Gate the module in `lib.rs` with `#[cfg(feature = "x")]` and `#[cfg_attr(docsrs, doc(cfg(feature = "x")))]`
-- Gate every field, constructor entry, and use site. `RequestHandlerOpts` is built in `handler.rs` (`Default`), `server/opts.rs`, and `testing.rs`
+- Gate every field, constructor entry, and use site. `RequestHandlerOpts` is built in `handler_opts.rs` (`Default`), `server/opts.rs`, and `testing.rs`
 - Compression gates on `any(feature = "compression", feature = "compression-gzip", feature = "compression-brotli", feature = "compression-zstd", feature = "compression-deflate")`; copy the existing block
 - Provide a `#[cfg(not(feature = "x"))]` fallback value when a caller needs one (`will_serve_fallback` in `handler.rs`); placement rules in `coding-style/SKILL.md`
 

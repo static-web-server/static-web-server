@@ -26,137 +26,26 @@ use std::fmt::Write;
 use std::io;
 use std::net::{IpAddr, SocketAddr};
 use std::pin::Pin;
-use std::sync::Arc;
 use std::task::{Context, Poll, ready};
 use std::time::Instant;
 use time::{OffsetDateTime, format_description::BorrowedFormatItem, macros::format_description};
 use tracing::Span;
 
-use crate::{body::Body, handler::RequestHandlerOpts, health, log_addr};
+use crate::{body::Body, handler_opts::RequestHandlerOpts, health, log_addr};
 
-/// A compiled access log format, parsed once at startup.
-#[derive(Debug, Clone)]
-pub struct AccessLogFormat {
-    segments: Arc<[Segment]>,
-}
+pub use crate::access_log_format::AccessLogFormat;
+use crate::access_log_format::{Segment, Token};
 
-/// A single segment of a compiled format string.
-#[derive(Debug)]
-enum Segment {
-    Literal(String),
-    Token(Token),
-}
-
-/// Available log format tokens.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum Token {
-    Method,
-    Uri,
-    Status,
-    Bytes,
-    Duration,
-    RemoteAddr,
-    XRealIp,
-    ForwardedFor,
-    Host,
-    UserAgent,
-    Referer,
-    Timestamp,
-    Version,
-}
-
-impl Token {
-    fn from_name(name: &str) -> Option<Self> {
-        match name {
-            "method" => Some(Self::Method),
-            "uri" => Some(Self::Uri),
-            "status" => Some(Self::Status),
-            "bytes" => Some(Self::Bytes),
-            "duration" => Some(Self::Duration),
-            "remote_addr" => Some(Self::RemoteAddr),
-            "x_real_ip" => Some(Self::XRealIp),
-            "forwarded_for" => Some(Self::ForwardedFor),
-            "host" => Some(Self::Host),
-            "user_agent" => Some(Self::UserAgent),
-            "referer" => Some(Self::Referer),
-            "timestamp" => Some(Self::Timestamp),
-            "version" => Some(Self::Version),
-            _ => None,
+/// Renders `format` using the given request/response context.
+fn render(format: &AccessLogFormat, ctx: &LogContext<'_>) -> String {
+    let mut buf = String::with_capacity(256);
+    for seg in format.segments.iter() {
+        match seg {
+            Segment::Literal(s) => buf.push_str(s),
+            Segment::Token(token) => render_token(&mut buf, *token, ctx),
         }
     }
-}
-
-impl AccessLogFormat {
-    /// Parses a format string into a compiled representation.
-    ///
-    /// Tokens use `%{name}` syntax. Use `%%` for a literal `%`.
-    pub fn parse(format: &str) -> crate::Result<Self> {
-        let mut segments = Vec::new();
-        let mut literal = String::new();
-        let mut chars = format.chars();
-
-        while let Some(c) = chars.next() {
-            if c != '%' {
-                literal.push(c);
-                continue;
-            }
-            match chars.next() {
-                Some('%') => literal.push('%'),
-                Some('{') => {
-                    let mut name = String::new();
-                    let mut closed = false;
-                    for ch in chars.by_ref() {
-                        if ch == '}' {
-                            closed = true;
-                            break;
-                        }
-                        name.push(ch);
-                    }
-                    if !closed {
-                        bail!("access log format: unclosed '%{{{name}'");
-                    }
-                    let token = Token::from_name(&name)
-                        .ok_or_else(|| anyhow!("access log format: unknown token '%{{{name}}}'"))?;
-                    if !literal.is_empty() {
-                        segments.push(Segment::Literal(std::mem::take(&mut literal)));
-                    }
-                    segments.push(Segment::Token(token));
-                }
-                Some(other) => bail!(
-                    "access log format: unexpected character '{other}' after '%'; \
-                     use %{{name}} for tokens or %% for a literal %"
-                ),
-                None => bail!("access log format: trailing '%' at end of string"),
-            }
-        }
-
-        if !literal.is_empty() {
-            segments.push(Segment::Literal(literal));
-        }
-
-        Ok(Self {
-            segments: segments.into(),
-        })
-    }
-
-    /// Whether the format logs `X-Real-IP` or `X-Forwarded-For`.
-    pub(crate) fn uses_proxy_headers(&self) -> bool {
-        self.segments
-            .iter()
-            .any(|seg| matches!(seg, Segment::Token(Token::XRealIp | Token::ForwardedFor)))
-    }
-
-    /// Renders the format using the given request/response context.
-    fn render(&self, ctx: &LogContext<'_>) -> String {
-        let mut buf = String::with_capacity(256);
-        for seg in self.segments.iter() {
-            match seg {
-                Segment::Literal(s) => buf.push_str(s),
-                Segment::Token(token) => render_token(&mut buf, *token, ctx),
-            }
-        }
-        buf
-    }
+    buf
 }
 
 /// The target of the default line, kept from `log_addr` for log filters.
@@ -265,7 +154,7 @@ impl AccessLog {
             x_real_ip: self.x_real_ip,
             forwarded_for: self.forwarded_for,
         };
-        let line = format.render(&ctx);
+        let line = render(format, &ctx);
 
         // Log health check requests in debug mode only
         if self.health {
@@ -513,114 +402,6 @@ mod tests {
     }
 
     #[test]
-    fn parse_empty() {
-        let fmt = AccessLogFormat::parse("").unwrap();
-        assert!(fmt.segments.is_empty());
-    }
-
-    #[test]
-    fn parse_literal_only() {
-        let fmt = AccessLogFormat::parse("hello world").unwrap();
-        assert_eq!(fmt.segments.len(), 1);
-        assert!(matches!(&fmt.segments[0], Segment::Literal(s) if s == "hello world"));
-    }
-
-    #[test]
-    fn parse_keeps_non_ascii_literals() {
-        let fmt = AccessLogFormat::parse("→ %{status} ✓").unwrap();
-        assert!(matches!(&fmt.segments[0], Segment::Literal(s) if s == "→ "));
-        assert!(matches!(&fmt.segments[2], Segment::Literal(s) if s == " ✓"));
-    }
-
-    #[test]
-    fn parse_single_token() {
-        let fmt = AccessLogFormat::parse("%{method}").unwrap();
-        assert_eq!(fmt.segments.len(), 1);
-        assert!(matches!(&fmt.segments[0], Segment::Token(Token::Method)));
-    }
-
-    #[test]
-    fn parse_mixed() {
-        let fmt = AccessLogFormat::parse("%{remote_addr} \"%{method} %{uri}\" %{status}").unwrap();
-        assert_eq!(fmt.segments.len(), 7);
-        assert!(matches!(
-            &fmt.segments[0],
-            Segment::Token(Token::RemoteAddr)
-        ));
-        assert!(matches!(&fmt.segments[1], Segment::Literal(s) if s == " \""));
-        assert!(matches!(&fmt.segments[2], Segment::Token(Token::Method)));
-        assert!(matches!(&fmt.segments[3], Segment::Literal(s) if s == " "));
-        assert!(matches!(&fmt.segments[4], Segment::Token(Token::Uri)));
-        assert!(matches!(&fmt.segments[5], Segment::Literal(s) if s == "\" "));
-        assert!(matches!(&fmt.segments[6], Segment::Token(Token::Status)));
-    }
-
-    #[test]
-    fn parse_percent_escape() {
-        let fmt = AccessLogFormat::parse("100%% done").unwrap();
-        assert_eq!(fmt.segments.len(), 1);
-        assert!(matches!(&fmt.segments[0], Segment::Literal(s) if s == "100% done"));
-    }
-
-    #[test]
-    fn parse_all_tokens() {
-        let all = "%{method} %{uri} %{status} %{bytes} %{duration} %{remote_addr} \
-                   %{x_real_ip} %{forwarded_for} %{host} %{user_agent} %{referer} \
-                   %{timestamp} %{version}";
-        let fmt = AccessLogFormat::parse(all).unwrap();
-        let token_count = fmt
-            .segments
-            .iter()
-            .filter(|s| matches!(s, Segment::Token(_)))
-            .count();
-        assert_eq!(token_count, 13);
-    }
-
-    #[test]
-    fn uses_proxy_headers_only_with_proxy_tokens() {
-        let uses = |f: &str| AccessLogFormat::parse(f).unwrap().uses_proxy_headers();
-        assert!(uses("%{x_real_ip}"));
-        assert!(uses("%{method} %{forwarded_for}"));
-        assert!(!uses("%{remote_addr} x_real_ip forwarded_for"));
-    }
-
-    #[test]
-    fn parse_unknown_token_fails() {
-        let result = AccessLogFormat::parse("%{bogus}");
-        assert!(result.unwrap_err().to_string().contains("bogus"));
-    }
-
-    #[test]
-    fn parse_empty_token_fails() {
-        let result = AccessLogFormat::parse("%{}");
-        assert!(result.unwrap_err().to_string().contains("unknown token"));
-    }
-
-    #[test]
-    fn parse_unclosed_brace_fails() {
-        let result = AccessLogFormat::parse("%{method");
-        assert!(result.unwrap_err().to_string().contains("unclosed"));
-    }
-
-    #[test]
-    fn parse_unclosed_brace_after_a_closed_one_fails() {
-        let result = AccessLogFormat::parse("%{method} %{method");
-        assert!(result.unwrap_err().to_string().contains("unclosed"));
-    }
-
-    #[test]
-    fn parse_trailing_percent_fails() {
-        let result = AccessLogFormat::parse("hello%");
-        assert!(result.is_err());
-    }
-
-    #[test]
-    fn parse_bare_percent_char_fails() {
-        let result = AccessLogFormat::parse("%x");
-        assert!(result.is_err());
-    }
-
-    #[test]
     fn render_basic_format() {
         let fmt = AccessLogFormat::parse("%{method} %{uri} %{status} %{bytes}").unwrap();
         let uri = Uri::from_static("/index.html");
@@ -633,7 +414,7 @@ mod tests {
             )),
             ..context(&uri, &headers)
         };
-        assert_eq!(fmt.render(&ctx), "GET /index.html 200 1024");
+        assert_eq!(render(&fmt, &ctx), "GET /index.html 200 1024");
     }
 
     #[test]
@@ -642,7 +423,7 @@ mod tests {
         let fmt = AccessLogFormat::parse("%{uri}").unwrap();
         let uri = Uri::from_static("https://127.0.0.1:8443/a/b.css?v=1");
         let headers = HeaderMap::new();
-        assert_eq!(fmt.render(&context(&uri, &headers)), "/a/b.css?v=1");
+        assert_eq!(render(&fmt, &context(&uri, &headers)), "/a/b.css?v=1");
     }
 
     #[test]
@@ -656,7 +437,7 @@ mod tests {
         ];
         for (uri, target) in cases {
             let uri = Uri::from_static(uri);
-            assert_eq!(fmt.render(&context(&uri, &headers)), target, "{uri}");
+            assert_eq!(render(&fmt, &context(&uri, &headers)), target, "{uri}");
         }
     }
 
@@ -668,7 +449,7 @@ mod tests {
         .unwrap();
         let uri = Uri::from_static("/");
         let headers = HeaderMap::new();
-        assert_eq!(fmt.render(&context(&uri, &headers)), "- - - - - - -");
+        assert_eq!(render(&fmt, &context(&uri, &headers)), "- - - - - - -");
     }
 
     #[test]
@@ -676,7 +457,7 @@ mod tests {
         let fmt = AccessLogFormat::parse("100%% %{method}").unwrap();
         let uri = Uri::from_static("/");
         let headers = HeaderMap::new();
-        assert_eq!(fmt.render(&context(&uri, &headers)), "100% GET");
+        assert_eq!(render(&fmt, &context(&uri, &headers)), "100% GET");
     }
 
     #[test]
@@ -693,7 +474,7 @@ mod tests {
             hyper::header::HeaderValue::from_bytes(b"caf\xc3\xa9").unwrap(),
         );
         assert_eq!(
-            fmt.render(&context(&uri, &headers)),
+            render(&fmt, &context(&uri, &headers)),
             r#""curl\x22 200 \x5C \x09x" "caf\xC3\xA9""#
         );
     }
@@ -712,7 +493,7 @@ mod tests {
         ];
         for (uri, host) in cases {
             let uri = Uri::from_static(uri);
-            assert_eq!(fmt.render(&context(&uri, &headers)), host, "{uri}");
+            assert_eq!(render(&fmt, &context(&uri, &headers)), host, "{uri}");
         }
     }
 
@@ -766,7 +547,7 @@ mod tests {
             ..context(&uri, &headers)
         };
         assert_eq!(
-            fmt.render(&ctx),
+            render(&fmt, &ctx),
             "GET|/a/b.css?v=1|HTTP/2|304|1024|0.001234|2001:db8::1|\
              203.0.113.7|203.0.113.195|example.com|curl/8.0|https://example.com/"
         );
@@ -777,7 +558,7 @@ mod tests {
         let fmt = AccessLogFormat::parse("[%{timestamp}]").unwrap();
         let uri = Uri::from_static("/");
         let headers = HeaderMap::new();
-        let line = fmt.render(&context(&uri, &headers));
+        let line = render(&fmt, &context(&uri, &headers));
         let clf =
             regex_lite::Regex::new(r"^\[\d{2}/[A-Z][a-z]{2}/\d{4}:\d{2}:\d{2}:\d{2} [+-]\d{4}\]$")
                 .unwrap();

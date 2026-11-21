@@ -16,7 +16,7 @@ use prometheus::{
 };
 
 use crate::body::Body;
-use crate::{Error, exts::http::MethodExt, handler::RequestHandlerOpts, virtual_hosts};
+use crate::{Error, exts::http::MethodExt, handler_opts::RequestHandlerOpts, virtual_hosts};
 
 /// Label for a request method or host outside the known set
 const OTHER_LABEL: &str = "other";
@@ -263,7 +263,7 @@ fn status_class(code: u16) -> &'static str {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::handler::RequestHandlerOpts;
+    use crate::handler_opts::RequestHandlerOpts;
     use crate::settings::{Advanced, VirtualHosts};
     use hyper::Request;
     use prometheus::core::Collector;

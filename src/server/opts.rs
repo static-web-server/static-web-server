@@ -195,11 +195,10 @@ pub(super) fn init(general: &General, advanced: Option<Advanced>) -> Result<Hand
     metrics::init(general.metrics, &mut handler_opts);
 
     // CORS
-    cors::init(
+    handler_opts.cors = cors::init(
         &general.cors_allow_origins,
         &general.cors_allow_headers,
         &general.cors_expose_headers,
-        &mut handler_opts,
     );
 
     // Basic HTTP Authentication

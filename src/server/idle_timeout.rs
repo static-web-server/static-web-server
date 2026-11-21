@@ -158,108 +158,210 @@ impl<T: AsyncWrite + Unpin> AsyncWrite for IdleTimeout<T> {
 #[cfg(test)]
 mod tests {
     use super::IdleTimeout;
-    use std::io::IoSlice;
+    use std::io::{ErrorKind, IoSlice};
     use std::time::Duration;
     use tokio::io::{AsyncReadExt, AsyncWriteExt, duplex};
+    use tokio::time::Instant;
 
+    // Tests run on Tokio's paused clock, so scheduling delays on a loaded machine
+    // can't stretch the gaps between operations past the timeout.
     const TIMEOUT: Duration = Duration::from_millis(200);
 
-    #[tokio::test]
-    async fn read_fails_after_idle_timeout() {
-        let (server, _client) = duplex(64);
-        let mut io = IdleTimeout::new(server, Some(TIMEOUT), None);
-        let mut buf = [0u8; 1];
-        let err = tokio::time::timeout(Duration::from_secs(5), io.read(&mut buf))
-            .await
-            .expect("idle read did not time out")
-            .expect_err("idle read succeeded");
-        assert_eq!(err.kind(), std::io::ErrorKind::TimedOut);
+    /// Polls after which a test counts as busy-looping; a test needs fewer than 10.
+    const POLL_LIMIT: u32 = 1000;
+
+    /// Run `test`, failing it once it's polled more than [`POLL_LIMIT`] times.
+    ///
+    /// The paused clock only advances while the runtime is idle, so a busy loop would hang the test
+    /// instead of failing it. Tokio's cooperative budget makes such a loop yield and get polled again.
+    async fn poll_limited(test: impl Future<Output = ()>) {
+        let mut test = std::pin::pin!(test);
+        let mut polls = 0;
+        std::future::poll_fn(|cx| {
+            polls += 1;
+            assert!(
+                polls <= POLL_LIMIT,
+                "test still running after {POLL_LIMIT} polls"
+            );
+            test.as_mut().poll(cx)
+        })
+        .await;
     }
 
-    #[tokio::test]
-    async fn idle_timeout_is_logged_once_with_peer() {
-        let (logs, _guard) = crate::server::tests::capture_debug_logs();
-
-        let (server, _client) = duplex(64);
-        let peer = "192.0.2.1:4321".parse().unwrap();
-        let mut io = IdleTimeout::new(server, Some(TIMEOUT), Some(peer));
-        let mut buf = [0u8; 1];
-        // Every later operation fails as well, but only the first one logs.
-        for _ in 0..2 {
+    #[tokio::test(start_paused = true)]
+    async fn read_fails_after_idle_timeout() {
+        poll_limited(async {
+            let start = Instant::now();
+            let (server, _client) = duplex(64);
+            let mut io = IdleTimeout::new(server, Some(TIMEOUT), None);
+            let mut buf = [0u8; 1];
             let err = tokio::time::timeout(Duration::from_secs(5), io.read(&mut buf))
                 .await
                 .expect("idle read did not time out")
                 .expect_err("idle read succeeded");
-            assert_eq!(err.kind(), std::io::ErrorKind::TimedOut);
-        }
-
-        let lines = logs.lines("closing connection");
-        assert_eq!(lines.len(), 1, "expected one log line, got: {lines:?}");
-        assert!(lines[0].contains("DEBUG"), "{}", lines[0]);
-        assert!(
-            lines[0].contains("closing connection after 200ms without activity"),
-            "{}",
-            lines[0]
-        );
-        assert!(lines[0].contains("peer=192.0.2.1:4321"), "{}", lines[0]);
-    }
-
-    #[tokio::test]
-    async fn write_fails_after_idle_timeout() {
-        // The peer never reads, so the write blocks once the buffer is full.
-        let (server, _client) = duplex(64);
-        let mut io = IdleTimeout::new(server, Some(TIMEOUT), None);
-        let err = tokio::time::timeout(Duration::from_secs(5), io.write_all(&[0u8; 1024]))
-            .await
-            .expect("blocked write did not time out")
-            .expect_err("blocked write succeeded");
-        assert_eq!(err.kind(), std::io::ErrorKind::TimedOut);
-    }
-
-    #[tokio::test]
-    async fn flush_is_not_progress() {
-        let (server, _client) = duplex(64);
-        let mut io = IdleTimeout::new(server, Some(TIMEOUT), None);
-        let mut buf = [0u8; 1];
-        let start = std::time::Instant::now();
-        // Flush between reads, like Hyper's HTTP/2 connection does whenever it's polled.
-        let err = loop {
-            assert!(
-                start.elapsed() < Duration::from_secs(5),
-                "flushes kept the connection open"
+            assert_eq!(err.kind(), ErrorKind::TimedOut);
+            assert_eq!(
+                start.elapsed(),
+                TIMEOUT,
+                "idle read timed out at the wrong time"
             );
-            io.flush().await.expect("flush");
-            if let Ok(read) = tokio::time::timeout(TIMEOUT / 4, io.read(&mut buf)).await {
-                break read.expect_err("idle read succeeded");
-            }
-        };
-        assert_eq!(err.kind(), std::io::ErrorKind::TimedOut);
+        })
+        .await;
     }
 
-    #[tokio::test]
-    async fn read_progress_restarts_idle_timeout() {
-        let (server, mut client) = duplex(64);
-        let mut io = IdleTimeout::new(server, Some(TIMEOUT), None);
-        let mut buf = [0u8; 4];
-        // One byte every half timeout: 2 timeouts in total, never a full one without progress.
-        let write = async {
-            for _ in 0..4 {
+    #[tokio::test(start_paused = true)]
+    async fn idle_timeout_is_logged_once_with_peer() {
+        poll_limited(async {
+            let (logs, _guard) = crate::server::tests::capture_debug_logs();
+
+            let (server, _client) = duplex(64);
+            let peer = "192.0.2.1:4321".parse().unwrap();
+            let mut io = IdleTimeout::new(server, Some(TIMEOUT), Some(peer));
+            let mut buf = [0u8; 1];
+            // Every later operation fails as well, but only the first one logs.
+            for _ in 0..2 {
+                let err = tokio::time::timeout(Duration::from_secs(5), io.read(&mut buf))
+                    .await
+                    .expect("idle read did not time out")
+                    .expect_err("idle read succeeded");
+                assert_eq!(err.kind(), ErrorKind::TimedOut);
+            }
+
+            let lines = logs.lines("closing connection");
+            assert_eq!(lines.len(), 1, "expected one log line, got: {lines:?}");
+            assert!(lines[0].contains("DEBUG"), "{}", lines[0]);
+            assert!(
+                lines[0].contains("closing connection after 200ms without activity"),
+                "{}",
+                lines[0]
+            );
+            assert!(lines[0].contains("peer=192.0.2.1:4321"), "{}", lines[0]);
+        })
+        .await;
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn write_fails_after_idle_timeout() {
+        poll_limited(async {
+            let start = Instant::now();
+            // The peer never reads, so the write blocks once the buffer is full.
+            let (server, _client) = duplex(64);
+            let mut io = IdleTimeout::new(server, Some(TIMEOUT), None);
+            let err = tokio::time::timeout(Duration::from_secs(5), io.write_all(&[0u8; 1024]))
+                .await
+                .expect("blocked write did not time out")
+                .expect_err("blocked write succeeded");
+            assert_eq!(err.kind(), ErrorKind::TimedOut);
+            assert_eq!(
+                start.elapsed(),
+                TIMEOUT,
+                "blocked write timed out at the wrong time"
+            );
+        })
+        .await;
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn idle_timeout_counts_from_last_progress() {
+        poll_limited(async {
+            let start = Instant::now();
+            let (server, mut client) = duplex(64);
+            let mut io = IdleTimeout::new(server, Some(TIMEOUT), None);
+            let mut buf = [0u8; 2];
+            // One byte after half the timeout, then nothing: the read fails a timeout after that byte.
+            let write = async {
                 tokio::time::sleep(TIMEOUT / 2).await;
                 client.write_all(b"x").await.expect("client write");
-            }
-        };
-        let (read, ()) = tokio::join!(io.read_exact(&mut buf), write);
-        read.expect("read with progress failed");
+            };
+            let read = tokio::time::timeout(Duration::from_secs(5), io.read_exact(&mut buf));
+            let (read, ()) = tokio::join!(read, write);
+            let err = read
+                .expect("stalled read did not time out")
+                .expect_err("stalled read succeeded");
+            assert_eq!(err.kind(), ErrorKind::TimedOut);
+            assert_eq!(
+                start.elapsed(),
+                TIMEOUT / 2 + TIMEOUT,
+                "stalled read timed out at the wrong time"
+            );
+        })
+        .await;
     }
 
-    #[tokio::test]
+    #[tokio::test(start_paused = true)]
+    async fn flush_is_not_progress() {
+        poll_limited(async {
+            let (server, _client) = duplex(64);
+            let mut io = IdleTimeout::new(server, Some(TIMEOUT), None);
+            let mut buf = [0u8; 1];
+            let start = Instant::now();
+            // Flush between reads, like Hyper's HTTP/2 connection does whenever it's polled.
+            let err = loop {
+                assert!(
+                    start.elapsed() < Duration::from_secs(5),
+                    "flushes kept the connection open"
+                );
+                io.flush().await.expect("flush");
+                if let Ok(read) = tokio::time::timeout(TIMEOUT / 4, io.read(&mut buf)).await {
+                    break read.expect_err("idle read succeeded");
+                }
+            };
+            assert_eq!(err.kind(), ErrorKind::TimedOut);
+        })
+        .await;
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn shutdown_is_not_progress() {
+        poll_limited(async {
+            let start = Instant::now();
+            let (server, _client) = duplex(64);
+            let mut io = IdleTimeout::new(server, Some(TIMEOUT), None);
+            let mut buf = [0u8; 1];
+            // Shut down halfway through the timeout: the read still fails a timeout after the start.
+            tokio::time::sleep(TIMEOUT / 2).await;
+            io.shutdown().await.expect("shutdown");
+            let err = tokio::time::timeout(Duration::from_secs(5), io.read(&mut buf))
+                .await
+                .expect("idle read did not time out")
+                .expect_err("idle read succeeded");
+            assert_eq!(err.kind(), ErrorKind::TimedOut);
+            assert_eq!(
+                start.elapsed(),
+                TIMEOUT,
+                "shutdown restarted the idle timeout"
+            );
+        })
+        .await;
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn read_progress_restarts_idle_timeout() {
+        poll_limited(async {
+            let (server, mut client) = duplex(64);
+            let mut io = IdleTimeout::new(server, Some(TIMEOUT), None);
+            let mut buf = [0u8; 4];
+            // One byte every half timeout: 2 timeouts in total, never a full one without progress.
+            let write = async {
+                for _ in 0..4 {
+                    tokio::time::sleep(TIMEOUT / 2).await;
+                    client.write_all(b"x").await.expect("client write");
+                }
+            };
+            let (read, ()) = tokio::join!(io.read_exact(&mut buf), write);
+            read.expect("read with progress failed");
+        })
+        .await;
+    }
+
+    #[tokio::test(start_paused = true)]
     async fn write_progress_restarts_idle_timeout() {
-        assert_write_progress(false).await;
+        poll_limited(assert_write_progress(false)).await;
     }
 
-    #[tokio::test]
+    #[tokio::test(start_paused = true)]
     async fn vectored_write_progress_restarts_idle_timeout() {
-        assert_write_progress(true).await;
+        poll_limited(assert_write_progress(true)).await;
     }
 
     /// Write to a peer that reads one byte every half timeout:
@@ -294,16 +396,19 @@ mod tests {
         write.expect("write with progress failed");
     }
 
-    #[tokio::test]
+    #[tokio::test(start_paused = true)]
     async fn disabled_timeout_never_fails() {
-        let (server, _client) = duplex(64);
-        let mut io = IdleTimeout::new(server, None, None);
-        let mut buf = [0u8; 1];
-        assert!(
-            tokio::time::timeout(TIMEOUT * 3, io.read(&mut buf))
-                .await
-                .is_err(),
-            "read without a timeout finished"
-        );
+        poll_limited(async {
+            let (server, _client) = duplex(64);
+            let mut io = IdleTimeout::new(server, None, None);
+            let mut buf = [0u8; 1];
+            assert!(
+                tokio::time::timeout(TIMEOUT * 3, io.read(&mut buf))
+                    .await
+                    .is_err(),
+                "read without a timeout finished"
+            );
+        })
+        .await;
     }
 }

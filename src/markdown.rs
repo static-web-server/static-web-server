@@ -18,7 +18,7 @@ use crate::exts::http::{MethodExt, append_vary_accept};
 use crate::fs::path::{PathExt, sanitize_path};
 use crate::response::content_type_for;
 use crate::{
-    Error, exts::headers::Accept, fs::meta::try_markdown_variant, handler::RequestHandlerOpts,
+    Error, exts::headers::Accept, fs::meta::try_markdown_variant, handler_opts::RequestHandlerOpts,
 };
 
 /// Escape set used when converting a resolved file path back into a URI path.
@@ -376,6 +376,23 @@ mod tests {
         let result = pre_process(&req, &base, "/guide~v2", false);
 
         assert_eq!(result, Some("/guide~v2.md".to_string()));
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn test_name_with_tilde_in_another_normalization_form_negotiates_variant() {
+        let tmp = tempfile::tempdir().unwrap();
+        let base = tmp.path().canonicalize().unwrap();
+        std::fs::write(base.join("gue\u{301}~v2.md"), "# guide").unwrap();
+        if !base.join("gu\u{e9}~v2.md").exists() {
+            eprintln!("skipped: this volume tells normalization forms apart");
+            return;
+        }
+        let req = markdown_request("/gu%C3%A9~v2");
+
+        let result = pre_process(&req, &base, "/gu%C3%A9~v2", false);
+
+        assert_eq!(result, Some("/gu%C3%A9~v2.md".to_string()));
     }
 
     #[cfg(unix)]

@@ -15,7 +15,7 @@
 use hyper::header::HeaderMap;
 use tracing::Span;
 
-use crate::handler::RequestHandlerOpts;
+use crate::handler_opts::RequestHandlerOpts;
 
 /// Name of the span that carries the trace context of a request.
 pub(crate) const SPAN_NAME: &str = "trace_context";

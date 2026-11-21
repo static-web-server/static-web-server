@@ -270,4 +270,44 @@ mod tests {
             };
         }
     }
+
+    #[cfg(feature = "directory-listing")]
+    #[tokio::test]
+    async fn handler_dir_listing_auto_format_vary() {
+        let mut settings = fixture_settings("toml/handler.toml");
+        settings.general.root = "tests/fixtures/public".into();
+        settings.general.directory_listing = true;
+        settings.general.directory_listing_format =
+            static_web_server::directory_listing::DirListFmt::Auto;
+
+        let mut req_handler_opts = fixture_req_handler_opts(settings.general, settings.advanced);
+        req_handler_opts.cors = cors::new("*", "", "");
+        let req_handler = fixture_req_handler(req_handler_opts);
+
+        let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
+
+        for accept in ["application/json", "text/html"] {
+            let mut req = Request::new(());
+            let headers = req.headers_mut();
+            headers.insert("origin", "http://localhost".parse().unwrap());
+            headers.insert("accept", accept.parse().unwrap());
+            *req.uri_mut() = "http://localhost/".parse().unwrap();
+
+            let resp = req_handler.handle(&mut req, remote_addr).await.unwrap();
+            assert_eq!(resp.status(), 200);
+
+            let vary = resp.headers().get("vary").unwrap().to_str().unwrap();
+            let vary_values = vary.split(',').map(|f| f.trim()).collect::<Vec<_>>();
+
+            #[cfg(not(feature = "compression"))]
+            const EXPECTED: [&str; 2] = ["origin", "accept"];
+            #[cfg(feature = "compression")]
+            const EXPECTED: [&str; 3] = ["origin", "accept", "accept-encoding"];
+
+            assert!(
+                EXPECTED.iter().all(|s| vary_values.contains(s)),
+                "vary: {vary}"
+            );
+        }
+    }
 }

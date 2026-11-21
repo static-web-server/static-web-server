@@ -32,7 +32,8 @@ bin/server.rs → settings/ → server/ (mod.rs, opts.rs) → service.rs → han
 | `server/opts.rs` | Build `RequestHandlerOpts`: canonicalize root, call each feature's `init()` |
 | `server/` | `listener.rs` (TCP, `--fd`, Unix socket), `http1.rs`, `http1_tls.rs`, `http2.rs`, `uds.rs` accept loops; `redirect.rs` (HTTP→HTTPS server); `idle_timeout.rs` (connection IO wrapper); `conn_limit.rs` (`--max-connections` slots); `browser.rs` (`--open`); graceful shutdown in `mod.rs` |
 | `service.rs` | `RouterService` → `RequestService` → `RequestHandler::handle()` |
-| `handler.rs` | `RequestHandlerOpts` and the request pipeline |
+| `handler.rs` | The request pipeline |
+| `handler_opts.rs` | `RequestHandlerOpts`, read by the handler and every pipeline step (re-exported from `handler`) |
 | `static_files/` | `mod.rs::handle()` entry; `resolve.rs` (metadata, index files, pre-compressed variant), `security.rs` (containment, symlink, hidden), `listing.rs`, `reply.rs`, `opts.rs` (`HandleOpts`, `StaticFileResponse`) |
 | `fs/` | `path.rs` (`sanitize_path`), `meta.rs` (metadata → `StatusCode`), `stream.rs` (file streaming, buffer sizing) |
 | `response/` | Byte ranges (`range.rs`) and file response building |
@@ -44,7 +45,7 @@ bin/server.rs → settings/ → server/ (mod.rs, opts.rs) → service.rs → han
 | `exts/` | `http.rs` (`MethodExt`, `HTTP_SUPPORTED_METHODS`), `headers/` (`Accept-Encoding`, q-values, `ContentCoding`), `mime.rs` (compressible detection) |
 | `mem_cache/` | In-memory file cache (`mini-moka`), keyed by `(path, ContentCoding)` |
 | `directory_listing/` | HTML/JSON index, sorting, tar.gz download |
-| `access_logs.rs`, `log_addr.rs`, `logger.rs` | Per-request access log, trusted-proxy address logging, tracing setup |
+| `access_logs.rs`, `access_log_format.rs`, `log_addr.rs`, `logger.rs` | Per-request access log and its compiled format, trusted-proxy address logging, tracing setup |
 | `body.rs` | `Body = BoxBody<Bytes, io::Error>` with `empty()`, `full()`, `stream()` |
 | `error.rs` | `Result<T>`, `Error` (anyhow); re-exports `Context`, `anyhow!`, `bail!` |
 | `testing.rs` | `testing::fixtures` helpers (`#[doc(hidden)]`) |
@@ -102,7 +103,7 @@ TOML keys are kebab-case. Default file `./sws.toml` (`--config-file` / `-w`); `.
 1. `settings/cli.rs`: field on `General` with `#[arg(long, default_value = ..., env = "SERVER_...")]` and a `///` doc. Booleans use `default_missing_value("true"), num_args(0..=1), action = ArgAction::Set` so `--flag`, `--flag true`, `--flag=false` all work
 2. `settings/file.rs`: `Option<T>` field on file `General` (or `Advanced`)
 3. `settings/mod.rs`: `let mut x = opts.x;`, the `if let Some(v) = general.x { x = v }` merge, the field in the final `General { .. }`
-4. `handler.rs`: field on `RequestHandlerOpts` and its `Default`, if the request path needs it
+4. `handler_opts.rs`: field on `RequestHandlerOpts` and its `Default`, if the request path needs it
 5. `server/opts.rs`: `module::init(value, &mut handler_opts)`, which logs the effective value with `tracing::info!`
 6. `testing.rs`: map it in `fixture_req_handler_opts()` or the crate fails to compile
 7. Tests: parsing in `tests/settings.rs` or a TOML fixture under `tests/fixtures/toml/`, plus behavior tests
