@@ -22,7 +22,7 @@ pub(crate) mod image;
 const URI_PATH_ESCAPE: &AsciiSet = &CONTROLS.add(b'%');
 
 use percent_encoding::{AsciiSet, CONTROLS, utf8_percent_encode};
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 
 use crate::fs::meta::try_metadata;
 use crate::fs::path::{PathExt, sanitize_path};
@@ -88,12 +88,19 @@ pub(crate) fn try_variant_uri<'a>(
 
 /// Converts a file path relative to the web root into a URI path that
 /// `sanitize_path` resolves back to the same file.
+///
+/// Components are joined with `/` whatever the platform separator. `None`
+/// when the path is empty or has a component other than a plain name.
 pub(crate) fn uri_path_from(relative: &Path) -> Option<String> {
-    let relative = relative.to_str()?;
-    Some(format!(
-        "/{}",
-        utf8_percent_encode(relative, URI_PATH_ESCAPE)
-    ))
+    let mut uri_path = String::with_capacity(relative.as_os_str().len() + 1);
+    for component in relative.components() {
+        let Component::Normal(name) = component else {
+            return None;
+        };
+        uri_path.push('/');
+        uri_path.extend(utf8_percent_encode(name.to_str()?, URI_PATH_ESCAPE));
+    }
+    (!uri_path.is_empty()).then_some(uri_path)
 }
 
 /// Whether a suffix is made of ASCII letters, digits and `-` only.
@@ -309,6 +316,40 @@ mod tests {
             let result = variant_uri(&base, uri_path, &["fr"]);
             assert_eq!(result.as_deref(), Some("/index.html.fr"), "{uri_path}");
         }
+    }
+
+    #[test]
+    fn uri_path_from_joins_components_with_slash() {
+        let relative: PathBuf = ["a b", "50%.png.webp"].iter().collect();
+        assert_eq!(
+            uri_path_from(&relative).as_deref(),
+            Some("/a b/50%25.png.webp")
+        );
+        assert_eq!(uri_path_from(Path::new("")), None);
+        assert_eq!(uri_path_from(Path::new("a/../b")), None);
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn uri_path_from_replaces_backslash_separator() {
+        let relative = Path::new(r"a b\50%.png.webp");
+        assert_eq!(
+            uri_path_from(relative).as_deref(),
+            Some("/a b/50%25.png.webp")
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn uri_path_from_keeps_backslash_in_unix_name() {
+        let (_tmp, base) = variant_root();
+        std::fs::write(base.join(r"a\b.png"), "png").unwrap();
+        let uri_path = uri_path_from(Path::new(r"a\b.png")).unwrap();
+        assert_eq!(uri_path, r"/a\b.png");
+        assert_eq!(
+            sanitize_path(&base, &uri_path).unwrap(),
+            base.join(r"a\b.png")
+        );
     }
 
     #[test]
