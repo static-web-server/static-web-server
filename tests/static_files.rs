@@ -2299,6 +2299,31 @@ mod short_name_alias_tests {
         );
     }
 
+    /// APFS, HFS+ and the macOS FAT driver open a name in any normalization
+    /// form but list it as stored, here with a decomposed `é`.
+    #[cfg(target_os = "macos")]
+    #[tokio::test]
+    async fn short_name_check_serves_names_in_another_normalization_form() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::create_dir(dir.path().join("de\u{301}~x")).unwrap();
+        std::fs::write(dir.path().join("de\u{301}~x/file.txt"), "file").unwrap();
+        std::fs::write(dir.path().join("cafe\u{301}~.txt"), "file").unwrap();
+        if !dir.path().join("caf\u{e9}~.txt").exists() {
+            eprintln!("skipped: this volume tells normalization forms apart");
+            return;
+        }
+
+        for uri_path in [
+            "/caf%C3%A9~.txt",
+            "/cafe%CC%81~.txt",
+            "/d%C3%A9~x/file.txt",
+            "/de%CC%81~x/file.txt",
+        ] {
+            let status = request(dir.path(), uri_path, None, false).await;
+            assert_eq!(status, StatusCode::OK, "{uri_path}");
+        }
+    }
+
     #[cfg(unix)]
     #[tokio::test]
     async fn short_name_check_refuses_names_with_tilde_in_unlistable_dir() {

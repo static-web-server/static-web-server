@@ -378,6 +378,23 @@ mod tests {
         assert_eq!(result, Some("/guide~v2.md".to_string()));
     }
 
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn test_name_with_tilde_in_another_normalization_form_negotiates_variant() {
+        let tmp = tempfile::tempdir().unwrap();
+        let base = tmp.path().canonicalize().unwrap();
+        std::fs::write(base.join("gue\u{301}~v2.md"), "# guide").unwrap();
+        if !base.join("gu\u{e9}~v2.md").exists() {
+            eprintln!("skipped: this volume tells normalization forms apart");
+            return;
+        }
+        let req = markdown_request("/gu%C3%A9~v2");
+
+        let result = pre_process(&req, &base, "/gu%C3%A9~v2", false);
+
+        assert_eq!(result, Some("/gu%C3%A9~v2.md".to_string()));
+    }
+
     #[cfg(unix)]
     #[test]
     fn test_variant_with_tilde_in_unlistable_dir_rejected() {
