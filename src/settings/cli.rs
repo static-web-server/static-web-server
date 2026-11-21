@@ -612,6 +612,7 @@ pub struct General {
         env = "SERVER_LOG_X_REAL_IP",
     )]
     /// Log the X-Real-IP header of requests from --trusted-proxies.
+    /// The proxy must overwrite the header. If the request has more than one X-Real-IP line, nothing is logged.
     pub log_x_real_ip: bool,
 
     #[arg(
@@ -623,7 +624,10 @@ pub struct General {
         action = clap::ArgAction::Set,
         env = "SERVER_LOG_FORWARDED_FOR",
     )]
-    /// Log the first X-Forwarded-For address of requests from --trusted-proxies.
+    /// Log the client address from X-Forwarded-For of requests from --trusted-proxies.
+    /// It is the rightmost address not in --trusted-proxies, so every proxy in the chain must be listed
+    /// and must append to or overwrite the header itself. Otherwise the address of an unlisted proxy is logged.
+    /// Entries must be bare IP addresses. If one that is reached is empty or can't be parsed (e.g. `ip:port`), nothing is logged.
     pub log_forwarded_for: bool,
 
     #[arg(
@@ -635,7 +639,7 @@ pub struct General {
     )]
     /// List of proxy IPs to use the X-Real-IP and X-Forwarded-For headers from.
     /// The default trusts no one, so the headers are not logged unless set.
-    /// IPv4 entries also match their IPv4-mapped IPv6 form (`::ffff:a.b.c.d`).
+    /// Exact IPs only, no ranges. IPv4 entries also match their IPv4-mapped IPv6 form (`::ffff:a.b.c.d`).
     pub trusted_proxies: Vec<IpAddr>,
 
     #[arg(
