@@ -5,10 +5,10 @@
     /></a>
   </div>
 
-<h1 align="center">Static Web Server</h1>
+<h1 align="center">Static Web Server :)</h1>
 
 <h4 align="center">
-    A cross-platform, high-performance and asynchronous web server for static file-serving ⚡
+    A cross-platform, high performance and asynchronous web server for static file-serving ⚡ 
   </h4>
 
 <div align="center">

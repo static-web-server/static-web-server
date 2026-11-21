@@ -2,7 +2,7 @@
 
 SWS is a cross-platform, high-performance, async static file server written in Rust. Built on `hyper` v1 + `tokio`. Binary target: ~4MB. Edition 2024, MSRV 1.88.0.
 
-## Quick Start
+## Quick Start change
 
 ```bash
 # Build with all features
