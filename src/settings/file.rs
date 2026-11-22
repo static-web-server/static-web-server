@@ -468,6 +468,9 @@ pub struct General {
     /// Accept markdown content negotiation feature.
     pub accept_markdown: Option<bool>,
 
+    /// Image format negotiation feature.
+    pub image_negotiation: Option<bool>,
+
     /// Set a default `charset=utf-8` parameter for `text/*` responses.
     pub text_charset: Option<bool>,
 

@@ -84,6 +84,11 @@ Entries are keyed by `(path, ContentCoding)`, so a pre-compressed variant is cac
 - `--page-fallback <file>` (`fallback-page` feature; path **not** relative to the root): served with 200 for `GET` requests that would 404, except missing assets, which keep 404: `Sec-Fetch-Dest` other than a document or frame, or, without that header, a non-HTML extension (`/favicon.ico`) not asking for `text/html`
 - `--page404` (`./404.html`), `--page50x` (`./50x.html`): loaded at startup; relative paths resolve under the root; missing file → generic message
 
+## Image Negotiation (`--image-negotiation`, default `false`)
+
+- `GET`/`HEAD` for `.jpg`/`.jpeg`/`.png`/`.gif` → serve `<path>.avif` or `<path>.webp` when `Accept` names `image/avif`/`image/webp` (wildcards don't count) with a weight at least that of the original; server preference AVIF, then WebP. The original must exist; a variant that fails to serve (symlink policy, permissions) falls back to it
+- All `GET`/`HEAD` responses for those extensions carry `Vary: Accept`, whether a variant exists or not. Content-Type, ETag and ranges come from the variant; `Cache-Control` and custom headers match the requested URI
+
 ## Markdown Negotiation (`--accept-markdown`, default `false`)
 
 - `Accept: text/markdown` → look for `<path>.md`, `<path>.html.md`, `<path>/index.html.md`; serve as `text/markdown`; hidden-file policy applies to the variant

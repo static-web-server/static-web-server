@@ -10,7 +10,7 @@ use crate::settings::Advanced;
 use crate::settings::cli::General;
 use crate::{
     Context, Result, access_logs, compression_static, control_headers, cors, etag, health, helpers,
-    log_addr, maintenance_mode, security_headers,
+    log_addr, maintenance_mode, negotiation::image as image_negotiation, security_headers,
 };
 
 #[cfg(feature = "directory-listing")]
@@ -212,6 +212,9 @@ pub(super) fn init(general: &General, advanced: Option<Advanced>) -> Result<Hand
 
     // Pre-compressed static files
     compression_static::init(general.compression_static, &mut handler_opts);
+
+    // Image format negotiation
+    image_negotiation::init(general.image_negotiation, &mut handler_opts);
 
     // Auto-compression based on Accept-Encoding header
     #[cfg(any(

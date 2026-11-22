@@ -92,4 +92,23 @@ mod tests {
         let settings = static_web_server::Settings::get_unparsed(false, &args).unwrap();
         assert_eq!(settings.general.max_connections, 64);
     }
+
+    #[test]
+    fn image_negotiation_from_cli_and_toml() {
+        let args = ["static-web-server", "--image-negotiation"];
+        let settings = static_web_server::Settings::get_unparsed(false, &args).unwrap();
+        assert!(settings.general.image_negotiation);
+
+        let dir = tempfile::tempdir().unwrap();
+        let config = dir.path().join("sws.toml");
+        std::fs::write(&config, "[general]\nimage-negotiation = false\n").unwrap();
+        let args = [
+            "static-web-server",
+            "--config-file",
+            config.to_str().unwrap(),
+            "--image-negotiation",
+        ];
+        let settings = static_web_server::Settings::get_unparsed(false, &args).unwrap();
+        assert!(!settings.general.image_negotiation);
+    }
 }

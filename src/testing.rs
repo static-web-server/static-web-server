@@ -113,6 +113,7 @@ pub mod fixtures {
             follow_symlinks: general.follow_symlinks,
             use_relative_root: general.use_relative_root,
             accept_markdown: general.accept_markdown,
+            image_negotiation: general.image_negotiation,
             text_charset: general.text_charset,
             index_files: general
                 .index_files
