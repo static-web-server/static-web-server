@@ -644,6 +644,18 @@ pub struct General {
 
     #[arg(
         long,
+        default_value = "false",
+        default_missing_value("true"),
+        num_args(0..=1),
+        require_equals(false),
+        action = clap::ArgAction::Set,
+        env = "SERVER_LOG_TRACE_CONTEXT",
+    )]
+    /// Add the `trace_id`, `span_id` and `trace_flags` fields of a valid W3C `traceparent` request header to the log lines of the request. The header is taken from any client, so the fields are only reliable behind a proxy that sets or replaces it. Requires `--log-format json`.
+    pub log_trace_context: bool,
+
+    #[arg(
+        long,
         default_value = "true",
         default_missing_value("true"),
         num_args(0..=1),
