@@ -359,15 +359,19 @@ mod tests {
         let probe = SpanProbe::default();
         let resp = wrap(span.clone(), Response::new(probe.clone().boxed()));
 
+        // The locks are released before the asserts: a failed one must not poison the mutex
+        // that the probe locks when it is dropped, which would abort the test binary
         let mut body = resp.into_body();
         assert!(body.frame().await.is_none());
-        assert_eq!(*probe.polled_in.lock().unwrap(), span.id());
+        let polled_in = probe.polled_in.lock().unwrap().clone();
+        assert_eq!(polled_in, span.id());
         drop(body);
-        assert_eq!(*probe.dropped_in.lock().unwrap(), span.id());
+        let dropped_in = probe.dropped_in.lock().unwrap().clone();
+        assert_eq!(dropped_in, span.id());
     }
 
-    /// The wrapper passes the frames and the size of the body through, so hyper still sends
-    /// the exact `Content-Length`.
+    /// The wrapper passes the frames, the size and the end of the body through, so hyper still
+    /// sends the exact `Content-Length`, and none for a response without a body over HTTP/2.
     #[tokio::test]
     async fn wrapped_body_keeps_the_frames_and_the_size() {
         crate::logger::register_test_subscribers();
@@ -375,13 +379,14 @@ mod tests {
 
         let span = tracing::error_span!("request");
         assert!(!span.is_none(), "the body must be wrapped");
-        let resp = wrap(
-            tracing::error_span!("request"),
-            Response::new(crate::body::full("abc")),
-        );
+        let resp = wrap(span.clone(), Response::new(crate::body::full("abc")));
         let body = resp.into_body();
+        assert!(!body.is_end_stream());
         assert_eq!(body.size_hint().exact(), Some(3));
         assert_eq!(body.collect().await.unwrap().to_bytes(), "abc");
+
+        let resp = wrap(span, Response::new(crate::body::empty()));
+        assert!(resp.body().is_end_stream());
     }
 
     /// A value close to the `traceparent` grammar: the forbidden version and all-zero ids are
@@ -410,8 +415,9 @@ mod tests {
         )
     }
 
+    /// Checked without `is_lower_hex`, so the properties do not rely on the parser's own check.
     fn is_lower_hex_of_len(s: &str, len: usize) -> bool {
-        s.len() == len && is_lower_hex(s.as_bytes())
+        s.len() == len && s.bytes().all(|b| matches!(b, b'0'..=b'9' | b'a'..=b'f'))
     }
 
     proptest! {
@@ -444,7 +450,12 @@ mod tests {
                 prop_assert_eq!(flags, tp.trace_flags);
                 prop_assert_eq!(extra, "");
             } else {
-                let sampled = if is_sampled(flags) { "01" } else { "00" };
+                // An odd last hex digit, checked without `is_sampled`
+                let sampled = if flags.ends_with(['1', '3', '5', '7', '9', 'b', 'd', 'f']) {
+                    "01"
+                } else {
+                    "00"
+                };
                 prop_assert_eq!(sampled, tp.trace_flags);
                 prop_assert!(extra.is_empty() || extra.starts_with('-'), "{value:?}");
             }
