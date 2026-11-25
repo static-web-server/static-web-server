@@ -102,7 +102,7 @@ pub mod fixtures {
             #[cfg(feature = "basic-auth")]
             basic_auth: general.basic_auth,
             access_log_format: (!general.access_log_format.is_empty()).then(|| {
-                crate::access_logs::AccessLogFormat::parse(&general.access_log_format).unwrap()
+                crate::logger::AccessLogFormat::parse(&general.access_log_format).unwrap()
             }),
             log_remote_address: general.log_remote_address,
             log_x_real_ip: general.log_x_real_ip,

@@ -9,8 +9,9 @@ use crate::handler::RequestHandlerOpts;
 use crate::settings::Advanced;
 use crate::settings::cli::General;
 use crate::{
-    Context, Result, access_logs, compression_static, control_headers, cors, etag, health, helpers,
-    log_addr, maintenance_mode, security_headers, trace_context,
+    Context, Result, compression_static, control_headers, cors, etag, health, helpers,
+    logger::{self, trace_context},
+    maintenance_mode, security_headers,
 };
 
 #[cfg(feature = "directory-listing")]
@@ -125,7 +126,7 @@ pub(super) fn init(general: &General, advanced: Option<Advanced>) -> Result<Hand
         None
     } else {
         Some(
-            access_logs::AccessLogFormat::parse(&general.access_log_format)
+            logger::AccessLogFormat::parse(&general.access_log_format)
                 .with_context(|| "invalid access log format")?,
         )
     };
@@ -185,7 +186,7 @@ pub(super) fn init(general: &General, advanced: Option<Advanced>) -> Result<Hand
     let unix_socket = general.unix_socket.is_some();
     #[cfg(not(unix))]
     let unix_socket = false;
-    log_addr::init(general.log_remote_address, unix_socket, &mut handler_opts);
+    logger::addr::init(general.log_remote_address, unix_socket, &mut handler_opts);
 
     // Log trace context
     trace_context::init(general.log_trace_context, &mut handler_opts);

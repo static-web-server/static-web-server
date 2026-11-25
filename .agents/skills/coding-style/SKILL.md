@@ -41,7 +41,7 @@ Rust has two kinds of comment with opposite rules.
 - First line: one sentence saying what the item is or does, no "This function…". On a `General` field it is the `--help` text
 - Then only what a caller can't see in the signature: what failure means (`Err(StatusCode::NOT_FOUND)` when the file is missing or hidden), the invariant relied on (the base path is already canonical), the precondition. Headed sections in use: `# Security`, `# Warning`, `# Example`, `# ABNF`
 - Don't restate the signature. `/// Returns the file path.` on `fn file_path()` says nothing; if there is nothing beyond the signature, the name is wrong or the item shouldn't be public
-- Module docs (`//!`) state the module's responsibility and its non-obvious invariant (`etag.rs`, `access_logs.rs`, `static_files/mod.rs`)
+- Module docs (`//!`) state the module's responsibility and its non-obvious invariant (`etag.rs`, `logger/access/render.rs`, `static_files/mod.rs`)
 
 **Inline comments (`//`) default to none.** Readable code is the first tool and a comment the last. Before writing one, try a name (`is_cors_preflight(opts, req)` replaces a comment about browsers at the call site), a `let` that names the intermediate value, or a helper function. Write the comment only for what code cannot say:
 

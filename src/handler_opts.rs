@@ -13,7 +13,7 @@ use std::{
     sync::{Arc, atomic::AtomicBool},
 };
 
-use crate::{access_log_format::AccessLogFormat, cors, settings::Advanced};
+use crate::{cors, logger::AccessLogFormat, settings::Advanced};
 
 #[cfg(feature = "directory-listing")]
 use crate::settings::file::DirListFmt;

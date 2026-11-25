@@ -114,8 +114,6 @@ extern crate serde;
 // Public modules
 #[macro_use]
 pub mod logger;
-pub(crate) mod access_log_format;
-pub mod access_logs;
 #[cfg(feature = "basic-auth")]
 #[cfg_attr(docsrs, doc(cfg(feature = "basic-auth")))]
 pub mod basic_auth;
@@ -159,7 +157,6 @@ pub(crate) mod health;
 #[cfg(feature = "tls")]
 #[cfg_attr(docsrs, doc(cfg(feature = "tls")))]
 pub mod https_redirect;
-pub(crate) mod log_addr;
 pub mod maintenance_mode;
 pub(crate) mod markdown;
 #[cfg(feature = "mem-cache")]
@@ -182,7 +179,6 @@ pub(crate) mod text_charset;
 #[cfg(feature = "tls")]
 #[cfg_attr(docsrs, doc(cfg(feature = "tls")))]
 pub mod tls;
-pub(crate) mod trace_context;
 pub(crate) mod virtual_hosts;
 #[cfg(windows)]
 #[cfg_attr(docsrs, doc(cfg(windows)))]

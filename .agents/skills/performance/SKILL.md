@@ -7,7 +7,7 @@ description: Measure, optimize, or review performance in the Static Web Server (
 
 SWS optimizes for low per-request syscalls and allocations on the static-file path. Changes are justified by a benchmark or profile, not intuition.
 
-**When to load**: editing the hot path (`handler.rs`, `static_files/`, `fs/`, `compression*.rs`, `control_headers.rs`, `security_headers.rs`, `custom_headers.rs`, `access_logs.rs`, `exts/`), adding a bench, reading a CodSpeed result, or adding a dependency.
+**When to load**: editing the hot path (`handler.rs`, `static_files/`, `fs/`, `compression*.rs`, `control_headers.rs`, `security_headers.rs`, `custom_headers.rs`, `logger/access/`, `logger/trace_context/body.rs`, `exts/`), adding a bench, reading a CodSpeed result, or adding a dependency.
 
 ## Workflow
 
