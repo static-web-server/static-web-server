@@ -170,7 +170,11 @@ pub(super) fn init(general: &General, advanced: Option<Advanced>) -> Result<Hand
 
     // Fallback page
     #[cfg(feature = "fallback-page")]
-    fallback_page::init(&general.page_fallback, &mut handler_opts);
+    fallback_page::init(
+        &general.page_fallback,
+        &handler_opts.root_dir.clone(),
+        &mut handler_opts,
+    );
 
     // Pre-cache custom 404/50x bodies so error responses never touch disk
     // on the async hot path. See `error_page::PAGE_CACHE`.
