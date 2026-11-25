@@ -36,6 +36,7 @@ pub(crate) fn init(file_path: &Path, root_dir: &Path, handler_opts: &mut Request
     };
     if found {
         handler_opts.page_fallback = helpers::read_text_default(file_path).into_bytes();
+        handler_opts.page_fallback_uri_path = uri_path_under_root(file_path, root_dir);
     }
 
     tracing::info!(
@@ -43,6 +44,28 @@ pub(crate) fn init(file_path: &Path, root_dir: &Path, handler_opts: &mut Request
         found,
         file_path.display()
     );
+}
+
+/// Returns the path of `file_path` under `root_dir` in request form, like `/assets/index.html`.
+///
+/// Both are resolved first, the same way the root check resolves them. Returns an empty
+/// string if either can't be resolved, which leaves custom headers matching request paths only.
+fn uri_path_under_root(file_path: &Path, root_dir: &Path) -> String {
+    let (Ok(file), Ok(root)) = (file_path.canonicalize(), root_dir.canonicalize()) else {
+        return String::new();
+    };
+    let Ok(relative) = file.strip_prefix(&root) else {
+        return String::new();
+    };
+    relative
+        .components()
+        .map(|part| ["/", &part.as_os_str().to_string_lossy()].concat())
+        .collect()
+}
+
+/// Returns the path custom headers match the fallback page by, like `/index.html`.
+pub(crate) fn header_match_path(opts: &RequestHandlerOpts) -> Option<String> {
+    (!opts.page_fallback_uri_path.is_empty()).then(|| opts.page_fallback_uri_path.clone())
 }
 
 /// Replace 404 Not Found by the configured fallback page
@@ -364,6 +387,15 @@ mod tests {
                 .page_fallback
                 .is_empty()
         );
+    }
+
+    #[test]
+    fn init_keeps_the_page_path_under_the_root() {
+        let opts = init_from("tests/fixtures/public/assets/index.html");
+        assert_eq!(opts.page_fallback_uri_path, "/assets/index.html");
+        let opts = init_from("tests/fixtures/public/../public/assets/index.html");
+        assert_eq!(opts.page_fallback_uri_path, "/assets/index.html");
+        assert!(init_from("Cargo.toml").page_fallback_uri_path.is_empty());
     }
 
     #[test]

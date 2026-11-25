@@ -96,6 +96,11 @@ pub struct RequestHandlerOpts {
     #[cfg(feature = "fallback-page")]
     #[cfg_attr(docsrs, doc(cfg(feature = "fallback-page")))]
     pub page_fallback: Vec<u8>,
+    /// Path of the fallback page under the root, like `/index.html`, so custom headers
+    /// can target it. Empty when the fallback page is off.
+    #[cfg(feature = "fallback-page")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "fallback-page")))]
+    pub page_fallback_uri_path: String,
     /// Basic auth feature.
     #[cfg(feature = "basic-auth")]
     #[cfg_attr(docsrs, doc(cfg(feature = "basic-auth")))]
@@ -178,6 +183,8 @@ impl Default for RequestHandlerOpts {
             page50x: PathBuf::from("./50x.html"),
             #[cfg(feature = "fallback-page")]
             page_fallback: Vec::new(),
+            #[cfg(feature = "fallback-page")]
+            page_fallback_uri_path: String::new(),
             #[cfg(feature = "basic-auth")]
             basic_auth: String::new(),
             index_files: vec!["index.html".into()],

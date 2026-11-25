@@ -16,13 +16,17 @@ use crate::{
     settings::{Headers, HeadersScope},
 };
 
-/// Appends custom HTTP headers to a response if necessary
+/// Appends custom HTTP headers to a response if necessary.
+///
+/// `fallback_path` is set when the response is the fallback page, which has no file
+/// path of its own: rules whose `source` matches it apply too.
 pub(crate) fn post_process<T>(
     opts: &RequestHandlerOpts,
     req: &Request<T>,
     mut resp: Response<Body>,
     file_path: Option<&PathBuf>,
     early: bool,
+    fallback_path: Option<&str>,
 ) -> Result<Response<Body>, Error> {
     if let Some(advanced) = &opts.advanced_opts {
         append_headers(
@@ -32,6 +36,7 @@ pub(crate) fn post_process<T>(
             file_path,
             opts.redirect_trailing_slash,
             early,
+            fallback_path,
         )
     }
     Ok(resp)
@@ -45,6 +50,7 @@ fn append_headers(
     file_path: Option<&PathBuf>,
     redirect_trailing_slash: bool,
     early: bool,
+    fallback_path: Option<&str>,
 ) {
     if let Some(headers_vec) = headers_opts {
         let uri_path_auto_index = file_path
@@ -75,8 +81,10 @@ fn append_headers(
             {
                 continue;
             }
-            // Match header glob pattern against request uri
-            if headers_entry.source.is_match(uri_path) {
+            // Match header glob pattern against request uri, or the fallback page's name
+            if headers_entry.source.is_match(uri_path)
+                || fallback_path.is_some_and(|path| headers_entry.source.is_match(path))
+            {
                 // Add/update headers if uri matches
                 for (name, value) in &headers_entry.headers {
                     resp.headers_mut().insert(name, value.to_owned());

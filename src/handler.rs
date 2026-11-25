@@ -237,6 +237,12 @@ impl RequestHandler {
 
                 // Check for a fallback response
                 #[cfg(feature = "fallback-page")]
+                let fallback_path = fallback_page::can_serve(&self.opts, req, resp.status())
+                    .then(|| fallback_page::header_match_path(&self.opts))
+                    .flatten();
+                #[cfg(not(feature = "fallback-page"))]
+                let fallback_path: Option<String> = None;
+                #[cfg(feature = "fallback-page")]
                 let resp = fallback_page::post_process(&self.opts, req, resp)?;
 
                 // Append CORS headers if they are present
@@ -273,13 +279,20 @@ impl RequestHandler {
                 // Append security headers
                 let resp = security_headers::post_process(&self.opts, req, resp)?;
 
-                Ok((resp, file_path, false))
+                Ok((resp, file_path, false, fallback_path))
             }
             .await;
 
             // Add/update custom headers
-            let result = result.and_then(|(resp, file_path, early)| {
-                custom_headers::post_process(&self.opts, req, resp, file_path.as_ref(), early)
+            let result = result.and_then(|(resp, file_path, early, fallback_path)| {
+                custom_headers::post_process(
+                    &self.opts,
+                    req,
+                    resp,
+                    file_path.as_ref(),
+                    early,
+                    fallback_path.as_deref(),
+                )
             });
 
             // The access log line is written once the response body is sent
@@ -316,12 +329,13 @@ impl RequestHandler {
     }
 }
 
-/// A response together with the served file path and whether it was returned early.
-type Early = (Response<Body>, Option<PathBuf>, bool);
+/// A response together with the served file path, whether it was returned early and,
+/// for the fallback page, the path custom headers can match it by.
+type Early = (Response<Body>, Option<PathBuf>, bool, Option<String>);
 
 /// Marks a response that was returned before the static file handler ran.
 fn early(resp: Response<Body>) -> Early {
-    (resp, None, true)
+    (resp, None, true, None)
 }
 
 #[cfg(test)]

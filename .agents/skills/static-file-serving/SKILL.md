@@ -92,7 +92,7 @@ Entries are keyed by `(path, ContentCoding)`, so a pre-compressed variant is cac
 
 ## Advanced TOML Rules
 
-TOML-only, glob `source` matched against the URI path, arrays of tables:
+TOML-only, glob `source` matched against the URI path, arrays of tables. When `--page-fallback` answers a request, header rules are also matched against the fallback page's own path under the root (`/index.html`), so a rule like `source = "**/*.html"` reaches client-side routes:
 
 ```toml
 [advanced]

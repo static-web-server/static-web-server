@@ -99,6 +99,8 @@ pub mod fixtures {
             // TODO: add support or `page_fallback` when required
             #[cfg(feature = "fallback-page")]
             page_fallback: vec![],
+            #[cfg(feature = "fallback-page")]
+            page_fallback_uri_path: String::new(),
             #[cfg(feature = "basic-auth")]
             basic_auth: general.basic_auth,
             access_log_format: (!general.access_log_format.is_empty()).then(|| {
