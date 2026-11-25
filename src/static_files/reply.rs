@@ -24,20 +24,26 @@ use crate::response::response_body;
 
 use super::opts::HandleOpts;
 
-/// Produces a `308 Permanent Redirect` to the same URI suffixed with `/`
-/// when the resolved path is a directory and the request didn't use a
-/// trailing slash. Returns `Ok(None)` otherwise.
+/// Produces a `308 Permanent Redirect` to the redirect path suffixed with `/`
+/// when the resolved path is a directory and the redirect path doesn't end
+/// with `/`. Returns `Ok(None)` otherwise.
+///
+/// The redirect path is the client's when a rewrite applied and keeps the
+/// same directory with `/` appended (see
+/// [`HandleOpts::redirect_path_and_query`]).
 pub(super) fn trailing_slash_redirect(
     is_dir: bool,
     opts: &HandleOpts<'_>,
 ) -> Result<Option<Response<Body>>, StatusCode> {
-    if !(is_dir && opts.redirect_trailing_slash && !opts.uri_path.ends_with('/')) {
+    if !(is_dir && opts.redirect_trailing_slash) {
+        return Ok(None);
+    }
+    let (path, query) = opts.redirect_path_and_query();
+    if path.ends_with('/') {
         return Ok(None);
     }
 
-    let query = opts.uri_query.map_or(String::new(), |s| ["?", s].concat());
-    let uri = [opts.uri_path, "/", query.as_str()].concat();
-    let loc = HeaderValue::from_str(uri.as_str()).map_err(|err| {
+    let loc = HeaderValue::from_str(&redirect_location(path, query)).map_err(|err| {
         tracing::error!("invalid header value from current uri: {:?}", err);
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
@@ -48,6 +54,21 @@ pub(super) fn trailing_slash_redirect(
     tracing::trace!("uri doesn't end with a slash so redirecting permanently");
 
     Ok(Some(resp))
+}
+
+/// Appends `/` to `path`, followed by the `query` if any.
+///
+/// Leading slashes collapse into one and backslashes are percent-encoded,
+/// since browsers read a `Location` starting with `//` or `/\` as a URL on
+/// another host, and any `\` as `/`.
+fn redirect_location(path: &str, query: Option<&str>) -> String {
+    let rest = path.trim_start_matches('/');
+    let root = if rest.len() < path.len() { "/" } else { "" };
+    let rest = rest.replace('\\', "%5C");
+    match query {
+        Some(query) => [root, &rest, "/?", query].concat(),
+        None => [root, &rest, "/"].concat(),
+    }
 }
 
 /// Builds the `204 No Content` response used to answer `OPTIONS` requests.
@@ -192,5 +213,28 @@ fn open_error_to_status(err: io::Error, path: &Path) -> StatusCode {
             tracing::error!("file open error (path={:?}): {} ", path.display(), err);
             StatusCode::INTERNAL_SERVER_ERROR
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::redirect_location;
+
+    #[test]
+    fn redirect_location_appends_slash_and_query() {
+        assert_eq!(redirect_location("/dir", None), "/dir/");
+        assert_eq!(redirect_location("dir", None), "dir/");
+        assert_eq!(redirect_location("/dir", Some("a=1")), "/dir/?a=1");
+        assert_eq!(redirect_location("/dir", Some("")), "/dir/?");
+    }
+
+    #[test]
+    fn redirect_location_stays_on_host() {
+        assert_eq!(redirect_location("//host", None), "/host/");
+        assert_eq!(redirect_location("///host", None), "/host/");
+        assert_eq!(redirect_location("/\\host", None), "/%5Chost/");
+        assert_eq!(redirect_location("/\\/host", None), "/%5C/host/");
+        assert_eq!(redirect_location("/\\", None), "/%5C/");
+        assert_eq!(redirect_location("/a\\b", None), "/a%5Cb/");
     }
 }

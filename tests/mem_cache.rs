@@ -41,6 +41,7 @@ mod tests {
             base_path: Box::leak(Box::new(root_dir())),
             uri_path: "index.htm",
             uri_query: None,
+            rewritten_from: None,
             memory_cache: mc,
             #[cfg(feature = "directory-listing")]
             dir_listing: false,
@@ -199,6 +200,7 @@ mod tests {
             base_path: &root_dir(),
             uri_path: "index.htm",
             uri_query: None,
+            rewritten_from: None,
             memory_cache: Some(&mem_opts),
             #[cfg(feature = "directory-listing")]
             dir_listing: false,
@@ -234,6 +236,7 @@ mod tests {
             base_path: &root_dir(),
             uri_path: "index.htm",
             uri_query: None,
+            rewritten_from: None,
             memory_cache: Some(&mem_opts),
             #[cfg(feature = "directory-listing")]
             dir_listing: false,
@@ -337,6 +340,7 @@ mod tests {
             base_path: Box::leak(Box::new(root_dir())),
             uri_path: "50x.html",
             uri_query: None,
+            rewritten_from: None,
             memory_cache: Some(Box::leak(Box::new(MemCacheOpts::new(
                 mem_opts.max_file_size / 1024,
             )))),
@@ -423,6 +427,7 @@ mod tests {
             base_path: Box::leak(Box::new(root_dir())),
             uri_path: uri,
             uri_query: None,
+            rewritten_from: None,
             memory_cache: Some(Box::leak(Box::new(MemCacheOpts::new(
                 DEFAULT_MAX_FILE_SIZE / 1024,
             )))),
@@ -567,6 +572,7 @@ mod tests {
             base_path: &base_path,
             uri_path: "/",
             uri_query: None,
+            rewritten_from: None,
             memory_cache: Some(&mem_opts),
             #[cfg(feature = "directory-listing")]
             dir_listing: false,
@@ -865,6 +871,7 @@ mod tests {
             base_path: &base_path,
             uri_path,
             uri_query: None,
+            rewritten_from: None,
             memory_cache: Some(&mem_opts),
             #[cfg(feature = "directory-listing")]
             dir_listing: true,
