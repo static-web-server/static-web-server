@@ -853,8 +853,14 @@ fn compile_rewrite(entry: &file::Rewrites) -> Result<Rewrites> {
 
 /// Returns whether the destination of a rewrite rule, with every placeholder filled,
 /// parses as an origin-form path or an absolute URI.
+///
+/// `$0` is filled with a path, as it is the request path the source matched, and any
+/// other placeholder with a segment, as its capture may be empty.
 fn is_rewrite_target(rule: &UrlRule) -> bool {
-    let fill = vec!["a"; rule.replacer.patterns_len()];
+    let mut fill = vec!["a"; rule.replacer.patterns_len()];
+    if let Some(whole_match) = fill.first_mut() {
+        *whole_match = "/a";
+    }
     let Ok(dest) = rule.replacer.try_replace_all(&rule.destination, &fill) else {
         return false;
     };

@@ -11,7 +11,7 @@ use std::path::PathBuf;
 
 use crate::body::Body;
 use crate::rewrites;
-use crate::settings::Rewrites;
+use crate::settings::{Redirects, Rewrites};
 
 #[cfg(feature = "mem-cache")]
 use crate::mem_cache::cache::MemCacheOpts;
@@ -79,11 +79,12 @@ impl HandleOpts<'_> {
     ///
     /// They are the client's when a rewrite changed them, the client's path
     /// doesn't end with `/`, and that path with `/` appended rewrites to the
-    /// same directory, so the redirect keeps the rewrite destination hidden.
+    /// same directory instead of matching a redirect rule, so the redirect
+    /// keeps the rewrite destination hidden.
     /// Otherwise they are `uri_path` and `uri_query`, as the client already
     /// sent a `/` or a redirect to its path wouldn't reach the directory.
-    /// Matches the rewrite rules again, so call it only when a redirect is
-    /// possible.
+    /// Matches the redirect and rewrite rules again, so call it only when a
+    /// redirect is possible.
     pub(super) fn redirect_path_and_query(&self) -> (&str, Option<&str>) {
         match &self.rewritten_from {
             Some(from)
@@ -97,15 +98,16 @@ impl HandleOpts<'_> {
     }
 }
 
-/// Request URI and `Host` as the client sent them, with the rewrite rules that changed
-/// them.
+/// Request URI and `Host` as the client sent them, with the rules that apply to them.
 pub struct RewrittenFrom<'a> {
     /// Request URI as the client sent it.
     pub uri: &'a Uri,
     /// `Host` header as the client sent it.
     pub host: Option<&'a HeaderValue>,
     /// Rewrite rules from the config file.
-    pub rules: &'a [Rewrites],
+    pub rewrites: &'a [Rewrites],
+    /// Redirect rules from the config file, which run before the rewrite rules.
+    pub redirects: &'a [Redirects],
 }
 
 /// Static file response type with additional data.

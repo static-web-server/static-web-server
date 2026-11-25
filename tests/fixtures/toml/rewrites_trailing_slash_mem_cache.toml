@@ -11,6 +11,12 @@ redirect-trailing-slash = true
 source = "/value/manage{**}"
 destination = "/$1"
 
+# A file served for one host only
+[[advanced.rewrites]]
+host = "tenant.example"
+source = "/app.js"
+destination = "/assets/main.js"
+
 [advanced.memory-cache]
 capacity = 10
 ttl = 600

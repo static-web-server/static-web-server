@@ -244,9 +244,15 @@ mod tests {
                 "{dest:?}: {err}"
             );
         }
+        // A capture may be empty, so it can't stand for the leading `/`
+        let err =
+            settings_error("[[advanced.rewrites]]\nsource = \"/{*}\"\ndestination = \"$1.html\"\n");
+        assert!(err.contains("must be a path starting with `/`"), "{err}");
+
         for dest in [
             "/b",
             "/$1",
+            "$0.html",
             "http://other.example/$1",
             "https://[::1]:8443/x?y=$1",
         ] {

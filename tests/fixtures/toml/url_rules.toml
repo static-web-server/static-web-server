@@ -111,6 +111,17 @@ destination = "/assets/$1?v=1"
 source = "/vhost/{*}"
 destination = "http://other.example/$1"
 
+# Rewrites are not chained: the destination is the source of other rules
+[[advanced.rewrites]]
+source = "/chain"
+destination = "/both"
+
+# A host-bound rewrite served from the virtual host of that host
+[[advanced.rewrites]]
+host = "other.example"
+source = "/vhost-page"
+destination = "/test.html"
+
 ### Virtual hosts
 
 [[advanced.virtual-hosts]]

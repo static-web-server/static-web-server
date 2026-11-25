@@ -7,10 +7,10 @@
 //!
 
 use hyper::Request;
-use hyper::header::HOST;
 use std::path::PathBuf;
 
 use crate::settings::VirtualHosts;
+use crate::url_rules::RequestHost;
 
 /// It returns different root directory if the "Host" header matches a virtual hostname.
 pub(crate) fn get_real_root<'a, T>(
@@ -44,25 +44,19 @@ pub(crate) fn get_real_root<'a, T>(
     None
 }
 
-/// Returns the request host: the HTTP/2 `:authority`, otherwise the `Host`
-/// header without its port.
+/// Returns the request host without its port: the HTTP/2 `:authority`, otherwise the
+/// `Host` header.
+///
+/// URL rules read the host the same way, so a request can't reach a virtual host while
+/// skipping the rules bound to it.
 pub(crate) fn request_host<T>(req: &Request<T>) -> Option<&str> {
-    if let Some(authority) = req.uri().authority() {
-        return Some(authority.host());
-    }
-
-    let host_header = req.headers().get(HOST)?.to_str().ok()?;
-    let host = host_header
-        .rsplit_once(':')
-        .and_then(|(host, port)| port.parse::<u16>().is_ok().then_some(host))
-        .unwrap_or(host_header);
-    Some(host)
+    RequestHost::from_request(req).map(|host| host.name())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use hyper::{Request, Uri};
+    use hyper::{Request, Uri, header::HOST};
 
     fn create_vhost(host: &str, root: &str) -> VirtualHosts {
         VirtualHosts {
@@ -123,6 +117,25 @@ mod tests {
 
         let result = get_real_root(&mut req, Some(&vhosts));
         assert_eq!(result, None);
+    }
+
+    #[test]
+    fn test_get_real_root_port_forms() {
+        let vhosts = [create_vhost("example.com", "/var/www/example")];
+        let real_root = |host: &str| {
+            let mut req = Request::builder()
+                .uri("/")
+                .header(HOST, host)
+                .body(crate::body::empty())
+                .unwrap();
+            get_real_root(&mut req, Some(&vhosts)).cloned()
+        };
+        for host in ["example.com:80", "example.com:080", "example.com:"] {
+            assert_eq!(real_root(host), Some("/var/www/example".into()), "{host}");
+        }
+        for host in ["example.com:+80", "example.com:8a", "example.com:65536"] {
+            assert_eq!(real_root(host), None, "{host}");
+        }
     }
 
     #[test]

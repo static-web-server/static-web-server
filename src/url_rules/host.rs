@@ -134,6 +134,11 @@ impl<'a> RequestHost<'a> {
         Self::parse(host?.to_str().ok()?)
     }
 
+    /// Returns the host name or address as sent by the client, without the port.
+    pub(crate) fn name(&self) -> &'a str {
+        self.name
+    }
+
     /// Parses `host[:port]`, where `host` may be a bracketed IPv6 address.
     ///
     /// RFC 3986 §3.2.3: an empty port is the same as no port. RFC 9110 §7.2: `Host`
@@ -289,6 +294,14 @@ mod tests {
         assert!(!matches("example.com", "/", Some("example.com:abc")));
         assert!(!matches("example.com", "/", Some("example.com:65536")));
         assert!(!matches("example.com", "/", Some("user@example.com")));
+    }
+
+    #[test]
+    fn host_not_utf8_matches_nothing() {
+        let mut req = request("/", None);
+        let host = hyper::http::HeaderValue::from_bytes(b"ex\xffample.com").unwrap();
+        req.headers_mut().insert("host", host);
+        assert!(RequestHost::from_request(&req).is_none());
     }
 
     #[test]

@@ -179,6 +179,14 @@ mod tests {
     }
 
     #[test]
+    fn find_skips_paths_longer_than_the_cap() {
+        let rules = [rule(None, "/{**}")];
+        let at_cap = ["/", &"a".repeat(MAX_URI_LEN_FOR_REGEX - 1)].concat();
+        assert_eq!(find_index(&rules, &at_cap, None), Some(0));
+        assert_eq!(find_index(&rules, &[&at_cap, "a"].concat(), None), None);
+    }
+
+    #[test]
     fn find_host_rule_needs_source_match_too() {
         let rules = [rule(Some("a.example"), "/only")];
         assert_eq!(find_index(&rules, "/other", Some("a.example")), None);
@@ -189,6 +197,13 @@ mod tests {
         let rule = UrlRule::new(None, "/{*}/{*}", "/new/$2/$1?a=1#top").unwrap();
         let uri = "/x/y?q=2".parse().unwrap();
         assert_eq!(rule.resolve(&uri).unwrap(), "/new/y/x?a=1&q=2#top");
+    }
+
+    #[test]
+    fn destination_reads_two_digit_placeholders() {
+        let rule = UrlRule::new(None, &["/{*}"; 11].concat(), "/$11/$10/$1").unwrap();
+        let uri = "/a/b/c/d/e/f/g/h/i/j/k".parse().unwrap();
+        assert_eq!(rule.resolve(&uri).unwrap(), "/k/j/a");
     }
 
     #[test]

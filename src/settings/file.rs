@@ -177,7 +177,8 @@ pub enum RedirectsKind {
 #[serde(rename_all = "kebab-case")]
 /// Represents redirects types.
 pub struct Redirects {
-    /// Optional host to match against an incoming URI host if specified
+    /// Host the request must be addressed to, in any case and on any port unless it
+    /// names one.
     pub host: Option<String>,
     /// Source of the redirect.
     pub source: String,
@@ -191,7 +192,8 @@ pub struct Redirects {
 #[serde(rename_all = "kebab-case")]
 /// Represents rewrites types.
 pub struct Rewrites {
-    /// Optional host to match against an incoming URI host if specified
+    /// Host the request must be addressed to, in any case and on any port unless it
+    /// names one.
     pub host: Option<String>,
     /// Source of the rewrite.
     pub source: String,

@@ -158,6 +158,13 @@ pub mod tests {
             .await;
         }
         assert_not_found("/host/ipv6", Some("[::2]")).await;
+        assert_redirect(
+            "http://[0:0:0:0:0:0:0:1]:8080/host/ipv6",
+            None,
+            StatusCode::MOVED_PERMANENTLY,
+            "/ipv6",
+        )
+        .await;
     }
 
     #[tokio::test]
@@ -211,6 +218,21 @@ pub mod tests {
             "http://@other.example/test.html",
         ] {
             assert_redirect(uri, None, StatusCode::FOUND, "/login").await;
+        }
+    }
+
+    #[tokio::test]
+    async fn redirects_host_rule_guards_virtual_host_on_any_port() {
+        for host in ["other.example:8080", "other.example:080", "other.example:"] {
+            assert_redirect("/test.html", Some(host), StatusCode::FOUND, "/login").await;
+        }
+        // A malformed port names no host, so neither the rule nor the virtual host applies
+        for host in [
+            "other.example:+80",
+            "other.example:8a",
+            "other.example:65536",
+        ] {
+            assert_not_found("/test.html", Some(host)).await;
         }
     }
 
@@ -288,6 +310,31 @@ pub mod tests {
             None,
             StatusCode::MOVED_PERMANENTLY,
             "/decoded/caf%C3%A9%20menu",
+        )
+        .await;
+        assert_redirect(
+            "/encoded/a%0d%0aX:1",
+            None,
+            StatusCode::MOVED_PERMANENTLY,
+            "/decoded/a%0d%0aX:1",
+        )
+        .await;
+    }
+
+    #[tokio::test]
+    async fn redirects_skip_paths_longer_than_the_cap() {
+        let at_cap = ["/encoded/", &"a".repeat(8 * 1024 - "/encoded/".len())].concat();
+        let location = at_cap.replacen("/encoded/", "/decoded/", 1);
+        assert_redirect(&at_cap, None, StatusCode::MOVED_PERMANENTLY, &location).await;
+        assert_not_found(&[&at_cap, "a"].concat(), None).await;
+
+        // The cap is on the path, the query is appended whatever its length
+        let query = "q".repeat(1024);
+        assert_redirect(
+            &[&at_cap, "?", &query].concat(),
+            None,
+            StatusCode::MOVED_PERMANENTLY,
+            &[&location, "?", &query].concat(),
         )
         .await;
     }
@@ -368,6 +415,38 @@ pub mod tests {
     }
 
     #[tokio::test]
+    async fn rewrites_query_empty_kept() {
+        let sent = get("/rewrite/host?", Some("example.com")).await;
+        assert_eq!(sent.res.status(), StatusCode::OK);
+        assert_eq!(sent.uri.to_string(), "/assets/main.css?");
+
+        let sent = get("/rewrite/query/main.css?", None).await;
+        assert_eq!(sent.res.status(), StatusCode::OK);
+        assert_eq!(sent.uri.to_string(), "/assets/main.css?v=1");
+    }
+
+    #[tokio::test]
+    async fn rewrites_are_not_chained() {
+        // `/both` is the source of a redirect and of a rewrite, and neither applies again
+        let sent = get("/chain", None).await;
+        assert_eq!(sent.res.status(), StatusCode::NOT_FOUND);
+        assert!(sent.res.headers().get(LOCATION).is_none());
+        assert_eq!(sent.uri, "/both");
+    }
+
+    #[tokio::test]
+    async fn rewrites_host_rule_serves_its_virtual_host() {
+        // The redirect of that host for `/test.html` does not apply to a rewritten request
+        let sent = get("/vhost-page", Some("other.example")).await;
+        assert_eq!(sent.res.status(), StatusCode::OK);
+        assert_eq!(sent.uri, "/test.html");
+        assert_eq!(sent.host.as_deref(), Some("other.example"));
+        assert!(body(sent.res).await.contains("Test Page"));
+
+        assert_not_found("/vhost-page", Some("localhost")).await;
+    }
+
+    #[tokio::test]
     async fn rewrites_to_virtual_host() {
         let sent = get("/vhost/test.html?q=1", Some("localhost")).await;
         assert_eq!(sent.res.status(), StatusCode::OK);
@@ -387,6 +466,17 @@ pub mod tests {
             head.res.headers()[CONTENT_LENGTH],
             get.res.headers()[CONTENT_LENGTH]
         );
+    }
+
+    #[tokio::test]
+    async fn rewrites_apply_to_options_but_not_to_disallowed_methods() {
+        let sent = send(Method::OPTIONS, "/rewrite/host", Some("example.com")).await;
+        assert_eq!(sent.res.status(), StatusCode::NO_CONTENT);
+        assert_eq!(sent.uri, "/assets/main.css");
+
+        let sent = send(Method::POST, "/rewrite/host", Some("example.com")).await;
+        assert_eq!(sent.res.status(), StatusCode::METHOD_NOT_ALLOWED);
+        assert_eq!(sent.uri, "/rewrite/host", "the uri must not be rewritten");
     }
 
     // Redirects and rewrites together

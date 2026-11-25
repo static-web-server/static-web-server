@@ -73,31 +73,35 @@ pub(crate) fn pre_process<T>(
     None
 }
 
-/// Returns the request URI and `Host` as the client sent them, along with the rewrite
-/// rules, when [`pre_process`] rewrote the request. `None` otherwise.
+/// Returns the request URI and `Host` as the client sent them, along with the redirect
+/// and rewrite rules, when [`pre_process`] rewrote the request. `None` otherwise.
 pub(crate) fn rewritten_from<'a, T>(
     opts: &'a RequestHandlerOpts,
     req: &'a Request<T>,
 ) -> Option<RewrittenFrom<'a>> {
-    let rules = opts.advanced_opts.as_ref()?.rewrites.as_deref()?;
+    let advanced = opts.advanced_opts.as_ref()?;
     let client = req.extensions().get::<ClientRequest>()?;
     Some(RewrittenFrom {
         uri: &client.uri,
         host: client.host.as_ref(),
-        rules,
+        rewrites: advanced.rewrites.as_deref()?,
+        redirects: advanced.redirects.as_deref().unwrap_or_default(),
     })
 }
 
-/// Returns `true` when the client's path with `/` appended rewrites internally to the
-/// same host and directory as the client's path, with a trailing slash, so a
-/// trailing-slash redirect to it is served without a further redirect.
+/// Returns `true` when the client's path with `/` appended matches no redirect rule and
+/// rewrites to the same host and directory as the client's path, with a trailing slash,
+/// so a trailing-slash redirect to it is served without a further redirect.
 pub(crate) fn has_same_destination_with_slash(from: &RewrittenFrom<'_>) -> bool {
     let host = RequestHost::new(from.uri, from.host);
     let uri_path = from.uri.path();
     let slashed = [uri_path, "/"].concat();
+    if url_rules::find_for(from.redirects, host.as_ref(), &slashed).is_some() {
+        return false;
+    }
     let (Some(dest), Some(dest_slashed)) = (
-        internal_destination(from.rules, host.as_ref(), uri_path),
-        internal_destination(from.rules, host.as_ref(), &slashed),
+        internal_destination(from.rewrites, host.as_ref(), uri_path),
+        internal_destination(from.rewrites, host.as_ref(), &slashed),
     ) else {
         return false;
     };
@@ -141,7 +145,7 @@ mod tests {
     use super::{has_same_destination_with_slash, pre_process, rewritten_from};
     use crate::{
         handler_opts::RequestHandlerOpts,
-        settings::{Advanced, Rewrites},
+        settings::{Advanced, Redirects, Rewrites},
         url_rules::UrlRule,
     };
     use hyper::{Request, StatusCode, header::HOST};
@@ -314,6 +318,30 @@ mod tests {
             "http://a.example/a",
             "b.example"
         ));
+    }
+
+    #[test]
+    fn rewrites_other_destination_with_slash_for_redirect_rule() {
+        let rules = || vec![rewrite("/a{**}", "/dir$1")];
+        let redirect = |host| Redirects {
+            rule: UrlRule::new(host, "/a/", "/elsewhere").unwrap(),
+            kind: StatusCode::MOVED_PERMANENTLY,
+        };
+        let same_destination = |redirect, host| {
+            let mut opts = opts(Some(rules()));
+            if let Some(advanced) = opts.advanced_opts.as_mut() {
+                advanced.redirects = Some(vec![redirect]);
+            }
+            let mut req = Request::get("/a").header(HOST, host).body(()).unwrap();
+            assert!(pre_process(&opts, &mut req).is_none());
+            has_same_destination_with_slash(&rewritten_from(&opts, &req).unwrap())
+        };
+        assert!(!same_destination(redirect(None), "localhost"));
+        assert!(!same_destination(redirect(Some("a.example")), "a.example"));
+        assert!(
+            same_destination(redirect(Some("a.example")), "b.example"),
+            "a redirect rule of another host does not apply"
+        );
     }
 
     #[test]
