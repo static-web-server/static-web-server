@@ -362,14 +362,10 @@ pub mod tests {
         assert!(res.headers().get("x-default-scope").is_none());
     }
 
-    /// A client-side route served the fallback page, the way a browser navigates to it.
+    /// A request to a server whose config sets `page-fallback` to `/assets/index.html`.
     #[cfg(feature = "fallback-page")]
     async fn fallback_request(uri: &str, headers: HeaderMap) -> Response<Body> {
-        request_with_opts(FALLBACK_TOML, Method::GET, uri, headers, |opts| {
-            opts.page_fallback = b"<html>app</html>".to_vec();
-            opts.page_fallback_uri_path = "/assets/index.html".into();
-        })
-        .await
+        request(FALLBACK_TOML, Method::GET, uri, headers).await
     }
 
     #[cfg(feature = "fallback-page")]

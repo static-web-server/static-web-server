@@ -1,6 +1,7 @@
 [general]
 
 root = "tests/fixtures/public"
+page-fallback = "tests/fixtures/public/assets/index.html"
 
 [advanced]
 

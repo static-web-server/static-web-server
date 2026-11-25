@@ -65,7 +65,7 @@ pub mod fixtures {
             general.root.canonicalize().unwrap_or(general.root)
         };
 
-        RequestHandlerOpts {
+        let opts = RequestHandlerOpts {
             root_dir,
             compression,
             compression_static,
@@ -96,7 +96,7 @@ pub mod fixtures {
             etag: general.etag,
             page404: general.page404,
             page50x: general.page50x,
-            // TODO: add support or `page_fallback` when required
+            // Filled in by `fallback_page::init` below, as at startup
             #[cfg(feature = "fallback-page")]
             page_fallback: vec![],
             #[cfg(feature = "fallback-page")]
@@ -132,7 +132,16 @@ pub mod fixtures {
             #[cfg(feature = "mem-cache")]
             memory_cache: None,
             advanced_opts: advanced,
-        }
+        };
+
+        #[cfg(feature = "fallback-page")]
+        let opts = {
+            let mut opts = opts;
+            crate::fallback_page::init(&general.page_fallback, &opts.root_dir.clone(), &mut opts);
+            opts
+        };
+
+        opts
     }
 
     /// Create a `RequestHandler` from a custom TOML config file (fixture).
