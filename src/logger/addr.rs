@@ -12,7 +12,7 @@ use std::net::{IpAddr, SocketAddr};
 use crate::handler_opts::RequestHandlerOpts;
 
 /// The target of the lines of this module, kept from its former path for log filters.
-pub(crate) const TARGET: &str = "static_web_server::log_addr";
+pub(super) const TARGET: &str = "static_web_server::log_addr";
 
 /// Initializes the log address module.
 pub(crate) fn init(enabled: bool, unix_socket: bool, handler_opts: &mut RequestHandlerOpts) {
@@ -97,7 +97,10 @@ pub(crate) fn x_real_ip<T>(
     let mut lines = req.headers().get_all("X-Real-IP").iter();
     let line = lines.next()?;
     if lines.next().is_some() {
-        tracing::debug!(target: TARGET, "X-Real-IP not logged, the request has more than one X-Real-IP line");
+        tracing::debug!(
+            target: TARGET,
+            "X-Real-IP not logged, the request has more than one X-Real-IP line"
+        );
         return None;
     }
     line.to_str().ok()?.trim().parse().ok()

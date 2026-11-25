@@ -346,7 +346,7 @@ mod tests {
             {
                 let in_span = ctx
                     .event_span(event)
-                    .is_some_and(|s| s.name() == trace_context::SPAN_NAME);
+                    .is_some_and(|s| s.name() == trace_context::request_span::NAME);
                 self.0.lock().unwrap().push(in_span);
             }
         }

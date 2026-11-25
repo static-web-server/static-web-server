@@ -31,7 +31,7 @@ description: Write or edit human-readable text for the Static Web Server (SWS) p
 ```
 
 - **Types**: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `chore`
-- **Scope**: the module touched (`server`, `tls`, `compression`, `fs`, `handler`, `static_files`, `control_headers`, `custom_headers`, `cors`, `rewrites`, `directory_listing`, `access_logs`, `health`, …). Omit when cross-cutting
+- **Scope**: the module touched (`server`, `tls`, `compression`, `fs`, `handler`, `static_files`, `control_headers`, `custom_headers`, `cors`, `rewrites`, `directory_listing`, `logger`, `health`, …). Omit when cross-cutting
 - **Subject**: imperative, lowercase first letter, no trailing period
 - **Body**: imperative; what was wrong or missing, and how behavior differs now
 - **Footer**: `Fixes #123`; `BREAKING CHANGE: <description>` for breaking changes. No AI `Co-authored-by:` trailers or "Generated with …" lines
@@ -67,7 +67,7 @@ Describe the effect on users, not the implementation. For a breaking change, sta
 
 - `#![deny(missing_docs)]`: every public item, field, and variant needs `///`
 - The `///` on a `General` field in `settings/cli.rs` is the `--help` text: what the option does, accepted values, and the default when not obvious from `default_value`
-- Module docs (`//!`) state the module's responsibility and non-obvious invariants (`etag.rs`, `access_logs.rs`)
+- Module docs (`//!`) state the module's responsibility and non-obvious invariants (`etag.rs`, `logger/access/render.rs`)
 - A function's `///` is its contract: what it does, what it returns on failure, what it assumes; never a restatement of the signature. Inline `//` comments default to none; the ones that stay cite a constraint, a trap, or a measured cost (`coding-style/SKILL.md`, Comments)
 - Log message wording lives in `coding-style/SKILL.md`, Log Messages: lowercase, subject first, no trailing punctuation
 

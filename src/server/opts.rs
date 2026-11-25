@@ -10,7 +10,7 @@ use crate::settings::Advanced;
 use crate::settings::cli::General;
 use crate::{
     Context, Result, compression_static, control_headers, cors, etag, health, helpers,
-    logger::{self, addr, trace_context},
+    logger::{self, trace_context},
     maintenance_mode, security_headers,
 };
 
@@ -186,7 +186,7 @@ pub(super) fn init(general: &General, advanced: Option<Advanced>) -> Result<Hand
     let unix_socket = general.unix_socket.is_some();
     #[cfg(not(unix))]
     let unix_socket = false;
-    addr::init(general.log_remote_address, unix_socket, &mut handler_opts);
+    logger::addr::init(general.log_remote_address, unix_socket, &mut handler_opts);
 
     // Log trace context
     trace_context::init(general.log_trace_context, &mut handler_opts);
