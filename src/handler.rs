@@ -33,11 +33,13 @@ use crate::fallback_page;
 use crate::metrics;
 
 use crate::{
-    Error, Result, access_logs, control_headers, cors, custom_headers, error_page,
+    Error, Result, control_headers, cors, custom_headers, error_page,
     exts::http::MethodExt,
-    health, maintenance_mode, redirects, rewrites, security_headers,
+    health,
+    logger::{access, trace_context},
+    maintenance_mode, redirects, rewrites, security_headers,
     static_files::{self, HandleOpts},
-    text_charset, trace_context, virtual_hosts,
+    text_charset, virtual_hosts,
 };
 
 pub use crate::handler_opts::RequestHandlerOpts;
@@ -81,9 +83,9 @@ impl RequestHandler {
         // Rewrites replace the request URI and `Host`, so keep the ones the client sent for the
         // access log. They are copied before the future below runs, so in the span as well
         let access_log = span.in_scope(|| {
-            access_logs::enabled(&self.opts, req).then(|| {
+            access::enabled(&self.opts, req).then(|| {
                 let format = self.opts.access_log_format.as_ref();
-                access_logs::AccessLog::new(format, &self.opts, req, remote_addr)
+                access::AccessLog::new(format, &self.opts, req, remote_addr)
             })
         });
 

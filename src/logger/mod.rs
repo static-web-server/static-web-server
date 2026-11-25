@@ -30,7 +30,13 @@ use tracing_subscriber::{
     registry::LookupSpan,
 };
 
-use crate::{Context, Result, trace_context};
+use crate::{Context, Result};
+
+pub(crate) mod access;
+pub(crate) mod addr;
+pub(crate) mod trace_context;
+
+pub use access::AccessLogFormat;
 
 /// Logging output format.
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone, ValueEnum)]

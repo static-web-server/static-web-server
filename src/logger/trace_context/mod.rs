@@ -29,8 +29,9 @@ use crate::{body::Body, handler_opts::RequestHandlerOpts};
 /// Name of the span that carries the trace context of a request.
 pub(crate) const SPAN_NAME: &str = "trace_context";
 
-/// Target of the span that carries the trace context of a request.
-pub(crate) const SPAN_TARGET: &str = module_path!();
+/// Target of the span that carries the trace context of a request, and of the lines of this
+/// module. Kept from the former module path for log filters.
+pub(crate) const SPAN_TARGET: &str = "static_web_server::trace_context";
 
 /// Length of a version `00` `traceparent` value.
 const TRACEPARENT_LEN: usize = 55;
@@ -38,7 +39,7 @@ const TRACEPARENT_LEN: usize = 55;
 /// Initializes the trace context logging.
 pub(crate) fn init(enabled: bool, handler_opts: &mut RequestHandlerOpts) {
     handler_opts.log_trace_context = enabled;
-    tracing::info!(enabled, "log trace context");
+    tracing::info!(target: SPAN_TARGET, enabled, "log trace context");
 }
 
 /// Returns a span with the trace context of the request, or a disabled span

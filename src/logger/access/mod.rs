@@ -30,10 +30,12 @@ use std::task::{Context, Poll, ready};
 use std::time::Instant;
 use time::{OffsetDateTime, format_description::BorrowedFormatItem, macros::format_description};
 
-use crate::{body::Body, handler_opts::RequestHandlerOpts, health, log_addr};
+use crate::{body::Body, handler_opts::RequestHandlerOpts, health, logger::addr};
 
-pub use crate::access_log_format::AccessLogFormat;
-use crate::access_log_format::{Segment, Token};
+mod format;
+
+pub use format::AccessLogFormat;
+use format::{Segment, Token};
 
 /// Renders `format` using the given request/response context.
 fn render(format: &AccessLogFormat, ctx: &LogContext<'_>) -> String {
@@ -47,16 +49,20 @@ fn render(format: &AccessLogFormat, ctx: &LogContext<'_>) -> String {
     buf
 }
 
+/// The target of the line of a custom format and of the level check in [`enabled`], kept from the
+/// former module path for log filters.
+const TARGET: &str = "static_web_server::access_logs";
+
 /// The target of the default line, kept from `log_addr` for log filters.
-const DEFAULT_TARGET: &str = "static_web_server::log_addr";
+const DEFAULT_TARGET: &str = addr::TARGET;
 
 /// Whether the line of `req` passes the log level filter, so it is worth building.
 pub(crate) fn enabled<T>(opts: &RequestHandlerOpts, req: &Request<T>) -> bool {
     // Health check requests are logged in debug mode only
     if opts.health && health::is_health_endpoint(req.uri()) {
-        tracing::enabled!(tracing::Level::DEBUG)
+        tracing::enabled!(target: TARGET, tracing::Level::DEBUG)
     } else {
-        tracing::enabled!(tracing::Level::INFO)
+        tracing::enabled!(target: TARGET, tracing::Level::INFO)
     }
 }
 
@@ -100,10 +106,10 @@ impl AccessLog {
             referer: headers.get(REFERER).cloned(),
             remote_addr: remote_addr.filter(|_| custom || opts.log_remote_address),
             x_real_ip: (custom || opts.log_x_real_ip)
-                .then(|| log_addr::x_real_ip(opts, req, remote_addr))
+                .then(|| addr::x_real_ip(opts, req, remote_addr))
                 .flatten(),
             forwarded_for: (custom || opts.log_forwarded_for)
-                .then(|| log_addr::forwarded_for(opts, req, remote_addr))
+                .then(|| addr::forwarded_for(opts, req, remote_addr))
                 .flatten(),
             health: opts.health && health::is_health_endpoint(req.uri()),
             start: Instant::now(),
@@ -152,9 +158,9 @@ impl AccessLog {
 
         // Log health check requests in debug mode only
         if self.health {
-            tracing::debug!("{line}");
+            tracing::debug!(target: TARGET, "{line}");
         } else {
-            tracing::info!("{line}");
+            tracing::info!(target: TARGET, "{line}");
         }
     }
 
@@ -624,5 +630,20 @@ mod tests {
                 prop_assert!(body.len() + width(value[kept]) > MAX_ESCAPED_LEN);
             }
         }
+    }
+
+    #[test]
+    fn enabled_follows_a_filter_on_the_log_target() {
+        use tracing_subscriber::prelude::*;
+
+        crate::logger::register_test_subscribers();
+        let filter = tracing_subscriber::filter::Targets::new()
+            .with_target("static_web_server::access_logs", tracing::Level::INFO);
+        let layer = tracing_subscriber::fmt::layer()
+            .with_writer(std::io::sink)
+            .with_filter(filter);
+        tracing::subscriber::with_default(tracing_subscriber::registry().with(layer), || {
+            assert!(enabled(&RequestHandlerOpts::default(), &Request::new(())));
+        });
     }
 }
