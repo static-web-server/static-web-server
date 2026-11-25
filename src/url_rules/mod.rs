@@ -26,7 +26,7 @@ use crate::body::Body;
 use crate::{Error, Result, error_page, handler_opts::RequestHandlerOpts};
 
 pub use destination::{build_placeholder_replacer, replace_placeholders};
-use host::RequestHost;
+pub(crate) use host::RequestHost;
 pub use host::RuleHost;
 
 /// Maximum request path length, in bytes, matched against rule sources.
@@ -87,7 +87,17 @@ impl UrlRule {
 
 /// Returns the first rule of `rules` that applies to `req`.
 pub(crate) fn find<'a, R: AsRef<UrlRule>, T>(rules: &'a [R], req: &Request<T>) -> Option<&'a R> {
-    let uri_path = req.uri().path();
+    let host = RequestHost::from_request(req);
+    find_for(rules, host.as_ref(), req.uri().path())
+}
+
+/// Returns the first rule of `rules` that applies to a request for `uri_path` addressed
+/// to `host`.
+pub(crate) fn find_for<'a, R: AsRef<UrlRule>>(
+    rules: &'a [R],
+    host: Option<&RequestHost<'_>>,
+    uri_path: &str,
+) -> Option<&'a R> {
     if uri_path.len() > MAX_URI_LEN_FOR_REGEX {
         tracing::debug!(
             "url rules: skipping match, uri path length {} exceeds cap {}",
@@ -96,10 +106,9 @@ pub(crate) fn find<'a, R: AsRef<UrlRule>, T>(rules: &'a [R], req: &Request<T>) -
         );
         return None;
     }
-    let host = RequestHost::from_request(req);
     rules
         .iter()
-        .find(|rule| rule.as_ref().is_match(host.as_ref(), uri_path))
+        .find(|rule| rule.as_ref().is_match(host, uri_path))
 }
 
 /// Logs `err` and returns the 500 error page response.

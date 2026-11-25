@@ -8,9 +8,25 @@
 //! [`crate::url_rules`].
 
 use hyper::{Request, Response, Uri, header::HOST, http::HeaderValue};
+use std::path::Path;
 
 use crate::body::Body;
-use crate::{Error, Result, handler_opts::RequestHandlerOpts, url_rules};
+use crate::{
+    Error, Result,
+    fs::path::sanitize_path,
+    handler_opts::RequestHandlerOpts,
+    settings::Rewrites,
+    static_files::RewrittenFrom,
+    url_rules::{self, RequestHost},
+};
+
+/// Request URI and `Host` as the client sent them, kept in the request extensions when a
+/// rewrite replaces them.
+#[derive(Clone)]
+struct ClientRequest {
+    uri: Uri,
+    host: Option<HeaderValue>,
+}
 
 /// Rewrites the request URI if a rule matches it. Returns `Some` only for the error page
 /// of a destination that is not a valid URI.
@@ -36,7 +52,11 @@ pub(crate) fn pre_process<T>(
         }
     };
     tracing::trace!("uri matches rewrites glob pattern, rewriting to '{uri}'");
-    *req.uri_mut() = uri;
+    let client = ClientRequest {
+        host: req.headers().get(HOST).cloned(),
+        uri: std::mem::replace(req.uri_mut(), uri),
+    };
+    req.extensions_mut().insert(client);
 
     // RFC 9112 §3.2.2: keep `Host` in line with the authority, which may now target
     // another virtual host. `Host` has no user info, nor an empty port
@@ -51,6 +71,54 @@ pub(crate) fn pre_process<T>(
     }
 
     None
+}
+
+/// Returns the request URI and `Host` as the client sent them, along with the rewrite
+/// rules, when [`pre_process`] rewrote the request. `None` otherwise.
+pub(crate) fn rewritten_from<'a, T>(
+    opts: &'a RequestHandlerOpts,
+    req: &'a Request<T>,
+) -> Option<RewrittenFrom<'a>> {
+    let rules = opts.advanced_opts.as_ref()?.rewrites.as_deref()?;
+    let client = req.extensions().get::<ClientRequest>()?;
+    Some(RewrittenFrom {
+        uri: &client.uri,
+        host: client.host.as_ref(),
+        rules,
+    })
+}
+
+/// Returns `true` when the client's path with `/` appended rewrites internally to the
+/// same host and directory as the client's path, with a trailing slash, so a
+/// trailing-slash redirect to it is served without a further redirect.
+pub(crate) fn has_same_destination_with_slash(from: &RewrittenFrom<'_>) -> bool {
+    let host = RequestHost::new(from.uri, from.host);
+    let uri_path = from.uri.path();
+    let slashed = [uri_path, "/"].concat();
+    let (Some(dest), Some(dest_slashed)) = (
+        internal_destination(from.rules, host.as_ref(), uri_path),
+        internal_destination(from.rules, host.as_ref(), &slashed),
+    ) else {
+        return false;
+    };
+    dest_slashed.path().ends_with('/')
+        && dest.authority() == dest_slashed.authority()
+        && sanitize_path(Path::new(""), dest.path())
+            == sanitize_path(Path::new(""), dest_slashed.path())
+}
+
+/// Returns the destination of the rewrite that applies to a request for `uri_path`
+/// addressed to `host`, `None` when no rule applies.
+fn internal_destination(
+    rules: &[Rewrites],
+    host: Option<&RequestHost<'_>>,
+    uri_path: &str,
+) -> Option<Uri> {
+    let rule = &url_rules::find_for(rules, host, uri_path)?.rule;
+    let dest =
+        url_rules::replace_placeholders(uri_path, &rule.source, &rule.destination, &rule.replacer)
+            .ok()?;
+    dest.parse().ok()
 }
 
 /// Parses `dest`, taking the scheme, authority, and path it lacks from `orig_uri`.
@@ -70,7 +138,7 @@ fn merge_uris(orig_uri: &Uri, dest: &str) -> Result<Uri> {
 
 #[cfg(test)]
 mod tests {
-    use super::pre_process;
+    use super::{has_same_destination_with_slash, pre_process, rewritten_from};
     use crate::{
         handler_opts::RequestHandlerOpts,
         settings::{Advanced, Rewrites},
@@ -92,6 +160,22 @@ mod tests {
         Rewrites {
             rule: UrlRule::new(None, source, dest).unwrap(),
         }
+    }
+
+    fn host_rewrite(host: &str, source: &str, dest: &str) -> Rewrites {
+        Rewrites {
+            rule: UrlRule::new(Some(host), source, dest).unwrap(),
+        }
+    }
+
+    /// Rewrites a request for `uri` sent to `host`, and returns whether its path with a
+    /// slash has the same destination.
+    fn same_destination_with_slash(rules: Vec<Rewrites>, uri: &str, host: &str) -> bool {
+        let opts = opts(Some(rules));
+        let mut req = Request::get(uri).header(HOST, host).body(()).unwrap();
+        assert!(pre_process(&opts, &mut req).is_none());
+        let from = rewritten_from(&opts, &req).expect("a rule must rewrite the request");
+        has_same_destination_with_slash(&from)
     }
 
     fn rewritten(opts: &RequestHandlerOpts, uri: &str, host: &str) -> (String, String) {
@@ -175,5 +259,80 @@ mod tests {
         let resp = pre_process(&opts, &mut req).unwrap().unwrap();
         assert_eq!(resp.status(), StatusCode::INTERNAL_SERVER_ERROR);
         assert_eq!(req.uri(), "/a", "uri must stay untouched on error");
+    }
+
+    #[test]
+    fn rewrites_not_applied_has_no_client_request() {
+        let opts = opts(Some(vec![rewrite("/a", "/b")]));
+        let mut req = Request::get("/c").body(()).unwrap();
+        assert!(pre_process(&opts, &mut req).is_none());
+        assert!(rewritten_from(&opts, &req).is_none());
+    }
+
+    #[test]
+    fn rewrites_same_destination_with_slash_for_prefix_rule() {
+        let rules = || vec![rewrite("/prefix{**}", "/$1")];
+        assert!(same_destination_with_slash(rules(), "/prefix", "localhost"));
+        assert!(same_destination_with_slash(
+            rules(),
+            "/prefix/dir",
+            "localhost"
+        ));
+    }
+
+    #[test]
+    fn rewrites_other_destination_with_slash_for_exact_rule() {
+        let rules = vec![rewrite("/exact", "/dir/"), rewrite("/exact/", "/other/")];
+        assert!(!same_destination_with_slash(rules, "/exact", "localhost"));
+
+        let rules = vec![rewrite("/exact", "/dir/")];
+        assert!(!same_destination_with_slash(rules, "/exact", "localhost"));
+    }
+
+    #[test]
+    fn rewrites_other_destination_with_slash_without_trailing_slash() {
+        let rules = vec![rewrite("/app/{**}", "/dir")];
+        assert!(!same_destination_with_slash(rules, "/app/x", "localhost"));
+    }
+
+    #[test]
+    fn rewrites_other_destination_with_slash_for_other_host() {
+        let rules = vec![
+            rewrite("/a", "/dir"),
+            rewrite("/a/", "http://other.local/dir/"),
+        ];
+        assert!(!same_destination_with_slash(rules, "/a", "localhost"));
+    }
+
+    #[test]
+    fn rewrites_same_destination_with_slash_for_host_rule() {
+        let rules = || vec![host_rewrite("a.example", "/a{**}", "/dir$1")];
+        assert!(same_destination_with_slash(rules(), "/a", "a.example"));
+        assert!(same_destination_with_slash(rules(), "/a", "A.Example:8080"));
+        assert!(same_destination_with_slash(
+            rules(),
+            "http://a.example/a",
+            "b.example"
+        ));
+    }
+
+    #[test]
+    fn rewrites_same_destination_with_slash_matches_client_host() {
+        // The rewrite replaces `Host`, and the rule only applies to the one the client sent
+        let rules = vec![host_rewrite(
+            "a.example",
+            "/a{**}",
+            "http://other.example/dir$1",
+        )];
+        assert!(same_destination_with_slash(rules, "/a", "a.example"));
+    }
+
+    #[test]
+    fn rewrites_other_destination_with_slash_for_rule_of_other_host() {
+        let rules = vec![
+            host_rewrite("a.example", "/a", "/dir"),
+            host_rewrite("b.example", "/a/", "/dir/"),
+        ];
+        assert!(!same_destination_with_slash(rules, "/a", "a.example"));
     }
 }

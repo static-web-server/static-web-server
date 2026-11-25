@@ -1,0 +1,45 @@
+[general]
+
+root = "tests/fixtures/public"
+index-files = "index.htm,index.html"
+redirect-trailing-slash = true
+
+[advanced]
+
+# Serves the root under a path prefix (#387)
+[[advanced.rewrites]]
+source = "/value/manage{**}"
+destination = "/$1"
+
+# Maps any path ending in `/docs` to a directory, with or without a slash
+[[advanced.rewrites]]
+source = "**/docs{**}"
+destination = "/assets$2"
+
+# Exact paths rewritten to a directory, with and without a slash
+[[advanced.rewrites]]
+source = "/exact"
+destination = "/assets/"
+
+[[advanced.rewrites]]
+source = "/exact-no-slash"
+destination = "/assets"
+
+[[advanced.rewrites]]
+source = "/slashed/"
+destination = "/assets"
+
+# Any path under `/app/` rewritten to a directory without a slash
+[[advanced.rewrites]]
+source = "/app/**"
+destination = "/assets"
+
+# A prefix whose own path with a slash rewrites to a directory without one
+[[advanced.rewrites]]
+source = "/listing/{**}"
+destination = "/assets$1"
+
+# A single-page app route sharing its name with a directory
+[[advanced.rewrites]]
+source = "/assets"
+destination = "/index.htm"

@@ -11,6 +11,9 @@ use std::net::{IpAddr, SocketAddr};
 
 use crate::handler_opts::RequestHandlerOpts;
 
+/// The target of the lines of this module, kept from its former path for log filters.
+pub(super) const TARGET: &str = "static_web_server::log_addr";
+
 /// Initializes the log address module.
 pub(crate) fn init(enabled: bool, unix_socket: bool, handler_opts: &mut RequestHandlerOpts) {
     handler_opts.log_remote_address = enabled;
@@ -20,19 +23,21 @@ pub(crate) fn init(enabled: bool, unix_socket: bool, handler_opts: &mut RequestH
         format!("{:?}", handler_opts.trusted_proxies)
     };
 
-    tracing::info!(enabled, "log requests with remote IP addresses");
-    tracing::info!(enabled = handler_opts.log_x_real_ip, "log X-Real-IP header");
+    tracing::info!(target: TARGET, enabled, "log requests with remote IP addresses");
+    tracing::info!(target: TARGET, enabled = handler_opts.log_x_real_ip, "log X-Real-IP header");
     tracing::info!(
+        target: TARGET,
         enabled = handler_opts.log_forwarded_for,
         "log X-Forwarded-For header"
     );
     tracing::info!(
+        target: TARGET,
         trusted_proxies = %trusted,
         "trusted IPs for X-Real-IP and X-Forwarded-For"
     );
 
     if let Some(warning) = proxy_headers_warning(handler_opts, unix_socket) {
-        tracing::warn!("{warning}");
+        tracing::warn!(target: TARGET, "{warning}");
     }
 }
 
@@ -92,7 +97,10 @@ pub(crate) fn x_real_ip<T>(
     let mut lines = req.headers().get_all("X-Real-IP").iter();
     let line = lines.next()?;
     if lines.next().is_some() {
-        tracing::debug!("X-Real-IP not logged, the request has more than one X-Real-IP line");
+        tracing::debug!(
+            target: TARGET,
+            "X-Real-IP not logged, the request has more than one X-Real-IP line"
+        );
         return None;
     }
     line.to_str().ok()?.trim().parse().ok()
@@ -142,6 +150,7 @@ fn forwarded_for_ip(entry: &[u8]) -> Option<IpAddr> {
         Err(_) => "not valid UTF-8",
     };
     tracing::debug!(
+        target: TARGET,
         "X-Forwarded-For not logged, an entry is {reason}: \"{}\" ({} bytes)",
         entry[..entry.len().min(64)].escape_ascii(),
         entry.len(),
@@ -276,7 +285,7 @@ mod tests {
         let unix = proxy_headers_warning(&opts(true, vec![proxy]), true);
         assert!(unix.is_some_and(|w| w.contains("Unix socket")));
 
-        let format = crate::access_log_format::AccessLogFormat::parse("%{x_real_ip}").ok();
+        let format = crate::logger::AccessLogFormat::parse("%{x_real_ip}").ok();
         let custom = RequestHandlerOpts {
             access_log_format: format,
             ..Default::default()

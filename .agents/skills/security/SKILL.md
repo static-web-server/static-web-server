@@ -1,13 +1,13 @@
 ---
 name: security
-description: Review or implement security-sensitive code in the Static Web Server (SWS) project — path traversal defenses, symlink and hidden-file policy, TLS, security headers, CORS, basic auth, proxy headers, connection limits, untrusted input parsing, and vulnerability handling. Use when touching fs/path.rs, static_files/security.rs, cors.rs, basic_auth.rs, tls.rs, security_headers.rs, access_logs.rs, log_addr.rs, redirects/rewrites, directory listing download, or any code that handles request paths or headers.
+description: Review or implement security-sensitive code in the Static Web Server (SWS) project — path traversal defenses, symlink and hidden-file policy, TLS, security headers, CORS, basic auth, proxy headers, connection limits, untrusted input parsing, and vulnerability handling. Use when touching fs/path.rs, static_files/security.rs, cors.rs, basic_auth.rs, tls.rs, security_headers.rs, logger/access/, logger/addr.rs, logger/trace_context/, redirects/rewrites, directory listing download, or any code that handles request paths or headers.
 ---
 
 # Security
 
 SWS serves files from disk to untrusted clients. Every change on the request path is security-relevant.
 
-**When to load**: editing `src/fs/path.rs`, `src/static_files/` (especially `security.rs`, `resolve.rs`), `src/cors.rs`, `src/basic_auth.rs`, `src/tls.rs`, `src/security_headers.rs`, `src/access_logs.rs`, `src/log_addr.rs`, `src/redirects.rs`, `src/rewrites.rs`, `src/url_rules/`, `src/markdown.rs`, `src/directory_listing/download.rs`, `src/mem_cache/`, or handling a vulnerability report.
+**When to load**: editing `src/fs/path.rs`, `src/static_files/` (especially `security.rs`, `resolve.rs`), `src/cors.rs`, `src/basic_auth.rs`, `src/tls.rs`, `src/security_headers.rs`, `src/logger/access/`, `src/logger/addr.rs`, `src/logger/trace_context/`, `src/redirects.rs`, `src/rewrites.rs`, `src/url_rules/`, `src/markdown.rs`, `src/directory_listing/download.rs`, `src/mem_cache/`, or handling a vulnerability report.
 
 ## Principles
 

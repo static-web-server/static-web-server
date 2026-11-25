@@ -11,7 +11,7 @@
 //! The scheme's default port is not implied: clients omit it, so `example.com:80` never
 //! matches `Host: example.com`, and startup warns about it.
 
-use hyper::{Request, header::HOST};
+use hyper::{Request, Uri, header::HOST, http::HeaderValue};
 use std::net::Ipv6Addr;
 
 use crate::Result;
@@ -119,13 +119,19 @@ impl<'a> RequestHost<'a> {
     /// ignored, as virtual hosts do, so it can't skip the rules of the host it reaches. A
     /// missing or malformed `Host` yields `None`, which matches no host-specific rule.
     pub(crate) fn from_request<T>(req: &'a Request<T>) -> Option<Self> {
-        if let Some(authority) = req.uri().authority() {
+        Self::new(req.uri(), req.headers().get(HOST))
+    }
+
+    /// Returns the host of a request with the given `uri` and `Host` header, as
+    /// [`Self::from_request`] does.
+    pub(crate) fn new(uri: &'a Uri, host: Option<&'a HeaderValue>) -> Option<Self> {
+        if let Some(authority) = uri.authority() {
             return Some(Self {
                 name: authority.host(),
                 port: authority.port_u16(),
             });
         }
-        Self::parse(req.headers().get(HOST)?.to_str().ok()?)
+        Self::parse(host?.to_str().ok()?)
     }
 
     /// Parses `host[:port]`, where `host` may be a bracketed IPv6 address.

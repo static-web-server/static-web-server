@@ -50,6 +50,7 @@ mod tests {
             base_path: base,
             uri_path: uri,
             uri_query: None,
+            rewritten_from: None,
             #[cfg(feature = "mem-cache")]
             memory_cache: None,
             #[cfg(feature = "directory-listing")]

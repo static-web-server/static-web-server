@@ -6,10 +6,12 @@
 //! Options and response types for the static-files handler.
 
 use headers::{HeaderMap, HeaderValue};
-use hyper::{Method, Response};
+use hyper::{Method, Response, Uri};
 use std::path::PathBuf;
 
 use crate::body::Body;
+use crate::rewrites;
+use crate::settings::Rewrites;
 
 #[cfg(feature = "mem-cache")]
 use crate::mem_cache::cache::MemCacheOpts;
@@ -40,6 +42,9 @@ pub struct HandleOpts<'a> {
     pub index_files: &'a [&'a str],
     /// Request URI query.
     pub uri_query: Option<&'a str>,
+    /// Request URI before a rewrite changed it to `uri_path` and
+    /// `uri_query`, `None` when no rewrite applied.
+    pub rewritten_from: Option<RewrittenFrom<'a>>,
     /// Directory listing feature.
     #[cfg(feature = "directory-listing")]
     #[cfg_attr(docsrs, doc(cfg(feature = "directory-listing")))]
@@ -66,6 +71,41 @@ pub struct HandleOpts<'a> {
     pub include_hidden: bool,
     /// Prevent following symlinks for files and directories.
     pub follow_symlinks: bool,
+}
+
+impl HandleOpts<'_> {
+    /// Returns the path and query a trailing-slash redirect is decided on
+    /// and points to.
+    ///
+    /// They are the client's when a rewrite changed them, the client's path
+    /// doesn't end with `/`, and that path with `/` appended rewrites to the
+    /// same directory, so the redirect keeps the rewrite destination hidden.
+    /// Otherwise they are `uri_path` and `uri_query`, as the client already
+    /// sent a `/` or a redirect to its path wouldn't reach the directory.
+    /// Matches the rewrite rules again, so call it only when a redirect is
+    /// possible.
+    pub(super) fn redirect_path_and_query(&self) -> (&str, Option<&str>) {
+        match &self.rewritten_from {
+            Some(from)
+                if !from.uri.path().ends_with('/')
+                    && rewrites::has_same_destination_with_slash(from) =>
+            {
+                (from.uri.path(), from.uri.query())
+            }
+            _ => (self.uri_path, self.uri_query),
+        }
+    }
+}
+
+/// Request URI and `Host` as the client sent them, with the rewrite rules that changed
+/// them.
+pub struct RewrittenFrom<'a> {
+    /// Request URI as the client sent it.
+    pub uri: &'a Uri,
+    /// `Host` header as the client sent it.
+    pub host: Option<&'a HeaderValue>,
+    /// Rewrite rules from the config file.
+    pub rules: &'a [Rewrites],
 }
 
 /// Static file response type with additional data.
