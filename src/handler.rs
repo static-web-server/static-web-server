@@ -101,7 +101,7 @@ impl RequestHandler {
             }
 
             // Early responses serve no file; custom headers with `scope = "all"` still reach them
-            let result: Result<Early, Error> = async {
+            let result: Result<Handled, Error> = async {
                 // Reject if the HTTP request method is not allowed
                 if !req.method().is_allowed() {
                     return error_page::error_response(
@@ -279,19 +279,24 @@ impl RequestHandler {
                 // Append security headers
                 let resp = security_headers::post_process(&self.opts, req, resp)?;
 
-                Ok((resp, file_path, false, fallback_path))
+                Ok(Handled {
+                    resp,
+                    file_path,
+                    early: false,
+                    fallback_path,
+                })
             }
             .await;
 
             // Add/update custom headers
-            let result = result.and_then(|(resp, file_path, early, fallback_path)| {
+            let result = result.and_then(|handled| {
                 custom_headers::post_process(
                     &self.opts,
                     req,
-                    resp,
-                    file_path.as_ref(),
-                    early,
-                    fallback_path.as_deref(),
+                    handled.resp,
+                    handled.file_path.as_ref(),
+                    handled.early,
+                    handled.fallback_path.as_deref(),
                 )
             });
 
@@ -329,13 +334,25 @@ impl RequestHandler {
     }
 }
 
-/// A response together with the served file path, whether it was returned early and,
-/// for the fallback page, the path custom headers can match it by.
-type Early = (Response<Body>, Option<PathBuf>, bool, Option<String>);
+/// A response on its way to the custom headers step.
+struct Handled {
+    resp: Response<Body>,
+    /// The file it served, if any.
+    file_path: Option<PathBuf>,
+    /// Returned before the static file handler ran.
+    early: bool,
+    /// For the fallback page, the path custom headers can also match it by.
+    fallback_path: Option<String>,
+}
 
 /// Marks a response that was returned before the static file handler ran.
-fn early(resp: Response<Body>) -> Early {
-    (resp, None, true, None)
+fn early(resp: Response<Body>) -> Handled {
+    Handled {
+        resp,
+        file_path: None,
+        early: true,
+        fallback_path: None,
+    }
 }
 
 #[cfg(test)]
