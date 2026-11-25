@@ -450,6 +450,9 @@ pub struct General {
     /// Exact IPs only, no ranges. The headers are not logged when unset.
     pub trusted_proxies: Option<Vec<IpAddr>>,
 
+    /// Log the trace context of the `traceparent` header, taken from any client.
+    pub log_trace_context: Option<bool>,
+
     /// Redirect trailing slash feature.
     pub redirect_trailing_slash: Option<bool>,
 

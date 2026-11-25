@@ -45,7 +45,7 @@ bin/server.rs → settings/ → server/ (mod.rs, opts.rs) → service.rs → han
 | `exts/` | `http.rs` (`MethodExt`, `HTTP_SUPPORTED_METHODS`), `headers/` (`Accept-Encoding`, q-values, `ContentCoding`), `mime.rs` (compressible detection) |
 | `mem_cache/` | In-memory file cache (`mini-moka`), keyed by `(path, ContentCoding)` |
 | `directory_listing/` | HTML/JSON index, sorting, tar.gz download |
-| `access_logs.rs`, `access_log_format.rs`, `log_addr.rs`, `logger.rs` | Per-request access log and its compiled format, trusted-proxy address logging, tracing setup |
+| `access_logs.rs`, `access_log_format.rs`, `log_addr.rs`, `trace_context.rs`, `logger.rs` | Per-request access log and its compiled format, trusted-proxy address logging, `traceparent` request span, tracing setup |
 | `body.rs` | `Body = BoxBody<Bytes, io::Error>` with `empty()`, `full()`, `stream()` |
 | `error.rs` | `Result<T>`, `Error` (anyhow); re-exports `Context`, `anyhow!`, `bail!` |
 | `testing.rs` | `testing::fixtures` helpers (`#[doc(hidden)]`) |
@@ -130,6 +130,7 @@ Validate in `settings/` or `server/opts.rs`; fail startup with `bail!`/`with_con
 | `--health` / `--metrics` / `--accept-markdown` / `--open` / `--maintenance-mode` | `false` |
 | `--log-remote-address` / `--log-x-real-ip` / `--log-forwarded-for` | `false`; proxy headers only from `--trusted-proxies` (default: none) |
 | `--access-log-format` | empty (structured fields) |
+| `--log-trace-context` | `false`; requires `--log-format json`; `traceparent` from any client |
 | `--threads-multiplier` / `--max-blocking-threads` | `1` / `512` (`2` / `20` on wasm) |
 | `--grace-period` / `--idle-timeout` / `--max-header-size` | `0` / `30` s (`0` disables) / `16384` bytes (431 when exceeded) |
 | `--page404` / `--page50x` / `--page-fallback` | `./404.html` / `./50x.html` / unset |

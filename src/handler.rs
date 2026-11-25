@@ -8,6 +8,7 @@
 
 use hyper::{Request, Response, StatusCode};
 use std::{future::Future, net::SocketAddr, path::PathBuf, sync::Arc};
+use tracing::Instrument;
 
 use crate::body::Body;
 
@@ -36,7 +37,7 @@ use crate::{
     exts::http::MethodExt,
     health, maintenance_mode, redirects, rewrites, security_headers,
     static_files::{self, HandleOpts},
-    text_charset, virtual_hosts,
+    text_charset, trace_context, virtual_hosts,
 };
 
 pub use crate::handler_opts::RequestHandlerOpts;
@@ -75,11 +76,15 @@ impl RequestHandler {
         #[cfg(feature = "mem-cache")]
         let memory_cache = self.opts.memory_cache.as_ref();
 
+        let span = trace_context::span(&self.opts, req.headers());
+        let body_span = span.clone();
         // Rewrites replace the request URI and `Host`, so keep the ones the client sent for the
-        // access log
-        let access_log = access_logs::enabled(&self.opts, req).then(|| {
-            let format = self.opts.access_log_format.as_ref();
-            access_logs::AccessLog::new(format, &self.opts, req, remote_addr)
+        // access log. They are copied before the future below runs, so in the span as well
+        let access_log = span.in_scope(|| {
+            access_logs::enabled(&self.opts, req).then(|| {
+                let format = self.opts.access_log_format.as_ref();
+                access_logs::AccessLog::new(format, &self.opts, req, remote_addr)
+            })
         });
 
         async move {
@@ -282,6 +287,8 @@ impl RequestHandler {
                 Some(access_log) => result.map(|resp| access_log.wrap(resp)),
                 None => result,
             };
+            // hyper polls and drops the body after this future, so outside of its span
+            let result = result.map(|resp| trace_context::wrap(body_span, resp));
 
             #[cfg(feature = "metrics")]
             if metrics_enabled {
@@ -305,6 +312,7 @@ impl RequestHandler {
 
             result
         }
+        .instrument(span)
     }
 }
 
@@ -314,4 +322,61 @@ type Early = (Response<Body>, Option<PathBuf>, bool);
 /// Marks a response that was returned before the static file handler ran.
 fn early(resp: Response<Body>) -> Early {
     (resp, None, true)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::Mutex;
+    use tracing_subscriber::layer::{Context, Layer, SubscriberExt};
+
+    /// Stores, for each `log_addr` debug line, whether it was logged in the trace context span.
+    struct ProxyHeaderLines(Arc<Mutex<Vec<bool>>>);
+
+    impl<S> Layer<S> for ProxyHeaderLines
+    where
+        S: tracing::Subscriber + for<'a> tracing_subscriber::registry::LookupSpan<'a>,
+    {
+        fn on_event(&self, event: &tracing::Event<'_>, ctx: Context<'_, S>) {
+            let meta = event.metadata();
+            if meta.target() == "static_web_server::log_addr"
+                && *meta.level() == tracing::Level::DEBUG
+            {
+                let in_span = ctx
+                    .event_span(event)
+                    .is_some_and(|s| s.name() == trace_context::SPAN_NAME);
+                self.0.lock().unwrap().push(in_span);
+            }
+        }
+    }
+
+    /// The access log reads the proxy headers before the handler future runs, and the lines it
+    /// logs meanwhile belong to the request too.
+    #[test]
+    fn handle_reads_the_access_log_values_in_the_trace_context_span() {
+        crate::logger::register_test_subscribers();
+        let lines = Arc::new(Mutex::new(Vec::new()));
+        let subscriber = tracing_subscriber::registry().with(ProxyHeaderLines(Arc::clone(&lines)));
+        let _guard = tracing::subscriber::set_default(subscriber);
+
+        let remote_addr: SocketAddr = "192.168.1.1:1234".parse().unwrap();
+        let handler = RequestHandler {
+            opts: Arc::new(RequestHandlerOpts {
+                log_trace_context: true,
+                log_forwarded_for: true,
+                trusted_proxies: vec![remote_addr.ip()],
+                ..Default::default()
+            }),
+        };
+        let traceparent = "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01";
+        let mut req = Request::get("/")
+            .header("traceparent", traceparent)
+            .header("X-Forwarded-For", "not an address")
+            .body(())
+            .unwrap();
+        // The values are copied when the future is created, before it is polled
+        drop(handler.handle(&mut req, Some(remote_addr)));
+
+        assert_eq!(*lines.lock().unwrap(), [true]);
+    }
 }

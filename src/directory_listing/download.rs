@@ -17,6 +17,7 @@ use std::str::FromStr;
 use tokio::fs;
 use tokio::io::AsyncWriteExt;
 use tokio_util::io::ReaderStream;
+use tracing::Instrument;
 
 use crate::Result;
 use crate::body::Body;
@@ -196,14 +197,16 @@ where
 
     let (read_half, write_half) = tokio::io::duplex(64 * 1024);
     let body = crate::body::stream(ReaderStream::new(read_half));
-    tokio::task::spawn(archive(
+    // The task outlives the request handler, so it keeps the span of its log lines
+    let task = archive(
         path.as_ref().into(),
         src_path.as_ref().into(),
         opts.base_path.to_path_buf(),
         ChannelBuffer { writer: write_half },
         opts.follow_symlinks,
         !opts.include_hidden,
-    ));
+    );
+    tokio::task::spawn(task.in_current_span());
     *resp.body_mut() = body;
 
     resp
@@ -414,5 +417,49 @@ mod tests {
         fn prop_rfc5987_attr_char_inputs_roundtrip(s in "[A-Za-z0-9!#\\$&+\\-\\.\\^_`|~]{0,128}") {
             prop_assert_eq!(rfc5987_encode_filename(&s).clone(), s);
         }
+    }
+
+    /// The archive task logs the entries it skips, so it must keep the span of the request.
+    #[tokio::test]
+    async fn archive_task_keeps_the_current_span() {
+        use http_body_util::BodyExt;
+        use std::sync::Arc;
+        use std::sync::atomic::{AtomicBool, Ordering};
+        use tracing_subscriber::layer::{Context, Layer, SubscriberExt};
+
+        struct WarnInSpan(Arc<AtomicBool>);
+
+        impl<S> Layer<S> for WarnInSpan
+        where
+            S: tracing::Subscriber + for<'a> tracing_subscriber::registry::LookupSpan<'a>,
+        {
+            fn on_event(&self, event: &tracing::Event<'_>, ctx: Context<'_, S>) {
+                let in_span = ctx.event_span(event).is_some_and(|s| s.name() == "request");
+                if *event.metadata().level() == tracing::Level::WARN && in_span {
+                    self.0.store(true, Ordering::Relaxed);
+                }
+            }
+        }
+
+        crate::logger::register_test_subscribers();
+        let warned_in_span = Arc::new(AtomicBool::new(false));
+        let subscriber =
+            tracing_subscriber::registry().with(WarnInSpan(Arc::clone(&warned_in_span)));
+        let _guard = tracing::subscriber::set_default(subscriber);
+
+        // A source directory outside the base path is skipped with a warning
+        let base = tempfile::tempdir().unwrap();
+        let outside = tempfile::tempdir().unwrap();
+        let opts = super::DirDownloadOpts {
+            method: &http::Method::GET,
+            base_path: base.path(),
+            follow_symlinks: false,
+            include_hidden: true,
+        };
+        let resp = tracing::error_span!("request")
+            .in_scope(|| super::archive_reply("dir", outside.path(), opts));
+        resp.into_body().collect().await.unwrap();
+
+        assert!(warned_in_span.load(Ordering::Relaxed));
     }
 }

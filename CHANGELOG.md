@@ -7,9 +7,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v3.0.0-beta.4] - 2026-11-21
+
+This beta adds an option to keep the default `::` host IPv6-only, alongside CORS, HTTPS redirect shutdown and macOS file name fixes. It also includes a security fix. The related advisory will be published separately soon.
+
+### Added
+
+- **IPv6-only default host.** Added `--ipv6-only` to bind the `::` host with `IPV6_V6ONLY` for the main and HTTPS redirect listeners, with environment variable and TOML support. The default `false` keeps the dual-stack behavior. Startup fails if the OS refuses it, or when it is combined with an IPv4 host, `--fd` or `--unix-socket`. ([#829](https://github.com/static-web-server/static-web-server/pull/829) by [@joseluisq](https://github.com/joseluisq))
+
+### Changed
+
+- **Module dependency cleanup.** Moved the request handler options and directory listing formats below the feature modules, so the handler and the modules it calls no longer depend on each other. ([#823](https://github.com/static-web-server/static-web-server/pull/823) by [@jaads](https://github.com/jaads))
+
+### Fixed
+
+- **Vary header with CORS.** With `--cors-allow-origins`, `Origin` is now appended to an existing `Vary` header instead of replacing it, so automatic directory listings keep `Vary: Accept` and shared caches no longer mix up HTML and JSON listings. ([#813](https://github.com/static-web-server/static-web-server/pull/813) by [@SAY-5](https://github.com/SAY-5))
+- **HTTPS redirect shutdown on cancel.** Stopping SWS through a cancel signal, such as a Windows service stop, now also stops the `--https-redirect` listener. ([#820](https://github.com/static-web-server/static-web-server/pull/820) by [@joseluisq](https://github.com/joseluisq))
+- **Tilde names in another Unicode form on macOS.** Files with a `~` in their name, such as `café~.txt`, no longer return `404` when requested in another Unicode normalization form on APFS, HFS+ and FAT volumes. ([#828](https://github.com/static-web-server/static-web-server/pull/828) by [@joseluisq](https://github.com/joseluisq))
+- **Flaky tests.** Fixed timing-dependent failures in the idle timeout, connection limit and log capture tests, and checked that shutdown doesn't restart the idle timeout. ([#819](https://github.com/static-web-server/static-web-server/pull/819), [#825](https://github.com/static-web-server/static-web-server/pull/825), [#826](https://github.com/static-web-server/static-web-server/pull/826), [#827](https://github.com/static-web-server/static-web-server/pull/827) by [@joseluisq](https://github.com/joseluisq))
+
+### Security
+
+- **Proxy header logging hardening.** Hardened how the client address is read from the `X-Forwarded-For` and `X-Real-IP` headers for `--trusted-proxies`. Details will follow with the related advisory. (by [@joseluisq](https://github.com/joseluisq))
+
+For more details see the [v3.0.0-beta.4 milestone][v300beta4-milestone] and the full changelog [v3.0.0-beta.3...v3.0.0-beta.4][v300beta4-diff].
+
 ## [v3.0.0-beta.3] - 2026-11-11
 
-This beta adds Kubernetes-style health probes, configurable access logs, custom headers for early responses, connection and request header limits, alongside memory cache, compression and content negotiation fixes. It also includes security fixes. The related advisories will be published separately soon.
+This beta adds Kubernetes-style health probes, configurable access logs, custom headers for early responses, connection and request header limits, alongside memory cache, compression and content negotiation fixes. It also includes security fixes.
+
+### Security
+
+Published advisories, ordered by severity:
+
+- **Protected files disclosed to `OPTIONS` with the memory cache (High).** With `[advanced.memory-cache]`, unauthenticated `OPTIONS` requests could return protected files. [GHSA-f46q-99h3-m7gp](https://github.com/static-web-server/static-web-server/security/advisories/GHSA-f46q-99h3-m7gp)
+- **Unbounded metrics label cardinality (High).** With `--metrics`, the `Host` header and request method could create unlimited label values and exhaust memory. [GHSA-g423-pf8c-j4fw](https://github.com/static-web-server/static-web-server/security/advisories/GHSA-g423-pf8c-j4fw)
+- **Protected paths revealed to `OPTIONS` (Moderate).** With `--basic-auth`, unauthenticated `OPTIONS` requests revealed whether a path exists. [GHSA-fm32-72mc-qrfg](https://github.com/static-web-server/static-web-server/security/advisories/GHSA-fm32-72mc-qrfg)
+- **Hidden files served through 8.3 short names (Moderate).** On NTFS and FAT volumes, hidden files could be served through 8.3 short-name aliases such as `GIT~1`. [GHSA-6j8m-4pp3-m5v9](https://github.com/static-web-server/static-web-server/security/advisories/GHSA-6j8m-4pp3-m5v9) (reported by [@Hama1cco](https://github.com/Hama1cco))
 
 ### Added
 
@@ -44,10 +78,6 @@ This beta adds Kubernetes-style health probes, configurable access logs, custom 
 - **Compression headers on empty responses.** On-the-fly compression no longer sets `Content-Encoding` on `1xx`, `204`, `304` or empty responses, and pre-compressed files set it only on successful responses. HTTP/2 clients no longer reject `304` responses with compression enabled. (by [@joseluisq](https://github.com/joseluisq))
 - **Explicit security headers setting.** `--security-headers=false` is now respected together with `--tls`, and a config file without `security-headers` no longer turns the headers back on. (by [@joseluisq](https://github.com/joseluisq))
 - **IPv4 trusted proxies on dual-stack listeners.** IPv4 `--trusted-proxies` entries now match clients connecting through the default `::` host, which appear as IPv4-mapped IPv6 addresses. (by [@joseluisq](https://github.com/joseluisq))
-
-### Security
-
-- **Request handling hardening.** Hardened request handling in Basic auth, the memory cache, static file serving and markdown negotiation. Details will follow with the related advisories. (by [@joseluisq](https://github.com/joseluisq))
 
 For more details see the [v3.0.0-beta.3 milestone][v300beta3-milestone] and the full changelog [v3.0.0-beta.2...v3.0.0-beta.3][v300beta3-diff].
 
@@ -146,7 +176,8 @@ Visit our updated website at [static-web-server.net](https://static-web-server.n
 
 - **Markdown content negotiation security hardening.** Added security policies for the markdown content negotiation module in a similar way to the static files module. ([#719](https://github.com/static-web-server/static-web-server/pull/719))
 
-[unreleased]: https://github.com/static-web-server/static-web-server/compare/v3.0.0-beta.3...HEAD
+[unreleased]: https://github.com/static-web-server/static-web-server/compare/v3.0.0-beta.4...HEAD
+[v3.0.0-beta.4]: https://github.com/static-web-server/static-web-server/compare/v3.0.0-beta.3...v3.0.0-beta.4
 [v3.0.0-beta.3]: https://github.com/static-web-server/static-web-server/compare/v3.0.0-beta.2...v3.0.0-beta.3
 [v3.0.0-beta.2]: https://github.com/static-web-server/static-web-server/compare/v3.0.0-beta.1...v3.0.0-beta.2
 [v3.0.0-beta.1]: https://github.com/static-web-server/static-web-server/releases/tag/v3.0.0-beta.1
@@ -154,3 +185,5 @@ Visit our updated website at [static-web-server.net](https://static-web-server.n
 [v300beta2-milestone]: https://github.com/static-web-server/static-web-server/milestone/42?closed=1
 [v300beta3-diff]: https://github.com/static-web-server/static-web-server/compare/v3.0.0-beta.2...v3.0.0-beta.3
 [v300beta3-milestone]: https://github.com/static-web-server/static-web-server/milestone/43?closed=1
+[v300beta4-diff]: https://github.com/static-web-server/static-web-server/compare/v3.0.0-beta.3...v3.0.0-beta.4
+[v300beta4-milestone]: https://github.com/static-web-server/static-web-server/milestone/46?closed=1

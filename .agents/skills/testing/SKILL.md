@@ -123,7 +123,7 @@ tests/toml/      sws.toml, memory_cache.toml
 
 ## Property Tests and Fuzzing
 
-- `proptest` is used in `access_logs.rs`, `log_addr.rs`, `cors.rs`, `fs/path.rs`, `redirects.rs`, `markdown.rs`, `response/range.rs`, `exts/headers/quality_value.rs`, `directory_listing/download.rs`. Add one for any new parser of untrusted input
+- `proptest` is used in `access_logs.rs`, `log_addr.rs`, `cors.rs`, `fs/path.rs`, `redirects.rs`, `markdown.rs`, `response/range.rs`, `exts/headers/quality_value.rs`, `directory_listing/download.rs`, `trace_context.rs`. Add one for any new parser of untrusted input
 - Shrunk failures persist under `proptest-regressions/`; commit them with the fix
 - Fuzz targets: `fuzz/src/{static_files,content_disposition,cors_origin,redirect_placeholders}.rs`; `cargo +nightly fuzz run <target>` from the repo root
 
