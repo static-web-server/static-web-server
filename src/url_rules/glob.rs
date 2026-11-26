@@ -7,16 +7,35 @@
 //! `$N` placeholders of its `destination`.
 
 use globset::GlobBuilder;
+use percent_encoding::{AsciiSet, utf8_percent_encode};
 use regex_lite::Regex;
 
+use crate::fs::path::RULE_PATH_ENCODE;
 use crate::{Context, Result};
+
+/// Bytes [`rule_spelling`] percent-encodes in a `source` glob: the ones a rule path only
+/// holds encoded, except `/`, `%`, and glob syntax.
+const SOURCE_ENCODE: &AsciiSet = &RULE_PATH_ENCODE
+    .remove(b'/')
+    .remove(b'%')
+    .remove(b'?')
+    .remove(b'[')
+    .remove(b']')
+    .remove(b'{')
+    .remove(b'}')
+    .remove(b'\\')
+    .remove(b'^');
 
 /// Compiles a `source` glob into an equivalent regex.
 ///
 /// `*` and `?` never cross a `/`, and each `{a,b}` alternation or `*` inside a group
 /// becomes a capture group numbered from `$1`, in source order.
+///
+/// The regex matches [`crate::fs::path::rule_path`] spellings. On macOS and Windows,
+/// whose default file systems ignore letter case, it ignores ASCII case too, as paths in
+/// any case reach the same file.
 pub(crate) fn to_regex(glob: &str) -> Result<Regex> {
-    let glob = GlobBuilder::new(glob)
+    let glob = GlobBuilder::new(&rule_spelling(glob))
         .literal_separator(true)
         .build()
         .with_context(|| format!("can not compile glob pattern for source: {glob}"))?;
@@ -30,6 +49,11 @@ pub(crate) fn to_regex(glob: &str) -> Result<Regex> {
         .replace("?:", "")
         .replace(".*.*", ".*")
         .replace("([^/]*[^/]*)", "(.*)");
+    let pattern = if cfg!(any(target_os = "macos", windows)) {
+        format!("(?i){pattern}")
+    } else {
+        pattern
+    };
     tracing::debug!("url rule glob pattern: {}", glob.glob());
     tracing::debug!("url rule regex equivalent: {pattern}");
 
@@ -37,9 +61,30 @@ pub(crate) fn to_regex(glob: &str) -> Result<Regex> {
         .with_context(|| format!("can not compile regex pattern equivalent for source: {pattern}"))
 }
 
+/// Spells the text of a `source` glob the way rule paths are spelled: percent-escapes in
+/// uppercase hex, and spaces, non-ASCII and other characters that need an escape encoded.
+/// A `%` that starts no escape becomes `%25`.
+fn rule_spelling(glob: &str) -> String {
+    let mut spelling = String::with_capacity(glob.len());
+    let mut rest = glob;
+    while let Some(i) = rest.find('%') {
+        spelling.extend(utf8_percent_encode(&rest[..i], SOURCE_ENCODE));
+        let escape = rest[i..]
+            .get(..3)
+            .filter(|escape| escape.bytes().skip(1).all(|b| b.is_ascii_hexdigit()));
+        match escape {
+            Some(escape) => spelling.push_str(&escape.to_ascii_uppercase()),
+            None => spelling.push_str("%25"),
+        }
+        rest = &rest[i + escape.map_or(1, str::len)..];
+    }
+    spelling.extend(utf8_percent_encode(rest, SOURCE_ENCODE));
+    spelling
+}
+
 #[cfg(test)]
 mod tests {
-    use super::to_regex;
+    use super::{rule_spelling, to_regex};
 
     fn captures(glob: &str, path: &str) -> Option<Vec<String>> {
         let re = to_regex(glob).unwrap();
@@ -91,6 +136,40 @@ mod tests {
             captures("**/{*}.{jpg,jpeg}", "/a/b/photo.jpeg"),
             Some(vec!["/a/b/".into(), "photo".into(), "jpeg".into()])
         );
+    }
+
+    #[test]
+    fn glob_source_takes_rule_path_spelling() {
+        for (glob, spelling) in [
+            ("/assets/{*}.{js,css}", "/assets/{*}.{js,css}"),
+            ("/caf%c3%a9/x", "/caf%C3%A9/x"),
+            ("/café/**", "/caf%C3%A9/**"),
+            ("/my file|<1>", "/my%20file%7C%3C1%3E"),
+            ("/a[!b]?\\*^", "/a[!b]?\\*^"),
+            ("/100%/%zz/%a", "/100%25/%25zz/%25a"),
+            ("/ünï/%e2%82%ac", "/%C3%BCn%C3%AF/%E2%82%AC"),
+            ("/%é", "/%25%C3%A9"),
+        ] {
+            assert_eq!(rule_spelling(glob), spelling, "{glob}");
+        }
+    }
+
+    #[test]
+    fn glob_encoded_source_matches_rule_path() {
+        assert_eq!(
+            captures("/café/{*}", "/caf%C3%A9/x"),
+            Some(vec!["x".into()])
+        );
+        assert_eq!(captures("/caf%c3%a9", "/caf%C3%A9"), Some(vec![]));
+        assert_eq!(captures("/a b", "/a%20b"), Some(vec![]));
+    }
+
+    #[test]
+    fn glob_letter_case_follows_the_platform() {
+        let ignores_case = cfg!(any(target_os = "macos", windows));
+        assert_eq!(captures("/Old", "/old").is_some(), ignores_case);
+        assert_eq!(captures("/old/{*}", "/OLD/x").is_some(), ignores_case);
+        assert_eq!(captures("/old", "/old"), Some(vec![]));
     }
 
     #[test]

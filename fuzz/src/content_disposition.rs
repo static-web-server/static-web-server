@@ -11,7 +11,7 @@
 //!   therefore is always valid 7-bit ASCII.
 
 use libfuzzer_sys::fuzz_target;
-use static_web_server::directory_listing_download::{
+use static_web_server::directory_listing::download::{
     rfc5987_encode_filename, sanitize_filename_for_quoted_string,
 };
 

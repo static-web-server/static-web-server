@@ -38,6 +38,9 @@ pub(crate) fn validate(dest: &str) -> Result<()> {
 /// Replaces the `$N` placeholders of `dest_uri` with the capture groups of `regex` in
 /// `orig_uri`. `$0` is the whole match; an unmatched optional group becomes empty.
 ///
+/// A destination stays on its host: unless `dest_uri` itself starts with `//`, the `/`
+/// and `\` that captures put at its start are collapsed into one `/`.
+///
 /// Fails if `regex` does not match `orig_uri`.
 #[doc(hidden)]
 pub fn replace_placeholders(
@@ -61,8 +64,26 @@ pub fn replace_placeholders(
     let dest = ac
         .try_replace_all(dest_uri, &caps)
         .with_context(|| "failed replacing captures")?;
+    let dest = keep_on_host(dest_uri, dest);
     tracing::debug!("url rule glob pattern destination replaced: {dest:?}");
     Ok(dest)
+}
+
+/// Collapses the `/` and `\` that `dest` starts with into one `/`, unless the `template`
+/// it was built from starts with `//` itself.
+///
+/// RFC 3986 §4.2: `//host` is a network-path reference, and browsers read `\` as `/` in
+/// http(s) URLs (WHATWG URL Standard), so a capture that adds a second one would make a
+/// `Location` name another host.
+fn keep_on_host(template: &str, dest: String) -> String {
+    if template.starts_with("//") {
+        return dest;
+    }
+    let path = dest.trim_start_matches(['/', '\\']);
+    if dest.len() - path.len() < 2 {
+        return dest;
+    }
+    ["/", path].concat()
 }
 
 /// Appends the request `query` to `dest`, after any query `dest` already has and before
@@ -104,6 +125,28 @@ mod tests {
         );
         assert_eq!(replace("/a/b", r"^/(.*)/(.*)$", "/$1/$1"), "/a/a");
         assert_eq!(replace("/a/b", r"^/(.*)/(.*)$", "$0"), "/a/b");
+    }
+
+    #[test]
+    fn placeholders_keep_destination_on_host() {
+        for (orig, dest, expected) in [
+            ("/blog/post", "/$1", "/post"),
+            ("/blog//evil.example/x", "/$1", "/evil.example/x"),
+            ("/blog/\\evil.example", "/$1", "/evil.example"),
+            ("/blog/\\/\\evil.example", "/$1", "/evil.example"),
+            ("/blog//evil.example", "$1", "/evil.example"),
+            ("/blog/\\\\evil.example", "$1", "/evil.example"),
+            ("/blog/", "/$1", "/"),
+            ("/blog//x", "/new/$1", "/new//x"),
+            ("/blog//x", "//cdn.example/$1", "//cdn.example//x"),
+            ("/blog//x", "https://x.example/$1", "https://x.example//x"),
+        ] {
+            assert_eq!(
+                replace(orig, r"^/blog/(.*)$", dest),
+                expected,
+                "{orig} -> {dest}"
+            );
+        }
     }
 
     #[test]
@@ -233,8 +276,22 @@ mod tests {
             let orig = format!("/{a}/{b}/{c}/{d}/{e}");
             let re = Regex::new(r"^/(.*)/(.*)/(.*)/(.*)/(.*)$").unwrap();
             let ac = build_placeholder_replacer(&re).unwrap();
-            let out = replace_placeholders(&orig, &re, "/$0|$1|$2|$3|$4|$5", &ac).unwrap();
-            prop_assert_eq!(out, format!("/{orig}|{a}|{b}|{c}|{d}|{e}"));
+            let out = replace_placeholders(&orig, &re, "/p$0|$1|$2|$3|$4|$5", &ac).unwrap();
+            prop_assert_eq!(out, format!("/p{orig}|{a}|{b}|{c}|{d}|{e}"));
+        }
+
+        /// Whatever the request path holds, a destination that does not start with `//`
+        /// never becomes a reference to another host.
+        #[test]
+        fn prop_replace_placeholders_stays_on_host(
+            tail in "[/\\\\a-z.]{0,32}",
+            dest in prop_oneof![Just("/$1"), Just("$1"), Just("/$1/$1"), Just("$0")],
+        ) {
+            let re = Regex::new(r"^/blog/(.*)$").unwrap();
+            let ac = build_placeholder_replacer(&re).unwrap();
+            let out = replace_placeholders(&format!("/blog/{tail}"), &re, dest, &ac).unwrap();
+            let slashes = out.len() - out.trim_start_matches(['/', '\\']).len();
+            prop_assert!(slashes < 2, "{out}");
         }
 
         /// The request query always ends up intact in the destination, before any

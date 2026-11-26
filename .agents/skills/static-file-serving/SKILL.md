@@ -137,7 +137,7 @@ tti = 300             # idle seconds (max 3600)
 max-file-size = 8192  # KiB (default 8192, max 32768)
 ```
 
-Both rule tables compile into `url_rules::UrlRule` (`src/url_rules/`: `glob.rs`, `host.rs`, `destination.rs`). Globs compile through `globset` with `literal_separator(true)`, then into capturing regex groups: `{*}` within one segment, `{**}` across segments, `{a,b}` alternation. `$1`, `$2`, … reference captures in pattern order. Working rules: `tests/fixtures/toml/rewrites.toml`, `redirects.toml`, `url_rules.toml`, `custom_headers_*.toml`.
+Both rule tables compile into `url_rules::UrlRule` (`src/url_rules/`: `glob.rs`, `host.rs`, `destination.rs`). Globs compile through `globset` with `literal_separator(true)`, then into capturing regex groups: `{*}` within one segment, `{**}` across segments, `{a,b}` alternation. `$1`, `$2`, … reference captures in pattern order. Sources and captures use one spelling of the request path, `fs::path::rule_path`: the segments that are served, percent-encoded with uppercase hex, so `//a/./b`, `/a%2Fb` and `/%61/b` all match `/a/b`; letter case is ignored on macOS and Windows. Working rules: `tests/fixtures/toml/rewrites.toml`, `redirects.toml`, `url_rules.toml`, `custom_headers_*.toml`.
 
 ## Common Setups
 

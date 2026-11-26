@@ -316,9 +316,100 @@ pub mod tests {
             "/encoded/a%0d%0aX:1",
             None,
             StatusCode::MOVED_PERMANENTLY,
-            "/decoded/a%0d%0aX:1",
+            "/decoded/a%0D%0AX:1",
         )
         .await;
+    }
+
+    #[tokio::test]
+    async fn redirects_capture_cannot_name_another_host() {
+        // RFC 3986 §4.2: `//host` is a network-path reference, and browsers read `\` as `/`
+        for (uri, location) in [
+            ("/lead/post", "/post"),
+            ("/lead//evil.example/x", "/evil.example/x"),
+            ("/lead///evil.example/x?q=1", "/evil.example/x?q=1"),
+            ("/lead/%2Fevil.example", "/evil.example"),
+            ("/lead/%5Cevil.example", "/%5Cevil.example"),
+            ("/lead/\\evil.example", "/%5Cevil.example"),
+            ("/lead/\\/evil.example", "/%5C/evil.example"),
+            ("/lead-glob/evil.example", "/evil.example"),
+            ("/lead-glob//evil.example/x", "/evil.example/x"),
+            ("/lead-bare/evil.example", "/evil.example"),
+            ("/lead-bare//evil.example", "/evil.example"),
+            ("/lead/a//b", "/a/b"),
+            (
+                "/lead-absolute//evil.example",
+                "https://example.org/evil.example",
+            ),
+        ] {
+            #[cfg(windows)]
+            let location = &location.replace("%5C/", "").replace("%5C", "");
+            assert_redirect(uri, None, StatusCode::MOVED_PERMANENTLY, location).await;
+        }
+    }
+
+    // Redirects: path spellings
+
+    /// Spellings of `/assets/<file>` that the file layer resolves to the same file,
+    /// the last one longer than the 8 KiB cap on matched paths.
+    fn spellings(file: &str) -> Vec<String> {
+        let first = &file[..1];
+        let rest = &file[1..];
+        let escaped = format!("%{:02X}{rest}", first.as_bytes()[0]);
+        vec![
+            format!("/assets/{file}"),
+            format!("/assets/./{file}"),
+            format!("//assets/{file}"),
+            format!("/assets//{file}"),
+            format!("/assets/{escaped}"),
+            format!("/assets/{}", escaped.to_lowercase()),
+            format!("/assets%2F{file}"),
+            format!("/assets/%2e/{file}"),
+            format!("/./assets/%2E%2F/{file}"),
+            format!("/assets/{}{file}", "./".repeat(5 * 1024)),
+        ]
+    }
+
+    #[tokio::test]
+    async fn redirects_match_every_spelling_of_a_path() {
+        for uri in spellings("index.html") {
+            assert_redirect(&uri, None, StatusCode::FOUND, "/login").await;
+        }
+    }
+
+    #[cfg(any(target_os = "macos", windows))]
+    #[tokio::test]
+    async fn redirects_match_any_letter_case_where_files_do() {
+        for uri in ["/ASSETS/index.html", "/Assets/Index.HTML"] {
+            assert_redirect(uri, None, StatusCode::FOUND, "/login").await;
+        }
+    }
+
+    #[tokio::test]
+    async fn redirects_capture_takes_the_served_spelling() {
+        for (uri, location) in [
+            ("/spelling/a/b", "/spelled/a/b"),
+            ("/spelling/a/./b//c", "/spelled/a/b/c"),
+            ("/spelling/a%2Fb", "/spelled/a/b"),
+            ("/spelling/%61%20b", "/spelled/a%20b"),
+            ("/spelling/caf%c3%a9", "/spelled/caf%C3%A9"),
+            ("/spelling/a\"b", "/spelled/a%22b"),
+            ("/spelling/a/", "/spelled/a/"),
+            ("/spelling/a/.", "/spelled/a/"),
+            ("/./spelling/a?q=%2f", "/spelled/a?q=%2f"),
+        ] {
+            assert_redirect(uri, None, StatusCode::MOVED_PERMANENTLY, location).await;
+        }
+    }
+
+    #[tokio::test]
+    async fn redirects_source_matches_in_any_spelling() {
+        for uri in ["/caf%C3%A9", "/caf%c3%a9", "/café"] {
+            assert_redirect(uri, None, StatusCode::MOVED_PERMANENTLY, "/cafe").await;
+        }
+        for uri in ["/men%C3%BA%20del%20d%C3%ADa/x", "/menú%20del%20día/x"] {
+            assert_redirect(uri, None, StatusCode::MOVED_PERMANENTLY, "/menu/x").await;
+        }
     }
 
     #[tokio::test]
@@ -423,6 +514,16 @@ pub mod tests {
         let sent = get("/rewrite/query/main.css?", None).await;
         assert_eq!(sent.res.status(), StatusCode::OK);
         assert_eq!(sent.uri.to_string(), "/assets/main.css?v=1");
+    }
+
+    #[tokio::test]
+    async fn rewrites_match_every_spelling_of_a_path() {
+        for uri in spellings("tiny.js") {
+            let sent = get(&uri, None).await;
+            assert_eq!(sent.res.status(), StatusCode::OK, "{uri}");
+            assert_eq!(sent.uri, "/assets/main.css", "{uri}");
+            assert!(body(sent.res).await.contains(CSS), "{uri}");
+        }
     }
 
     #[tokio::test]

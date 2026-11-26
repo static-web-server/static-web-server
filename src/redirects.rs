@@ -17,13 +17,9 @@ pub(crate) fn pre_process<T>(
     req: &Request<T>,
 ) -> Option<Result<Response<Body>, Error>> {
     let redirects = opts.advanced_opts.as_ref()?.redirects.as_deref()?;
-    let redirect = url_rules::find(redirects, req)?;
+    let (redirect, dest) = url_rules::find(redirects, req)?;
 
-    let loc = match redirect
-        .rule
-        .resolve(req.uri())
-        .and_then(|dest| HeaderValue::try_from(dest).map_err(Error::from))
-    {
+    let loc = match dest.and_then(|dest| HeaderValue::try_from(dest).map_err(Error::from)) {
         Ok(loc) => loc,
         Err(err) => {
             return url_rules::error_response(

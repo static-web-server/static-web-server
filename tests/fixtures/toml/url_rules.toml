@@ -72,6 +72,49 @@ source = "/encoded/{*}"
 destination = "/decoded/$1"
 kind = 301
 
+# Path spellings: a rule matches every request path that reaches the same file
+[[advanced.redirects]]
+source = "/assets/index.html"
+destination = "/login"
+kind = 302
+
+[[advanced.redirects]]
+source = "/spelling/{**}"
+destination = "/spelled/$1"
+kind = 301
+
+# Sources take the same spelling: escapes in any hex case, or the characters themselves
+[[advanced.redirects]]
+source = "/caf%c3%a9"
+destination = "/cafe"
+kind = 301
+
+[[advanced.redirects]]
+source = "/menú del día/{*}"
+destination = "/menu/$1"
+kind = 301
+
+# A capture at the start of a destination
+[[advanced.redirects]]
+source = "/lead/{**}"
+destination = "/$1"
+kind = 301
+
+[[advanced.redirects]]
+source = "/lead-glob{**}"
+destination = "/$1"
+kind = 301
+
+[[advanced.redirects]]
+source = "/lead-bare{**}"
+destination = "$1"
+kind = 301
+
+[[advanced.redirects]]
+source = "/lead-absolute/{**}"
+destination = "https://example.org/$1"
+kind = 301
+
 # Same source, different hosts: a redirect for one, a rewrite for the other
 [[advanced.redirects]]
 host = "redirect.example"
@@ -110,6 +153,11 @@ destination = "/assets/$1?v=1"
 [[advanced.rewrites]]
 source = "/vhost/{*}"
 destination = "http://other.example/$1"
+
+# Path spellings: a rule matches every request path that reaches the same file
+[[advanced.rewrites]]
+source = "/assets/tiny.js"
+destination = "/assets/main.css"
 
 # Rewrites are not chained: the destination is the source of other rules
 [[advanced.rewrites]]

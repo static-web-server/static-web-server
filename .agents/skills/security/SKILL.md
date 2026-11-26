@@ -39,7 +39,7 @@ The base must already be canonical (root in `server/opts.rs`, virtual-host roots
 Every feature that maps a request to a file reuses these layers:
 - **Markdown negotiation** applies the hidden-file policy (dotfiles on the request, short-name aliases on the variant found) and strips the base before rewriting the URI
 - **Directory download** excludes symlinks pointing outside the root from archives regardless of `--follow-symlinks`
-- **Rewrites/redirects** substitute captures into destinations; the rewritten path still goes through layers 2–5. Redirect destinations must not become open redirects through placeholder injection
+- **Rewrites/redirects** match sources against `fs::path::rule_path`, the one spelling of the path that `sanitize_path()` serves, so every request path that reaches a file meets the rules for it. Keep the two in step: a path form the file layer accepts and `rule_path` does not fold skips rules. Captures are substituted into destinations; the rewritten path still goes through layers 2–5. Redirect destinations must not become open redirects through placeholder injection: `url_rules::destination` collapses the `/` and `\` a capture adds at the start
 - **Error and fallback pages** are configured paths read at startup, not request-derived
 
 ## Basic Auth

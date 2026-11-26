@@ -392,8 +392,9 @@ pub mod tests {
     }
 
     #[tokio::test]
-    async fn rewrites_trailing_slash_skips_matching_beyond_uri_cap() {
-        // `/./` segments resolve to `/assets` and pad the path to the 8 KiB cap
+    async fn rewrites_trailing_slash_redirects_padded_client_path() {
+        // `/./` segments resolve to `/assets` and pad the path to the 8 KiB cap, which is
+        // on the path without them
         let prefix = "/value/manage";
         let padding = "/.".repeat((8 * 1024 - prefix.len() - "/assets".len()) / 2);
         let path = [prefix, &padding, "/assets"].concat();
@@ -401,11 +402,19 @@ pub mod tests {
 
         let res = trailing_slash_response(Method::GET, &["http://localhost", &path].concat()).await;
         assert_eq!(res.status(), 308);
-        assert_eq!(
-            res.headers()[LOCATION],
-            [&padding[..], "/assets/"].concat(),
-            "the path with a slash exceeds the cap, so the rewritten path is used"
-        );
+        assert_eq!(res.headers()[LOCATION], [&path, "/"].concat());
+    }
+
+    #[tokio::test]
+    async fn rewrites_trailing_slash_spelled_with_dot_segment_is_a_directory() {
+        // `/tenant/.` names the directory, as `/tenant/` does, so no redirect to add a slash
+        let host = Some("tenant.example");
+        for uri in ["/tenant/.", "/tenant/%2E", "/tenant%2F"] {
+            let res = trailing_slash_response_for_host(Method::GET, uri, host).await;
+            assert_eq!(res.status(), 200, "{uri}");
+            let body = res.into_body().collect().await.unwrap().to_bytes();
+            assert_eq!(body, std::fs::read(ASSETS_INDEX).unwrap(), "{uri}");
+        }
     }
 
     #[tokio::test]

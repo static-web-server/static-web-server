@@ -7,13 +7,13 @@
 //! destination and lets the pipeline serve it. Matching and destination building live in
 //! [`crate::url_rules`].
 
-use hyper::{Request, Response, Uri, header::HOST, http::HeaderValue};
+use hyper::{Request, Response, StatusCode, Uri, header::HOST, http::HeaderValue};
 use std::path::Path;
 
 use crate::body::Body;
 use crate::{
-    Error, Result,
-    fs::path::sanitize_path,
+    Error, Result, error_page,
+    fs::path::{rule_path, sanitize_path},
     handler_opts::RequestHandlerOpts,
     settings::Rewrites,
     static_files::RewrittenFrom,
@@ -28,20 +28,33 @@ struct ClientRequest {
     host: Option<HeaderValue>,
 }
 
-/// Rewrites the request URI if a rule matches it. Returns `Some` only for the error page
-/// of a destination that is not a valid URI.
+/// Longest URI [`Uri`] holds, in bytes.
+const MAX_URI_LEN: usize = u16::MAX as usize - 1;
+
+/// Rewrites the request URI if a rule matches it. Returns `Some` only for an error page:
+/// `414` when the request makes the destination longer than a URI can be, `500` when the
+/// destination is not a valid URI.
 pub(crate) fn pre_process<T>(
     opts: &RequestHandlerOpts,
     req: &mut Request<T>,
 ) -> Option<Result<Response<Body>, Error>> {
     let rewrites = opts.advanced_opts.as_ref()?.rewrites.as_deref()?;
-    let rewrite = url_rules::find(rewrites, req)?;
+    let (_, dest) = url_rules::find(rewrites, req)?;
 
-    let uri = match rewrite
-        .rule
-        .resolve(req.uri())
-        .and_then(|dest| merge_uris(req.uri(), &dest))
-    {
+    let uri = match dest {
+        Ok(dest) if dest.len() > MAX_URI_LEN => {
+            tracing::debug!("rewrites: destination length {} exceeds a uri", dest.len());
+            return Some(error_page::error_response(
+                req.uri(),
+                req.method(),
+                &StatusCode::URI_TOO_LONG,
+                &opts.page404,
+                &opts.page50x,
+            ));
+        }
+        dest => dest.and_then(|dest| merge_uris(req.uri(), &dest)),
+    };
+    let uri = match uri {
         Ok(uri) => uri,
         Err(err) => {
             return url_rules::error_response(
@@ -89,18 +102,22 @@ pub(crate) fn rewritten_from<'a, T>(
     })
 }
 
-/// Returns `true` when the client's path with `/` appended matches no redirect rule and
-/// rewrites to the same host and directory as the client's path, with a trailing slash,
-/// so a trailing-slash redirect to it is served without a further redirect.
+/// Returns `true` when the client's path names no directory and, with `/` appended,
+/// matches no redirect rule and rewrites to the same host and directory as the client's
+/// path, with a trailing slash, so a trailing-slash redirect to it is served without a
+/// further redirect.
 pub(crate) fn has_same_destination_with_slash(from: &RewrittenFrom<'_>) -> bool {
     let host = RequestHost::new(from.uri, from.host);
-    let uri_path = from.uri.path();
-    let slashed = [uri_path, "/"].concat();
+    let uri_path = rule_path(from.uri.path());
+    if uri_path.ends_with('/') {
+        return false;
+    }
+    let slashed = [&uri_path, "/"].concat();
     if url_rules::find_for(from.redirects, host.as_ref(), &slashed).is_some() {
         return false;
     }
     let (Some(dest), Some(dest_slashed)) = (
-        internal_destination(from.rewrites, host.as_ref(), uri_path),
+        internal_destination(from.rewrites, host.as_ref(), &uri_path),
         internal_destination(from.rewrites, host.as_ref(), &slashed),
     ) else {
         return false;
@@ -111,8 +128,8 @@ pub(crate) fn has_same_destination_with_slash(from: &RewrittenFrom<'_>) -> bool 
             == sanitize_path(Path::new(""), dest_slashed.path())
 }
 
-/// Returns the destination of the rewrite that applies to a request for `uri_path`
-/// addressed to `host`, `None` when no rule applies.
+/// Returns the destination of the rewrite that applies to a request addressed to `host`
+/// with the rule path `uri_path`, `None` when no rule applies.
 fn internal_destination(
     rules: &[Rewrites],
     host: Option<&RequestHost<'_>>,
@@ -142,11 +159,11 @@ fn merge_uris(orig_uri: &Uri, dest: &str) -> Result<Uri> {
 
 #[cfg(test)]
 mod tests {
-    use super::{has_same_destination_with_slash, pre_process, rewritten_from};
+    use super::{MAX_URI_LEN, has_same_destination_with_slash, pre_process, rewritten_from};
     use crate::{
         handler_opts::RequestHandlerOpts,
         settings::{Advanced, Redirects, Rewrites},
-        url_rules::UrlRule,
+        url_rules::{MAX_URI_LEN_FOR_REGEX, UrlRule},
     };
     use hyper::{Request, StatusCode, header::HOST};
 
@@ -266,6 +283,28 @@ mod tests {
     }
 
     #[test]
+    fn rewrites_destination_longer_than_a_uri_is_414() {
+        let opts = opts(Some(vec![
+            rewrite("/a", "/assets/main.css"),
+            rewrite("/r/{*}", &"/$1".repeat(16)),
+        ]));
+        let query_at_cap = ["/a?", &"q".repeat(MAX_URI_LEN - "/assets/main.css?".len())].concat();
+        let mut req = Request::get(&query_at_cap).body(()).unwrap();
+        assert!(pre_process(&opts, &mut req).is_none());
+        assert_eq!(req.uri().to_string().len(), MAX_URI_LEN);
+
+        for uri in [
+            [&query_at_cap, "q"].concat(),
+            ["/r/", &"a".repeat(MAX_URI_LEN / 16)].concat(),
+        ] {
+            let mut req = Request::get(&uri).body(()).unwrap();
+            let resp = pre_process(&opts, &mut req).unwrap().unwrap();
+            assert_eq!(resp.status(), StatusCode::URI_TOO_LONG);
+            assert_eq!(req.uri(), uri.as_str(), "uri must stay untouched on error");
+        }
+    }
+
+    #[test]
     fn rewrites_not_applied_has_no_client_request() {
         let opts = opts(Some(vec![rewrite("/a", "/b")]));
         let mut req = Request::get("/c").body(()).unwrap();
@@ -282,6 +321,37 @@ mod tests {
             "/prefix/dir",
             "localhost"
         ));
+    }
+
+    #[test]
+    fn rewrites_same_destination_with_slash_for_any_spelling() {
+        let rules = || vec![rewrite("/prefix{**}", "/$1")];
+        for uri in ["//prefix/./dir", "/%70refix/dir", "/prefix%2Fdir"] {
+            assert!(
+                same_destination_with_slash(rules(), uri, "localhost"),
+                "{uri}"
+            );
+        }
+        // These name a directory already
+        for uri in ["/prefix/dir/", "/prefix/dir/.", "/prefix/dir%2F"] {
+            assert!(
+                !same_destination_with_slash(rules(), uri, "localhost"),
+                "{uri}"
+            );
+        }
+    }
+
+    #[test]
+    fn rewrites_other_destination_with_slash_beyond_the_cap() {
+        let rules = || vec![rewrite("/prefix{**}", "/$1")];
+        let below_cap = ["/prefix/", &"a".repeat(MAX_URI_LEN_FOR_REGEX - 9)].concat();
+        assert!(same_destination_with_slash(
+            rules(),
+            &below_cap,
+            "localhost"
+        ));
+        let at_cap = [&below_cap, "a"].concat();
+        assert!(!same_destination_with_slash(rules(), &at_cap, "localhost"));
     }
 
     #[test]

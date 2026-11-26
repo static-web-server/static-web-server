@@ -180,7 +180,8 @@ pub struct Redirects {
     /// Host the request must be addressed to, in any case and on any port unless it
     /// names one.
     pub host: Option<String>,
-    /// Source of the redirect.
+    /// Source glob of the redirect, matched against the request path as it is served:
+    /// decoded, and without empty or `.` segments.
     pub source: String,
     /// Redirect destination.
     pub destination: String,
@@ -195,7 +196,8 @@ pub struct Rewrites {
     /// Host the request must be addressed to, in any case and on any port unless it
     /// names one.
     pub host: Option<String>,
-    /// Source of the rewrite.
+    /// Source glob of the rewrite, matched against the request path as it is served:
+    /// decoded, and without empty or `.` segments.
     pub source: String,
     /// Rewrite destination.
     pub destination: String,
