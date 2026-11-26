@@ -76,8 +76,8 @@ pub(crate) fn url_path_query(uri: &Uri) -> (&str, Option<&str>) {
 }
 
 /// The `User-Agent` value, `None` when empty. Bytes that are not valid UTF-8 are replaced with
-/// `U+FFFD`, and a value longer than [`MAX_ESCAPED_LEN`] bytes is cut and ends with `...`, like
-/// `%{user_agent}`.
+/// `U+FFFD`, and a value longer than [`MAX_ESCAPED_LEN`] UTF-8 bytes (counted before JSON
+/// escaping) is cut on a character boundary and ends with `...`.
 fn user_agent_original(value: &HeaderValue) -> Option<Cow<'_, str>> {
     let value = String::from_utf8_lossy(value.as_bytes());
     if value.is_empty() {

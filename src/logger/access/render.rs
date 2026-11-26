@@ -133,7 +133,8 @@ fn push_value(buf: &mut String, value: Option<&[u8]>) {
 }
 
 /// Maximum length of an escaped value, before the `...` that marks it as cut. The
-/// `user_agent.original` field of the default line is cut at the same length, in UTF-8 bytes.
+/// `user_agent.original` field of the default line is cut at the same length, counted in UTF-8
+/// bytes of the value before JSON escaping.
 pub(super) const MAX_ESCAPED_LEN: usize = 4096;
 
 /// Appends a client-controlled value, writing bytes outside printable ASCII, `"` and `\` as `\xHH`.

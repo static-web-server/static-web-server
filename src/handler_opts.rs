@@ -105,11 +105,14 @@ pub struct RequestHandlerOpts {
     /// Compiled access log format.
     pub access_log_format: Option<AccessLogFormat>,
     /// Log remote address feature.
+    /// The default line logs it as `network.peer.address`, and as `client.address` unless a proxy header gives the client.
     pub log_remote_address: bool,
     /// Log the X-Real-IP header.
+    /// The default line logs it as `client.address`, unless `log_forwarded_for` gives one.
     pub log_x_real_ip: bool,
     /// Log the client address from the X-Forwarded-For header,
     /// the rightmost address not in `trusted_proxies`. Entries must be bare IP addresses.
+    /// The default line logs it as `client.address`.
     pub log_forwarded_for: bool,
     /// Proxy IPs (exact, no ranges) to log the X-Real-IP and X-Forwarded-For headers from, none if empty.
     pub trusted_proxies: Vec<IpAddr>,
