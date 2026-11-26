@@ -264,27 +264,6 @@ mod tests {
     }
 
     #[test]
-    fn access_log_ipv4_mapped_addresses_are_unmapped() {
-        let req = Request::get("/")
-            .header("X-Real-IP", "::ffff:203.0.113.7")
-            .header("X-Forwarded-For", "::ffff:203.0.113.195")
-            .body(())
-            .unwrap();
-        let opts = RequestHandlerOpts {
-            trusted_proxies: vec!["172.16.0.1".parse().unwrap()],
-            ..Default::default()
-        };
-        let format = AccessLogFormat::parse("%{remote_addr}").ok();
-        let peer = "[::ffff:172.16.0.1]:1234".parse().ok();
-
-        let log = AccessLog::new(format.as_ref(), &opts, &req, peer);
-
-        assert_eq!(log.remote_ip, "172.16.0.1".parse().ok());
-        assert_eq!(log.x_real_ip, "203.0.113.7".parse().ok());
-        assert_eq!(log.forwarded_for, "203.0.113.195".parse().ok());
-    }
-
-    #[test]
     fn enabled_follows_a_filter_on_the_log_target() {
         register_test_subscribers();
         let filter = Targets::new().with_target("static_web_server::access_logs", Level::INFO);

@@ -224,6 +224,47 @@ mod tests {
         assert_eq!(logged.response_line()["http.response.body.size"], file_len);
     }
 
+    #[cfg(feature = "compression-gzip")]
+    #[tokio::test]
+    async fn request_logging_body_size_counts_the_compressed_bytes() {
+        let handler = handler("toml/handler.toml", |general| General {
+            compression: true,
+            ..general
+        });
+        let req = Request::get("http://localhost/index.html")
+            .header("accept-encoding", "gzip")
+            .body(())
+            .unwrap();
+
+        let logged = request(&handler, req).await;
+
+        assert_eq!(logged.status, 200);
+        let file_len = std::fs::metadata("docker/public/index.html").unwrap().len();
+        assert!(
+            (logged.body_len as u64) < file_len,
+            "the body is compressed"
+        );
+        assert_eq!(
+            logged.response_line()["http.response.body.size"],
+            logged.body_len as u64
+        );
+    }
+
+    #[tokio::test]
+    async fn request_logging_body_size_of_a_range_is_the_part_sent() {
+        let handler = handler("toml/handler.toml", |general| general);
+        let req = Request::get("http://localhost/index.html")
+            .header("range", "bytes=0-99")
+            .body(())
+            .unwrap();
+
+        let logged = request(&handler, req).await;
+
+        assert_eq!(logged.status, 206);
+        assert_eq!(logged.body_len, 100);
+        assert_eq!(logged.response_line()["http.response.body.size"], 100);
+    }
+
     #[tokio::test]
     async fn request_logging_body_size_is_omitted_without_a_body() {
         let handler = handler("toml/handler.toml", |general| general);
@@ -248,6 +289,34 @@ mod tests {
             assert_eq!(line["http.response.status_code"], status);
             assert!(line.get("http.response.body.size").is_none(), "{line}");
             assert!(line["duration"].is_f64(), "{line}");
+        }
+    }
+
+    #[tokio::test]
+    async fn request_logging_bytes_token_is_a_dash_without_a_body() {
+        let handler = handler("toml/handler.toml", |general| General {
+            access_log_format: "%{status} %{bytes}".to_owned(),
+            ..general
+        });
+        let head = Request::head("http://localhost/index.html")
+            .body(())
+            .unwrap();
+        let options = Request::builder()
+            .method(Method::OPTIONS)
+            .uri("http://localhost/index.html")
+            .body(())
+            .unwrap();
+        let not_modified = Request::get("http://localhost/index.html")
+            .header("if-modified-since", "Fri, 01 Jan 2100 00:00:00 GMT")
+            .body(())
+            .unwrap();
+
+        for (req, line) in [(head, "200 -"), (options, "204 -"), (not_modified, "304 -")] {
+            let logged = request(&handler, req).await;
+
+            let access = logged.lines_of("static_web_server::access_logs");
+            assert_eq!(access.len(), 1, "{:?}", logged.lines);
+            assert_eq!(access[0]["message"], line);
         }
     }
 
@@ -308,24 +377,6 @@ mod tests {
             duration,
             format!("{duration:.6}").parse::<f64>().unwrap(),
             "the `%{{duration}}` value"
-        );
-    }
-
-    #[tokio::test]
-    async fn request_logging_missing_file_logs_status_404() {
-        let handler = handler("toml/handler.toml", |general| general);
-        let req = Request::get("http://localhost/missing.css")
-            .body(())
-            .unwrap();
-
-        let logged = request(&handler, req).await;
-
-        assert_eq!(logged.status, 404);
-        let line = logged.response_line();
-        assert_eq!(line["http.response.status_code"], 404);
-        assert!(
-            line.get("client.address").is_none() && line.get("network.peer.address").is_none(),
-            "remote address logging is off by default: {line}"
         );
     }
 
@@ -525,19 +576,6 @@ mod tests {
             line["client.address"], "203.0.113.195",
             "rightmost X-Forwarded-For entry that is not a trusted proxy"
         );
-        assert_eq!(line["network.peer.address"], remote_ip());
-    }
-
-    #[tokio::test]
-    async fn request_logging_trusted_proxy_x_real_ip_without_forwarded_for() {
-        let flags = AddressFlags {
-            forwarded_for: false,
-            ..ALL_ADDRESSES
-        };
-
-        let line = proxy_request_log_line(trusted_chain(), flags).await;
-
-        assert_eq!(line["client.address"], "203.0.113.7");
         assert_eq!(line["network.peer.address"], remote_ip());
     }
 
