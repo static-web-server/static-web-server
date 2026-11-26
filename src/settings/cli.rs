@@ -600,6 +600,7 @@ pub struct General {
         env = "SERVER_LOG_REMOTE_ADDRESS",
     )]
     /// Log the remote address of each request, if available.
+    /// The default line logs it as `network.peer.address`, and as `client.address` unless a proxy header gives the client.
     pub log_remote_address: bool,
 
     #[arg(
@@ -613,6 +614,7 @@ pub struct General {
     )]
     /// Log the X-Real-IP header of requests from --trusted-proxies.
     /// The proxy must overwrite the header. If the request has more than one X-Real-IP line, nothing is logged.
+    /// The default line logs it as `client.address`, unless --log-forwarded-for gives one.
     pub log_x_real_ip: bool,
 
     #[arg(
@@ -628,6 +630,7 @@ pub struct General {
     /// It is the rightmost address not in --trusted-proxies, so every proxy in the chain must be listed
     /// and must append to or overwrite the header itself. Otherwise the address of an unlisted proxy is logged.
     /// Entries must be bare IP addresses. If one that is reached is empty or can't be parsed (e.g. `ip:port`), nothing is logged.
+    /// The default line logs it as `client.address`.
     pub log_forwarded_for: bool,
 
     #[arg(

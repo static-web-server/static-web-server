@@ -6,7 +6,8 @@
 //! Configurable access logging with format string support.
 //!
 //! Supports a `%{token}` syntax for user-defined log formats.
-//! When no format is configured, the line is logged with structured fields instead.
+//! When no format is configured, the line is logged with structured fields instead, named after
+//! the OpenTelemetry semantic conventions (see [`fields`]).
 //!
 //! The line is written when hyper drops the response body: once it is sent, or when the client
 //! goes away. So `%{bytes}` and `%{duration}` cover the whole transfer.
@@ -20,14 +21,18 @@ use std::io;
 use std::net::{IpAddr, SocketAddr};
 use std::pin::Pin;
 use std::task::{Context, Poll, ready};
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use crate::{body::Body, handler_opts::RequestHandlerOpts, health, logger::addr};
 
+mod fields;
 pub(super) mod format;
 mod render;
 
+use fields::ResponseFields;
 use format::AccessLogFormat;
+
+pub(crate) use fields::url_path_query;
 
 /// The target of the line of a custom format and of the level check in [`enabled`], kept from the
 /// former module path for log filters.
@@ -48,6 +53,9 @@ pub(crate) fn enabled<T>(opts: &RequestHandlerOpts, req: &Request<T>) -> bool {
 
 /// The request values of an access log line, copied before the pipeline runs: rewrites replace
 /// the URI and `Host`, and the line is written after the handler returns.
+///
+/// IPv4-mapped IPv6 addresses (`::ffff:a.b.c.d`) are kept as IPv4, so a dual-stack listener logs
+/// the same address as an IPv4 one.
 #[derive(Debug)]
 pub(crate) struct AccessLog {
     /// `None` logs the default line with structured fields.
@@ -58,7 +66,7 @@ pub(crate) struct AccessLog {
     version: Version,
     user_agent: Option<HeaderValue>,
     referer: Option<HeaderValue>,
-    remote_addr: Option<SocketAddr>,
+    remote_ip: Option<IpAddr>,
     x_real_ip: Option<IpAddr>,
     forwarded_for: Option<IpAddr>,
     health: bool,
@@ -84,13 +92,17 @@ impl AccessLog {
             version: req.version(),
             user_agent: headers.get(USER_AGENT).cloned(),
             referer: headers.get(REFERER).cloned(),
-            remote_addr: remote_addr.filter(|_| custom || opts.log_remote_address),
+            remote_ip: remote_addr
+                .filter(|_| custom || opts.log_remote_address)
+                .map(|addr| addr.ip().to_canonical()),
             x_real_ip: (custom || opts.log_x_real_ip)
                 .then(|| addr::x_real_ip(opts, req, remote_addr))
-                .flatten(),
+                .flatten()
+                .map(|ip| ip.to_canonical()),
             forwarded_for: (custom || opts.log_forwarded_for)
                 .then(|| addr::forwarded_for(opts, req, remote_addr))
-                .flatten(),
+                .flatten()
+                .map(|ip| ip.to_canonical()),
             health: opts.health && health::is_health_endpoint(req.uri()),
             start: Instant::now(),
         }
@@ -115,9 +127,12 @@ impl AccessLog {
         })
     }
 
-    fn write(&self, status: u16, bytes: u64) {
+    /// Writes the line of a response with `status`, sending `body_size` bytes, `None` when the
+    /// response has no body.
+    fn write(&self, status: u16, body_size: Option<u64>) {
+        let duration = duration_secs(self.start.elapsed());
         let Some(format) = &self.format else {
-            self.write_default(status);
+            self.write_default(&ResponseFields::new(self, status, body_size, duration));
             return;
         };
         let ctx = render::LogContext {
@@ -126,9 +141,9 @@ impl AccessLog {
             host: self.host.as_ref(),
             version: render::http_version_str(self.version),
             status,
-            bytes,
-            duration_secs: self.start.elapsed().as_secs_f64(),
-            remote_addr: self.remote_addr,
+            bytes: body_size.unwrap_or(0),
+            duration_secs: duration,
+            remote_ip: self.remote_ip,
             user_agent: self.user_agent.as_ref(),
             referer: self.referer.as_ref(),
             x_real_ip: self.x_real_ip,
@@ -144,39 +159,44 @@ impl AccessLog {
         }
     }
 
-    fn write_default(&self, status: u16) {
-        let method = self.method.as_str();
-        let uri = render::request_target(&self.uri);
-        let remote_addr = self.remote_addr.map(|addr| addr.ip());
-        let remote_addr = remote_addr.as_ref().map(tracing::field::display);
-        let x_real_ip = self.x_real_ip.as_ref().map(tracing::field::display);
-        let real_remote_ip = self.forwarded_for.as_ref().map(tracing::field::display);
+    fn write_default(&self, fields: &ResponseFields<'_>) {
+        let client_address = fields.client_address.as_ref().map(tracing::field::display);
+        let peer_address = fields.peer_address.as_ref().map(tracing::field::display);
+
+        macro_rules! response {
+            ($level:ident) => {
+                tracing::$level!(
+                    target: DEFAULT_TARGET,
+                    {
+                        http.request.method = fields.method,
+                        url.path = fields.path,
+                        url.query = fields.query,
+                        http.response.status_code = fields.status,
+                        http.response.body.size = fields.body_size,
+                        duration = fields.duration,
+                        user_agent.original = fields.user_agent.as_deref(),
+                        client.address = client_address,
+                        network.peer.address = peer_address,
+                    },
+                    "response"
+                )
+            };
+        }
 
         // Log health check requests in debug mode only
         if self.health {
-            tracing::debug!(
-                target: DEFAULT_TARGET,
-                method,
-                uri,
-                status,
-                remote_addr,
-                x_real_ip,
-                real_remote_ip,
-                "response"
-            );
+            response!(debug);
         } else {
-            tracing::info!(
-                target: DEFAULT_TARGET,
-                method,
-                uri,
-                status,
-                remote_addr,
-                x_real_ip,
-                real_remote_ip,
-                "response"
-            );
+            response!(info);
         }
     }
+}
+
+/// The duration in seconds, rounded to microseconds, so `%{duration}` and the `duration` field of
+/// the default line log the same value.
+fn duration_secs(elapsed: Duration) -> f64 {
+    let micros = elapsed.as_nanos().saturating_add(500) / 1000;
+    micros as f64 / 1e6
 }
 
 /// A response body that counts the data bytes it yields and writes the access log line on drop.
@@ -215,8 +235,8 @@ impl http_body::Body for LoggedBody {
 
 impl Drop for LoggedBody {
     fn drop(&mut self) {
-        let bytes = if self.sends_body { self.bytes } else { 0 };
-        self.log.write(self.status, bytes);
+        let body_size = self.sends_body.then_some(self.bytes);
+        self.log.write(self.status, body_size);
     }
 }
 
@@ -227,6 +247,42 @@ mod tests {
     use tracing_subscriber::{filter::Targets, prelude::*};
 
     use crate::logger::register_test_subscribers;
+
+    #[test]
+    fn duration_secs_rounds_to_microseconds() {
+        let cases = [
+            (Duration::ZERO, 0.0, "0.000000"),
+            (Duration::from_nanos(412_499), 0.000412, "0.000412"),
+            (Duration::from_nanos(412_500), 0.000413, "0.000413"),
+            (Duration::from_nanos(1_234_567_890), 1.234568, "1.234568"),
+        ];
+        for (elapsed, secs, text) in cases {
+            let duration = duration_secs(elapsed);
+            assert_eq!(duration, secs, "{elapsed:?}");
+            assert_eq!(format!("{duration:.6}"), text, "the `%{{duration}}` value");
+        }
+    }
+
+    #[test]
+    fn access_log_ipv4_mapped_addresses_are_unmapped() {
+        let req = Request::get("/")
+            .header("X-Real-IP", "::ffff:203.0.113.7")
+            .header("X-Forwarded-For", "::ffff:203.0.113.195")
+            .body(())
+            .unwrap();
+        let opts = RequestHandlerOpts {
+            trusted_proxies: vec!["172.16.0.1".parse().unwrap()],
+            ..Default::default()
+        };
+        let format = AccessLogFormat::parse("%{remote_addr}").ok();
+        let peer = "[::ffff:172.16.0.1]:1234".parse().ok();
+
+        let log = AccessLog::new(format.as_ref(), &opts, &req, peer);
+
+        assert_eq!(log.remote_ip, "172.16.0.1".parse().ok());
+        assert_eq!(log.x_real_ip, "203.0.113.7".parse().ok());
+        assert_eq!(log.forwarded_for, "203.0.113.195".parse().ok());
+    }
 
     #[test]
     fn enabled_follows_a_filter_on_the_log_target() {

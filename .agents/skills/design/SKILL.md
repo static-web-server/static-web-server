@@ -45,7 +45,7 @@ bin/server.rs → settings/ → server/ (mod.rs, opts.rs) → service.rs → han
 | `exts/` | `http.rs` (`MethodExt`, `HTTP_SUPPORTED_METHODS`), `headers/` (`Accept-Encoding`, q-values, `ContentCoding`), `mime.rs` (compressible detection) |
 | `mem_cache/` | In-memory file cache (`mini-moka`), keyed by `(path, ContentCoding)` |
 | `directory_listing/` | HTML/JSON index, sorting, tar.gz download |
-| `logger/` | `mod.rs` (subscriber setup, `LogFormat`), `file.rs` (non-blocking log file), `access/` (`mod.rs` access log line, `format.rs` `%{token}` parser, `render.rs`), `addr.rs` (trusted-proxy addresses), `trace_context/` (`traceparent.rs` parser, `request_span.rs`, `body.rs` body wrapper, `json.rs` top-level JSON fields). Log targets keep the former module paths (`static_web_server::access_logs`, `::log_addr`, `::trace_context`) |
+| `logger/` | `mod.rs` (subscriber setup, `LogFormat`), `file.rs` (non-blocking log file), `access/` (`mod.rs` access log line, `fields.rs` OpenTelemetry field names of the default line, `format.rs` `%{token}` parser, `render.rs`), `addr.rs` (trusted-proxy addresses), `trace_context/` (`traceparent.rs` parser, `request_span.rs`, `body.rs` body wrapper, `json.rs` top-level JSON fields). Log targets keep the former module paths (`static_web_server::access_logs`, `::log_addr`, `::trace_context`) |
 | `body.rs` | `Body = BoxBody<Bytes, io::Error>` with `empty()`, `full()`, `stream()` |
 | `error.rs` | `Result<T>`, `Error` (anyhow); re-exports `Context`, `anyhow!`, `bail!` |
 | `testing.rs` | `testing::fixtures` helpers (`#[doc(hidden)]`) |
@@ -78,7 +78,7 @@ bin/server.rs → settings/ → server/ (mod.rs, opts.rs) → service.rs → han
 | 19 | Security headers | — |
 | 20 | Custom headers (final precedence). Steps 1–8 return *early* responses; only `scope = "all"` rules reach them | — |
 
-Around the pipeline: metrics (request count, inflight, duration, bytes; health probes excluded) and `logger::access::AccessLog`, which wraps the body and logs one line per request when the body is dropped, with the status and the request values the client sent (before rewrites).
+Around the pipeline: metrics (request count, inflight, duration, bytes; health probes excluded) and `logger::access::AccessLog`, which wraps the body and logs one line per request when the body is dropped, with the status and the request values the client sent (before rewrites). The default line names its fields after the OpenTelemetry semantic conventions (`http.request.method`, `url.path`, `http.response.status_code`, `client.address`, ...); the `error_page` warning uses the same names.
 
 ### Pipeline Rules
 

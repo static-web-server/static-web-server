@@ -14,7 +14,7 @@ use http::uri::Authority;
 use hyper::Uri;
 use hyper::header::HeaderValue;
 use std::fmt::Write;
-use std::net::{IpAddr, SocketAddr};
+use std::net::IpAddr;
 use time::{OffsetDateTime, format_description::BorrowedFormatItem, macros::format_description};
 
 use super::format::{AccessLogFormat, Segment, Token};
@@ -40,7 +40,7 @@ pub(super) struct LogContext<'a> {
     pub(super) status: u16,
     pub(super) bytes: u64,
     pub(super) duration_secs: f64,
-    pub(super) remote_addr: Option<SocketAddr>,
+    pub(super) remote_ip: Option<IpAddr>,
     pub(super) user_agent: Option<&'a HeaderValue>,
     pub(super) referer: Option<&'a HeaderValue>,
     pub(super) x_real_ip: Option<IpAddr>,
@@ -64,7 +64,7 @@ fn render_token(buf: &mut String, token: Token, ctx: &LogContext<'_>) {
         Token::Duration => {
             let _ = write!(buf, "{:.6}", ctx.duration_secs);
         }
-        Token::RemoteAddr => push_ip(buf, ctx.remote_addr.map(|addr| addr.ip())),
+        Token::RemoteAddr => push_ip(buf, ctx.remote_ip),
         Token::XRealIp => push_ip(buf, ctx.x_real_ip),
         Token::ForwardedFor => push_ip(buf, ctx.forwarded_for),
         Token::Host => push_value(buf, request_host(ctx.uri, ctx.host)),
@@ -132,8 +132,9 @@ fn push_value(buf: &mut String, value: Option<&[u8]>) {
     }
 }
 
-/// Maximum length of an escaped value, before the `...` that marks it as cut.
-const MAX_ESCAPED_LEN: usize = 4096;
+/// Maximum length of an escaped value, before the `...` that marks it as cut. The
+/// `user_agent.original` field of the default line is cut at the same length, in UTF-8 bytes.
+pub(super) const MAX_ESCAPED_LEN: usize = 4096;
 
 /// Appends a client-controlled value, writing bytes outside printable ASCII, `"` and `\` as `\xHH`.
 /// The escaped value is cut at [`MAX_ESCAPED_LEN`] and ends with `...`, never inside an `\xHH`.
@@ -183,7 +184,7 @@ mod tests {
             status: 200,
             bytes: 0,
             duration_secs: 0.0,
-            remote_addr: None,
+            remote_ip: None,
             user_agent: headers.get(USER_AGENT),
             referer: headers.get(REFERER),
             x_real_ip: None,
@@ -198,10 +199,7 @@ mod tests {
         let headers = HeaderMap::new();
         let ctx = LogContext {
             bytes: 1024,
-            remote_addr: Some(SocketAddr::new(
-                IpAddr::V4(Ipv4Addr::new(192, 168, 1, 1)),
-                54321,
-            )),
+            remote_ip: Some(IpAddr::V4(Ipv4Addr::new(192, 168, 1, 1))),
             ..context(&uri, &headers)
         };
         assert_eq!(render(&fmt, &ctx), "GET /index.html 200 1024");
@@ -331,7 +329,7 @@ mod tests {
             status: 304,
             bytes: 1024,
             duration_secs: 0.0012345,
-            remote_addr: Some("[2001:db8::1]:443".parse().unwrap()),
+            remote_ip: Some("2001:db8::1".parse().unwrap()),
             x_real_ip: Some(IpAddr::V4(Ipv4Addr::new(203, 0, 113, 7))),
             forwarded_for: Some(IpAddr::V4(Ipv4Addr::new(203, 0, 113, 195))),
             ..context(&uri, &headers)
