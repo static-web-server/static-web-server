@@ -227,12 +227,12 @@ mod tests {
         }
 
         // The `404` warning of each request, plus the default `response` line, or the access log
-        // line that replaces it and has no `uri` field
+        // line that replaces it and has no `url.path` field
         let mut needles: Vec<(String, usize)> = requests[..requests.len() - 1]
             .iter()
-            .map(|(_, path, _)| (format!(r#""uri":"{path}""#), 2))
+            .map(|(_, path, _)| (format!(r#""url.path":"{path}""#), 2))
             .collect();
-        needles.push((r#""uri":"/access-log.css""#.to_owned(), 1));
+        needles.push((r#""url.path":"/access-log.css""#.to_owned(), 1));
         needles.push(("GET /access-log.css 404".to_owned(), 1));
         let contents = wait_for_log_lines(&log_path, &needles, Duration::from_secs(3));
         let lines: Vec<serde_json::Value> = contents
@@ -244,7 +244,7 @@ mod tests {
             let access_log_message = format!("GET {path} 404");
             let request_lines: Vec<_> = lines
                 .iter()
-                .filter(|l| l["uri"] == path || l["message"] == access_log_message.as_str())
+                .filter(|l| l["url.path"] == path || l["message"] == access_log_message.as_str())
                 .collect();
             let request_target = if path == "/access-log.css" {
                 "static_web_server::access_logs"

@@ -78,7 +78,7 @@ Rules: pre-processing steps return early when they handle the request. Post-proc
 | `directory_listing/` | HTML/JSON directory index |
 | `basic_auth.rs` | BCrypt-based HTTP basic auth |
 | `health.rs` | `/livez` and `/readyz` probes |
-| `logger/` | `tracing` setup and log file (`mod.rs`, `file.rs`); `access/` per-request access log (`format.rs` `%{token}` parser, `render.rs`); `addr.rs` trusted-proxy address logging; `trace_context/` W3C `traceparent` request span and its JSON fields |
+| `logger/` | `tracing` setup and log file (`mod.rs`, `file.rs`); `access/` per-request access log (`fields.rs` OpenTelemetry field names of the default line, `format.rs` `%{token}` parser, `render.rs`); `addr.rs` trusted-proxy address logging; `trace_context/` W3C `traceparent` request span and its JSON fields |
 | `error.rs` | Crate error types (`Error`, `Result<T>`) |
 | `body.rs` | Unified response body (`BoxBody`) |
 | `testing.rs` | `testing::fixtures` helpers for tests |

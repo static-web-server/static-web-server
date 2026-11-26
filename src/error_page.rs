@@ -15,7 +15,7 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, OnceLock, RwLock};
 
 use crate::body::Body;
-use crate::{Result, exts::http::MethodExt, helpers};
+use crate::{Result, exts::http::MethodExt, helpers, logger};
 
 /// Process-wide cache of pre-loaded error/maintenance page bodies, keyed by
 /// the configured filesystem path. Populated at startup by [`cache_page`];
@@ -118,8 +118,12 @@ fn error_response_inner(
     log_warning: bool,
 ) -> Result<Response<Body>> {
     if log_warning {
+        let (path, query) = logger::access::url_path_query(uri);
         tracing::warn!(
-            method = ?method, uri = ?uri, status = status_code.as_u16(),
+            http.request.method = method.as_str(),
+            url.path = path,
+            url.query = query,
+            http.response.status_code = status_code.as_u16(),
             error = status_code.canonical_reason().unwrap_or_default()
         );
     }
