@@ -342,9 +342,13 @@ pub mod tests {
                 "https://example.org/evil.example",
             ),
         ] {
-            #[cfg(windows)]
-            let location = &location.replace("%5C/", "").replace("%5C", "");
-            assert_redirect(uri, None, StatusCode::MOVED_PERMANENTLY, location).await;
+            // On Windows `\\` separates segments, so it never reaches a capture
+            let location = if cfg!(windows) {
+                location.replace("%5C/", "").replace("%5C", "")
+            } else {
+                location.to_owned()
+            };
+            assert_redirect(uri, None, StatusCode::MOVED_PERMANENTLY, &location).await;
         }
     }
 

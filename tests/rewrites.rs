@@ -419,18 +419,31 @@ pub mod tests {
 
     #[tokio::test]
     async fn rewrites_trailing_slash_location_stays_on_host() {
-        for (uri, location) in [
-            ("http://localhost//evil.example/docs", "/evil.example/docs/"),
+        // Windows reads a path starting with `\\/` as a network share, which is not served,
+        // so that path is the root directory there and matches no rule
+        let unc_index = if cfg!(windows) {
+            ROOT_INDEX
+        } else {
+            ASSETS_INDEX
+        };
+        for (uri, location, file) in [
+            (
+                "http://localhost//evil.example/docs",
+                "/evil.example/docs/",
+                ASSETS_INDEX,
+            ),
             (
                 "http://localhost/\\evil.example/docs",
                 "/%5Cevil.example/docs/",
+                ASSETS_INDEX,
             ),
             (
                 "http://localhost/\\/evil.example/docs",
                 "/%5C/evil.example/docs/",
+                unc_index,
             ),
         ] {
-            assert_redirects_to(uri, location, ASSETS_INDEX).await;
+            assert_redirects_to(uri, location, file).await;
         }
     }
 
