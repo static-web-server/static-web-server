@@ -8,6 +8,7 @@
 
 use aho_corasick::{AhoCorasick, MatchKind};
 use regex_lite::Regex;
+use std::ops::Range;
 
 use crate::{Context, Error, Result};
 
@@ -35,13 +36,77 @@ pub(crate) fn validate(dest: &str) -> Result<()> {
     Ok(())
 }
 
+/// Returns the first `$N` placeholder that `replacer` finds in `dest` before the start of
+/// its path, `None` if all of them are in its path, query or fragment.
+///
+/// A placeholder in the scheme or authority, or ahead of the first `/`, `?` or `#` of a
+/// relative reference, lets the request choose the scheme or host of the destination.
+/// A destination that starts with `$0` is fine: the whole matched rule path starts
+/// with `/`.
+pub(crate) fn placeholder_before_path<'a>(
+    dest: &'a str,
+    replacer: &AhoCorasick,
+) -> Result<Option<&'a str>> {
+    let mut placeholders = replacer
+        .try_find_iter(dest)
+        .with_context(|| "can not find the placeholders of the destination")?
+        .peekable();
+    if placeholders
+        .peek()
+        .is_some_and(|m| m.start() == 0 && m.pattern().as_usize() == 0)
+    {
+        return Ok(None);
+    }
+    let path_start = path_start(dest);
+    Ok(placeholders
+        .find(|m| m.start() < path_start)
+        .map(|m| &dest[m.range()]))
+}
+
+/// Returns the byte offset where the path of the URI reference `dest` starts, past its
+/// scheme and authority (RFC 3986 §3, §4.2). Without an authority, a relative reference
+/// or a `scheme:` reference starts its path at its first `/`, `?` or `#`, so that no
+/// placeholder can complete a scheme.
+fn path_start(dest: &str) -> usize {
+    let authority_end = |start: usize| {
+        start
+            + dest[start..]
+                .find(['/', '?', '#'])
+                .unwrap_or(dest.len() - start)
+    };
+    if dest.starts_with("//") {
+        return authority_end(2);
+    }
+    if dest.starts_with('/') {
+        return 0;
+    }
+    match scheme_len(dest) {
+        Some(len) if dest[len..].starts_with("://") => authority_end(len + 3),
+        _ => dest.find(['/', '?', '#']).unwrap_or(dest.len()),
+    }
+}
+
+/// Returns the length of the scheme `dest` starts with, if any (RFC 3986 §3.1).
+fn scheme_len(dest: &str) -> Option<usize> {
+    let len = dest.find(':')?;
+    let mut scheme = dest[..len].bytes();
+    let is_scheme = scheme.next().is_some_and(|b| b.is_ascii_alphabetic())
+        && scheme.all(|b| b.is_ascii_alphanumeric() || matches!(b, b'+' | b'-' | b'.'));
+    is_scheme.then_some(len)
+}
+
 /// Replaces the `$N` placeholders of `dest_uri` with the capture groups of `regex` in
 /// `orig_uri`. `$0` is the whole match; an unmatched optional group becomes empty.
+///
+/// A capture is substituted as it is in the path and fragment. In the query, after the
+/// first `?` of `dest_uri` and before its `#`, it is one value: its `&`, `=`, `+` and `;`
+/// are percent-encoded, while its escapes and `/` are kept.
 ///
 /// A destination stays on its host: unless `dest_uri` itself starts with `//`, the `/`
 /// and `\` that captures put at its start are collapsed into one `/`.
 ///
-/// Fails if `regex` does not match `orig_uri`.
+/// Fails if `regex` does not match `orig_uri`, or `ac` finds a placeholder `regex` has no
+/// capture group for.
 #[doc(hidden)]
 pub fn replace_placeholders(
     orig_uri: &str,
@@ -61,12 +126,52 @@ pub fn replace_placeholders(
     tracing::debug!("url rule glob pattern captures: {caps:?}");
     tracing::debug!("url rule glob pattern destination: {dest_uri:?}");
 
-    let dest = ac
-        .try_replace_all(dest_uri, &caps)
-        .with_context(|| "failed replacing captures")?;
+    let query = query_range(dest_uri);
+    let mut dest = String::with_capacity(dest_uri.len() + orig_uri.len());
+    let mut last = 0;
+    let placeholders = ac
+        .try_find_iter(dest_uri)
+        .with_context(|| "failed finding placeholders")?;
+    for placeholder in placeholders {
+        let Some(cap) = caps.get(placeholder.pattern().as_usize()) else {
+            bail!("placeholder of the destination has no capture group");
+        };
+        dest.push_str(&dest_uri[last..placeholder.start()]);
+        if query
+            .as_ref()
+            .is_some_and(|q| q.contains(&placeholder.start()))
+        {
+            push_query_value(&mut dest, cap);
+        } else {
+            dest.push_str(cap);
+        }
+        last = placeholder.end();
+    }
+    dest.push_str(&dest_uri[last..]);
     let dest = keep_on_host(dest_uri, dest);
     tracing::debug!("url rule glob pattern destination replaced: {dest:?}");
     Ok(dest)
+}
+
+/// Returns the byte range of the query of `dest`: after its first `?`, up to its `#`.
+fn query_range(dest: &str) -> Option<Range<usize>> {
+    let end = dest.find('#').unwrap_or(dest.len());
+    let start = dest[..end].find('?')?;
+    Some(start + 1..end)
+}
+
+/// Appends `value` to the query `dest` ends in, with the characters that separate
+/// parameters or encode a space in `application/x-www-form-urlencoded` percent-encoded.
+fn push_query_value(dest: &mut String, value: &str) {
+    for c in value.chars() {
+        match c {
+            '&' => dest.push_str("%26"),
+            '=' => dest.push_str("%3D"),
+            '+' => dest.push_str("%2B"),
+            ';' => dest.push_str("%3B"),
+            c => dest.push(c),
+        }
+    }
 }
 
 /// Collapses the `/` and `\` that `dest` starts with into one `/`, unless the `template`
@@ -106,7 +211,10 @@ pub(crate) fn append_query(dest: String, query: Option<&str>) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{append_query, build_placeholder_replacer, replace_placeholders, validate};
+    use super::{
+        append_query, build_placeholder_replacer, path_start, placeholder_before_path,
+        replace_placeholders, validate,
+    };
     use proptest::prelude::*;
     use regex_lite::Regex;
 
@@ -146,6 +254,97 @@ mod tests {
                 expected,
                 "{orig} -> {dest}"
             );
+        }
+    }
+
+    #[test]
+    fn placeholders_in_query_are_one_value() {
+        let source = r"^/p/(.*)$";
+        for (orig, dest, expected) in [
+            ("/p/a&b=c", "/x/$1?q=$1#$1", "/x/a&b=c?q=a%26b%3Dc#a&b=c"),
+            ("/p/a+b;c", "/x?q=$1", "/x?q=a%2Bb%3Bc"),
+            ("/p/a%26b%20c", "/x?q=$1", "/x?q=a%26b%20c"),
+            ("/p/a/b&c", "/x?q=$1&r=1", "/x?q=a/b%26c&r=1"),
+            ("/p/a&b", "/x#f?q=$1", "/x#f?q=a&b"),
+            (
+                "/p/a&b",
+                "https://x.example/$1?$1",
+                "https://x.example/a&b?a%26b",
+            ),
+            ("/p/a&b", "/x?q=$0", "/x?q=/p/a%26b"),
+        ] {
+            assert_eq!(replace(orig, source, dest), expected, "{orig} -> {dest}");
+        }
+    }
+
+    #[test]
+    fn placeholders_beyond_capture_groups_are_an_error() {
+        let re = Regex::new(r"^/(a)$").unwrap();
+        let ac = aho_corasick::AhoCorasick::new(["$0", "$1", "$2"]).unwrap();
+        assert!(replace_placeholders("/a", &re, "/$1/$2", &ac).is_err());
+    }
+
+    #[test]
+    fn destination_path_start() {
+        for (dest, start) in [
+            ("/a/b", 0),
+            ("//host/a", 6),
+            ("//host?q", 6),
+            ("//host", 6),
+            ("https://host/a", 12),
+            ("https://host?q", 12),
+            ("https://host#f", 12),
+            ("https://host", 12),
+            ("https:host/a", 10),
+            ("mailto:x", 8),
+            ("rel/a", 3),
+            ("?q", 0),
+            ("#f", 0),
+            ("", 0),
+            ("x", 1),
+        ] {
+            assert_eq!(path_start(dest), start, "{dest}");
+        }
+    }
+
+    #[test]
+    fn destination_placeholder_before_path() {
+        let re = Regex::new(r"^/(.*)/(.*)$").unwrap();
+        let ac = build_placeholder_replacer(&re).unwrap();
+        for dest in [
+            "$1",
+            "x$1/y",
+            "$1/y",
+            "https://$1.example.org/",
+            "https://example.org$1",
+            "https://example.org:$1/",
+            "$1://example.org/",
+            "//$1/x",
+            "https:$1",
+            "x$0",
+        ] {
+            assert_eq!(
+                placeholder_before_path(dest, &ac).unwrap(),
+                Some(if dest.contains("$0") { "$0" } else { "$1" }),
+                "{dest}"
+            );
+        }
+        for dest in [
+            "/$1",
+            "$0",
+            "$0.html",
+            "$0$1",
+            "https://example.org/$1",
+            "https://example.org?q=$1",
+            "https://example.org",
+            "/a?b=$1#$2",
+            "//cdn.example/$1",
+            "rel/$1",
+            "?q=$1",
+            "#$1",
+            "x$3",
+        ] {
+            assert_eq!(placeholder_before_path(dest, &ac).unwrap(), None, "{dest}");
         }
     }
 
@@ -281,10 +480,11 @@ mod tests {
         }
 
         /// Whatever the request path holds, a destination that does not start with `//`
-        /// never becomes a reference to another host.
+        /// never becomes a reference to another host, and one that starts with `/` never
+        /// starts with a scheme.
         #[test]
         fn prop_replace_placeholders_stays_on_host(
-            tail in "[/\\\\a-z.]{0,32}",
+            tail in "[/\\\\a-z.:]{0,32}",
             dest in prop_oneof![Just("/$1"), Just("$1"), Just("/$1/$1"), Just("$0")],
         ) {
             let re = Regex::new(r"^/blog/(.*)$").unwrap();
@@ -292,6 +492,24 @@ mod tests {
             let out = replace_placeholders(&format!("/blog/{tail}"), &re, dest, &ac).unwrap();
             let slashes = out.len() - out.trim_start_matches(['/', '\\']).len();
             prop_assert!(slashes < 2, "{out}");
+            if dest.starts_with('/') || dest.starts_with("$0") {
+                prop_assert!(super::scheme_len(&out).is_none(), "{out}");
+            }
+        }
+
+        /// A capture never adds a parameter or a value to the query of a destination.
+        #[test]
+        fn prop_replace_placeholders_query_value_stays_one(
+            tail in "[a-z&=+;/%0-9A-F]{0,32}",
+        ) {
+            let re = Regex::new(r"^/p/(.*)$").unwrap();
+            let ac = build_placeholder_replacer(&re).unwrap();
+            let out = replace_placeholders(&format!("/p/{tail}"), &re, "/x/$1?a=$1&b=1", &ac).unwrap();
+            let query = out.split_once('?').map(|(_, q)| q).unwrap_or_default();
+            prop_assert_eq!(query.matches('&').count(), 1, "{}", out);
+            prop_assert_eq!(query.matches('=').count(), 2, "{}", out);
+            prop_assert!(!query.contains(['+', ';']), "{}", out);
+            prop_assert!(out.starts_with(&format!("/x/{tail}?")), "{}", out);
         }
 
         /// The request query always ends up intact in the destination, before any

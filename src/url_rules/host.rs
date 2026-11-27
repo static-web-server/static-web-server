@@ -3,20 +3,26 @@
 // See https://static-web-server.net/ for more information
 // Copyright (C) 2019-present Jose Quintana <joseluisq.net>
 
-//! Host matching for URL rules.
+//! Host matching for URL rules and virtual hosts.
 //!
 //! A rule's `host` is compared against the request host case-insensitively
 //! (RFC 3986 §3.2.2), and IPv6 addresses by value. A `host` without a port matches any
 //! port; a `host` with a port matches only requests carrying that same explicit port.
 //! The scheme's default port is not implied: clients omit it, so `example.com:80` never
-//! matches `Host: example.com`, and startup warns about it.
+//! matches `Host: example.com`, and startup warns about it. A virtual host's `host` is
+//! compared the same way, so a request a host-bound rule applies to is served from the
+//! virtual host of that host.
+//!
+//! The client chooses the host and port it sends, whatever address it connected to. A
+//! rule bound to a host only applies to content that is served for that host alone, such
+//! as the root of its virtual host: the same path reached under another host skips it.
 
 use hyper::{Request, Uri, header::HOST, http::HeaderValue};
 use std::net::Ipv6Addr;
 
 use crate::Result;
 
-/// The `host` of a URL rule, validated and normalized at startup.
+/// The `host` of a URL rule or virtual host, validated and normalized at startup.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RuleHost {
     /// Host name or IPv6 address.
@@ -42,21 +48,21 @@ impl RuleHost {
     /// address, and a port outside `1..=65535`.
     pub fn parse(value: &str) -> Result<Self> {
         if value.contains('*') {
-            bail!("wildcards are not supported in url rule host {value:?}");
+            bail!("wildcards are not supported in host {value:?}");
         }
         let Some(host) = RequestHost::parse(value) else {
-            bail!("invalid url rule host {value:?}, expected `name` or `name:port`");
+            bail!("invalid host {value:?}, expected `name` or `name:port`");
         };
         let Some(name) = HostName::parse(host.name) else {
-            bail!("invalid url rule host name in {value:?}");
+            bail!("invalid host name in {value:?}");
         };
         if host.port == Some(0) {
-            bail!("invalid url rule host port 0 in {value:?}");
+            bail!("invalid host port 0 in {value:?}");
         }
         if let Some(port @ (80 | 443)) = host.port {
             tracing::warn!(
-                "url rule host {value:?} names the default port {port}, which clients usually \
-                 omit from `Host`; leave the port out to match those requests"
+                "host {value:?} names the default port {port}, which clients usually omit \
+                 from `Host`; leave the port out to match those requests"
             );
         }
         Ok(Self {
@@ -132,11 +138,6 @@ impl<'a> RequestHost<'a> {
             });
         }
         Self::parse(host?.to_str().ok()?)
-    }
-
-    /// Returns the host name or address as sent by the client, without the port.
-    pub(crate) fn name(&self) -> &'a str {
-        self.name
     }
 
     /// Parses `host[:port]`, where `host` may be a bracketed IPv6 address.

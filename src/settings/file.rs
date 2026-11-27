@@ -178,10 +178,13 @@ pub enum RedirectsKind {
 /// Represents redirects types.
 pub struct Redirects {
     /// Host the request must be addressed to, in any case and on any port unless it
-    /// names one.
+    /// names one. The client chooses the host it sends, so a rule bound to a host only
+    /// applies to content that is served for that host alone.
     pub host: Option<String>,
-    /// Source glob of the redirect, matched against the request path as it is served:
-    /// decoded, and without empty or `.` segments.
+    /// Source glob of the redirect, matched against every spelling of the same request
+    /// path: `//`, `./`, `%2F` and needless percent-encoding change nothing. Other URLs
+    /// that serve the same content, such as `/dir/index.html` for `/dir/`, need their own
+    /// rule.
     pub source: String,
     /// Redirect destination.
     pub destination: String,
@@ -194,10 +197,13 @@ pub struct Redirects {
 /// Represents rewrites types.
 pub struct Rewrites {
     /// Host the request must be addressed to, in any case and on any port unless it
-    /// names one.
+    /// names one. The client chooses the host it sends, so a rule bound to a host only
+    /// applies to content that is served for that host alone.
     pub host: Option<String>,
-    /// Source glob of the rewrite, matched against the request path as it is served:
-    /// decoded, and without empty or `.` segments.
+    /// Source glob of the rewrite, matched against every spelling of the same request
+    /// path: `//`, `./`, `%2F` and needless percent-encoding change nothing. Other URLs
+    /// that serve the same content, such as `/dir/index.html` for `/dir/`, need their own
+    /// rule.
     pub source: String,
     /// Rewrite destination.
     pub destination: String,
@@ -210,7 +216,8 @@ pub struct Rewrites {
 #[serde(rename_all = "kebab-case")]
 /// Represents virtual hosts with different root directories
 pub struct VirtualHosts {
-    /// The value to check for in the "Host" header
+    /// Host the request must be addressed to, in any case and on any port unless it
+    /// names one, as for the `host` of redirects and rewrites
     pub host: String,
     /// The root directory for this virtual host
     pub root: Option<PathBuf>,

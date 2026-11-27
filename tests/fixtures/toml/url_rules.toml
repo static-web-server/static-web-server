@@ -66,13 +66,19 @@ source = "/query/absolute/{*}"
 destination = "https://example.org/$1"
 kind = 301
 
+# A capture in the query is a value there
+[[advanced.redirects]]
+source = "/query/value/{*}"
+destination = "/index.html?page=$1#$1"
+kind = 302
+
 # Captures keep their percent-encoding
 [[advanced.redirects]]
 source = "/encoded/{*}"
 destination = "/decoded/$1"
 kind = 301
 
-# Path spellings: a rule matches every request path that reaches the same file
+# Path spellings: a rule matches every spelling of the same path
 [[advanced.redirects]]
 source = "/assets/index.html"
 destination = "/login"
@@ -103,11 +109,6 @@ kind = 301
 [[advanced.redirects]]
 source = "/lead-glob{**}"
 destination = "/$1"
-kind = 301
-
-[[advanced.redirects]]
-source = "/lead-bare{**}"
-destination = "$1"
 kind = 301
 
 [[advanced.redirects]]
@@ -149,12 +150,21 @@ destination = "/assets/main.css"
 source = "/rewrite/query/{*}"
 destination = "/assets/$1?v=1"
 
+[[advanced.rewrites]]
+source = "/rewrite/value/{*}"
+destination = "/assets/main.css?page=$1"
+
 # Rewrite to another virtual host
 [[advanced.rewrites]]
 source = "/vhost/{*}"
 destination = "http://other.example/$1"
 
-# Path spellings: a rule matches every request path that reaches the same file
+# The virtual host is chosen in any letter case
+[[advanced.rewrites]]
+source = "/vhost-mixed-case/{*}"
+destination = "http://Other.Example/$1"
+
+# Path spellings: a rule matches every spelling of the same path
 [[advanced.rewrites]]
 source = "/assets/tiny.js"
 destination = "/assets/main.css"
@@ -174,6 +184,10 @@ destination = "/test.html"
 
 [[advanced.virtual-hosts]]
 host = "other.example"
+root = "tests/fixtures/markdown"
+
+[[advanced.virtual-hosts]]
+host = "[::1]"
 root = "tests/fixtures/markdown"
 
 # A host-bound rule in front of a virtual host

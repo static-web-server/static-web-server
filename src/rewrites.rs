@@ -12,12 +12,12 @@ use std::path::Path;
 
 use crate::body::Body;
 use crate::{
-    Error, Result, error_page,
+    Error, Result,
     fs::path::{rule_path, sanitize_path},
     handler_opts::RequestHandlerOpts,
     settings::Rewrites,
     static_files::RewrittenFrom,
-    url_rules::{self, RequestHost},
+    url_rules::{self, RequestHost, RuleMatch},
 };
 
 /// Request URI and `Host` as the client sent them, kept in the request extensions when a
@@ -32,25 +32,25 @@ struct ClientRequest {
 const MAX_URI_LEN: usize = u16::MAX as usize - 1;
 
 /// Rewrites the request URI if a rule matches it. Returns `Some` only for an error page:
-/// `414` when the request makes the destination longer than a URI can be, `500` when the
-/// destination is not a valid URI.
+/// `414` when the request path is too long to be matched or makes the destination longer
+/// than a URI can be, `500` when the destination is not a valid URI.
 pub(crate) fn pre_process<T>(
     opts: &RequestHandlerOpts,
     req: &mut Request<T>,
 ) -> Option<Result<Response<Body>, Error>> {
     let rewrites = opts.advanced_opts.as_ref()?.rewrites.as_deref()?;
-    let (_, dest) = url_rules::find(rewrites, req)?;
+    let dest = match url_rules::find(rewrites, req) {
+        RuleMatch::NoRule => return None,
+        RuleMatch::Rule(_, dest) => dest,
+        RuleMatch::PathTooLong => {
+            return url_rules::status_response(StatusCode::URI_TOO_LONG, opts, req);
+        }
+    };
 
     let uri = match dest {
         Ok(dest) if dest.len() > MAX_URI_LEN => {
             tracing::debug!("rewrites: destination length {} exceeds a uri", dest.len());
-            return Some(error_page::error_response(
-                req.uri(),
-                req.method(),
-                &StatusCode::URI_TOO_LONG,
-                &opts.page404,
-                &opts.page50x,
-            ));
+            return url_rules::status_response(StatusCode::URI_TOO_LONG, opts, req);
         }
         dest => dest.and_then(|dest| merge_uris(req.uri(), &dest)),
     };
@@ -274,8 +274,34 @@ mod tests {
     }
 
     #[test]
+    fn rewrites_paths_longer_than_the_cap_are_414() {
+        let configured = opts(Some(vec![rewrite("/a/{**}", "/b/$1")]));
+        let at_cap = ["/a/", &"x".repeat(MAX_URI_LEN_FOR_REGEX - 3)].concat();
+        assert_eq!(
+            rewritten(&configured, &at_cap, "localhost").0,
+            at_cap.replacen("/a/", "/b/", 1)
+        );
+
+        let too_long = [&at_cap, "x"].concat();
+        let mut req = Request::get(&too_long).body(()).unwrap();
+        let resp = pre_process(&configured, &mut req).unwrap().unwrap();
+        assert_eq!(resp.status(), StatusCode::URI_TOO_LONG);
+        assert_eq!(
+            req.uri(),
+            too_long.as_str(),
+            "uri must stay untouched on error"
+        );
+
+        let mut req = Request::get(&too_long).body(()).unwrap();
+        assert!(pre_process(&opts(Some(vec![])), &mut req).is_none());
+    }
+
+    #[test]
     fn rewrites_invalid_destination_is_500() {
-        let opts = opts(Some(vec![rewrite("/a", "http://[bad/")]));
+        // Startup rejects such a destination, so build the rule by hand
+        let mut invalid = rewrite("/a", "/b");
+        invalid.rule.destination = "http://[bad/".into();
+        let opts = opts(Some(vec![invalid]));
         let mut req = Request::get("/a").body(()).unwrap();
         let resp = pre_process(&opts, &mut req).unwrap().unwrap();
         assert_eq!(resp.status(), StatusCode::INTERNAL_SERVER_ERROR);

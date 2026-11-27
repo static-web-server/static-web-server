@@ -35,7 +35,14 @@ const SOURCE_ENCODE: &AsciiSet = &RULE_PATH_ENCODE
 /// whose default file systems ignore letter case, it ignores ASCII case too, as paths in
 /// any case reach the same file.
 pub(crate) fn to_regex(glob: &str) -> Result<Regex> {
-    let glob = GlobBuilder::new(&rule_spelling(glob))
+    let spelling = rule_spelling(glob);
+    if !can_match(&spelling) {
+        tracing::warn!(
+            "url rule source {glob:?} matches no request: request paths are matched with a \
+             leading `/`, without empty, `.` or `..` segments, and with `/` unencoded"
+        );
+    }
+    let glob = GlobBuilder::new(&spelling)
         .literal_separator(true)
         .build()
         .with_context(|| format!("can not compile glob pattern for source: {glob}"))?;
@@ -63,7 +70,8 @@ pub(crate) fn to_regex(glob: &str) -> Result<Regex> {
 
 /// Spells the text of a `source` glob the way rule paths are spelled: percent-escapes in
 /// uppercase hex, and spaces, non-ASCII and other characters that need an escape encoded.
-/// A `%` that starts no escape becomes `%25`.
+/// An escape of an RFC 3986 unreserved character is decoded, as rule paths hold that
+/// character itself (RFC 3986 §6.2.2.2). A `%` that starts no escape becomes `%25`.
 fn rule_spelling(glob: &str) -> String {
     let mut spelling = String::with_capacity(glob.len());
     let mut rest = glob;
@@ -72,9 +80,13 @@ fn rule_spelling(glob: &str) -> String {
         let escape = rest[i..]
             .get(..3)
             .filter(|escape| escape.bytes().skip(1).all(|b| b.is_ascii_hexdigit()));
-        match escape {
-            Some(escape) => spelling.push_str(&escape.to_ascii_uppercase()),
-            None => spelling.push_str("%25"),
+        let byte = escape.and_then(|escape| u8::from_str_radix(&escape[1..], 16).ok());
+        match (escape, byte) {
+            (_, Some(b)) if b.is_ascii_alphanumeric() || matches!(b, b'-' | b'.' | b'_' | b'~') => {
+                spelling.push(char::from(b));
+            }
+            (Some(escape), _) => spelling.push_str(&escape.to_ascii_uppercase()),
+            (None, _) => spelling.push_str("%25"),
         }
         rest = &rest[i + escape.map_or(1, str::len)..];
     }
@@ -82,9 +94,22 @@ fn rule_spelling(glob: &str) -> String {
     spelling
 }
 
+/// Returns whether a source glob in rule path spelling can match a rule path: it starts
+/// with `/` or with a wildcard, group or class, and holds no empty, `.` or `..` segment,
+/// nor an escape of `/`. On Windows, nor of `\`, which separates segments there.
+fn can_match(spelling: &str) -> bool {
+    spelling.starts_with(['/', '*', '?', '{', '['])
+        && !spelling.contains("//")
+        && !spelling
+            .split('/')
+            .any(|segment| segment == "." || segment == "..")
+        && !spelling.contains("%2F")
+        && !(cfg!(windows) && spelling.contains("%5C"))
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{rule_spelling, to_regex};
+    use super::{can_match, rule_spelling, to_regex};
 
     fn captures(glob: &str, path: &str) -> Option<Vec<String>> {
         let re = to_regex(glob).unwrap();
@@ -152,6 +177,53 @@ mod tests {
         ] {
             assert_eq!(rule_spelling(glob), spelling, "{glob}");
         }
+    }
+
+    #[test]
+    fn glob_source_unreserved_escapes_are_decoded() {
+        for (glob, spelling) in [
+            ("/%61dmin/**", "/admin/**"),
+            ("/%2d%2E%5f%7e%41%7A%30%39", "/-._~Az09"),
+            ("/%2f%5c%2a%3a%40%25", "/%2F%5C%2A%3A%40%25"),
+        ] {
+            assert_eq!(rule_spelling(glob), spelling, "{glob}");
+        }
+        assert_eq!(
+            captures("/%61dmin/{**}", "/admin/x/y"),
+            Some(vec!["x/y".into()])
+        );
+    }
+
+    #[test]
+    fn glob_source_that_can_never_match_is_detected() {
+        for source in [
+            "admin/**",
+            "%2Fadmin",
+            "/a//b",
+            "//a",
+            "/a/./b",
+            "/a/..",
+            "/a/%2e%2E/b",
+            "/a%2fb",
+            "/a/%2F",
+        ] {
+            assert!(!can_match(&rule_spelling(source)), "{source}");
+        }
+        for source in [
+            "/",
+            "/admin/**",
+            "/a/b/",
+            "**/{*}.js",
+            "*.js",
+            "{/a,/b}",
+            "[/]x",
+            "/a.b/..c/.d",
+            "/%61dmin",
+            "/a%20b",
+        ] {
+            assert!(can_match(&rule_spelling(source)), "{source}");
+        }
+        assert_eq!(can_match(&rule_spelling("/a%5Cb")), cfg!(not(windows)));
     }
 
     #[test]

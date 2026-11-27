@@ -2489,3 +2489,136 @@ mod short_name_alias_tests {
         }
     }
 }
+
+/// A request path that names a directory (it ends in `/`, `/.` or `/..`, in any
+/// spelling) is not served from a regular file of that name.
+#[cfg(test)]
+mod dir_path_tests {
+    use headers::HeaderMap;
+    use http::{Method, StatusCode};
+    use http_body_util::BodyExt;
+    use std::path::Path;
+
+    #[cfg(feature = "directory-listing")]
+    use static_web_server::directory_listing::DirListFmt;
+    use static_web_server::static_files::{self, HandleOpts};
+
+    /// Spellings of `/file.txt` as a directory.
+    const DIR_SPELLINGS: [&str; 10] = [
+        "/file.txt/",
+        "/file.txt//",
+        "/file.txt/.",
+        "/file.txt/..",
+        "/file.txt/%2e",
+        "/file.txt/%2E%2E",
+        "/file.txt%2F",
+        "/file.txt%2f",
+        "/file.txt%2F.",
+        "/file.txt%5C",
+    ];
+
+    /// A root with a file, a directory with an index file, a directory with
+    /// a `.html` sibling and no index file, and a `.html` file.
+    fn fixture() -> tempfile::TempDir {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path();
+        std::fs::write(root.join("file.txt"), "file").unwrap();
+        std::fs::create_dir(root.join("indexed")).unwrap();
+        std::fs::write(root.join("indexed/index.html"), "index").unwrap();
+        std::fs::create_dir(root.join("docs")).unwrap();
+        std::fs::write(root.join("docs.html"), "sibling").unwrap();
+        std::fs::write(root.join("page.html"), "page").unwrap();
+        dir
+    }
+
+    /// Requests `uri_path` and returns the status and the body (empty on
+    /// error).
+    async fn request(
+        root: &Path,
+        method: &Method,
+        uri_path: &str,
+        redirect_trailing_slash: bool,
+    ) -> (StatusCode, String) {
+        let headers = HeaderMap::new();
+        let base_path = root.to_path_buf();
+        let result = static_files::handle(&HandleOpts {
+            method,
+            headers: &headers,
+            base_path: &base_path,
+            uri_path,
+            uri_query: None,
+            rewritten_from: None,
+            #[cfg(feature = "mem-cache")]
+            memory_cache: None,
+            #[cfg(feature = "directory-listing")]
+            dir_listing: false,
+            #[cfg(feature = "directory-listing")]
+            dir_listing_order: 6,
+            #[cfg(feature = "directory-listing")]
+            dir_listing_format: &DirListFmt::Html,
+            #[cfg(feature = "directory-listing-download")]
+            dir_listing_download: &[],
+            redirect_trailing_slash,
+            compression_static: false,
+            etag: false,
+            include_hidden: false,
+            follow_symlinks: false,
+            index_files: &["index.html"],
+        })
+        .await;
+        match result {
+            Ok(res) => {
+                let status = res.resp.status();
+                let body = res.resp.into_body().collect().await.unwrap().to_bytes();
+                (status, String::from_utf8_lossy(&body).into_owned())
+            }
+            Err(status) => (status, String::new()),
+        }
+    }
+
+    #[tokio::test]
+    async fn dir_path_to_regular_file_is_not_found() {
+        let dir = fixture();
+        for redirect_trailing_slash in [true, false] {
+            for method in [Method::GET, Method::HEAD] {
+                for uri_path in DIR_SPELLINGS {
+                    let (status, _) =
+                        request(dir.path(), &method, uri_path, redirect_trailing_slash).await;
+                    assert_eq!(
+                        status,
+                        StatusCode::NOT_FOUND,
+                        "{method} {uri_path} with redirect-trailing-slash {redirect_trailing_slash}"
+                    );
+                }
+                let (status, _) =
+                    request(dir.path(), &method, "/file.txt", redirect_trailing_slash).await;
+                assert_eq!(status, StatusCode::OK, "{method} /file.txt");
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn dir_path_to_directory_is_served() {
+        let dir = fixture();
+        for (uri_path, body) in [
+            ("/indexed/", "index"),
+            ("/indexed/.", "index"),
+            ("/indexed%2F", "index"),
+            ("/docs/", "sibling"),
+        ] {
+            let (status, served) = request(dir.path(), &Method::GET, uri_path, false).await;
+            assert_eq!(status, StatusCode::OK, "{uri_path}");
+            assert_eq!(served, body, "{uri_path}");
+        }
+    }
+
+    #[tokio::test]
+    async fn dir_path_to_missing_path_keeps_html_suffix_fallback() {
+        let dir = fixture();
+        for uri_path in ["/page/", "/page/.", "/page"] {
+            let (status, served) = request(dir.path(), &Method::GET, uri_path, true).await;
+            assert_eq!(status, StatusCode::OK, "{uri_path}");
+            assert_eq!(served, "page", "{uri_path}");
+        }
+    }
+}

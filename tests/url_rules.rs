@@ -237,6 +237,13 @@ pub mod tests {
     }
 
     #[tokio::test]
+    async fn redirects_host_rule_guards_virtual_host_in_any_case() {
+        for host in ["OTHER.EXAMPLE", "Other.Example:8080"] {
+            assert_redirect("/test.html", Some(host), StatusCode::FOUND, "/login").await;
+        }
+    }
+
+    #[tokio::test]
     async fn redirects_host_from_uri_without_host_header() {
         // HTTP/2 requests carry `:authority` in the URI and may omit `Host`
         assert_redirect(
@@ -304,6 +311,26 @@ pub mod tests {
     }
 
     #[tokio::test]
+    async fn redirects_capture_in_query_is_one_value() {
+        for (uri, location) in [
+            ("/query/value/a", "/index.html?page=a#a"),
+            (
+                "/query/value/a&admin=1",
+                "/index.html?page=a%26admin%3D1#a&admin=1",
+            ),
+            ("/query/value/a%26b", "/index.html?page=a%26b#a&b"),
+            ("/query/value/a+b;c", "/index.html?page=a%2Bb%3Bc#a+b;c"),
+            (
+                "/query/value/a%20b%2Bc",
+                "/index.html?page=a%20b%2Bc#a%20b+c",
+            ),
+            ("/query/value/a=b?x=1&y", "/index.html?page=a%3Db&x=1&y#a=b"),
+        ] {
+            assert_redirect(uri, None, StatusCode::FOUND, location).await;
+        }
+    }
+
+    #[tokio::test]
     async fn redirects_capture_keeps_percent_encoding() {
         assert_redirect(
             "/encoded/caf%C3%A9%20menu",
@@ -334,8 +361,6 @@ pub mod tests {
             ("/lead/\\/evil.example", "/%5C/evil.example"),
             ("/lead-glob/evil.example", "/evil.example"),
             ("/lead-glob//evil.example/x", "/evil.example/x"),
-            ("/lead-bare/evil.example", "/evil.example"),
-            ("/lead-bare//evil.example", "/evil.example"),
             ("/lead/a//b", "/a/b"),
             (
                 "/lead-absolute//evil.example",
@@ -390,6 +415,33 @@ pub mod tests {
     }
 
     #[tokio::test]
+    async fn url_rules_on_a_file_are_not_skipped_by_a_directory_spelling() {
+        // Rules tell `/file` and `/file/` apart, and the file layer serves no file for
+        // a path that names a directory
+        let spellings = ["/", "//", "/.", "/..", "%2F", "%2f", "/%2e", "%2F."];
+        for redirect_trailing_slash in [true, false] {
+            let configure = |opts: &mut RequestHandlerOpts| {
+                opts.redirect_trailing_slash = redirect_trailing_slash;
+            };
+            for method in [Method::GET, Method::HEAD] {
+                for file in ["/assets/index.html", "/assets/tiny.js"] {
+                    for spelling in spellings {
+                        let uri = [file, spelling].concat();
+                        let sent = send_with(method.clone(), &uri, None, configure).await;
+                        assert_eq!(
+                            sent.res.status(),
+                            StatusCode::NOT_FOUND,
+                            "{method} {uri} with redirect-trailing-slash {redirect_trailing_slash}"
+                        );
+                        assert!(sent.res.headers().get(LOCATION).is_none(), "{uri}");
+                        assert_eq!(sent.uri, uri.as_str(), "{uri} must not be rewritten");
+                    }
+                }
+            }
+        }
+    }
+
+    #[tokio::test]
     async fn redirects_capture_takes_the_served_spelling() {
         for (uri, location) in [
             ("/spelling/a/b", "/spelled/a/b"),
@@ -416,12 +468,31 @@ pub mod tests {
         }
     }
 
+    /// Removes the rules of the fixture that `remove` names.
+    fn without(remove: &'static str) -> impl FnOnce(&mut RequestHandlerOpts) {
+        move |opts| {
+            if let Some(advanced) = opts.advanced_opts.as_mut() {
+                if remove.contains("redirects") {
+                    advanced.redirects = None;
+                }
+                if remove.contains("rewrites") {
+                    advanced.rewrites = None;
+                }
+            }
+        }
+    }
+
     #[tokio::test]
-    async fn redirects_skip_paths_longer_than_the_cap() {
+    async fn redirects_paths_longer_than_the_cap_are_too_long() {
         let at_cap = ["/encoded/", &"a".repeat(8 * 1024 - "/encoded/".len())].concat();
         let location = at_cap.replacen("/encoded/", "/decoded/", 1);
         assert_redirect(&at_cap, None, StatusCode::MOVED_PERMANENTLY, &location).await;
-        assert_not_found(&[&at_cap, "a"].concat(), None).await;
+
+        for method in [Method::GET, Method::HEAD, Method::OPTIONS] {
+            let sent = send(method.clone(), &[&at_cap, "a"].concat(), None).await;
+            assert_eq!(sent.res.status(), StatusCode::URI_TOO_LONG, "{method}");
+            assert!(sent.res.headers().get(LOCATION).is_none(), "{method}");
+        }
 
         // The cap is on the path, the query is appended whatever its length
         let query = "q".repeat(1024);
@@ -432,6 +503,30 @@ pub mod tests {
             &[&location, "?", &query].concat(),
         )
         .await;
+    }
+
+    #[tokio::test]
+    async fn rewrites_paths_longer_than_the_cap_are_too_long() {
+        let at_cap = [
+            "/rewrite/query/",
+            &"a".repeat(8 * 1024 - "/rewrite/query/".len()),
+        ]
+        .concat();
+        let sent = send_with(Method::GET, &at_cap, None, without("redirects")).await;
+        let rewritten = at_cap.replacen("/rewrite/query/", "/assets/", 1) + "?v=1";
+        assert_eq!(sent.uri, rewritten.as_str());
+
+        let too_long = [&at_cap, "a"].concat();
+        let sent = send_with(Method::GET, &too_long, None, without("redirects")).await;
+        assert_eq!(sent.res.status(), StatusCode::URI_TOO_LONG);
+        assert_eq!(sent.uri, too_long.as_str(), "the uri must not be rewritten");
+    }
+
+    #[tokio::test]
+    async fn url_rules_none_configured_serve_paths_longer_than_the_cap() {
+        let too_long = ["/", &"a".repeat(8 * 1024)].concat();
+        let sent = send_with(Method::GET, &too_long, None, without("redirects rewrites")).await;
+        assert_eq!(sent.res.status(), StatusCode::NOT_FOUND);
     }
 
     // Redirects: methods
@@ -510,6 +605,20 @@ pub mod tests {
     }
 
     #[tokio::test]
+    async fn rewrites_capture_in_query_is_one_value() {
+        let sent = get("/rewrite/value/a&admin=1+b?q=1&r", None).await;
+        assert_eq!(sent.res.status(), StatusCode::OK);
+        assert_eq!(sent.uri, "/assets/main.css?page=a%26admin%3D1%2Bb&q=1&r");
+        assert!(body(sent.res).await.contains(CSS));
+    }
+
+    #[tokio::test]
+    async fn rewrites_capture_in_path_is_kept() {
+        let sent = get("/rewrite/query/a&b=c+d;e", None).await;
+        assert_eq!(sent.uri, "/assets/a&b=c+d;e?v=1");
+    }
+
+    #[tokio::test]
     async fn rewrites_query_empty_kept() {
         let sent = get("/rewrite/host?", Some("example.com")).await;
         assert_eq!(sent.res.status(), StatusCode::OK);
@@ -558,6 +667,54 @@ pub mod tests {
         assert_eq!(sent.uri, "http://other.example/test.html?q=1");
         assert_eq!(sent.host.as_deref(), Some("other.example"));
         assert!(body(sent.res).await.contains("Test Page"));
+    }
+
+    #[tokio::test]
+    async fn rewrites_host_rule_serves_its_virtual_host_in_any_case() {
+        for host in ["OTHER.EXAMPLE", "Other.Example:8080"] {
+            let sent = get("/vhost-page", Some(host)).await;
+            assert_eq!(sent.res.status(), StatusCode::OK, "{host}");
+            assert_eq!(sent.uri, "/test.html", "{host}");
+            assert!(body(sent.res).await.contains("Test Page"), "{host}");
+        }
+    }
+
+    #[tokio::test]
+    async fn rewrites_to_virtual_host_in_another_case() {
+        let sent = get("/vhost-mixed-case/test.html", Some("localhost")).await;
+        assert_eq!(sent.res.status(), StatusCode::OK);
+        assert_eq!(sent.uri, "http://Other.Example/test.html");
+        assert!(body(sent.res).await.contains("Test Page"));
+    }
+
+    // Virtual hosts
+
+    #[tokio::test]
+    async fn virtual_hosts_match_host_in_any_case() {
+        for host in ["other.example", "OTHER.EXAMPLE", "Other.Example:8080"] {
+            let sent = get("/article.html", Some(host)).await;
+            assert_eq!(sent.res.status(), StatusCode::OK, "{host}");
+            assert!(body(sent.res).await.contains("Article HTML"), "{host}");
+        }
+        assert_not_found("/article.html", Some("localhost")).await;
+    }
+
+    #[tokio::test]
+    async fn virtual_hosts_match_ipv6_in_any_notation() {
+        for (uri, host) in [
+            ("/article.html", Some("[::1]")),
+            ("/article.html", Some("[0:0:0:0:0:0:0:1]:8080")),
+            ("http://[0::1]/article.html", None),
+        ] {
+            let sent = get(uri, host).await;
+            assert_eq!(
+                sent.res.status(),
+                StatusCode::OK,
+                "{uri} with host {host:?}"
+            );
+            assert!(body(sent.res).await.contains("Article HTML"), "{uri}");
+        }
+        assert_not_found("/article.html", Some("[::2]")).await;
     }
 
     #[tokio::test]

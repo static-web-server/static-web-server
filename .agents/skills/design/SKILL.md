@@ -64,8 +64,8 @@ bin/server.rs → settings/ → server/ (mod.rs, opts.rs) → service.rs → han
 | 4 | Basic auth | 401. Applies to `OPTIONS` too, except a CORS preflight (CORS on, `Origin` + `Access-Control-Request-Method`) |
 | 5 | Metrics endpoint (after auth, so `/metrics` is protected) | Yes |
 | 6 | Maintenance mode | 503 or configured status |
-| 7 | Redirects | 301/302 |
-| 8 | Rewrites | No (rewrites the URI, and `Host` for a destination with an authority); 414 for a destination longer than a URI, 500 for an invalid one |
+| 7 | Redirects | 301/302; 414 when rules exist and the rule path is longer than 8 KiB |
+| 8 | Rewrites | No (rewrites the URI, and `Host` for a destination with an authority); 414 when rules exist and the rule path is longer than 8 KiB, or for a destination longer than a URI; 500 for an invalid one |
 | 9 | Virtual hosts | No (swaps `base_path` by `Host`) |
 | 10 | Markdown negotiation (`--accept-markdown`) | No (swaps the URI path to the `.md` variant) |
 | 11 | `static_files::handle()`: mem-cache lookup (`GET`/`HEAD`), sanitize, resolve, security, `OPTIONS`/trailing-slash/listing, conditional + range reply | Errors become error pages |

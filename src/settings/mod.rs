@@ -12,7 +12,7 @@ use headers::HeaderMap;
 use hyper::StatusCode;
 use std::path::{Path, PathBuf};
 
-use crate::url_rules::UrlRule;
+use crate::url_rules::{RuleHost, UrlRule};
 use crate::{Context, Result, helpers, logger};
 
 pub mod cli;
@@ -77,10 +77,12 @@ impl AsRef<UrlRule> for Redirects {
     }
 }
 
-/// The `VirtualHosts` file options.
+/// A compiled `[[advanced.virtual-hosts]]` entry.
 pub struct VirtualHosts {
-    /// The value to check for in the "Host" header
-    pub host: String,
+    /// Host the request must be addressed to, matched as the `host` of URL rules is.
+    pub host: RuleHost,
+    /// The `host` value as configured, which names the virtual host in logs and metrics.
+    pub name: String,
     /// The root directory for this virtual host
     pub root: PathBuf,
 }
@@ -562,39 +564,17 @@ impl Settings {
                     .transpose()?;
 
                 // 4. Virtual hosts assignment
-                let vhosts_entries = match advanced.virtual_hosts {
-                    Some(vhosts_entries) => {
-                        let mut vhosts_vec: Vec<VirtualHosts> = Vec::new();
-
-                        for vhosts_entry in vhosts_entries.iter() {
-                            if let Some(root) = vhosts_entry.root.to_owned() {
-                                // Make sure path is valid
-                                let root_dir = helpers::get_valid_dirpath(&root)
-                                    .with_context(|| "root directory for virtual host was not found or inaccessible")?;
-                                // Canonicalize once so the per-request
-                                // containment check can skip a `canonicalize`
-                                // syscall (see `static_files::security`), unless
-                                // `use_relative_root` is enabled.
-                                let root_dir = if use_relative_root {
-                                    root_dir
-                                } else {
-                                    root_dir.canonicalize().unwrap_or(root_dir)
-                                };
-                                tracing::debug!(
-                                    "added virtual host: {} -> {}",
-                                    vhosts_entry.host,
-                                    root_dir.display()
-                                );
-                                vhosts_vec.push(VirtualHosts {
-                                    host: vhosts_entry.host.to_owned(),
-                                    root: root_dir,
-                                });
-                            }
-                        }
-                        Some(vhosts_vec)
-                    }
-                    _ => None,
-                };
+                let vhosts_entries = advanced
+                    .virtual_hosts
+                    .map(|entries| {
+                        entries
+                            .iter()
+                            .filter_map(|entry| {
+                                compile_virtual_host(entry, use_relative_root).transpose()
+                            })
+                            .collect()
+                    })
+                    .transpose()?;
 
                 settings_advanced = Some(Advanced {
                     headers: headers_entries,
@@ -869,6 +849,38 @@ fn is_rewrite_target(rule: &UrlRule) -> bool {
         Ok(_) => dest.starts_with('/'),
         Err(_) => false,
     }
+}
+
+/// Compiles a `[[advanced.virtual-hosts]]` entry, `None` when it has no root.
+fn compile_virtual_host(
+    entry: &file::VirtualHosts,
+    use_relative_root: bool,
+) -> Result<Option<VirtualHosts>> {
+    let host = RuleHost::parse(&entry.host)
+        .with_context(|| format!("invalid virtual host {:?}", entry.host))?;
+    let Some(root) = &entry.root else {
+        return Ok(None);
+    };
+    let root_dir = helpers::get_valid_dirpath(root)
+        .with_context(|| "root directory for virtual host was not found or inaccessible")?;
+    // Canonicalize once so the per-request containment check can skip a
+    // `canonicalize` syscall (see `static_files::security`), unless
+    // `use_relative_root` is enabled.
+    let root_dir = if use_relative_root {
+        root_dir
+    } else {
+        root_dir.canonicalize().unwrap_or(root_dir)
+    };
+    tracing::debug!(
+        "added virtual host: {} -> {}",
+        entry.host,
+        root_dir.display()
+    );
+    Ok(Some(VirtualHosts {
+        host,
+        name: entry.host.clone(),
+        root: root_dir,
+    }))
 }
 
 /// Compiles a `[[advanced.redirects]]` entry.

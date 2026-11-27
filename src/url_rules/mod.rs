@@ -8,14 +8,29 @@
 //! `$N` placeholders take the glob's capture groups.
 //!
 //! Rules see the request path in one spelling, [`rule_path`]: the segments that are
-//! served, percent-encoded. Every path that reaches a file matches the rules for it.
+//! served, percent-encoded. Every spelling of the same path matches the same rules, so
+//! `//`, `./`, `%2F` and needless percent-encoding change nothing. A path that names a
+//! directory, such as `/file/`, keeps its trailing `/` and serves no regular file.
+//!
+//! Some URLs serve the same content and are still separate paths, each needing its own
+//! rule: a directory and its index file (`/dir/` and `/dir/index.html`), a path and its
+//! `.html` suffix fallback (`/page` and `/page.html`), a file and its pre-compressed twins
+//! (`.gz`, `.br`, `.zst`) or markdown variants requested by name, and, with
+//! `redirect-trailing-slash` off, a directory without its trailing slash (`/dir` does not
+//! match `/dir/**`).
+//!
+//! Letter case is folded for ASCII only, and only on macOS and Windows, whose default file
+//! systems ignore it. Unicode normalization and non-ASCII case are not folded, and a
+//! case-insensitive volume on Linux is not detected.
 //!
 //! # Security: ReDoS / pattern complexity
 //!
 //! Source patterns are admin-supplied at startup and evaluated by [`regex_lite`], which
 //! does not backtrack, so catastrophic-backtracking ReDoS does not apply. Per-request work
-//! is still proportional to `pattern_size * uri_len`, so rule paths longer than
-//! [`MAX_URI_LEN_FOR_REGEX`] bytes match no rule. Treat rules as trusted configuration.
+//! is still proportional to `pattern_size * uri_len`, so a rule path longer than
+//! [`MAX_URI_LEN_FOR_REGEX`] bytes is not matched: when rules are configured, such a
+//! request is answered `414 URI Too Long` rather than served past them. Treat rules as
+//! trusted configuration.
 
 mod destination;
 mod glob;
@@ -33,7 +48,8 @@ pub use destination::{build_placeholder_replacer, replace_placeholders};
 pub(crate) use host::RequestHost;
 pub use host::RuleHost;
 
-/// Maximum rule path length, in bytes, matched against rule sources.
+/// Maximum rule path length, in bytes, matched against rule sources. A longer path is
+/// answered `414 URI Too Long` when rules are configured.
 ///
 /// 8 KiB matches the common HTTP server URI cap, is far above any realistic rule
 /// source, and bounds per-request regex work to a small constant.
@@ -54,16 +70,25 @@ pub struct UrlRule {
 impl UrlRule {
     /// Compiles a rule from its `host`, `source` glob, and `destination` template.
     ///
-    /// Fails on an invalid host or glob, or a destination with characters a URI can't
-    /// hold unencoded.
+    /// Fails on an invalid host or glob, a destination with characters a URI can't hold
+    /// unencoded, or a destination with a placeholder in its scheme or authority, or
+    /// ahead of the path of a relative reference: placeholders may only fill its path,
+    /// query or fragment, unless it starts with `$0`.
     pub fn new(host: Option<&str>, source: &str, destination: &str) -> Result<Self> {
         let host = host.map(RuleHost::parse).transpose()?;
         destination::validate(destination)?;
-        let source = glob::to_regex(source)?;
-        let replacer = build_placeholder_replacer(&source)?;
+        let regex = glob::to_regex(source)?;
+        let replacer = build_placeholder_replacer(&regex)?;
+        if let Some(placeholder) = destination::placeholder_before_path(destination, &replacer)? {
+            bail!(
+                "destination {destination:?} of source {source:?} has the placeholder \
+                 {placeholder} before its path; placeholders are only allowed in its path, \
+                 query or fragment"
+            );
+        }
         Ok(Self {
             host,
-            source,
+            source: regex,
             destination: destination.to_owned(),
             replacer,
         })
@@ -93,36 +118,66 @@ impl UrlRule {
     }
 }
 
+/// What [`find`] found for a request.
+pub(crate) enum RuleMatch<'a, R> {
+    /// No rule applies.
+    NoRule,
+    /// The first rule that applies, with its destination for the request.
+    Rule(&'a R, Result<String>),
+    /// The rule path is longer than [`MAX_URI_LEN_FOR_REGEX`], so it was not matched.
+    PathTooLong,
+}
+
 /// Returns the first rule of `rules` that applies to `req`, with its destination for it.
-pub(crate) fn find<'a, R: AsRef<UrlRule>, T>(
-    rules: &'a [R],
-    req: &Request<T>,
-) -> Option<(&'a R, Result<String>)> {
-    let host = RequestHost::from_request(req);
+///
+/// Returns [`RuleMatch::PathTooLong`] for a rule path longer than
+/// [`MAX_URI_LEN_FOR_REGEX`] unless `rules` is empty, so such a path is never served
+/// past the rules.
+pub(crate) fn find<'a, R: AsRef<UrlRule>, T>(rules: &'a [R], req: &Request<T>) -> RuleMatch<'a, R> {
+    if rules.is_empty() {
+        return RuleMatch::NoRule;
+    }
     let uri_path = rule_path(req.uri().path());
-    let rule = find_for(rules, host.as_ref(), &uri_path)?;
-    let dest = rule.as_ref().resolve_path(&uri_path, req.uri().query());
-    Some((rule, dest))
+    if is_too_long(&uri_path) {
+        return RuleMatch::PathTooLong;
+    }
+    let host = RequestHost::from_request(req);
+    match find_for(rules, host.as_ref(), &uri_path) {
+        Some(rule) => {
+            let dest = rule.as_ref().resolve_path(&uri_path, req.uri().query());
+            RuleMatch::Rule(rule, dest)
+        }
+        None => RuleMatch::NoRule,
+    }
 }
 
 /// Returns the first rule of `rules` that applies to a request addressed to `host` with
-/// the rule path `uri_path`.
+/// the rule path `uri_path`. A rule path longer than [`MAX_URI_LEN_FOR_REGEX`] matches
+/// no rule.
 pub(crate) fn find_for<'a, R: AsRef<UrlRule>>(
     rules: &'a [R],
     host: Option<&RequestHost<'_>>,
     uri_path: &str,
 ) -> Option<&'a R> {
-    if uri_path.len() > MAX_URI_LEN_FOR_REGEX {
-        tracing::debug!(
-            "url rules: skipping match, uri path length {} exceeds cap {}",
-            uri_path.len(),
-            MAX_URI_LEN_FOR_REGEX
-        );
+    if is_too_long(uri_path) {
         return None;
     }
     rules
         .iter()
         .find(|rule| rule.as_ref().is_match(host, uri_path))
+}
+
+/// Returns whether the rule path `uri_path` is too long to be matched against rules.
+fn is_too_long(uri_path: &str) -> bool {
+    let is_too_long = uri_path.len() > MAX_URI_LEN_FOR_REGEX;
+    if is_too_long {
+        tracing::debug!(
+            "url rules: uri path length {} exceeds cap {}",
+            uri_path.len(),
+            MAX_URI_LEN_FOR_REGEX
+        );
+    }
+    is_too_long
 }
 
 /// Logs `err` and returns the 500 error page response.
@@ -133,10 +188,20 @@ pub(crate) fn error_response<T>(
     req: &Request<T>,
 ) -> Option<Result<Response<Body>, Error>> {
     tracing::error!("{err:?}");
+    status_response(StatusCode::INTERNAL_SERVER_ERROR, opts, req)
+}
+
+/// Returns the error page response for `status`.
+#[cold]
+pub(crate) fn status_response<T>(
+    status: StatusCode,
+    opts: &RequestHandlerOpts,
+    req: &Request<T>,
+) -> Option<Result<Response<Body>, Error>> {
     Some(error_page::error_response(
         req.uri(),
         req.method(),
-        &StatusCode::INTERNAL_SERVER_ERROR,
+        &status,
         &opts.page404,
         &opts.page50x,
     ))
@@ -144,7 +209,7 @@ pub(crate) fn error_response<T>(
 
 #[cfg(test)]
 mod tests {
-    use super::{MAX_URI_LEN_FOR_REGEX, UrlRule, find};
+    use super::{MAX_URI_LEN_FOR_REGEX, RuleMatch, UrlRule, find};
     use hyper::Request;
 
     impl AsRef<UrlRule> for UrlRule {
@@ -167,8 +232,11 @@ mod tests {
 
     fn find_index(rules: &[UrlRule], uri: &str, host: Option<&str>) -> Option<usize> {
         let req = request(uri, host);
-        let (found, _) = find(rules, &req)?;
-        rules.iter().position(|r| std::ptr::eq(r, found))
+        match find(rules, &req) {
+            RuleMatch::Rule(found, _) => rules.iter().position(|r| std::ptr::eq(r, found)),
+            RuleMatch::NoRule => None,
+            RuleMatch::PathTooLong => panic!("{uri} must not be too long"),
+        }
     }
 
     #[test]
@@ -193,11 +261,15 @@ mod tests {
     }
 
     #[test]
-    fn find_skips_paths_longer_than_the_cap() {
+    fn find_paths_longer_than_the_cap_are_too_long() {
         let rules = [rule(None, "/{**}")];
         let at_cap = ["/", &"a".repeat(MAX_URI_LEN_FOR_REGEX - 1)].concat();
         assert_eq!(find_index(&rules, &at_cap, None), Some(0));
-        assert_eq!(find_index(&rules, &[&at_cap, "a"].concat(), None), None);
+
+        let too_long = request(&[&at_cap, "a"].concat(), None);
+        assert!(matches!(find(&rules, &too_long), RuleMatch::PathTooLong));
+        let no_rules: [UrlRule; 0] = [];
+        assert!(matches!(find(&no_rules, &too_long), RuleMatch::NoRule));
     }
 
     #[test]

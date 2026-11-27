@@ -175,12 +175,12 @@ mod tests {
             let err = settings_error(&format!(
                 "[[advanced.rewrites]]\nhost = \"{host}\"\nsource = \"/a\"\ndestination = \"/b\"\n"
             ));
-            assert!(err.contains("invalid url rule host"), "{host:?}: {err}");
+            assert!(err.contains("invalid host"), "{host:?}: {err}");
 
             let err = settings_error(&format!(
                 "[[advanced.redirects]]\nhost = \"{host}\"\nsource = \"/a\"\ndestination = \"/b\"\nkind = 301\n"
             ));
-            assert!(err.contains("invalid url rule host"), "{host:?}: {err}");
+            assert!(err.contains("invalid host"), "{host:?}: {err}");
         }
     }
 
@@ -247,7 +247,10 @@ mod tests {
         // A capture may be empty, so it can't stand for the leading `/`
         let err =
             settings_error("[[advanced.rewrites]]\nsource = \"/{*}\"\ndestination = \"$1.html\"\n");
-        assert!(err.contains("must be a path starting with `/`"), "{err}");
+        assert!(
+            err.contains("placeholders are only allowed in its path"),
+            "{err}"
+        );
 
         for dest in [
             "/b",
@@ -266,11 +269,93 @@ mod tests {
     }
 
     #[test]
+    fn toml_url_rule_placeholder_before_destination_path_is_rejected() {
+        let tables = [("redirects", "kind = 301\n"), ("rewrites", "")];
+        for dest in [
+            "$1",
+            "x$1/y",
+            "https://$1.example.org/",
+            "https://example.org$1",
+            "//$1/x",
+            "http://$1.internal/x",
+            "https:$1",
+        ] {
+            for (table, extra) in tables {
+                let err = settings_error(&format!(
+                    "[[advanced.{table}]]\nsource = \"/{{**}}\"\ndestination = \"{dest}\"\n{extra}"
+                ));
+                assert!(
+                    err.contains(&format!("destination {dest:?} of source \"/{{**}}\"")),
+                    "{table} {dest:?}: {err}"
+                );
+                assert!(
+                    err.contains("placeholders are only allowed in its path, query or fragment"),
+                    "{table} {dest:?}: {err}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn toml_url_rule_placeholder_in_destination_path_is_accepted() {
+        for dest in [
+            "/$1",
+            "$0.html",
+            "$0/$1",
+            "https://example.org/$1",
+            "https://example.org?q=$1",
+            "/a?b=$1#$2",
+            "//cdn.example/$1",
+            "rel/$1",
+            "?q=$1",
+            "https://example.org",
+            "/a$3",
+        ] {
+            let toml = format!(
+                "[[advanced.redirects]]\nsource = \"/{{*}}/{{*}}\"\ndestination = \"{dest}\"\nkind = 301\n"
+            );
+            if let Err(err) = settings_from_toml(&toml) {
+                panic!("{dest:?} must be accepted: {err:#}");
+            }
+        }
+        for dest in ["/$1", "$0.html", "https://example.org/$1?q=$2"] {
+            let toml = format!(
+                "[[advanced.rewrites]]\nsource = \"/{{*}}/{{*}}\"\ndestination = \"{dest}\"\n"
+            );
+            if let Err(err) = settings_from_toml(&toml) {
+                panic!("{dest:?} must be accepted: {err:#}");
+            }
+        }
+    }
+
+    #[test]
     fn toml_url_rule_host_wildcard_is_rejected() {
         let err = settings_error(
             "[[advanced.redirects]]\nhost = \"*.example.com\"\nsource = \"/a\"\ndestination = \"/b\"\nkind = 301\n",
         );
         assert!(err.contains("wildcards are not supported"), "{err}");
+    }
+
+    #[test]
+    fn toml_virtual_host_invalid_host_is_rejected() {
+        for host in [
+            "",
+            "*.example.com",
+            "http://example.com",
+            "example.com/path",
+            "user@example.com",
+            "example.com:abc",
+            "::1",
+            "[zz]",
+        ] {
+            let err = settings_error(&format!(
+                "[[advanced.virtual-hosts]]\nhost = \"{host}\"\nroot = \"tests/fixtures/public\"\n"
+            ));
+            assert!(
+                err.contains(&format!("invalid virtual host {host:?}")),
+                "{host:?}: {err}"
+            );
+        }
     }
 
     #[test]

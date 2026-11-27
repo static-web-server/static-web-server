@@ -6,18 +6,26 @@
 //! `[[advanced.redirects]]`: answers a matching request with a 301 or 302 to the rule's
 //! destination. Matching and destination building live in [`crate::url_rules`].
 
-use hyper::{Request, Response, header::LOCATION, http::HeaderValue};
+use hyper::{Request, Response, StatusCode, header::LOCATION, http::HeaderValue};
 
 use crate::body::Body;
-use crate::{Error, handler_opts::RequestHandlerOpts, url_rules};
+use crate::url_rules::{self, RuleMatch};
+use crate::{Error, handler_opts::RequestHandlerOpts};
 
-/// Answers with a redirect if a rule matches the request.
+/// Answers with a redirect if a rule matches the request, or `414` when its path is too
+/// long to be matched.
 pub(crate) fn pre_process<T>(
     opts: &RequestHandlerOpts,
     req: &Request<T>,
 ) -> Option<Result<Response<Body>, Error>> {
     let redirects = opts.advanced_opts.as_ref()?.redirects.as_deref()?;
-    let (redirect, dest) = url_rules::find(redirects, req)?;
+    let (redirect, dest) = match url_rules::find(redirects, req) {
+        RuleMatch::NoRule => return None,
+        RuleMatch::Rule(redirect, dest) => (redirect, dest),
+        RuleMatch::PathTooLong => {
+            return url_rules::status_response(StatusCode::URI_TOO_LONG, opts, req);
+        }
+    };
 
     let loc = match dest.and_then(|dest| HeaderValue::try_from(dest).map_err(Error::from)) {
         Ok(loc) => loc,
@@ -46,7 +54,7 @@ mod tests {
     use crate::{
         handler_opts::RequestHandlerOpts,
         settings::{Advanced, Redirects},
-        url_rules::UrlRule,
+        url_rules::{MAX_URI_LEN_FOR_REGEX, UrlRule},
     };
     use hyper::{Request, StatusCode};
 
@@ -97,6 +105,28 @@ mod tests {
             Some((StatusCode::FOUND, "https://x.example/d?q=1".into()))
         );
         assert_eq!(location(&opts, "/e"), None);
+    }
+
+    #[test]
+    fn redirects_paths_longer_than_the_cap_are_414() {
+        let configured = opts(Some(vec![redirect(
+            None,
+            "/a/{**}",
+            "/b/$1",
+            StatusCode::FOUND,
+        )]));
+        let at_cap = ["/a/", &"x".repeat(MAX_URI_LEN_FOR_REGEX - 3)].concat();
+        assert_eq!(
+            location(&configured, &at_cap),
+            Some((StatusCode::FOUND, at_cap.replacen("/a/", "/b/", 1)))
+        );
+        let req = Request::get([&at_cap, "x"].concat()).body(()).unwrap();
+        let resp = pre_process(&configured, &req).unwrap().unwrap();
+        assert_eq!(resp.status(), StatusCode::URI_TOO_LONG);
+        assert!(resp.headers().get("location").is_none());
+
+        let req = Request::get([&at_cap, "x"].concat()).body(()).unwrap();
+        assert!(pre_process(&opts(Some(vec![])), &req).is_none());
     }
 
     #[test]
