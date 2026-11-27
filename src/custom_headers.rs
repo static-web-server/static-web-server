@@ -7,16 +7,21 @@
 //!
 
 use hyper::{Request, Response};
+use percent_encoding::utf8_percent_encode;
 use std::{ffi::OsStr, path::PathBuf};
 
 use crate::body::Body;
+use crate::fs::path::{RULE_PATH_ENCODE, rule_path};
 use crate::{
     Error,
     handler_opts::RequestHandlerOpts,
     settings::{Headers, HeadersScope},
 };
 
-/// Appends custom HTTP headers to a response if necessary
+/// Appends custom HTTP headers to a response if necessary.
+///
+/// Sources are matched against the [`rule_path`] of the request, as URL rules are, so
+/// every spelling of the same path gets the same headers.
 pub(crate) fn post_process<T>(
     opts: &RequestHandlerOpts,
     req: &Request<T>,
@@ -26,7 +31,7 @@ pub(crate) fn post_process<T>(
 ) -> Result<Response<Body>, Error> {
     if let Some(advanced) = &opts.advanced_opts {
         append_headers(
-            req.uri().path(),
+            &rule_path(req.uri().path()),
             advanced.headers.as_deref(),
             &mut resp,
             file_path,
@@ -37,7 +42,7 @@ pub(crate) fn post_process<T>(
     Ok(resp)
 }
 
-/// Append custom HTTP headers to current response.
+/// Appends the custom HTTP headers whose source matches the rule path `uri_path`.
 fn append_headers(
     uri_path: &str,
     headers_opts: Option<&[Headers]>,
@@ -51,9 +56,12 @@ fn append_headers(
             .filter(|_| uri_path.ends_with('/') || !redirect_trailing_slash)
             .and_then(|p| p.file_name())
             .and_then(OsStr::to_str)
-            .map(|name| match uri_path {
-                "/" => ["/", name].concat(),
-                _ => [uri_path, "/", name].concat(),
+            .map(|name| {
+                let name = utf8_percent_encode(name, RULE_PATH_ENCODE).to_string();
+                match uri_path {
+                    "/" => ["/", &name].concat(),
+                    _ => [uri_path, "/", &name].concat(),
+                }
             });
 
         let uri_path = match uri_path_auto_index {

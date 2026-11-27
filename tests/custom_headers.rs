@@ -24,6 +24,7 @@ pub mod tests {
     const ORDER_TOML: &str = "toml/custom_headers_status_order.toml";
     const EARLY_TOML: &str = "toml/custom_headers_early.toml";
     const MAINTENANCE_TOML: &str = "toml/custom_headers_maintenance.toml";
+    const SPELLING_TOML: &str = "toml/custom_headers_path_spelling.toml";
     const IMMUTABLE: &str = "public, max-age=31536000, immutable";
 
     async fn request(
@@ -105,6 +106,65 @@ pub mod tests {
         ) {
             Ok(_) => panic!("settings for {fixture_toml} must be rejected"),
             Err(err) => format!("{err:#}"),
+        }
+    }
+
+    #[tokio::test]
+    async fn custom_headers_match_every_spelling_of_a_path() {
+        for uri in [
+            "/assets/main.js",
+            "/assets/./main.js",
+            "//assets/main.js",
+            "/assets//main.js",
+            "/assets/%6Dain.js",
+            "/assets/%6dain.js",
+            "/assets%2Fmain.js",
+            "/assets/%2e/main.js",
+            "/./assets/%2E%2F/main.js",
+        ] {
+            let res = get(SPELLING_TOML, uri).await;
+            assert_eq!(res.status(), 200, "{uri}");
+            assert_eq!(res.headers()["x-exact"], "1", "{uri}");
+            assert_eq!(res.headers()["x-glob"], "1", "{uri}");
+        }
+
+        let res = get(SPELLING_TOML, "/assets/main.css").await;
+        assert_eq!(res.status(), 200);
+        assert!(res.headers().get("x-exact").is_none());
+        assert_eq!(res.headers()["x-glob"], "1");
+    }
+
+    #[tokio::test]
+    async fn custom_headers_source_matches_in_any_spelling() {
+        for uri in [
+            "/sp%C3%A9cial-direct%C3%B6ry.net/sp%C3%A9cial%20file.txt~",
+            "/sp%c3%a9cial-direct%c3%b6ry.net/sp%c3%a9cial%20file.txt~",
+            "/spécial-directöry.net/spécial%20file.txt~",
+        ] {
+            let res = get(SPELLING_TOML, uri).await;
+            assert_eq!(res.status(), 200, "{uri}");
+            assert_eq!(res.headers()["x-characters"], "1", "{uri}");
+            assert_eq!(res.headers()["x-escapes"], "1", "{uri}");
+        }
+    }
+
+    #[cfg(any(target_os = "macos", windows))]
+    #[tokio::test]
+    async fn custom_headers_match_any_letter_case_where_files_do() {
+        for uri in ["/ASSETS/main.js", "/Assets/Main.JS"] {
+            let res = get(SPELLING_TOML, uri).await;
+            assert_eq!(res.status(), 200, "{uri}");
+            assert_eq!(res.headers()["x-exact"], "1", "{uri}");
+        }
+    }
+
+    #[tokio::test]
+    async fn custom_headers_index_file_of_a_directory_matches_by_name() {
+        // A directory request is matched as its index file, in the same spelling
+        for uri in ["/assets/", "//assets/", "/%61ssets/"] {
+            let res = get(SPELLING_TOML, uri).await;
+            assert_eq!(res.status(), 200, "{uri}");
+            assert_eq!(res.headers()["x-glob"], "1", "{uri}");
         }
     }
 
