@@ -339,11 +339,21 @@ pub mod tests {
             "/decoded/caf%C3%A9%20menu",
         )
         .await;
+        // Windows serves no segment that holds a `:`
+        if !cfg!(windows) {
+            assert_redirect(
+                "/encoded/a%0d%0aX:1",
+                None,
+                StatusCode::MOVED_PERMANENTLY,
+                "/decoded/a%0D%0AX:1",
+            )
+            .await;
+        }
         assert_redirect(
-            "/encoded/a%0d%0aX:1",
+            "/encoded/a%0d%0aX-1",
             None,
             StatusCode::MOVED_PERMANENTLY,
-            "/decoded/a%0D%0AX:1",
+            "/decoded/a%0D%0AX-1",
         )
         .await;
     }

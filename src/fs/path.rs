@@ -837,7 +837,8 @@ mod tests {
             ("/a%20b", "/a%20b"),
             ("/caf%C3%A9", "/caf%C3%A9"),
             ("/caf%c3%a9", "/caf%C3%A9"),
-            ("/ab%3a%40", "/ab:@"),
+            // Windows serves no segment that holds a `:`
+            ("/ab%3a%40", if cfg!(windows) { "/" } else { "/ab:@" }),
             ("/a%25b", "/a%25b"),
             ("/a/", "/a/"),
             ("/a/.", "/a/"),
