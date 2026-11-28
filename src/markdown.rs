@@ -33,8 +33,9 @@ const URI_PATH_ESCAPE: &AsciiSet = &CONTROLS.add(b'%');
 /// The URI path is sanitized with the same `sanitize_path` used by the
 /// static-files handler before any filesystem access, and the root has no
 /// `.md` sibling to look up, so the `metadata()` probes issued by
-/// `try_markdown_variant` can never reach outside `base_path`. On any failure the function returns `None` and the request
-/// falls through to the static-files handler (fail closed, 404).
+/// `try_markdown_variant` can never reach outside `base_path`. On any
+/// failure the function returns `None` and the request falls through to the
+/// static-files handler (fail closed, 404).
 ///
 /// Symlink policy is intentionally *not* enforced here: the rewritten URI is
 /// re-sanitized and passed through containment, symlink and hidden-file

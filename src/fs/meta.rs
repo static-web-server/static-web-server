@@ -122,7 +122,7 @@ pub(crate) fn try_metadata_with_html_suffix<'a>(
 /// * First tries to append a `.md` suffix to the path (e.g., `/article` → `/article.md`)
 /// * Then tries to append `.html.md`
 /// * If that fails, tries to find `index.html.md` in the path (e.g., `/article` → `/article/index.html.md`)
-/// * For the root `base_path` only `index.html.md` is tried: a file beside the root is not looked up
+/// * For the root `base_path` only `index.html.md` is tried: no file beside the root is looked up
 /// * Returns `Some(PathBuf)` if a markdown file is found, `None` otherwise
 pub(crate) fn try_markdown_variant(file_path: &Path, base_path: &Path) -> Option<PathBuf> {
     // Helper to check if a path exists and is a file

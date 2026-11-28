@@ -159,6 +159,7 @@ fn push_backslash_escape(spelling: &mut String, rest: &str) -> usize {
 /// takes three or more. Such a character is spelled encoded when it is the only member
 /// (`[ ]` as `%20`). Among other members, in a range or negated it fails: the class
 /// would match the characters of the encoding (`%`, `2` and `0`) and never a space.
+/// So does a `%` among other members: a class reads no escape, `[%20]` holds no space.
 fn push_class(spelling: &mut String, rest: &str) -> Result<usize> {
     let Some(class) = Class::parse(rest) else {
         bail!("unclosed character class; missing ']'");
@@ -170,12 +171,18 @@ fn push_class(spelling: &mut String, rest: &str) -> Result<usize> {
     match encoded {
         None => spelling.push_str(class.text),
         Some(c) if !class.negated && class.ranges == [(c, c)] => push_encoded(spelling, c),
+        Some('%') => bail!(
+            "class {} holds '%', and an escape is not read inside a class: write the escape \
+             (%25 for '%' itself) outside the class",
+            class.text
+        ),
         Some(c) => {
             let mut encoding = String::new();
             push_encoded(&mut encoding, c);
             bail!(
                 "class {} matches a single character, but a request path spells {c:?} as \
-                 {encoding}; use an alternation instead, such as {{a,{encoding}}}",
+                 {encoding}; use an alternation instead, such as {{a,{encoding}}}, which \
+                 counts as a capture group in a redirect or rewrite",
                 class.text
             );
         }
@@ -425,8 +432,6 @@ mod tests {
             ("/caf[éa]", "%C3%A9"),
             ("/a[! ]b", "%20"),
             ("/a[^[]b", "%5B"),
-            ("/a[%20]b", "%25"),
-            ("/a[x%2Ay]b", "%25"),
             ("/a[ -~]b", "%20"),
             ("/a[A-z]b", "%5B"),
             ("/a[0-A]b", "%3C"),
@@ -441,6 +446,22 @@ mod tests {
                 assert!(err.contains(&format!("as {encoding};")), "{err}");
             }
         }
+    }
+
+    #[test]
+    fn glob_source_class_with_an_escape_is_an_error() {
+        for glob in ["/a[%20]b", "/a[x%2Ay]b", "/a[!%41]", "/a[a%]"] {
+            for err in [to_matcher(glob).unwrap_err(), to_regex(glob).unwrap_err()] {
+                let err = format!("{err:#}");
+                assert!(err.contains(glob), "{err}");
+                assert!(
+                    err.contains("an escape is not read inside a class"),
+                    "{err}"
+                );
+                assert!(!err.contains("alternation"), "{err}");
+            }
+        }
+        assert_eq!(rule_spelling("/a[%]b").unwrap(), "/a%25b");
     }
 
     #[test]
