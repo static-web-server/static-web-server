@@ -7,7 +7,7 @@ description: Review or implement security-sensitive code in the Static Web Serve
 
 SWS serves files from disk to untrusted clients. Every change on the request path is security-relevant.
 
-**When to load**: editing `src/fs/path.rs`, `src/static_files/` (especially `security.rs`, `resolve.rs`), `src/cors.rs`, `src/basic_auth.rs`, `src/tls.rs`, `src/security_headers.rs`, `src/logger/access/`, `src/logger/addr.rs`, `src/logger/trace_context/`, `src/redirects.rs`, `src/rewrites.rs`, `src/markdown.rs`, `src/directory_listing/download.rs`, `src/mem_cache/`, or handling a vulnerability report.
+**When to load**: editing `src/fs/path.rs`, `src/static_files/` (especially `security.rs`, `resolve.rs`), `src/cors.rs`, `src/basic_auth.rs`, `src/tls.rs`, `src/security_headers.rs`, `src/logger/access/`, `src/logger/addr.rs`, `src/logger/trace_context/`, `src/redirects.rs`, `src/rewrites.rs`, `src/url_rules/`, `src/markdown.rs`, `src/directory_listing/download.rs`, `src/mem_cache/`, or handling a vulnerability report.
 
 ## Principles
 
@@ -39,7 +39,7 @@ The base must already be canonical (root in `server/opts.rs`, virtual-host roots
 Every feature that maps a request to a file reuses these layers:
 - **Markdown negotiation** applies the hidden-file policy (dotfiles on the request, short-name aliases on the variant found) and strips the base before rewriting the URI
 - **Directory download** excludes symlinks pointing outside the root from archives regardless of `--follow-symlinks`
-- **Rewrites/redirects** substitute captures into destinations; the rewritten path still goes through layers 2–5. Redirect destinations must not become open redirects through placeholder injection
+- **Rewrites/redirects** match sources against `fs::path::rule_path`, the one spelling of the path that `sanitize_path()` serves, so every spelling of the same path meets the same rules. Other URLs for the same content (`/dir/` and `/dir/index.html`, `.html` suffix fallback, pre-compressed twins, markdown variants) are separate paths with rules of their own. Keep the two in step: a path form the file layer accepts and `rule_path` does not fold skips rules. A path that names a directory (`fs::path::names_dir`: `/file/`, `/file/.`, `/file%2F`) serves no regular file, in the file layer and the memory cache alike. On Windows, `served_component` drops segments holding `/`, `\` or `:` (verbatim-prefix segments, drives, NTFS streams). A rule path longer than `MAX_URI_LEN_FOR_REGEX` gets 414 when rules exist. Captures are substituted into destinations; the rewritten path still goes through layers 2–5. Placeholders may only fill the path, query or fragment of a destination (checked at startup), a capture in the query has `&`, `=`, `+` and `;` encoded, and `url_rules::destination` collapses the `/` and `\` a capture adds at the start. Virtual hosts match the request host through `url_rules::RuleHost`, as host-bound rules do; the client picks the host, so a host-bound rule only guards content served for that host alone
 - **Error and fallback pages** are configured paths read at startup, not request-derived
 
 ## Basic Auth

@@ -1,4 +1,4 @@
-// Adversarial benches for `redirects::replace_placeholders` to catch
+// Adversarial benches for `url_rules::replace_placeholders` to catch
 // regressions in regex/aho-corasick interaction. Uses regex_lite (no
 // backtracking), so the curve should stay linear; this bench fails
 // loudly if a future change reintroduces super-linear behaviour.
@@ -6,7 +6,7 @@
 use aho_corasick::AhoCorasick;
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 use regex_lite::Regex;
-use static_web_server::redirects::replace_placeholders;
+use static_web_server::url_rules::replace_placeholders;
 
 fn replace_placeholders_pathological(c: &mut Criterion) {
     let re = Regex::new(r"^/(.*)/(.*)/(.*)/(.*)/(.*)$").unwrap();

@@ -958,4 +958,72 @@ mod tests {
         assert_eq!(headers["x-cache"], "HIT");
         assert_eq!(body, "htm index");
     }
+
+    /// Requests `uri_path` with the memory cache on and drains the body, which
+    /// populates the cache on a miss.
+    async fn serve_file(
+        root: &Path,
+        method: &Method,
+        uri_path: &str,
+        redirect_trailing_slash: bool,
+    ) -> Result<HeaderMap, StatusCode> {
+        let headers = HeaderMap::new();
+        let base_path = root.to_path_buf();
+        let mem_opts = MemCacheOpts::new(DEFAULT_MAX_FILE_SIZE);
+        let opts = HandleOpts {
+            method,
+            headers: &headers,
+            base_path: &base_path,
+            uri_path,
+            uri_query: None,
+            rewritten_from: None,
+            memory_cache: Some(&mem_opts),
+            #[cfg(feature = "directory-listing")]
+            dir_listing: false,
+            #[cfg(feature = "directory-listing")]
+            dir_listing_order: 6,
+            #[cfg(feature = "directory-listing")]
+            dir_listing_format: &DirListFmt::Html,
+            #[cfg(feature = "directory-listing-download")]
+            dir_listing_download: &[],
+            redirect_trailing_slash,
+            compression_static: false,
+            etag: true,
+            include_hidden: true,
+            follow_symlinks: true,
+            index_files: &["index.html"],
+        };
+        let result = static_files::handle(&opts).await?;
+        let (parts, body) = result.resp.into_parts();
+        body.collect().await.unwrap();
+        Ok(parts.headers)
+    }
+
+    #[tokio::test]
+    async fn cache_hit_not_served_to_directory_path_of_a_file() {
+        init_cache_store();
+        let (_dir, root) = dirs_root(&[], &[("file.js", b"cached file")]);
+
+        serve_file(&root, &Method::GET, "/file.js", true)
+            .await
+            .unwrap();
+        let headers = serve_file(&root, &Method::GET, "/file.js", true)
+            .await
+            .unwrap();
+        assert_eq!(headers["x-cache"], "HIT");
+
+        for redirect_trailing_slash in [true, false] {
+            for method in [Method::GET, Method::HEAD] {
+                for uri_path in ["/file.js/", "/file.js/.", "/file.js/..", "/file.js%2F"] {
+                    let result =
+                        serve_file(&root, &method, uri_path, redirect_trailing_slash).await;
+                    assert_eq!(
+                        result.err(),
+                        Some(StatusCode::NOT_FOUND),
+                        "{method} {uri_path} with redirect-trailing-slash {redirect_trailing_slash}"
+                    );
+                }
+            }
+        }
+    }
 }

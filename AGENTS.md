@@ -74,6 +74,7 @@ Rules: pre-processing steps return early when they handle the request. Post-proc
 | `control_headers.rs` | Cache-Control based on file extension (2xx/304 only) |
 | `custom_headers.rs` | TOML `[[advanced.headers]]` rules, applied last |
 | `cors.rs` | CORS preflight and header injection |
+| `redirects.rs`, `rewrites.rs`, `url_rules/` | `[[advanced.redirects]]` (301/302) and `[[advanced.rewrites]]` (internal); both compile into `url_rules::UrlRule` (host, glob, destination) |
 | `fs/` | File system: path sanitization, metadata, streaming |
 | `directory_listing/` | HTML/JSON directory index |
 | `basic_auth.rs` | BCrypt-based HTTP basic auth |

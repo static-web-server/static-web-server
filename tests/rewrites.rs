@@ -6,7 +6,10 @@
 #[cfg(test)]
 pub mod tests {
     use http_body_util::BodyExt;
-    use hyper::{Method, Request, Response, header::LOCATION};
+    use hyper::{
+        Method, Request, Response,
+        header::{HOST, LOCATION},
+    };
     use std::net::SocketAddr;
 
     use static_web_server::body::Body;
@@ -15,6 +18,14 @@ pub mod tests {
     };
 
     async fn trailing_slash_response(method: Method, uri: &str) -> Response<Body> {
+        trailing_slash_response_for_host(method, uri, None).await
+    }
+
+    async fn trailing_slash_response_for_host(
+        method: Method,
+        uri: &str,
+        host: Option<&str>,
+    ) -> Response<Body> {
         let opts = fixture_settings("toml/rewrites_trailing_slash.toml");
         let req_handler_opts = fixture_req_handler_opts(opts.general, opts.advanced);
         let req_handler = fixture_req_handler(req_handler_opts);
@@ -23,6 +34,9 @@ pub mod tests {
         let mut req = Request::new(());
         *req.method_mut() = method;
         *req.uri_mut() = uri.parse().unwrap();
+        if let Some(host) = host {
+            req.headers_mut().insert(HOST, host.parse().unwrap());
+        }
 
         req_handler.handle(&mut req, remote_addr).await.unwrap()
     }
@@ -213,72 +227,39 @@ pub mod tests {
     }
 
     #[tokio::test]
-    async fn rewrites_glob_groups_5() {
+    async fn rewrites_capture_stays_in_root() {
         let opts = fixture_settings("toml/rewrites.toml");
         let req_handler_opts = fixture_req_handler_opts(opts.general, opts.advanced);
         let req_handler = fixture_req_handler(req_handler_opts);
         let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
 
-        let mut req = Request::new(());
-        *req.uri_mut() = "http://localhost/images/icon.ico".parse().unwrap();
-
-        match req_handler.handle(&mut req, remote_addr).await {
-            Ok(res) => {
-                assert_eq!(res.status(), 302);
-                assert_eq!(res.headers()["location"], "/assets/favicon.ico");
-            }
-            Err(err) => {
-                panic!("unexpected error: {err}")
-            }
-        };
+        for uri in [
+            "http://localhost/recursive/../../Cargo.toml",
+            "http://localhost/recursive/%2e%2e/%2e%2e/Cargo.toml",
+            "http://localhost/recursive/%2e%2e%2f%2e%2e%2fCargo.toml",
+        ] {
+            let mut req = Request::new(());
+            *req.uri_mut() = uri.parse().unwrap();
+            let res = req_handler.handle(&mut req, remote_addr).await.unwrap();
+            assert_eq!(res.status(), 404, "{uri}");
+        }
     }
 
     #[tokio::test]
-    async fn rewrites_glob_groups_6() {
-        let opts = fixture_settings("toml/rewrites.toml");
+    async fn rewrites_trailing_slash_disabled_serves_rewritten_directory() {
+        let mut opts = fixture_settings("toml/rewrites_trailing_slash.toml");
+        opts.general.redirect_trailing_slash = false;
         let req_handler_opts = fixture_req_handler_opts(opts.general, opts.advanced);
         let req_handler = fixture_req_handler(req_handler_opts);
         let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
 
         let mut req = Request::new(());
-        *req.uri_mut() = "http://localhost/old/fonts/text.ttf".parse().unwrap();
-
-        match req_handler.handle(&mut req, remote_addr).await {
-            Ok(res) => {
-                assert_eq!(res.status(), 302);
-                assert_eq!(
-                    res.headers()["location"],
-                    "http://localhost/new-fonts/text.woff"
-                );
-            }
-            Err(err) => {
-                panic!("unexpected error: {err}")
-            }
-        };
-    }
-
-    #[tokio::test]
-    async fn rewrites_glob_groups_generic_1() {
-        let opts = fixture_settings("toml/rewrites.toml");
-        let req_handler_opts = fixture_req_handler_opts(opts.general, opts.advanced);
-        let req_handler = fixture_req_handler(req_handler_opts);
-        let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
-
-        let mut req = Request::new(());
-        *req.uri_mut() = "http://localhost/generic-page.html".parse().unwrap();
-
-        match req_handler.handle(&mut req, remote_addr).await {
-            Ok(res) => {
-                assert_eq!(res.status(), 301);
-                assert_eq!(
-                    res.headers()["location"],
-                    "http://localhost/new-generic/generic-page.html"
-                );
-            }
-            Err(err) => {
-                panic!("unexpected error: {err}")
-            }
-        };
+        *req.uri_mut() = "http://localhost/value/manage/assets".parse().unwrap();
+        let res = req_handler.handle(&mut req, remote_addr).await.unwrap();
+        assert_eq!(res.status(), 200);
+        assert!(res.headers().get(LOCATION).is_none());
+        let body = res.into_body().collect().await.unwrap().to_bytes();
+        assert_eq!(body, std::fs::read(ASSETS_INDEX).unwrap());
     }
 
     #[tokio::test]
@@ -361,8 +342,59 @@ pub mod tests {
     }
 
     #[tokio::test]
-    async fn rewrites_trailing_slash_skips_matching_beyond_uri_cap() {
-        // `/./` segments resolve to `/assets` and pad the path to the 8 KiB cap
+    async fn rewrites_trailing_slash_redirects_host_rule_to_client_path() {
+        for (uri, host) in [
+            ("/tenant", Some("Tenant.Example:8080")),
+            ("http://tenant.example/tenant", None),
+            ("http://tenant.example/tenant", Some("localhost")),
+        ] {
+            let res = trailing_slash_response_for_host(Method::GET, uri, host).await;
+            assert_eq!(res.status(), 308, "{uri} with host {host:?}");
+            assert_eq!(
+                res.headers()[LOCATION],
+                "/tenant/",
+                "{uri} with host {host:?}"
+            );
+        }
+
+        let res =
+            trailing_slash_response_for_host(Method::GET, "/tenant/", Some("tenant.example")).await;
+        assert_eq!(res.status(), 200);
+        let body = res.into_body().collect().await.unwrap().to_bytes();
+        assert_eq!(body, std::fs::read(ASSETS_INDEX).unwrap());
+
+        let res = trailing_slash_response_for_host(Method::GET, "/tenant", Some("localhost")).await;
+        assert_eq!(res.status(), 404, "the rule belongs to another host");
+    }
+
+    #[tokio::test]
+    async fn rewrites_trailing_slash_redirects_to_client_path_across_virtual_hosts() {
+        // The rewrite replaces `Host`, and its rule only applies to the one the client sent
+        let host = Some("front.example");
+        let res = trailing_slash_response_for_host(Method::GET, "/vhost", host).await;
+        assert_eq!(res.status(), 308);
+        assert_eq!(res.headers()[LOCATION], "/vhost/");
+
+        let res = trailing_slash_response_for_host(Method::GET, "/vhost/", host).await;
+        assert_eq!(res.status(), 200);
+        let body = res.into_body().collect().await.unwrap().to_bytes();
+        assert_eq!(body, std::fs::read(ASSETS_INDEX).unwrap());
+    }
+
+    #[tokio::test]
+    async fn rewrites_trailing_slash_skips_client_path_with_redirect_rule() {
+        let res = trailing_slash_response(Method::GET, "http://localhost/moved/").await;
+        assert_eq!(res.status(), 301);
+        assert_eq!(res.headers()[LOCATION], "/elsewhere");
+
+        // `/moved/` is redirected elsewhere, so it can't serve the directory
+        assert_redirects_to("http://localhost/moved", "/assets/", ASSETS_INDEX).await;
+    }
+
+    #[tokio::test]
+    async fn rewrites_trailing_slash_redirects_padded_client_path() {
+        // `/./` segments resolve to `/assets` and pad the path to the 8 KiB cap, which is
+        // on the path without them
         let prefix = "/value/manage";
         let padding = "/.".repeat((8 * 1024 - prefix.len() - "/assets".len()) / 2);
         let path = [prefix, &padding, "/assets"].concat();
@@ -370,27 +402,48 @@ pub mod tests {
 
         let res = trailing_slash_response(Method::GET, &["http://localhost", &path].concat()).await;
         assert_eq!(res.status(), 308);
-        assert_eq!(
-            res.headers()[LOCATION],
-            [&padding[..], "/assets/"].concat(),
-            "the path with a slash exceeds the cap, so the rewritten path is used"
-        );
+        assert_eq!(res.headers()[LOCATION], [&path, "/"].concat());
+    }
+
+    #[tokio::test]
+    async fn rewrites_trailing_slash_spelled_with_dot_segment_is_a_directory() {
+        // `/tenant/.` names the directory, as `/tenant/` does, so no redirect to add a slash
+        let host = Some("tenant.example");
+        for uri in ["/tenant/.", "/tenant/%2E", "/tenant%2F"] {
+            let res = trailing_slash_response_for_host(Method::GET, uri, host).await;
+            assert_eq!(res.status(), 200, "{uri}");
+            let body = res.into_body().collect().await.unwrap().to_bytes();
+            assert_eq!(body, std::fs::read(ASSETS_INDEX).unwrap(), "{uri}");
+        }
     }
 
     #[tokio::test]
     async fn rewrites_trailing_slash_location_stays_on_host() {
-        for (uri, location) in [
-            ("http://localhost//evil.example/docs", "/evil.example/docs/"),
+        // Windows reads a path starting with `\\/` as a network share, which is not served,
+        // so that path is the root directory there and matches no rule
+        let unc_index = if cfg!(windows) {
+            ROOT_INDEX
+        } else {
+            ASSETS_INDEX
+        };
+        for (uri, location, file) in [
+            (
+                "http://localhost//evil.example/docs",
+                "/evil.example/docs/",
+                ASSETS_INDEX,
+            ),
             (
                 "http://localhost/\\evil.example/docs",
                 "/%5Cevil.example/docs/",
+                ASSETS_INDEX,
             ),
             (
                 "http://localhost/\\/evil.example/docs",
                 "/%5C/evil.example/docs/",
+                unc_index,
             ),
         ] {
-            assert_redirects_to(uri, location, ASSETS_INDEX).await;
+            assert_redirects_to(uri, location, file).await;
         }
     }
 
@@ -421,5 +474,42 @@ pub mod tests {
         let res = req_handler.handle(&mut req, remote_addr).await.unwrap();
         assert_eq!(res.status(), 308);
         assert_eq!(res.headers()[LOCATION], "/value/manage/");
+    }
+
+    #[cfg(feature = "mem-cache")]
+    #[tokio::test]
+    async fn rewrites_host_rule_cached_file_stays_on_its_host() {
+        let opts = fixture_settings("toml/rewrites_trailing_slash_mem_cache.toml");
+        let mut req_handler_opts = fixture_req_handler_opts(opts.general, opts.advanced);
+        static_web_server::mem_cache::cache::init(&mut req_handler_opts).unwrap();
+        let req_handler = fixture_req_handler(req_handler_opts);
+        let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
+
+        let get = |host: &'static str| {
+            let mut req = Request::new(());
+            *req.uri_mut() = "/app.js".parse().unwrap();
+            req.headers_mut().insert(HOST, host.parse().unwrap());
+            req
+        };
+
+        for _ in 0..2 {
+            let res = req_handler
+                .handle(&mut get("tenant.example"), remote_addr)
+                .await
+                .unwrap();
+            assert_eq!(res.status(), 200);
+            res.into_body().collect().await.unwrap();
+        }
+        let res = req_handler
+            .handle(&mut get("Tenant.Example:8080"), remote_addr)
+            .await
+            .unwrap();
+        assert_eq!(res.headers()["x-cache"], "HIT", "the file must be cached");
+
+        let res = req_handler
+            .handle(&mut get("localhost"), remote_addr)
+            .await
+            .unwrap();
+        assert_eq!(res.status(), 404, "the rule belongs to another host");
     }
 }

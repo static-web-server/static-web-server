@@ -1,0 +1,198 @@
+[general]
+
+root = "tests/fixtures/public"
+
+[advanced]
+
+### Redirects
+
+# Precedence: redirects run before rewrites with the same source
+[[advanced.redirects]]
+source = "/both"
+destination = "/from-redirect"
+kind = 302
+
+# Host without a port: any port, any case
+[[advanced.redirects]]
+host = "example.com"
+source = "/host/any-port"
+destination = "/any-port"
+kind = 301
+
+# Host with a port: that explicit port only
+[[advanced.redirects]]
+host = "Example.com:8080"
+source = "/host/port"
+destination = "/port"
+kind = 301
+
+# Bracketed IPv6 host
+[[advanced.redirects]]
+host = "[::1]"
+source = "/host/ipv6"
+destination = "/ipv6"
+kind = 301
+
+# First match wins: a host-specific rule before a catch-all
+[[advanced.redirects]]
+host = "a.example"
+source = "/order"
+destination = "/order-a"
+kind = 302
+
+[[advanced.redirects]]
+source = "/order"
+destination = "/order-any"
+kind = 302
+
+# Query string forwarding
+[[advanced.redirects]]
+source = "/query/plain"
+destination = "/new"
+kind = 302
+
+[[advanced.redirects]]
+source = "/query/merge"
+destination = "/new?a=1"
+kind = 302
+
+[[advanced.redirects]]
+source = "/query/fragment"
+destination = "/new?a=1#top"
+kind = 302
+
+[[advanced.redirects]]
+source = "/query/absolute/{*}"
+destination = "https://example.org/$1"
+kind = 301
+
+# A capture in the query is a value there
+[[advanced.redirects]]
+source = "/query/value/{*}"
+destination = "/index.html?page=$1#$1"
+kind = 302
+
+# Captures keep their percent-encoding
+[[advanced.redirects]]
+source = "/encoded/{*}"
+destination = "/decoded/$1"
+kind = 301
+
+# Path spellings: a rule matches every spelling of the same path
+[[advanced.redirects]]
+source = "/assets/index.html"
+destination = "/login"
+kind = 302
+
+[[advanced.redirects]]
+source = "/spelling/{**}"
+destination = "/spelled/$1"
+kind = 301
+
+# Sources take the same spelling: escapes in any hex case, or the characters themselves
+[[advanced.redirects]]
+source = "/caf%c3%a9"
+destination = "/cafe"
+kind = 301
+
+[[advanced.redirects]]
+source = "/menú del día/{*}"
+destination = "/menu/$1"
+kind = 301
+
+# A capture at the start of a destination
+[[advanced.redirects]]
+source = "/lead/{**}"
+destination = "/$1"
+kind = 301
+
+[[advanced.redirects]]
+source = "/lead-glob{**}"
+destination = "/$1"
+kind = 301
+
+[[advanced.redirects]]
+source = "/lead-absolute/{**}"
+destination = "https://example.org/$1"
+kind = 301
+
+# Same source, different hosts: a redirect for one, a rewrite for the other
+[[advanced.redirects]]
+host = "redirect.example"
+source = "/split"
+destination = "/split-redirected"
+kind = 301
+
+### Rewrites
+
+[[advanced.rewrites]]
+source = "/both"
+destination = "/assets/main.css"
+
+[[advanced.rewrites]]
+host = "rewrite.example"
+source = "/split"
+destination = "/assets/main.js"
+
+# Host matching follows the same rules as redirects
+[[advanced.rewrites]]
+host = "EXAMPLE.com"
+source = "/rewrite/host"
+destination = "/assets/main.css"
+
+[[advanced.rewrites]]
+host = "example.com:8080"
+source = "/rewrite/port"
+destination = "/assets/main.css"
+
+# Query string forwarding
+[[advanced.rewrites]]
+source = "/rewrite/query/{*}"
+destination = "/assets/$1?v=1"
+
+[[advanced.rewrites]]
+source = "/rewrite/value/{*}"
+destination = "/assets/main.css?page=$1"
+
+# Rewrite to another virtual host
+[[advanced.rewrites]]
+source = "/vhost/{*}"
+destination = "http://other.example/$1"
+
+# The virtual host is chosen in any letter case
+[[advanced.rewrites]]
+source = "/vhost-mixed-case/{*}"
+destination = "http://Other.Example/$1"
+
+# Path spellings: a rule matches every spelling of the same path
+[[advanced.rewrites]]
+source = "/assets/tiny.js"
+destination = "/assets/main.css"
+
+# Rewrites are not chained: the destination is the source of other rules
+[[advanced.rewrites]]
+source = "/chain"
+destination = "/both"
+
+# A host-bound rewrite served from the virtual host of that host
+[[advanced.rewrites]]
+host = "other.example"
+source = "/vhost-page"
+destination = "/test.html"
+
+### Virtual hosts
+
+[[advanced.virtual-hosts]]
+host = "other.example"
+root = "tests/fixtures/markdown"
+
+[[advanced.virtual-hosts]]
+host = "[::1]"
+root = "tests/fixtures/markdown"
+
+# A host-bound rule in front of a virtual host
+[[advanced.redirects]]
+host = "other.example"
+source = "/test.html"
+destination = "/login"
+kind = 302

@@ -43,3 +43,29 @@ destination = "/assets$1"
 [[advanced.rewrites]]
 source = "/assets"
 destination = "/index.htm"
+
+# A prefix served for one host only
+[[advanced.rewrites]]
+host = "tenant.example"
+source = "/tenant{**}"
+destination = "/assets$1"
+
+# A prefix rewritten to a directory of another virtual host
+[[advanced.rewrites]]
+host = "front.example"
+source = "/vhost{**}"
+destination = "http://other.example/public/assets$1"
+
+# A prefix whose own path with a slash is redirected elsewhere
+[[advanced.rewrites]]
+source = "/moved{**}"
+destination = "/assets$1"
+
+[[advanced.redirects]]
+source = "/moved/"
+destination = "/elsewhere"
+kind = 301
+
+[[advanced.virtual-hosts]]
+host = "other.example"
+root = "tests/fixtures"

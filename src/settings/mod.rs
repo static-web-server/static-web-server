@@ -6,14 +6,13 @@
 //! Module that provides all settings of SWS.
 //!
 
-use aho_corasick::AhoCorasick;
 use clap::Parser;
-use globset::{Glob, GlobBuilder, GlobMatcher};
+use globset::{Glob, GlobMatcher};
 use headers::HeaderMap;
 use hyper::StatusCode;
-use regex_lite::Regex;
 use std::path::{Path, PathBuf};
 
+use crate::url_rules::{RuleHost, UrlRule};
 use crate::{Context, Result, helpers, logger};
 
 pub mod cli;
@@ -28,7 +27,7 @@ use cli::General;
 use self::file::MemoryCache;
 
 pub(crate) use self::file::HeadersScope;
-use self::file::{RedirectsKind, Settings as FileSettings};
+use self::file::Settings as FileSettings;
 
 #[cfg(any(
     feature = "compression",
@@ -52,36 +51,38 @@ pub struct Headers {
     pub headers: HeaderMap,
 }
 
-/// The `Rewrites` file options.
+/// A compiled `[[advanced.rewrites]]` rule.
 pub struct Rewrites {
-    /// Source pattern Regex matcher
-    pub source: Regex,
-    /// A local file that must exist
-    pub destination: String,
-    /// Optional redirect type either 301 (Moved Permanently) or 302 (Found).
-    pub redirect: Option<RedirectsKind>,
-    /// Pre-compiled Aho-Corasick automaton for placeholder replacement.
-    pub replacer: AhoCorasick,
+    /// Host, source, and destination of the rewrite.
+    pub rule: UrlRule,
 }
 
-/// The `Redirects` file options.
+impl AsRef<UrlRule> for Rewrites {
+    fn as_ref(&self) -> &UrlRule {
+        &self.rule
+    }
+}
+
+/// A compiled `[[advanced.redirects]]` rule.
 pub struct Redirects {
-    /// Optional host to match against an incoming URI host if specified
-    pub host: Option<String>,
-    /// Source pattern Regex matcher
-    pub source: Regex,
-    /// A local file that must exist
-    pub destination: String,
+    /// Host, source, and destination of the redirect.
+    pub rule: UrlRule,
     /// Redirection type either 301 (Moved Permanently) or 302 (Found)
     pub kind: StatusCode,
-    /// Pre-compiled Aho-Corasick automaton for placeholder replacement.
-    pub replacer: AhoCorasick,
 }
 
-/// The `VirtualHosts` file options.
+impl AsRef<UrlRule> for Redirects {
+    fn as_ref(&self) -> &UrlRule {
+        &self.rule
+    }
+}
+
+/// A compiled `[[advanced.virtual-hosts]]` entry.
 pub struct VirtualHosts {
-    /// The value to check for in the "Host" header
-    pub host: String,
+    /// Host the request must be addressed to, matched as the `host` of URL rules is.
+    pub host: RuleHost,
+    /// The `host` value as configured, which names the virtual host in logs and metrics.
+    pub name: String,
     /// The root directory for this virtual host
     pub root: PathBuf,
 }
@@ -99,13 +100,6 @@ pub struct Advanced {
     pub virtual_hosts: Option<Vec<VirtualHosts>>,
     /// In-memory cache configuration.
     pub memory_cache: Option<MemoryCache>,
-}
-
-/// Build an `AhoCorasick` automaton for the placeholder patterns `$0`, `$1`, ..., `$N`
-/// based on the number of capture groups in the given regex.
-pub fn build_placeholder_replacer(regex: &Regex) -> AhoCorasick {
-    let patterns: Vec<String> = (0..regex.captures_len()).map(|i| format!("${i}")).collect();
-    AhoCorasick::new(&patterns).expect("failed to build Aho-Corasick automaton for placeholders")
 }
 
 /// The full server CLI and File options.
@@ -558,149 +552,29 @@ impl Settings {
                 };
 
                 // 2. Rewrites assignment
-                let rewrites_entries = match advanced.rewrites {
-                    Some(rewrites_entries) => {
-                        let mut rewrites_vec: Vec<Rewrites> = Vec::new();
-
-                        // Compile a glob pattern for each rewrite sources entry
-                        for rewrites_entry in rewrites_entries.iter() {
-                            let source = GlobBuilder::new(&rewrites_entry.source)
-                                .literal_separator(true)
-                                .build()
-                                .with_context(|| {
-                                    format!(
-                                        "can not compile glob pattern for rewrite source: {}",
-                                        rewrites_entry.source
-                                    )
-                                })?
-                                .compile_matcher();
-
-                            let pattern = source
-                                .glob()
-                                .regex()
-                                .trim_start_matches("(?-u)")
-                                .replace("?:.*", ".*")
-                                .replace("?:", "")
-                                .replace(".*.*", ".*")
-                                .replace("([^/]*[^/]*)", "(.*)")
-                                .to_owned();
-                            tracing::debug!(
-                                "url rewrites glob pattern: {}",
-                                &rewrites_entry.source
-                            );
-                            tracing::debug!("url rewrites regex equivalent: {}", pattern);
-
-                            let source = Regex::new(&pattern).with_context(|| {
-                                    format!(
-                                        "can not compile regex pattern equivalent for rewrite source: {}",
-                                        pattern
-                                    )
-                                })?;
-
-                            let replacer = build_placeholder_replacer(&source);
-                            rewrites_vec.push(Rewrites {
-                                source,
-                                destination: rewrites_entry.destination.to_owned(),
-                                redirect: rewrites_entry.redirect.to_owned(),
-                                replacer,
-                            });
-                        }
-                        Some(rewrites_vec)
-                    }
-                    _ => None,
-                };
+                let rewrites_entries = advanced
+                    .rewrites
+                    .map(|entries| entries.iter().map(compile_rewrite).collect())
+                    .transpose()?;
 
                 // 3. Redirects assignment
-                let redirects_entries = match advanced.redirects {
-                    Some(redirects_entries) => {
-                        let mut redirects_vec: Vec<Redirects> = Vec::new();
+                let redirects_entries = advanced
+                    .redirects
+                    .map(|entries| entries.iter().map(compile_redirect).collect())
+                    .transpose()?;
 
-                        // Compile a glob pattern for each redirect sources entry
-                        for redirects_entry in redirects_entries.iter() {
-                            let source = GlobBuilder::new(&redirects_entry.source)
-                                .literal_separator(true)
-                                .build()
-                                .with_context(|| {
-                                    format!(
-                                        "can not compile glob pattern for redirect source: {}",
-                                        redirects_entry.source
-                                    )
-                                })?
-                                .compile_matcher();
-
-                            let pattern = source
-                                .glob()
-                                .regex()
-                                .trim_start_matches("(?-u)")
-                                .replace("?:.*", ".*")
-                                .replace("?:", "")
-                                .replace(".*.*", ".*")
-                                .replace("([^/]*[^/]*)", "(.*)")
-                                .to_owned();
-                            tracing::debug!(
-                                "url redirects glob pattern: {}",
-                                &redirects_entry.source
-                            );
-                            tracing::debug!("url redirects regex equivalent: {}", pattern);
-
-                            let source = Regex::new(&pattern).with_context(|| {
-                                    format!(
-                                        "can not compile regex pattern equivalent for redirect source: {}",
-                                        pattern
-                                    )
-                                })?;
-
-                            let status_code = redirects_entry.kind.to_owned() as u16;
-                            let replacer = build_placeholder_replacer(&source);
-                            redirects_vec.push(Redirects {
-                                host: redirects_entry.host.to_owned(),
-                                source,
-                                destination: redirects_entry.destination.to_owned(),
-                                kind: StatusCode::from_u16(status_code).with_context(|| {
-                                    format!("invalid redirect status code: {status_code}")
-                                })?,
-                                replacer,
-                            });
-                        }
-                        Some(redirects_vec)
-                    }
-                    _ => None,
-                };
-
-                // 3. Virtual hosts assignment
-                let vhosts_entries = match advanced.virtual_hosts {
-                    Some(vhosts_entries) => {
-                        let mut vhosts_vec: Vec<VirtualHosts> = Vec::new();
-
-                        for vhosts_entry in vhosts_entries.iter() {
-                            if let Some(root) = vhosts_entry.root.to_owned() {
-                                // Make sure path is valid
-                                let root_dir = helpers::get_valid_dirpath(&root)
-                                    .with_context(|| "root directory for virtual host was not found or inaccessible")?;
-                                // Canonicalize once so the per-request
-                                // containment check can skip a `canonicalize`
-                                // syscall (see `static_files::security`), unless
-                                // `use_relative_root` is enabled.
-                                let root_dir = if use_relative_root {
-                                    root_dir
-                                } else {
-                                    root_dir.canonicalize().unwrap_or(root_dir)
-                                };
-                                tracing::debug!(
-                                    "added virtual host: {} -> {}",
-                                    vhosts_entry.host,
-                                    root_dir.display()
-                                );
-                                vhosts_vec.push(VirtualHosts {
-                                    host: vhosts_entry.host.to_owned(),
-                                    root: root_dir,
-                                });
-                            }
-                        }
-                        Some(vhosts_vec)
-                    }
-                    _ => None,
-                };
+                // 4. Virtual hosts assignment
+                let vhosts_entries = advanced
+                    .virtual_hosts
+                    .map(|entries| {
+                        entries
+                            .iter()
+                            .filter_map(|entry| {
+                                compile_virtual_host(entry, use_relative_root).transpose()
+                            })
+                            .collect()
+                    })
+                    .transpose()?;
 
                 settings_advanced = Some(Advanced {
                     headers: headers_entries,
@@ -925,6 +799,98 @@ fn parse_header_status(codes: &[u16], source: &str) -> Result<Vec<StatusCode>> {
                 .with_context(|| format!("invalid status code {code} for header source: {source}"))
         })
         .collect()
+}
+
+/// Compiles a `[[advanced.rewrites]]` entry.
+fn compile_rewrite(entry: &file::Rewrites) -> Result<Rewrites> {
+    if entry.redirect.is_some() {
+        bail!(
+            "the `redirect` option of rewrite source {} was removed, move the rule to \
+             `[[advanced.redirects]]` and set `kind` instead",
+            entry.source
+        );
+    }
+    // `Uri` parsing drops a fragment silently, and an internal rewrite has no use for one
+    if entry.destination.contains('#') {
+        bail!(
+            "rewrite destination {} for source {} must not contain a fragment (`#`)",
+            entry.destination,
+            entry.source
+        );
+    }
+    let rule = UrlRule::new(entry.host.as_deref(), &entry.source, &entry.destination)
+        .with_context(|| format!("invalid rewrite for source: {}", entry.source))?;
+    if !is_rewrite_target(&rule) {
+        bail!(
+            "rewrite destination {} for source {} must be a path starting with `/` or an \
+             absolute URI",
+            entry.destination,
+            entry.source
+        );
+    }
+    Ok(Rewrites { rule })
+}
+
+/// Returns whether the destination of a rewrite rule, with every placeholder filled,
+/// parses as an origin-form path or an absolute URI.
+///
+/// `$0` is filled with a path, as it is the request path the source matched, and any
+/// other placeholder with a segment, as its capture may be empty.
+fn is_rewrite_target(rule: &UrlRule) -> bool {
+    let mut fill = vec!["a"; rule.replacer.patterns_len()];
+    if let Some(whole_match) = fill.first_mut() {
+        *whole_match = "/a";
+    }
+    let Ok(dest) = rule.replacer.try_replace_all(&rule.destination, &fill) else {
+        return false;
+    };
+    match dest.parse::<hyper::Uri>() {
+        Ok(uri) if uri.scheme().is_some() => uri.authority().is_some(),
+        Ok(_) => dest.starts_with('/'),
+        Err(_) => false,
+    }
+}
+
+/// Compiles a `[[advanced.virtual-hosts]]` entry, `None` when it has no root.
+fn compile_virtual_host(
+    entry: &file::VirtualHosts,
+    use_relative_root: bool,
+) -> Result<Option<VirtualHosts>> {
+    let host = RuleHost::parse(&entry.host)
+        .with_context(|| format!("invalid virtual host {:?}", entry.host))?;
+    let Some(root) = &entry.root else {
+        return Ok(None);
+    };
+    let root_dir = helpers::get_valid_dirpath(root)
+        .with_context(|| "root directory for virtual host was not found or inaccessible")?;
+    // Canonicalize once so the per-request containment check can skip a
+    // `canonicalize` syscall (see `static_files::security`), unless
+    // `use_relative_root` is enabled.
+    let root_dir = if use_relative_root {
+        root_dir
+    } else {
+        root_dir.canonicalize().unwrap_or(root_dir)
+    };
+    tracing::debug!(
+        "added virtual host: {} -> {}",
+        entry.host,
+        root_dir.display()
+    );
+    Ok(Some(VirtualHosts {
+        host,
+        name: entry.host.clone(),
+        root: root_dir,
+    }))
+}
+
+/// Compiles a `[[advanced.redirects]]` entry.
+fn compile_redirect(entry: &file::Redirects) -> Result<Redirects> {
+    let rule = UrlRule::new(entry.host.as_deref(), &entry.source, &entry.destination)
+        .with_context(|| format!("invalid redirect for source: {}", entry.source))?;
+    let code = entry.kind.to_owned() as u16;
+    let kind = StatusCode::from_u16(code)
+        .with_context(|| format!("invalid redirect status code: {code}"))?;
+    Ok(Redirects { rule, kind })
 }
 
 #[cfg(test)]

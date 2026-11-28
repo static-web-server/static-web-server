@@ -109,15 +109,18 @@ scope = "all"                  # default "files": static responses only.
                                # "all": also redirects, health, metrics, 401, 403, 405, maintenance
 headers = { X-Request-Id = "static" }
 
-# Redirects: short-circuit with 301 or 302; `host` is optional
+# Redirects: short-circuit with 301 or 302; `host` is optional and matches any case, and
+# any port unless it names one. The request query is appended to `destination`
 [[advanced.redirects]]
 host = "old.example.com"
 source = "/pages/{*}.html"
 destination = "https://example.com/?p=$1"
 kind = 301
 
-# Rewrites: change the path internally; add `redirect = 301` to redirect instead
+# Rewrites: change the path internally; `host` and the query work as for redirects.
+# To redirect, use `[[advanced.redirects]]` (`redirect` here is a startup error)
 [[advanced.rewrites]]
+host = "example.com"
 source = "/error-page/{404,50x}.html"
 destination = "/$1.html"
 
@@ -134,7 +137,7 @@ tti = 300             # idle seconds (max 3600)
 max-file-size = 8192  # KiB (default 8192, max 32768)
 ```
 
-Globs compile through `globset` with `literal_separator(true)`, then into capturing regex groups (`settings/mod.rs`): `{*}` within one segment, `{**}` across segments, `{a,b}` alternation. `$1`, `$2`, … reference captures in pattern order. Working rules: `tests/fixtures/toml/rewrites.toml`, `redirects.toml`, `custom_headers_*.toml`.
+Both rule tables compile into `url_rules::UrlRule` (`src/url_rules/`: `glob.rs`, `host.rs`, `destination.rs`). Globs compile through `globset` with `literal_separator(true)`, then into capturing regex groups: `{*}` within one segment, `{**}` across segments, `{a,b}` alternation. `$1`, `$2`, … reference captures in pattern order. Sources and captures use one spelling of the request path, `fs::path::rule_path`: the segments that are served, percent-encoded with uppercase hex, so every spelling of the same path matches the same rules: `//a/./b`, `/a%2Fb` and `/%61/b` all match `/a/b`, and a source escape of an unreserved character (`/%61dmin`) is decoded. A path that names a directory (`/a/b/`, `/a/b/.`, `/a/b%2F`) keeps its trailing `/`, and serves no regular file `b` (404). What stays a separate URL and needs its own rule: a directory and its index file (`/dir/` and `/dir/index.html`), the `.html` suffix fallback (`/page` and `/page.html`), pre-compressed twins (`.gz`, `.br`, `.zst`) and markdown variants requested by name, and a directory without its trailing slash when `redirect-trailing-slash` is off (`/dir` does not match `/dir/**`). Letter case is folded for ASCII only on macOS and Windows; Unicode normalization and non-ASCII case are not folded, and a case-insensitive volume on Linux is not detected. A source that can never match (no leading `/` or wildcard, `//`, `.` or `..` segments, `%2F`) logs a warning at startup. Placeholders may only fill a destination's path, query or fragment, or a destination may start with `$0`; anything else (`$1`, `https://$1.example/`, `https://example.org$1`) is a startup error. A capture in the query (after the first `?`, before `#`) is one value: its `&`, `=`, `+` and `;` are percent-encoded. A rule path over 8 KiB gets 414 when rules exist. Virtual hosts match the `Host` as rule hosts do (any case, IPv6 by value, a port only when named); the client chooses the host, so a host-bound rule only guards content served for that host alone. Working rules: `tests/fixtures/toml/rewrites.toml`, `redirects.toml`, `url_rules.toml`, `custom_headers_*.toml`.
 
 ## Common Setups
 

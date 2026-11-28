@@ -7,7 +7,8 @@
 
 use anyhow::Context;
 use hyper::StatusCode;
-use percent_encoding::percent_decode_str;
+use percent_encoding::{AsciiSet, NON_ALPHANUMERIC, percent_decode_str, percent_encode};
+use std::borrow::Cow;
 use std::ffi::OsStr;
 use std::fs::DirEntry;
 use std::path::{Component, Path, PathBuf};
@@ -250,30 +251,143 @@ pub fn sanitize_path(base: &Path, tail: &str) -> Result<PathBuf, StatusCode> {
     let path_decoded = decode_tail_path(tail);
     let mut full_path = base.to_path_buf();
     tracing::trace!("dir: base={:?}, route={:?}", full_path, path_decoded);
-
     for component in path_decoded.components() {
-        match component {
-            Component::Normal(comp) => {
-                // Protect against paths like `/foo/c:/bar/baz`
-                // https://github.com/seanmonstar/warp/issues/937
-                if Path::new(&comp)
-                    .components()
-                    .all(|c| matches!(c, Component::Normal(_)))
-                {
-                    full_path.push(comp)
-                } else {
-                    tracing::debug!("dir: skipping segment with invalid prefix");
-                }
-            }
-            Component::CurDir => {}
-            Component::Prefix(_) | Component::RootDir | Component::ParentDir => {
-                tracing::debug!(
-                    "dir: skipping segment containing invalid prefix, dots or backslashes"
-                );
-            }
+        if let Some(comp) = served_component(component) {
+            full_path.push(comp);
         }
     }
     Ok(full_path)
+}
+
+/// Returns the segment of a decoded request path that `component` adds to the path
+/// [`sanitize_path`] serves, if any.
+///
+/// Empty, `.` and `..` segments add none (`..` does not remove the segment before it).
+/// On Windows, nor do segments holding a `/`, `\` or `:`: a drive or root prefix, such as
+/// `c:` in `/foo/c:/bar`, a segment of a verbatim `\\?\` path, where only `\` separates
+/// and `PathBuf::push` would still split at `/`, or an NTFS stream such as
+/// `file.html::$DATA`, which opens the same file under another name.
+///
+/// Always inlined: as a call per segment it costs [`sanitize_path`], which runs on every
+/// request, 10% more instructions on a path of a thousand segments.
+#[inline(always)]
+fn served_component(component: Component<'_>) -> Option<&OsStr> {
+    match component {
+        Component::Normal(comp) => {
+            // https://github.com/seanmonstar/warp/issues/937
+            if cfg!(windows)
+                && comp
+                    .as_encoded_bytes()
+                    .iter()
+                    .any(|b| matches!(b, b'/' | b'\\' | b':'))
+            {
+                tracing::debug!("dir: skipping segment with a separator, prefix or stream");
+                None
+            } else {
+                Some(comp)
+            }
+        }
+        Component::CurDir => None,
+        Component::Prefix(_) | Component::RootDir | Component::ParentDir => {
+            tracing::debug!("dir: skipping segment containing invalid prefix, dots or backslashes");
+            None
+        }
+    }
+}
+
+/// Bytes [`rule_path`] percent-encodes: all but RFC 3986 unreserved characters,
+/// sub-delims, `:` and `@`.
+pub(crate) const RULE_PATH_ENCODE: &AsciiSet = &NON_ALPHANUMERIC
+    .remove(b'-')
+    .remove(b'.')
+    .remove(b'_')
+    .remove(b'~')
+    .remove(b'!')
+    .remove(b'$')
+    .remove(b'&')
+    .remove(b'\'')
+    .remove(b'(')
+    .remove(b')')
+    .remove(b'*')
+    .remove(b'+')
+    .remove(b',')
+    .remove(b';')
+    .remove(b'=')
+    .remove(b':')
+    .remove(b'@');
+
+/// [`RULE_PATH_ENCODE`] without `/`, to check a whole path at once.
+const RULE_PATH_ENCODE_KEEP_SLASH: &AsciiSet = &RULE_PATH_ENCODE.remove(b'/');
+
+/// Returns the one spelling of a request path that redirect and rewrite rules are matched
+/// against: the segments [`sanitize_path`] serves, percent-encoded with uppercase hex.
+///
+/// Every spelling of the same path has the same rule path, so a rule can't be skipped by
+/// `//`, `./`, `%2F` or needless percent-encoding (RFC 3986 §6.2.2). A path that
+/// [`names_dir`] keeps a trailing `/` (RFC 3986 §5.2.4). Other URLs that serve the same
+/// content, such as `/dir/index.html` for `/dir/`, have rule paths of their own.
+#[must_use]
+pub(crate) fn rule_path(uri_path: &str) -> Cow<'_, str> {
+    if is_rule_path(uri_path) {
+        return Cow::Borrowed(uri_path);
+    }
+    let path_decoded = decode_tail_path(uri_path);
+    let mut path = String::with_capacity(uri_path.len());
+    for comp in path_decoded.components().filter_map(served_component) {
+        path.push('/');
+        path.extend(percent_encode(comp.as_encoded_bytes(), RULE_PATH_ENCODE));
+    }
+    if names_dir(uri_path) || path.is_empty() {
+        path.push('/');
+    }
+    Cow::Owned(path)
+}
+
+/// Returns whether a request path names a directory: once percent-decoded, it is empty,
+/// `.` or `..`, or ends in `/`, `/.` or `/..` (RFC 3986 §5.2.4). On Windows `\` counts as
+/// `/`.
+///
+/// [`rule_path`] keeps a trailing `/` for such a path, and the file layer serves no
+/// regular file for it, so rules for a file and for a directory of the same name stay
+/// apart.
+#[must_use]
+pub(crate) fn names_dir(uri_path: &str) -> bool {
+    let is_separator = |b: u8| b == b'/' || (cfg!(windows) && b == b'\\');
+    let mut end = [0u8; 3];
+    let mut len = 0;
+    for b in percent_decode_str(uri_path) {
+        end = [end[1], end[2], b];
+        len += 1;
+    }
+    let end = &end[3 - len.min(3)..];
+    matches!(end, [] | [b'.'] | [b'.', b'.'])
+        || matches!(end, [.., sep] if is_separator(*sep))
+        || matches!(end, [.., sep, b'.'] if is_separator(*sep))
+        || matches!(end, [sep, b'.', b'.'] if is_separator(*sep))
+}
+
+/// Returns whether `uri_path` already is its own [`rule_path`]: it starts with `/`, holds no
+/// empty, `.` or `..` segment, and every byte stays as is when encoded. On Windows, nor does
+/// it hold a `\` or a `:`, which separate segments and name drives there.
+fn is_rule_path(uri_path: &str) -> bool {
+    let Some(rest) = uri_path.strip_prefix('/') else {
+        return false;
+    };
+    let mut segments = rest.split('/').peekable();
+    while let Some(segment) = segments.next() {
+        let is_last = segments.peek().is_none();
+        if (segment.is_empty() && !is_last) || segment == "." || segment == ".." {
+            return false;
+        }
+    }
+    let is_kept = matches!(
+        Cow::from(percent_encode(
+            uri_path.as_bytes(),
+            RULE_PATH_ENCODE_KEEP_SLASH
+        )),
+        Cow::Borrowed(_)
+    );
+    is_kept && (cfg!(not(windows)) || !uri_path.contains(['\\', ':']))
 }
 
 /// Returns `true` if `path` resolves inside `base_path` after canonicalization.
@@ -302,7 +416,8 @@ pub fn is_path_within_base(path: &Path, base_path: &Path) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::{PathExt, is_path_within_base, sanitize_path};
+    use super::{PathExt, is_path_within_base, names_dir, rule_path, sanitize_path};
+    use std::borrow::Cow;
     use std::path::{Path, PathBuf};
 
     fn root_dir() -> PathBuf {
@@ -696,6 +811,155 @@ mod tests {
             if let Ok(full) = sanitize_path(&base, &tail) {
                 assert_under_base(&base, &full);
             }
+        }
+    }
+
+    #[test]
+    fn rule_path_keeps_canonical_paths_borrowed() {
+        for path in ["/", "/index.html", "/a/b/", "/ab:c@d!$&'()*+,;=-._~"] {
+            if cfg!(windows) && path.contains(':') {
+                continue;
+            }
+            assert!(matches!(rule_path(path), Cow::Borrowed(_)), "{path}");
+            assert_eq!(rule_path(path), path);
+        }
+    }
+
+    #[test]
+    fn rule_path_normalizes_equivalent_spellings() {
+        for (path, expected) in [
+            ("/a/./b", "/a/b"),
+            ("//a//b", "/a/b"),
+            ("/a/../b", "/a/b"),
+            ("/%61/b", "/a/b"),
+            ("/a%2Fb", "/a/b"),
+            ("/a/%2e/b", "/a/b"),
+            ("/a%20b", "/a%20b"),
+            ("/caf%C3%A9", "/caf%C3%A9"),
+            ("/caf%c3%a9", "/caf%C3%A9"),
+            // Windows serves no segment that holds a `:`
+            ("/ab%3a%40", if cfg!(windows) { "/" } else { "/ab:@" }),
+            ("/a%25b", "/a%25b"),
+            ("/a/", "/a/"),
+            ("/a/.", "/a/"),
+            ("/a/..", "/a/"),
+            ("/a%2F", "/a/"),
+            ("/.", "/"),
+            ("//", "/"),
+            ("", "/"),
+        ] {
+            assert_eq!(rule_path(path), expected, "{path}");
+        }
+    }
+
+    #[test]
+    fn names_dir_reads_the_decoded_end_of_a_path() {
+        for path in [
+            "",
+            "/",
+            ".",
+            "..",
+            "/.",
+            "/..",
+            "//",
+            "/a/",
+            "/a/.",
+            "/a/..",
+            "/a%2F",
+            "/a%2f",
+            "/a/%2e",
+            "/a/%2E%2e",
+            "/a%2F.",
+            "%2e%2e",
+        ] {
+            assert!(names_dir(path), "{path:?}");
+        }
+        for path in [
+            "/a", "/a.", "/a..", "/a/...", "/a/.b", "/a%2", "/a%252F", "/%2e/a", "/a%5C.x",
+        ] {
+            assert!(!names_dir(path), "{path:?}");
+        }
+        assert_eq!(names_dir("/a\\"), cfg!(windows));
+        assert_eq!(names_dir("/a%5C."), cfg!(windows));
+    }
+
+    #[test]
+    fn rule_path_keeps_trailing_slash_where_a_path_names_dir() {
+        for path in [
+            "/a/b/",
+            "/a/b/.",
+            "/a/b/..",
+            "/a/b%2F",
+            "/a/b//",
+            "/a/./b/%2e",
+        ] {
+            assert!(names_dir(path), "{path}");
+            assert_eq!(rule_path(path), "/a/b/", "{path}");
+        }
+        for path in ["/a/b", "/a/./b", "/a/b%2Fc/../.x"] {
+            assert!(!names_dir(path), "{path}");
+            assert!(!rule_path(path).ends_with('/'), "{path}");
+        }
+    }
+
+    /// Request tails that std may parse with a prefix, a verbatim prefix where only `\`
+    /// separates, or a segment naming an NTFS stream. Whatever the parse, the rule path
+    /// and the served path must agree and hold no separator or `:` inside a segment.
+    #[cfg(windows)]
+    #[test]
+    fn windows_segments_with_separators_or_streams_are_not_served() {
+        let base = Path::new("C:\\base");
+        for path in [
+            "/%5C%5C%3F%5Cx%5Csecret/file.html",
+            "/%5C%5C?%5CC:%5Csecret/file.html",
+            "/%5C%5C.%5Cx%5Csecret/file.html",
+            "/%5C%5Cserver%5Cshare/secret/file.html",
+            "/file.html::$DATA",
+            "/file.html:stream",
+            "/dir:$I30:$INDEX_ALLOCATION/file.html",
+            "/c:/secret/file.html",
+            "/a/c:file.html",
+            "/a/C:%5Cfile.html",
+            "/a%5Cb/c",
+            "/a/b%3A%3A$DATA",
+        ] {
+            let canonical = rule_path(path).into_owned();
+            assert_eq!(rule_path(&canonical), canonical.as_str(), "{path}");
+            assert!(!canonical.contains("%2F"), "{path}: {canonical}");
+            assert!(!canonical.contains("%5C"), "{path}: {canonical}");
+            assert!(!canonical.contains(':'), "{path}: {canonical}");
+            let served = sanitize_path(base, path).unwrap();
+            assert_eq!(sanitize_path(base, &canonical).unwrap(), served, "{path}");
+            let tail = served.strip_prefix(base).unwrap();
+            for comp in tail.components() {
+                let bytes = comp.as_os_str().as_encoded_bytes();
+                assert!(
+                    matches!(comp, Component::Normal(_))
+                        && !bytes.iter().any(|b| matches!(b, b'/' | b'\\' | b':')),
+                    "{path}: {served:?}"
+                );
+            }
+        }
+    }
+
+    proptest! {
+        /// Rule paths take untrusted input: they must never panic, be their own rule path,
+        /// and name the file `sanitize_path` serves for the original path. On Windows the
+        /// input holds `\`, which separates segments there.
+        #[test]
+        fn prop_rule_path_is_canonical_and_serves_same_file(
+            path in if cfg!(windows) {
+                "/[a-zA-Z0-9%./_~!$&'()*+,;=:@\\\\-]{0,48}"
+            } else {
+                "/[a-zA-Z0-9%./_~!$&'()*+,;=:@-]{0,48}"
+            },
+        ) {
+            let canonical = rule_path(&path).into_owned();
+            prop_assert!(canonical.starts_with('/'));
+            prop_assert_eq!(rule_path(&canonical), canonical.as_str());
+            let base = Path::new("/base");
+            prop_assert_eq!(sanitize_path(base, &canonical), sanitize_path(base, &path));
+            prop_assert_eq!(canonical.ends_with('/'), names_dir(&path) || canonical == "/");
         }
     }
 }

@@ -141,7 +141,7 @@ pub enum HeadersScope {
     /// Responses of the static file handler only (default).
     #[default]
     Files,
-    /// Every response, including redirects, rewrite redirects, `/livez` and `/readyz`, metrics,
+    /// Every response, including redirects, `/livez` and `/readyz`, metrics,
     /// rejected CORS requests, Basic auth challenges, maintenance mode and the method check.
     All,
 }
@@ -177,9 +177,14 @@ pub enum RedirectsKind {
 #[serde(rename_all = "kebab-case")]
 /// Represents redirects types.
 pub struct Redirects {
-    /// Optional host to match against an incoming URI host if specified
+    /// Host the request must be addressed to, in any case and on any port unless it
+    /// names one. The client chooses the host it sends, so a rule bound to a host only
+    /// applies to content that is served for that host alone.
     pub host: Option<String>,
-    /// Source of the redirect.
+    /// Source glob of the redirect, matched against every spelling of the same request
+    /// path: `//`, `./`, `%2F` and needless percent-encoding change nothing. Other URLs
+    /// that serve the same content, such as `/dir/index.html` for `/dir/`, need their own
+    /// rule.
     pub source: String,
     /// Redirect destination.
     pub destination: String,
@@ -191,19 +196,28 @@ pub struct Redirects {
 #[serde(rename_all = "kebab-case")]
 /// Represents rewrites types.
 pub struct Rewrites {
-    /// Source of the rewrite.
+    /// Host the request must be addressed to, in any case and on any port unless it
+    /// names one. The client chooses the host it sends, so a rule bound to a host only
+    /// applies to content that is served for that host alone.
+    pub host: Option<String>,
+    /// Source glob of the rewrite, matched against every spelling of the same request
+    /// path: `//`, `./`, `%2F` and needless percent-encoding change nothing. Other URLs
+    /// that serve the same content, such as `/dir/index.html` for `/dir/`, need their own
+    /// rule.
     pub source: String,
     /// Rewrite destination.
     pub destination: String,
-    /// Optional redirect type either 301 (Moved Permanently) or 302 (Found).
-    pub redirect: Option<RedirectsKind>,
+    /// Removed `redirect` option, kept only to reject configurations that still set it.
+    #[serde(default, skip_serializing)]
+    pub redirect: Option<toml::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "kebab-case")]
 /// Represents virtual hosts with different root directories
 pub struct VirtualHosts {
-    /// The value to check for in the "Host" header
+    /// Host the request must be addressed to, in any case and on any port unless it
+    /// names one, as for the `host` of redirects and rewrites
     pub host: String,
     /// The root directory for this virtual host
     pub root: Option<PathBuf>,

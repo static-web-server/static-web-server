@@ -43,6 +43,7 @@ use hyper::StatusCode;
 use crate::Result;
 use crate::exts::http::MethodExt;
 use crate::fs::meta::FileMetadata;
+use crate::fs::path::names_dir;
 
 #[cfg(feature = "mem-cache")]
 use crate::mem_cache::cache;
@@ -67,6 +68,7 @@ pub async fn handle(opts: &HandleOpts<'_>) -> Result<StaticFileResponse, StatusC
     }
 
     let mut file_path = sanitize_path(opts.base_path, opts.uri_path)?;
+    let names_dir = names_dir(opts.uri_path);
 
     // In-memory file cache lookup. A hit short-circuits the pipeline.
     // On miss, the file is read from disk and the streaming pipeline
@@ -74,7 +76,7 @@ pub async fn handle(opts: &HandleOpts<'_>) -> Result<StaticFileResponse, StatusC
     // With `compression-static`, the cached representation is negotiated
     // from the pre-compressed variants recorded in the cache entries.
     #[cfg(feature = "mem-cache")]
-    if let Some(resp) = try_memory_cache(opts, &file_path) {
+    if let Some(resp) = try_memory_cache(opts, &file_path, names_dir) {
         return Ok(resp);
     }
 
@@ -89,6 +91,7 @@ pub async fn handle(opts: &HandleOpts<'_>) -> Result<StaticFileResponse, StatusC
         opts.headers,
         opts.compression_static,
         opts.index_files,
+        names_dir,
     )?;
 
     // A directory request is served from its index file (or `.html` sibling)
@@ -133,11 +136,14 @@ pub async fn handle(opts: &HandleOpts<'_>) -> Result<StaticFileResponse, StatusC
 /// to the request path is looked up. Any other file is served only when that
 /// entry doesn't exist, which takes a disk check, so a directory served by a
 /// later entry or by its `.html` sibling never hits the cache. A redirect
-/// path without the `/` goes to disk for the redirect.
+/// path without the `/` goes to disk for the redirect. Any other request
+/// path that `names_dir` goes to disk too: an entry for `file_path` is a
+/// regular file, which such a path doesn't serve.
 #[cfg(feature = "mem-cache")]
 fn try_memory_cache(
     opts: &HandleOpts<'_>,
     file_path: &std::path::Path,
+    names_dir: bool,
 ) -> Option<StaticFileResponse> {
     // Runtime gate: if `[advanced.memory-cache]` is not configured in TOML,
     // `opts.memory_cache` is `None` and we skip the lookup entirely.
@@ -155,7 +161,11 @@ fn try_memory_cache(
         let index = opts.index_files.first().unwrap_or(&DEFAULT_INDEX_FILES[0]);
         file_path.join(index)
     });
-    let cache_path = index_path.as_deref().unwrap_or(file_path);
+    let cache_path = match index_path.as_deref() {
+        Some(index_path) => index_path,
+        None if names_dir => return None,
+        None => file_path,
+    };
 
     let result = cache::lookup(cache_path, opts.headers, opts.compression_static)?;
     match result {

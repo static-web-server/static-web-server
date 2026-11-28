@@ -24,15 +24,24 @@ use super::opts::DEFAULT_INDEX_FILES;
 ///
 /// Returns the final file path along with its metadata and, when applicable,
 /// the pre-compressed variant that should be served instead.
+///
+/// Fails with `404` when the request path `names_dir` (see
+/// [`crate::fs::path::names_dir`]) but `file_path` is not a directory, so
+/// `/file/` doesn't serve `/file`.
 pub(super) fn file_metadata<'a>(
     mut file_path: &'a mut PathBuf,
     headers: &'a HeaderMap<HeaderValue>,
     compression_static: bool,
     mut index_files: &'a [&'a str],
+    names_dir: bool,
 ) -> Result<FileMetadata<'a>, StatusCode> {
     tracing::trace!("getting metadata for file {}", file_path.display());
 
     match try_metadata(file_path) {
+        Ok((_, false)) if names_dir => {
+            tracing::debug!("file requested as a directory: {:?}", file_path.display());
+            Err(StatusCode::NOT_FOUND)
+        }
         Ok((mut metadata, is_dir)) => {
             // The optional pre-opened file for `file_path`. When `Some`, the
             // response pipeline reuses this handle instead of issuing an

@@ -241,13 +241,9 @@ fn host_label<'a, T>(opts: &'a RequestHandlerOpts, req: &Request<T>) -> &'a str 
         .advanced_opts
         .as_ref()
         .and_then(|advanced| advanced.virtual_hosts.as_deref());
-    let (Some(vhosts), Some(host)) = (vhosts, virtual_hosts::request_host(req)) else {
-        return OTHER_LABEL;
-    };
     vhosts
-        .iter()
-        .find(|vhost| vhost.host == host)
-        .map_or(OTHER_LABEL, |vhost| vhost.host.as_str())
+        .and_then(|vhosts| virtual_hosts::find(req, vhosts))
+        .map_or(OTHER_LABEL, |vhost| vhost.name.as_str())
 }
 
 fn status_class(code: u16) -> &'static str {
@@ -265,6 +261,7 @@ mod tests {
     use super::*;
     use crate::handler_opts::RequestHandlerOpts;
     use crate::settings::{Advanced, VirtualHosts};
+    use crate::url_rules::RuleHost;
     use hyper::Request;
     use prometheus::core::Collector;
     use std::path::PathBuf;
@@ -351,7 +348,8 @@ mod tests {
         let virtual_hosts = hosts
             .iter()
             .map(|host| VirtualHosts {
-                host: host.to_string(),
+                host: RuleHost::parse(host).unwrap(),
+                name: host.to_string(),
                 root: PathBuf::from("/var/www"),
             })
             .collect();
@@ -403,6 +401,26 @@ mod tests {
         assert_eq!(
             HTTP_RESPONSE_BYTES_TOTAL.with_label_values(&labels).get(),
             bytes_before + 1024
+        );
+    }
+
+    #[test]
+    fn test_record_request_labels_virtual_host_by_its_configured_name() {
+        let _lock = RECORD_LOCK.lock().unwrap_or_else(|err| err.into_inner());
+        let opts = vhost_opts(&["Mixed-Case.test"]);
+        let labels = ["GET", "2xx", "Mixed-Case.test"];
+        let before = requests_total(labels);
+
+        for host in ["mixed-case.test", "MIXED-CASE.TEST:8080"] {
+            record_request(&opts, &host_request("GET", host), StatusCode::OK, 0, 0.001);
+        }
+
+        assert_eq!(requests_total(labels), before + 2);
+        let hosts = label_values("host");
+        assert!(
+            !hosts
+                .iter()
+                .any(|h| h == "mixed-case.test" || h == "MIXED-CASE.TEST")
         );
     }
 

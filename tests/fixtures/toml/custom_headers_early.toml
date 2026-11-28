@@ -10,10 +10,10 @@ source = "/old"
 destination = "/assets/main.css"
 kind = 301
 
-[[advanced.rewrites]]
+[[advanced.redirects]]
 source = "/moved"
 destination = "/assets/main.css"
-redirect = 302
+kind = 302
 
 [[advanced.headers]]
 source = "**"

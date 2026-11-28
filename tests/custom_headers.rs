@@ -203,13 +203,6 @@ pub mod tests {
     }
 
     #[tokio::test]
-    async fn custom_headers_apply_to_rewrite_redirects() {
-        let res = get(EARLY_TOML, "/moved").await;
-        assert_eq!(res.status(), StatusCode::FOUND);
-        assert_eq!(res.headers()["x-custom-header"], "every-response");
-    }
-
-    #[tokio::test]
     async fn custom_headers_apply_to_method_not_allowed() {
         let res = request(EARLY_TOML, Method::POST, "/old", HeaderMap::new()).await;
         assert_eq!(res.status(), StatusCode::METHOD_NOT_ALLOWED);
@@ -236,14 +229,6 @@ pub mod tests {
     async fn custom_headers_default_scope_skips_redirects() {
         let res = get(EARLY_TOML, "/old").await;
         assert_eq!(res.status(), StatusCode::MOVED_PERMANENTLY);
-        assert!(res.headers().get("x-default-scope").is_none());
-        assert!(res.headers().get("x-files-scope").is_none());
-    }
-
-    #[tokio::test]
-    async fn custom_headers_default_scope_skips_rewrite_redirects() {
-        let res = get(EARLY_TOML, "/moved").await;
-        assert_eq!(res.status(), StatusCode::FOUND);
         assert!(res.headers().get("x-default-scope").is_none());
         assert!(res.headers().get("x-files-scope").is_none());
     }
