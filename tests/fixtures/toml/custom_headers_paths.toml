@@ -1,0 +1,63 @@
+[general]
+
+root = "tests/fixtures/public"
+index-files = "index.html,index.htm"
+
+[advanced]
+
+# A directory request is matched by the path of its index file
+[[advanced.headers]]
+source = "/assets/index.html"
+headers = { X-Index = "1" }
+
+[[advanced.headers]]
+source = "/index.htm"
+headers = { X-Root-Index = "1" }
+
+[[advanced.headers]]
+source = "/assets/main.js"
+headers = { X-File = "1" }
+
+# Glob forms: `*` crosses `/`, alternation, class, single character
+[[advanced.headers]]
+source = "*.css"
+headers = { X-Star = "1" }
+
+[[advanced.headers]]
+source = "**/*.{js,css}"
+headers = { X-Alternation = "1" }
+
+[[advanced.headers]]
+source = "/assets/[mt]*.js"
+headers = { X-Class = "1" }
+
+[[advanced.headers]]
+source = "/assets/main.?s"
+headers = { X-Question = "1" }
+
+# Several headers in an entry, names in any case, and a later entry replacing a header
+[[advanced.headers]]
+source = "/assets/main.css"
+headers = { X-First = "a", x-second = "b", Cache-Control = "no-store", Vary = "x-custom" }
+
+[[advanced.headers]]
+source = "/assets/main.css"
+headers = { X-FIRST = "c" }
+
+# A rewritten request is matched by the path it is rewritten to
+[[advanced.rewrites]]
+source = "/app/{*}"
+destination = "/assets/$1"
+
+[[advanced.headers]]
+source = "/app/*"
+headers = { X-Client-Path = "1" }
+
+# Entries apply to every virtual host
+[[advanced.virtual-hosts]]
+host = "docs.example"
+root = "tests/fixtures/markdown"
+
+[[advanced.headers]]
+source = "/test.html"
+headers = { X-Vhost-File = "1" }

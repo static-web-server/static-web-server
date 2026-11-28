@@ -150,8 +150,9 @@ pub enum HeadersScope {
 #[serde(rename_all = "kebab-case")]
 /// Represents an HTTP headers map.
 pub struct Headers {
-    /// Source glob of the headers, matched against the request path as it is served:
-    /// decoded, and without empty or `.` segments. `*` crosses `/`.
+    /// Source glob of the headers, matched against the request path as it is served
+    /// (decoded, and without empty or `.` segments) and against the path of the file
+    /// that answers the request, such as `/dir/index.html` for `/dir/`. `*` crosses `/`.
     pub source: String,
     /// Optional list of HTTP response status codes the headers apply to.
     /// If not specified, the headers apply to any response status.

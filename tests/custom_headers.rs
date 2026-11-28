@@ -9,7 +9,7 @@
 #[cfg(test)]
 pub mod tests {
     use http::HeaderMap;
-    use http::header::{CACHE_CONTROL, IF_MODIFIED_SINCE, LAST_MODIFIED, RANGE};
+    use http::header::{CACHE_CONTROL, IF_MODIFIED_SINCE, LAST_MODIFIED, RANGE, VARY};
     use hyper::{Method, Request, Response, StatusCode};
     use std::net::SocketAddr;
     use std::path::PathBuf;
@@ -25,6 +25,8 @@ pub mod tests {
     const EARLY_TOML: &str = "toml/custom_headers_early.toml";
     const MAINTENANCE_TOML: &str = "toml/custom_headers_maintenance.toml";
     const SPELLING_TOML: &str = "toml/custom_headers_path_spelling.toml";
+    const PATHS_TOML: &str = "toml/custom_headers_paths.toml";
+    const SERVED_TOML: &str = "toml/custom_headers_served_file.toml";
     const IMMUTABLE: &str = "public, max-age=31536000, immutable";
 
     async fn request(
@@ -165,6 +167,404 @@ pub mod tests {
             let res = get(SPELLING_TOML, uri).await;
             assert_eq!(res.status(), 200, "{uri}");
             assert_eq!(res.headers()["x-glob"], "1", "{uri}");
+        }
+    }
+
+    /// Requests `uri` with `redirect-trailing-slash` off.
+    async fn get_without_slash_redirect(fixture_toml: &str, uri: &str) -> Response<Body> {
+        request_with_opts(fixture_toml, Method::GET, uri, HeaderMap::new(), |opts| {
+            opts.redirect_trailing_slash = false;
+        })
+        .await
+    }
+
+    #[tokio::test]
+    async fn custom_headers_directory_request_matches_its_index_file() {
+        for uri in ["/assets/", "/assets/index.html", "//assets/./"] {
+            let res = get(PATHS_TOML, uri).await;
+            assert_eq!(res.status(), 200, "{uri}");
+            assert_eq!(res.headers()["x-index"], "1", "{uri}");
+            assert!(res.headers().get("x-file").is_none(), "{uri}");
+        }
+        for uri in ["/", "/index.htm"] {
+            let res = get(PATHS_TOML, uri).await;
+            assert_eq!(res.status(), 200, "{uri}");
+            assert_eq!(res.headers()["x-root-index"], "1", "{uri}");
+            assert!(res.headers().get("x-index").is_none(), "{uri}");
+        }
+    }
+
+    #[tokio::test]
+    async fn custom_headers_trailing_slash_redirect_is_not_matched_as_its_index() {
+        let res = get(PATHS_TOML, "/assets").await;
+        assert_eq!(res.status(), 308);
+        assert!(res.headers().get("x-index").is_none());
+    }
+
+    #[tokio::test]
+    async fn custom_headers_without_slash_redirect_match_files_by_their_path() {
+        for (uri, header) in [
+            ("/assets/main.js", "x-file"),
+            ("/index.htm", "x-root-index"),
+            ("/", "x-root-index"),
+            ("/assets/index.html", "x-index"),
+        ] {
+            let res = get_without_slash_redirect(PATHS_TOML, uri).await;
+            assert_eq!(res.status(), 200, "{uri}");
+            assert_eq!(res.headers()[header], "1", "{uri}");
+        }
+    }
+
+    #[tokio::test]
+    async fn custom_headers_without_slash_redirect_match_directory_by_its_index_file() {
+        for uri in ["/assets", "/assets/"] {
+            let res = get_without_slash_redirect(PATHS_TOML, uri).await;
+            assert_eq!(res.status(), 200, "{uri}");
+            assert_eq!(res.headers()["x-index"], "1", "{uri}");
+            assert!(res.headers().get("x-file").is_none(), "{uri}");
+        }
+    }
+
+    #[tokio::test]
+    async fn custom_headers_source_glob_forms() {
+        for (uri, expected) in [
+            ("/assets/main.css", ["x-star", "x-alternation"].as_slice()),
+            (
+                "/assets/main.js",
+                &["x-alternation", "x-class", "x-question"],
+            ),
+            ("/assets/tiny.js", &["x-alternation", "x-class"]),
+            ("/assets/index.html", &[]),
+            ("/index.htm", &[]),
+        ] {
+            let res = get(PATHS_TOML, uri).await;
+            assert_eq!(res.status(), 200, "{uri}");
+            for header in ["x-star", "x-alternation", "x-class", "x-question"] {
+                assert_eq!(
+                    res.headers().contains_key(header),
+                    expected.contains(&header),
+                    "{header} on {uri}"
+                );
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn custom_headers_entry_sets_several_headers_and_later_entry_wins() {
+        let res = get(PATHS_TOML, "/assets/main.css").await;
+        assert_eq!(res.status(), 200);
+        assert_eq!(
+            res.headers()["x-first"],
+            "c",
+            "names are compared in any case"
+        );
+        assert_eq!(res.headers().get_all("x-first").iter().count(), 1);
+        assert_eq!(res.headers()["x-second"], "b");
+        assert_eq!(
+            res.headers()[CACHE_CONTROL],
+            "no-store",
+            "a custom header replaces the one the server sets"
+        );
+        assert_eq!(res.headers().get_all(CACHE_CONTROL).iter().count(), 1);
+        assert_eq!(res.headers()[VARY], "x-custom");
+    }
+
+    #[tokio::test]
+    async fn custom_headers_apply_to_options() {
+        let res = request(
+            PATHS_TOML,
+            Method::OPTIONS,
+            "/assets/main.js",
+            HeaderMap::new(),
+        )
+        .await;
+        assert_eq!(res.status(), 204);
+        assert_eq!(res.headers()["x-file"], "1");
+    }
+
+    #[tokio::test]
+    async fn custom_headers_match_the_path_a_request_is_rewritten_to() {
+        for uri in ["/app/main.js", "/app/./%6Dain.js"] {
+            let res = get(PATHS_TOML, uri).await;
+            assert_eq!(res.status(), 200, "{uri}");
+            assert_eq!(res.headers()["x-file"], "1", "{uri}");
+            assert!(res.headers().get("x-client-path").is_none(), "{uri}");
+        }
+
+        let res = get(PATHS_TOML, "/app/").await;
+        assert_eq!(res.status(), 200);
+        assert_eq!(res.headers()["x-index"], "1");
+    }
+
+    #[tokio::test]
+    async fn custom_headers_apply_to_virtual_hosts() {
+        let get_from = |uri: &'static str| async move {
+            let opts = fixture_settings(PATHS_TOML);
+            let req_handler =
+                fixture_req_handler(fixture_req_handler_opts(opts.general, opts.advanced));
+            let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
+            let mut req = Request::new(());
+            *req.uri_mut() = uri.parse().unwrap();
+            req_handler.handle(&mut req, remote_addr).await.unwrap()
+        };
+
+        let res = get_from("http://docs.example/test.html").await;
+        assert_eq!(res.status(), 200);
+        assert_eq!(res.headers()["x-vhost-file"], "1");
+
+        let res = get_from("http://DOCS.example/style.css").await;
+        assert_eq!(res.status(), 200);
+        assert_eq!(res.headers()["x-star"], "1");
+
+        let res = get_from("http://localhost/test.html").await;
+        assert_eq!(res.status(), 404, "the file is in the virtual host only");
+        assert_eq!(res.headers()["x-vhost-file"], "1");
+    }
+
+    /// The `x-*` response headers that the fixture entries set, sorted.
+    fn custom_names(res: &Response<Body>) -> Vec<&str> {
+        const SERVER_SET: [&str; 3] = ["x-content-type-options", "x-frame-options", "x-cache"];
+        let mut names: Vec<&str> = res
+            .headers()
+            .keys()
+            .map(|name| name.as_str())
+            .filter(|name| name.starts_with("x-") && !SERVER_SET.contains(name))
+            .collect();
+        names.sort_unstable();
+        names
+    }
+
+    /// A root with a directory that has a `.html` sibling and no index file, a directory
+    /// to list, and a file with sub-delimiters in its name.
+    fn served_file_root() -> tempfile::TempDir {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::create_dir(dir.path().join("docs")).unwrap();
+        std::fs::write(dir.path().join("docs.html"), "sibling").unwrap();
+        std::fs::create_dir(dir.path().join("list")).unwrap();
+        std::fs::write(dir.path().join("list/a.txt"), "a").unwrap();
+        std::fs::write(dir.path().join("a+b,c.txt"), "sub-delims").unwrap();
+        dir
+    }
+
+    /// Requests `uri` from `SERVED_TOML` with `root` as the root directory.
+    async fn get_from_root(root: &std::path::Path, uri: &str, listing: bool) -> Response<Body> {
+        let root = root.canonicalize().unwrap();
+        request_with_opts(SERVED_TOML, Method::GET, uri, HeaderMap::new(), |opts| {
+            opts.root_dir = root;
+            opts.index_files = vec!["index.html".to_owned()];
+            #[cfg(feature = "directory-listing")]
+            {
+                opts.dir_listing = listing;
+            }
+            #[cfg(not(feature = "directory-listing"))]
+            let _ = listing;
+        })
+        .await
+    }
+
+    #[tokio::test]
+    async fn custom_headers_reach_a_file_served_through_the_html_fallback() {
+        for method in [Method::GET, Method::HEAD] {
+            for redirect_trailing_slash in [true, false] {
+                let res = request_with_opts(
+                    SERVED_TOML,
+                    method.clone(),
+                    "/404",
+                    HeaderMap::new(),
+                    |opts| opts.redirect_trailing_slash = redirect_trailing_slash,
+                )
+                .await;
+                assert_eq!(res.status(), 200);
+                assert_eq!(custom_names(&res), ["x-file", "x-html", "x-request"]);
+            }
+        }
+
+        let res = get(SERVED_TOML, "/404.html").await;
+        assert_eq!(custom_names(&res), ["x-file", "x-html"]);
+    }
+
+    #[tokio::test]
+    async fn custom_headers_directory_source_matches_the_directory_request() {
+        for method in [Method::GET, Method::HEAD] {
+            let res = request(SERVED_TOML, method, "/assets/", HeaderMap::new()).await;
+            assert_eq!(res.status(), 200);
+            assert_eq!(custom_names(&res), ["x-directory", "x-html"]);
+        }
+
+        let res = get(SERVED_TOML, "/assets/index.html").await;
+        assert_eq!(custom_names(&res), ["x-html"]);
+
+        let res = get(SERVED_TOML, "/").await;
+        assert_eq!(res.status(), 200);
+        assert_eq!(custom_names(&res), ["x-root"]);
+    }
+
+    #[tokio::test]
+    async fn custom_headers_reach_the_html_sibling_served_for_a_directory() {
+        let root = served_file_root();
+        let res = get_from_root(root.path(), "/docs/", false).await;
+        assert_eq!(res.status(), 200);
+        assert_eq!(custom_names(&res), ["x-html", "x-sibling"]);
+    }
+
+    #[cfg(feature = "directory-listing")]
+    #[tokio::test]
+    async fn custom_headers_apply_to_a_directory_listing() {
+        let root = served_file_root();
+        let res = get_from_root(root.path(), "/list/", true).await;
+        assert_eq!(res.status(), 200);
+        assert_eq!(
+            custom_names(&res),
+            ["x-html", "x-listing"],
+            "a listing is matched as its directory and as the index file it stands in for"
+        );
+    }
+
+    #[tokio::test]
+    async fn custom_headers_reach_a_negotiated_markdown_variant() {
+        let get_article = |accept: Option<&'static str>| async move {
+            let opts = fixture_settings(SERVED_TOML);
+            let mut req_handler_opts = fixture_req_handler_opts(opts.general, opts.advanced);
+            req_handler_opts.accept_markdown = true;
+            let req_handler = fixture_req_handler(req_handler_opts);
+            let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
+            let mut req = Request::new(());
+            *req.uri_mut() = "http://docs.example/article.html".parse().unwrap();
+            if let Some(accept) = accept {
+                req.headers_mut()
+                    .insert(http::header::ACCEPT, accept.parse().unwrap());
+            }
+            req_handler.handle(&mut req, remote_addr).await.unwrap()
+        };
+
+        let res = get_article(Some("text/markdown")).await;
+        assert_eq!(res.status(), 200);
+        assert_eq!(custom_names(&res), ["x-html", "x-markdown"]);
+
+        let res = get_article(None).await;
+        assert_eq!(res.status(), 200);
+        assert_eq!(custom_names(&res), ["x-html"]);
+    }
+
+    #[tokio::test]
+    async fn custom_headers_trailing_slash_redirect_serves_no_file() {
+        for uri in ["/assets", "/assets/."] {
+            let res = get(SERVED_TOML, uri).await;
+            assert_eq!(res.status(), 308, "{uri}");
+            assert!(res.headers().get("x-html").is_none(), "{uri}");
+        }
+    }
+
+    #[tokio::test]
+    async fn custom_headers_file_requested_as_a_directory_gets_none_of_its_headers() {
+        let res = get(SERVED_TOML, "/404.html/").await;
+        assert_eq!(res.status(), 404);
+        assert!(custom_names(&res).is_empty());
+    }
+
+    #[tokio::test]
+    async fn custom_headers_keep_every_value_of_a_header() {
+        let res = get(SERVED_TOML, "/assets/main.css").await;
+        assert_eq!(res.status(), 200);
+        let values = |name: &str| -> Vec<String> {
+            let values = res.headers().get_all(name).iter();
+            values.map(|v| v.to_str().unwrap().to_owned()).collect()
+        };
+        assert_eq!(
+            values("link"),
+            ["</a.css>; rel=preload", "</b.css>; rel=preload"]
+        );
+        assert_eq!(values("x-values"), ["new-1", "new-2"]);
+    }
+
+    #[tokio::test]
+    async fn custom_headers_source_escapes_stand_for_their_characters() {
+        let res = get(SERVED_TOML, "/assets/main.js").await;
+        assert_eq!(res.status(), 200);
+        assert_eq!(res.headers()["x-escaped"], "1");
+
+        let root = served_file_root();
+        for uri in ["/a+b,c.txt", "/a%2Bb%2Cc.txt", "/a%2bb,c.txt"] {
+            let res = get_from_root(root.path(), uri, false).await;
+            assert_eq!(res.status(), 200, "{uri}");
+            assert_eq!(res.headers()["x-sub-delims"], "1", "{uri}");
+        }
+    }
+
+    #[tokio::test]
+    async fn custom_headers_early_response_matches_every_spelling_of_a_path() {
+        for uri in ["/old", "//old", "/%6Fld", "/./old"] {
+            let res = get(SERVED_TOML, uri).await;
+            assert_eq!(res.status(), 301, "{uri}");
+            assert_eq!(res.headers()["x-early"], "1", "{uri}");
+        }
+    }
+
+    #[tokio::test]
+    async fn custom_headers_long_path_is_matched() {
+        // Header sources have no length cap of their own: without redirects or rewrites,
+        // a path as long as a URI can be is matched
+        let uri = ["/assets/", &"a".repeat(60 * 1024)].concat();
+        let res = get(STATUS_TOML, &uri).await;
+        assert_eq!(res.status(), 404);
+        assert_eq!(res.headers()["x-custom-header"], "every-response");
+    }
+
+    #[cfg(feature = "compression")]
+    #[tokio::test]
+    async fn custom_headers_apply_to_compressed_responses() {
+        use http::header::{ACCEPT_ENCODING, CONTENT_ENCODING};
+
+        // Compressed on the fly; files under 200 bytes are not
+        let res = request_with_opts(
+            PATHS_TOML,
+            Method::GET,
+            "/assets/",
+            header(ACCEPT_ENCODING, &"gzip".parse().unwrap()),
+            |opts| opts.compression = true,
+        )
+        .await;
+        assert_eq!(res.status(), 200);
+        assert_eq!(res.headers()[CONTENT_ENCODING], "gzip");
+        assert_eq!(res.headers()["x-index"], "1");
+
+        // A pre-compressed twin is matched by the path of the file it stands for
+        let res = request_with_opts(
+            PATHS_TOML,
+            Method::GET,
+            "/assets/tiny.js",
+            header(ACCEPT_ENCODING, &"br".parse().unwrap()),
+            |opts| opts.compression_static = true,
+        )
+        .await;
+        assert_eq!(res.status(), 200);
+        assert_eq!(res.headers()[CONTENT_ENCODING], "br");
+        assert_eq!(res.headers()["x-class"], "1");
+    }
+
+    #[cfg(feature = "mem-cache")]
+    #[tokio::test]
+    async fn custom_headers_apply_to_cached_files() {
+        let opts = fixture_settings("toml/custom_headers_mem_cache.toml");
+        let mut req_handler_opts = fixture_req_handler_opts(opts.general, opts.advanced);
+        static_web_server::mem_cache::cache::init(&mut req_handler_opts).unwrap();
+        let req_handler = fixture_req_handler(req_handler_opts);
+        let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
+
+        for (uri, header) in [("/assets/main.js", "x-file"), ("/assets/", "x-index")] {
+            let mut cache_status = None;
+            for _ in 0..3 {
+                let mut req = Request::new(());
+                *req.uri_mut() = uri.parse().unwrap();
+                let res = req_handler.handle(&mut req, remote_addr).await.unwrap();
+                assert_eq!(res.status(), 200, "{uri}");
+                assert_eq!(res.headers()[header], "1", "{uri}");
+                cache_status = res.headers().get("x-cache").cloned();
+                http_body_util::BodyExt::collect(res.into_body())
+                    .await
+                    .unwrap();
+            }
+            assert_eq!(cache_status.unwrap(), "HIT", "{uri} must be cached");
         }
     }
 
@@ -403,6 +803,32 @@ pub mod tests {
         assert!(res.headers().get("www-authenticate").is_some());
         assert_eq!(res.headers()["x-custom-header"], "every-response");
         assert!(res.headers().get("x-default-scope").is_none());
+    }
+
+    #[test]
+    fn custom_headers_invalid_source_is_rejected() {
+        let err = settings_error("toml/custom_headers_source_invalid.toml");
+        assert!(
+            err.contains("can not compile glob pattern for header source: /assets/{unclosed"),
+            "{err}"
+        );
+    }
+
+    #[test]
+    fn custom_headers_invalid_name_or_value_is_rejected() {
+        for fixture in [
+            "toml/custom_headers_name_invalid.toml",
+            "toml/custom_headers_value_invalid.toml",
+        ] {
+            let err = settings_error(fixture);
+            assert!(err.contains("headers"), "{fixture}: {err}");
+        }
+    }
+
+    #[test]
+    fn custom_headers_missing_headers_table_is_rejected() {
+        let err = settings_error("toml/custom_headers_missing_headers.toml");
+        assert!(err.contains("headers"), "{err}");
     }
 
     #[test]

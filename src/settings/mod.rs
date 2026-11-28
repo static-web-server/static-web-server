@@ -524,13 +524,7 @@ impl Settings {
 
                         // Compile a glob pattern for each header sources entry
                         for headers_entry in headers_entries.iter() {
-                            let source = url_rules::to_matcher(&headers_entry.source)
-                                .with_context(|| {
-                                    format!(
-                                        "can not compile glob pattern for header source: {}",
-                                        headers_entry.source
-                                    )
-                                })?;
+                            let source = url_rules::to_matcher(&headers_entry.source)?;
 
                             let status = headers_entry
                                 .status

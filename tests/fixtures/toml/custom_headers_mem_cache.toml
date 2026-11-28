@@ -1,0 +1,19 @@
+[general]
+
+root = "tests/fixtures/public"
+
+[advanced]
+
+[[advanced.headers]]
+source = "/assets/main.js"
+headers = { X-File = "1" }
+
+[[advanced.headers]]
+source = "/assets/index.html"
+headers = { X-Index = "1" }
+
+[advanced.memory-cache]
+capacity = 10
+ttl = 600
+tti = 120
+max-file-size = 4

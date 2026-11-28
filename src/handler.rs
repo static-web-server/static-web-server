@@ -7,7 +7,7 @@
 //!
 
 use hyper::{Request, Response, StatusCode};
-use std::{future::Future, net::SocketAddr, path::PathBuf, sync::Arc};
+use std::{future::Future, net::SocketAddr, sync::Arc};
 use tracing::Instrument;
 
 use crate::body::Body;
@@ -237,6 +237,10 @@ impl RequestHandler {
                     }
                 };
 
+                // Custom headers also match the path of the file served
+                let served_path =
+                    custom_headers::served_path(&self.opts, &resp, file_path.as_deref(), base_path);
+
                 // Check for a fallback response
                 #[cfg(feature = "fallback-page")]
                 let resp = fallback_page::post_process(&self.opts, req, resp)?;
@@ -275,13 +279,13 @@ impl RequestHandler {
                 // Append security headers
                 let resp = security_headers::post_process(&self.opts, req, resp)?;
 
-                Ok((resp, file_path, false))
+                Ok((resp, served_path, false))
             }
             .await;
 
             // Add/update custom headers
-            let result = result.and_then(|(resp, file_path, early)| {
-                custom_headers::post_process(&self.opts, req, resp, file_path.as_ref(), early)
+            let result = result.and_then(|(resp, served_path, early)| {
+                custom_headers::post_process(&self.opts, req, resp, served_path.as_deref(), early)
             });
 
             // The access log line is written once the response body is sent
@@ -318,8 +322,9 @@ impl RequestHandler {
     }
 }
 
-/// A response together with the served file path and whether it was returned early.
-type Early = (Response<Body>, Option<PathBuf>, bool);
+/// A response together with the rule path of the file it serves, for custom headers, and
+/// whether it was returned early.
+type Early = (Response<Body>, Option<String>, bool);
 
 /// Marks a response that was returned before the static file handler ran.
 fn early(resp: Response<Body>) -> Early {

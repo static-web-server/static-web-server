@@ -1,0 +1,73 @@
+[general]
+
+root = "tests/fixtures/public"
+index-files = "index.html,index.htm"
+
+[advanced]
+
+# The headers of a file reach every request that is answered with it
+[[advanced.headers]]
+source = "**/*.html"
+headers = { X-Html = "1" }
+
+[[advanced.headers]]
+source = "/404.html"
+headers = { X-File = "1" }
+
+[[advanced.headers]]
+source = "/docs.html"
+headers = { X-Sibling = "1" }
+
+[[advanced.headers]]
+source = "**/*.md"
+headers = { X-Markdown = "1" }
+
+# So do the headers of the path that is requested
+[[advanced.headers]]
+source = "/404"
+headers = { X-Request = "1" }
+
+[[advanced.headers]]
+source = "/assets/"
+headers = { X-Directory = "1" }
+
+[[advanced.headers]]
+source = "/"
+headers = { X-Root = "1" }
+
+[[advanced.headers]]
+source = "/list/"
+headers = { X-Listing = "1" }
+
+# A header with several values keeps them all, and replaces the ones set before
+[[advanced.headers]]
+source = "/assets/main.css"
+headers = { Link = ["</a.css>; rel=preload", "</b.css>; rel=preload"], X-Values = "old" }
+
+[[advanced.headers]]
+source = "/assets/main.css"
+headers = { X-Values = ["new-1", "new-2"] }
+
+# Escapes in a source are read as the characters they stand for
+[[advanced.headers]]
+source = "/assets/m%61in%2Ejs"
+headers = { X-Escaped = "1" }
+
+[[advanced.headers]]
+source = "/a%2Bb%2Cc.txt"
+headers = { X-Sub-Delims = "1" }
+
+# Early responses are matched in any spelling of the request path too
+[[advanced.redirects]]
+source = "/old"
+destination = "/assets/"
+kind = 301
+
+[[advanced.headers]]
+source = "/old"
+scope = "all"
+headers = { X-Early = "1" }
+
+[[advanced.virtual-hosts]]
+host = "docs.example"
+root = "tests/fixtures/markdown"
