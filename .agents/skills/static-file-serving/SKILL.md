@@ -14,7 +14,7 @@ How SWS turns a request path into a response, and how users configure it. Values
 1. Method check: `GET`, `HEAD`, `OPTIONS`
 2. `sanitize_path()` maps the URI path under the root (`security/SKILL.md`)
 3. Memory cache lookup (`GET`/`HEAD`, only with `[advanced.memory-cache]`): a hit picks the cached variant matching `Accept-Encoding` and returns without disk access
-4. `resolve::file_metadata()`: directory → each `--index-files` entry in order; missing file → `<path>.html`; with `--compression-static`, a pre-compressed sibling
+4. `resolve::file_metadata()`: directory → each `--index-files` entry in order, then its `<dir>.html` sibling; missing file → `<path>.html`; with `--compression-static`, a pre-compressed sibling. The root has no sibling: no file beside it is looked up
 5. `security::enforce()` on the resolved file and, separately, on the pre-compressed variant
 6. Short-circuits: directory without trailing slash → 308 (`--redirect-trailing-slash`, default `true`); `OPTIONS` → 204 with `Allow` and `Accept-Ranges`; directory listing or archive download
 7. File reply: conditional checks, byte range, streamed body
@@ -86,7 +86,7 @@ Entries are keyed by `(path, ContentCoding)`, so a pre-compressed variant is cac
 
 ## Markdown Negotiation (`--accept-markdown`, default `false`)
 
-- `Accept: text/markdown` → look for `<path>.md`, `<path>.html.md`, `<path>/index.html.md`; serve as `text/markdown`; hidden-file policy applies to the variant
+- `Accept: text/markdown` → look for `<path>.md`, `<path>.html.md`, `<path>/index.html.md` (only the last one for the root); serve as `text/markdown`; hidden-file policy applies to the variant
 - When enabled, HTML and markdown responses, directory listings (any format), a `304` whose resolved file is HTML, and a trailing-slash `308` carry `Vary: Accept`. Other assets and pre-processing short-circuits don't
 - A `[[advanced.headers]]` rule that sets `Vary` replaces it
 

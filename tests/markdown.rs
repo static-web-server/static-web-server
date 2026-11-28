@@ -768,4 +768,42 @@ pub mod tests {
             res.headers().get("vary")
         );
     }
+
+    #[tokio::test]
+    async fn markdown_enabled_root_index_ignores_a_md_file_beside_the_root() {
+        use static_web_server::settings::cli::General;
+
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path().canonicalize().unwrap().join("site");
+        std::fs::create_dir(&root).unwrap();
+        std::fs::write(root.join("index.html"), "<h1>Index</h1>").unwrap();
+        std::fs::write(root.join("index.html.md"), "# Index").unwrap();
+        for name in ["site.md", "site.html.md"] {
+            std::fs::write(root.with_file_name(name), "beside the root").unwrap();
+        }
+
+        let opts = fixture_settings("toml/markdown_enabled.toml");
+        let general = General {
+            root,
+            ..opts.general
+        };
+        let req_handler = fixture_req_handler(fixture_req_handler_opts(general, opts.advanced));
+        let remote_addr = Some(REMOTE_ADDR.parse::<SocketAddr>().unwrap());
+
+        let mut req = Request::new(());
+        *req.uri_mut() = "http://localhost/".parse().unwrap();
+        req.headers_mut().insert(
+            hyper::header::ACCEPT,
+            HeaderValue::from_static("text/markdown"),
+        );
+
+        let res = req_handler.handle(&mut req, remote_addr).await.unwrap();
+        assert_eq!(res.status(), 200);
+        assert_eq!(
+            res.headers().get("content-type"),
+            Some(&HeaderValue::from_static("text/markdown; charset=utf-8"))
+        );
+        let body = res.into_body().collect().await.unwrap().to_bytes();
+        assert_eq!(body, "# Index");
+    }
 }

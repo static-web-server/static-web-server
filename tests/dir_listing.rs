@@ -758,4 +758,47 @@ mod tests {
             assert_eq!(res.headers()["content-type"], "text/html; charset=utf-8");
         }
     }
+
+    #[tokio::test]
+    async fn dir_listing_root_ignores_a_html_file_beside_it() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path().canonicalize().unwrap().join("site");
+        std::fs::create_dir(&root).unwrap();
+        std::fs::write(root.join("a.txt"), "a").unwrap();
+        std::fs::write(root.with_file_name("site.html"), "beside the root").unwrap();
+
+        for redirect_trailing_slash in [true, false] {
+            let result = static_files::handle(&HandleOpts {
+                method: &Method::GET,
+                headers: &HeaderMap::new(),
+                base_path: &root,
+                uri_path: "/",
+                uri_query: None,
+                rewritten_from: None,
+                #[cfg(feature = "mem-cache")]
+                memory_cache: None,
+                dir_listing: true,
+                dir_listing_order: 6,
+                dir_listing_format: &DirListFmt::Html,
+                redirect_trailing_slash,
+                compression_static: false,
+                etag: true,
+                include_hidden: false,
+                follow_symlinks: false,
+                index_files: &["index.html", "index.htm"],
+                #[cfg(feature = "directory-listing-download")]
+                dir_listing_download: &[],
+            })
+            .await
+            .expect("a root without an index file must be listed");
+
+            assert!(result.is_dir_listing);
+            let res = result.resp;
+            assert_eq!(res.status(), 200);
+            let body = res.into_body().collect().await.unwrap().to_bytes();
+            let body = String::from_utf8_lossy(&body);
+            assert!(body.contains("a.txt"), "{body}");
+            assert!(!body.contains("beside the root"), "{body}");
+        }
+    }
 }
