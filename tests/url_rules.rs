@@ -478,6 +478,18 @@ pub mod tests {
         }
     }
 
+    #[tokio::test]
+    async fn redirects_source_class_of_one_character_matches_it() {
+        for uri in ["/quoted%20page%5Bx%5D", "/quoted%20page%5bx%5d"] {
+            assert_redirect(uri, None, StatusCode::MOVED_PERMANENTLY, "/quoted/x").await;
+        }
+        for uri in ["/quoted2page%5Bx%5D", "/quoted%20page5x%5D"] {
+            let sent = send(Method::GET, uri, None).await;
+            assert_eq!(sent.res.status(), StatusCode::NOT_FOUND, "{uri}");
+            assert!(sent.res.headers().get(LOCATION).is_none(), "{uri}");
+        }
+    }
+
     /// Removes the rules of the fixture that `remove` names.
     fn without(remove: &'static str) -> impl FnOnce(&mut RequestHandlerOpts) {
         move |opts| {

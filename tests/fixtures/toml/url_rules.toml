@@ -100,6 +100,12 @@ source = "/menú del día/{*}"
 destination = "/menu/$1"
 kind = 301
 
+# A class of one character stands for that character, as paths spell it
+[[advanced.redirects]]
+source = "/quoted[ ]page[[]{*}[]]"
+destination = "/quoted/$1"
+kind = 301
+
 # A capture at the start of a destination
 [[advanced.redirects]]
 source = "/lead/{**}"

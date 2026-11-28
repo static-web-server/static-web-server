@@ -1,0 +1,9 @@
+[general]
+
+root = "tests/fixtures/public"
+
+[advanced]
+
+[[advanced.headers]]
+source = "/[a b]x"
+headers = { X-Custom-Header = "never" }

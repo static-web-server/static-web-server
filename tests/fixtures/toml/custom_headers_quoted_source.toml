@@ -1,0 +1,14 @@
+[general]
+
+root = "tests/fixtures/public"
+
+[advanced]
+
+# A class of one character stands for that character, as paths spell it
+[[advanced.headers]]
+source = "/a[ ]b.txt"
+headers = { X-Space = "1" }
+
+[[advanced.headers]]
+source = "/[[]x[]].txt"
+headers = { X-Brackets = "1" }
