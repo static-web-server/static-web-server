@@ -31,10 +31,11 @@ const URI_PATH_ESCAPE: &AsciiSet = &CONTROLS.add(b'%');
 /// Pre-process a request to check if a markdown variant URI should be used.
 ///
 /// The URI path is sanitized with the same `sanitize_path` used by the
-/// static-files handler before any filesystem access, so the `metadata()`
-/// probes issued by `try_markdown_variant` can never reach outside
-/// `base_path`. On any failure the function returns `None` and the request
-/// falls through to the static-files handler (fail closed, 404).
+/// static-files handler before any filesystem access, and the root has no
+/// `.md` sibling to look up, so the `metadata()` probes issued by
+/// `try_markdown_variant` can never reach outside `base_path`. On any
+/// failure the function returns `None` and the request falls through to the
+/// static-files handler (fail closed, 404).
 ///
 /// Symlink policy is intentionally *not* enforced here: the rewritten URI is
 /// re-sanitized and passed through containment, symlink and hidden-file
@@ -73,7 +74,7 @@ pub(crate) fn pre_process<T>(
         return None;
     }
 
-    let md_path = try_markdown_variant(&file_path)?;
+    let md_path = try_markdown_variant(&file_path, base_path)?;
     let relative_md = md_path.strip_prefix(base_path).ok()?;
 
     // 8.3 short-name aliases such as `GIT~1` are checked on the variant found:

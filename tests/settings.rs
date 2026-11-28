@@ -213,6 +213,29 @@ mod tests {
     }
 
     #[test]
+    fn toml_url_rule_source_class_of_encoded_characters_is_rejected() {
+        for source in ["/[a b]x", "/caf[éa]", "/a[! ]b", "/a[A-z]b"] {
+            let err = settings_error(&format!(
+                "[[advanced.rewrites]]\nsource = \"{source}\"\ndestination = \"/b\"\n"
+            ));
+            assert!(
+                err.contains(&format!("invalid rewrite for source: {source}")),
+                "{err}"
+            );
+            assert!(err.contains("matches a single character"), "{err}");
+
+            let err = settings_error(&format!(
+                "[[advanced.redirects]]\nsource = \"{source}\"\ndestination = \"/b\"\nkind = 301\n"
+            ));
+            assert!(
+                err.contains(&format!("invalid redirect for source: {source}")),
+                "{err}"
+            );
+            assert!(err.contains("matches a single character"), "{err}");
+        }
+    }
+
+    #[test]
     fn toml_url_rule_destination_outside_uri_is_rejected() {
         for dest in ["", "/a b", "/a\\nb", "/café", "/a<b>"] {
             let err = settings_error(&format!(

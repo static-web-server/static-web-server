@@ -27,6 +27,7 @@ pub mod tests {
     const SPELLING_TOML: &str = "toml/custom_headers_path_spelling.toml";
     const PATHS_TOML: &str = "toml/custom_headers_paths.toml";
     const SERVED_TOML: &str = "toml/custom_headers_served_file.toml";
+    const QUOTED_TOML: &str = "toml/custom_headers_quoted_source.toml";
     const IMMUTABLE: &str = "public, max-age=31536000, immutable";
 
     async fn request(
@@ -397,6 +398,29 @@ pub mod tests {
         let res = get(SERVED_TOML, "/").await;
         assert_eq!(res.status(), 200);
         assert_eq!(custom_names(&res), ["x-root"]);
+    }
+
+    #[tokio::test]
+    async fn custom_headers_source_class_of_one_character_matches_it() {
+        let dir = tempfile::tempdir().unwrap();
+        for name in ["a b.txt", "a2b.txt", "[x].txt", "5x].txt"] {
+            std::fs::write(dir.path().join(name), name).unwrap();
+        }
+        let root = dir.path().canonicalize().unwrap();
+
+        for (uri, names) in [
+            ("/a%20b.txt", vec!["x-space"]),
+            ("/a2b.txt", vec![]),
+            ("/%5Bx%5D.txt", vec!["x-brackets"]),
+            ("/5x%5D.txt", vec![]),
+        ] {
+            let res = request_with_opts(QUOTED_TOML, Method::GET, uri, HeaderMap::new(), |opts| {
+                opts.root_dir = root.clone();
+            })
+            .await;
+            assert_eq!(res.status(), 200, "{uri}");
+            assert_eq!(custom_names(&res), names, "{uri}");
+        }
     }
 
     #[tokio::test]
@@ -810,6 +834,20 @@ pub mod tests {
         let err = settings_error("toml/custom_headers_source_invalid.toml");
         assert!(
             err.contains("can not compile glob pattern for header source: /assets/{unclosed"),
+            "{err}"
+        );
+    }
+
+    #[test]
+    fn custom_headers_source_class_of_encoded_characters_is_rejected() {
+        let err = settings_error("toml/custom_headers_source_class_invalid.toml");
+        assert!(
+            err.contains("can not compile glob pattern for header source: /[a b]x"),
+            "{err}"
+        );
+        assert!(
+            err.contains("class [a b] matches a single character")
+                && err.contains("spells ' ' as %20"),
             "{err}"
         );
     }

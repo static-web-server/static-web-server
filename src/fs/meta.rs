@@ -7,6 +7,7 @@
 //!
 
 use http::StatusCode;
+use std::ffi::OsStr;
 use std::fs::{File, Metadata};
 use std::path::{Path, PathBuf};
 
@@ -74,15 +75,28 @@ pub(crate) fn try_file_open(file_path: &Path) -> Result<(File, Metadata), Status
     }
 }
 
+/// Returns the file name that the siblings of `file_path` are named after.
+///
+/// `None` for the root `base_path`, which has none to serve: they lie beside the root,
+/// not under it.
+fn sibling_name<'a>(file_path: &'a Path, base_path: &Path) -> Option<&'a OsStr> {
+    if file_path == base_path {
+        return None;
+    }
+    file_path.file_name()
+}
+
 /// Try to append a `.html` suffix to a given file path when the file doesn't exist.
 /// * When the suffixed html path exists then it mutates the path to the suffixed one and returns its `Metadata`.
 /// * Otherwise, it falls back the path to its original value.
-pub(crate) fn try_metadata_with_html_suffix(
-    file_path: &mut PathBuf,
-) -> (&mut PathBuf, Option<Metadata>) {
+/// * The root `base_path` is left as it is: a file beside the root is not looked up.
+pub(crate) fn try_metadata_with_html_suffix<'a>(
+    file_path: &'a mut PathBuf,
+    base_path: &Path,
+) -> (&'a mut PathBuf, Option<Metadata>) {
     tracing::debug!("file: appending .html suffix to the path");
 
-    if let Some(filename) = file_path.file_name() {
+    if let Some(filename) = sibling_name(file_path, base_path) {
         let owned_filename = filename.to_os_string();
         let mut owned_filename_with_html = owned_filename.clone();
 
@@ -108,8 +122,9 @@ pub(crate) fn try_metadata_with_html_suffix(
 /// * First tries to append a `.md` suffix to the path (e.g., `/article` → `/article.md`)
 /// * Then tries to append `.html.md`
 /// * If that fails, tries to find `index.html.md` in the path (e.g., `/article` → `/article/index.html.md`)
+/// * For the root `base_path` only `index.html.md` is tried: no file beside the root is looked up
 /// * Returns `Some(PathBuf)` if a markdown file is found, `None` otherwise
-pub(crate) fn try_markdown_variant(file_path: &Path) -> Option<PathBuf> {
+pub(crate) fn try_markdown_variant(file_path: &Path, base_path: &Path) -> Option<PathBuf> {
     // Helper to check if a path exists and is a file
     let try_path = |path: PathBuf| -> Option<PathBuf> {
         match try_metadata(&path) {
@@ -119,7 +134,7 @@ pub(crate) fn try_markdown_variant(file_path: &Path) -> Option<PathBuf> {
     };
 
     // Try suffixes first if the path has a filename
-    if let Some(filename) = file_path.file_name() {
+    if let Some(filename) = sibling_name(file_path, base_path) {
         for suffix in [".md", ".html.md"] {
             let mut path = file_path.to_path_buf();
             let mut owned_filename = filename.to_os_string();
@@ -136,4 +151,55 @@ pub(crate) fn try_markdown_variant(file_path: &Path) -> Option<PathBuf> {
     let mut path = file_path.to_path_buf();
     path.push("index.html.md");
     try_path(path)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{try_markdown_variant, try_metadata_with_html_suffix};
+
+    /// A root named `site` that has a directory `docs` and the siblings `docs.html`,
+    /// `docs.md` and `index.html.md`, next to files named after the root itself.
+    fn fixture() -> (tempfile::TempDir, std::path::PathBuf) {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path().canonicalize().unwrap().join("site");
+        std::fs::create_dir_all(root.join("docs")).unwrap();
+        for name in ["docs.html", "docs.md", "index.html.md"] {
+            std::fs::write(root.join(name), name).unwrap();
+        }
+        for name in ["site.html", "site.md", "site.html.md"] {
+            std::fs::write(root.with_file_name(name), name).unwrap();
+        }
+        (dir, root)
+    }
+
+    #[test]
+    fn html_suffix_is_not_tried_beside_the_root() {
+        let (_dir, root) = fixture();
+
+        let mut file_path = root.clone();
+        let (file_path, meta) = try_metadata_with_html_suffix(&mut file_path, &root);
+        assert!(meta.is_none());
+        assert_eq!(*file_path, root);
+
+        let mut file_path = root.join("docs");
+        let (file_path, meta) = try_metadata_with_html_suffix(&mut file_path, &root);
+        assert!(meta.is_some());
+        assert_eq!(*file_path, root.join("docs.html"));
+    }
+
+    #[test]
+    fn markdown_variant_is_not_tried_beside_the_root() {
+        let (_dir, root) = fixture();
+        assert_eq!(
+            try_markdown_variant(&root, &root),
+            Some(root.join("index.html.md"))
+        );
+        assert_eq!(
+            try_markdown_variant(&root.join("docs"), &root),
+            Some(root.join("docs.md"))
+        );
+
+        std::fs::remove_file(root.join("index.html.md")).unwrap();
+        assert_eq!(try_markdown_variant(&root, &root), None);
+    }
 }

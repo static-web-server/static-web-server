@@ -88,6 +88,7 @@ pub async fn handle(opts: &HandleOpts<'_>) -> Result<StaticFileResponse, StatusC
         file,
     } = resolve::file_metadata(
         &mut file_path,
+        opts.base_path,
         opts.headers,
         opts.compression_static,
         opts.index_files,

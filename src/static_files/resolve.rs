@@ -12,7 +12,7 @@
 use headers::{HeaderMap, HeaderValue};
 use hyper::StatusCode;
 use std::fs::Metadata;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use crate::Result;
 use crate::compression_static;
@@ -28,8 +28,12 @@ use super::opts::DEFAULT_INDEX_FILES;
 /// Fails with `404` when the request path `names_dir` (see
 /// [`crate::fs::path::names_dir`]) but `file_path` is not a directory, so
 /// `/file/` doesn't serve `/file`.
+///
+/// The root `base_path` has no `.html` sibling: without an index file it
+/// resolves as a directory with none.
 pub(super) fn file_metadata<'a>(
     mut file_path: &'a mut PathBuf,
+    base_path: &Path,
     headers: &'a HeaderMap<HeaderValue>,
     compression_static: bool,
     mut index_files: &'a [&'a str],
@@ -81,7 +85,7 @@ pub(super) fn file_metadata<'a>(
                     // `.html` suffix fallback against the directory path.
                     file_path.pop();
                     let new_meta: Option<Metadata>;
-                    (file_path, new_meta) = try_metadata_with_html_suffix(file_path);
+                    (file_path, new_meta) = try_metadata_with_html_suffix(file_path, base_path);
                     if let Some(new_meta) = new_meta {
                         metadata = new_meta;
                         resolved_exists = true;
@@ -141,7 +145,7 @@ pub(super) fn file_metadata<'a>(
             // one `stat(2)` per configured encoding for every truly
             // missing path (see issue #617).
             let new_meta: Option<Metadata>;
-            (file_path, new_meta) = try_metadata_with_html_suffix(file_path);
+            (file_path, new_meta) = try_metadata_with_html_suffix(file_path, base_path);
 
             let Some(new_meta) = new_meta else {
                 // Neither the original path nor its `.html` sibling exists.
