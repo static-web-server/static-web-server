@@ -24,6 +24,8 @@ pub mod tests {
     const ORDER_TOML: &str = "toml/custom_headers_status_order.toml";
     const EARLY_TOML: &str = "toml/custom_headers_early.toml";
     const MAINTENANCE_TOML: &str = "toml/custom_headers_maintenance.toml";
+    #[cfg(feature = "fallback-page")]
+    const FALLBACK_TOML: &str = "toml/custom_headers_fallback.toml";
     const IMMUTABLE: &str = "public, max-age=31536000, immutable";
 
     async fn request(
@@ -343,6 +345,35 @@ pub mod tests {
         assert!(res.headers().get("www-authenticate").is_some());
         assert_eq!(res.headers()["x-custom-header"], "every-response");
         assert!(res.headers().get("x-default-scope").is_none());
+    }
+
+    /// A request to a server whose config sets `page-fallback` to `/assets/index.html`.
+    #[cfg(feature = "fallback-page")]
+    async fn fallback_request(uri: &str, headers: HeaderMap) -> Response<Body> {
+        request(FALLBACK_TOML, Method::GET, uri, headers).await
+    }
+
+    #[cfg(feature = "fallback-page")]
+    #[tokio::test]
+    async fn custom_headers_match_the_fallback_page_by_its_path() {
+        let res = fallback_request("/content/42/apply", HeaderMap::new()).await;
+        assert_eq!(res.status(), StatusCode::OK);
+        // Both differ from what the server sets on its own for this path
+        assert_eq!(res.headers()[CACHE_CONTROL], "no-store");
+        assert_eq!(res.headers()["x-app-shell"], "yes");
+        // Matched on the page's directory, which its file name alone wouldn't give
+        assert_eq!(res.headers()["x-under-assets"], "yes");
+        assert!(res.headers().get("x-css-only").is_none());
+    }
+
+    #[cfg(feature = "fallback-page")]
+    #[tokio::test]
+    async fn custom_headers_skip_missing_assets_that_keep_their_404() {
+        let mut headers = HeaderMap::new();
+        headers.insert("sec-fetch-dest", "script".parse().unwrap());
+        let res = fallback_request("/missing.js", headers).await;
+        assert_eq!(res.status(), StatusCode::NOT_FOUND);
+        assert!(res.headers().get("x-app-shell").is_none());
     }
 
     #[test]

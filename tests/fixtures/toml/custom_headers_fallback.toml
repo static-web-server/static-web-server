@@ -1,0 +1,18 @@
+[general]
+
+root = "tests/fixtures/public"
+page-fallback = "tests/fixtures/public/assets/index.html"
+
+[advanced]
+
+[[advanced.headers]]
+source = "**/*.html"
+headers = { Cache-Control = "no-store", X-App-Shell = "yes" }
+
+[[advanced.headers]]
+source = "**/*.css"
+headers = { X-Css-Only = "yes" }
+
+[[advanced.headers]]
+source = "/assets/**"
+headers = { X-Under-Assets = "yes" }

@@ -66,7 +66,7 @@ async fn compression_static_serves_brotli_variant() {
 ### Fixture Helpers (`src/testing.rs`)
 
 - `fixture_settings(path)` loads `tests/fixtures/<path>` through the real parser (`Settings::get_unparsed`), so TOML `[general]` overrides CLI defaults as in production
-- `fixture_req_handler_opts(general, advanced)` copies most `General` fields but **hard-codes** `cors: None`, `page_fallback: vec![]`, `memory_cache: None`. To test those, set the fields on the returned `RequestHandlerOpts` or call the module's `init()` first
+- `fixture_req_handler_opts(general, advanced)` copies most `General` fields but **hard-codes** `cors: None` and `memory_cache: None`. To test those, set the fields on the returned `RequestHandlerOpts` or call the module's `init()` first. The fallback page goes through `fallback_page::init`, so `page-fallback` in the fixture TOML works as at startup
 - It does not run `server/opts.rs`, so `init()` side effects (compiled CORS, cache store, loaded error pages) are absent unless the test performs them
 - A new `RequestHandlerOpts` field must be mapped here or the crate fails to compile
 
