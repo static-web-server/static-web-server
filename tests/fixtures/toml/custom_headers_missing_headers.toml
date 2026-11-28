@@ -1,0 +1,8 @@
+[general]
+
+root = "tests/fixtures/public"
+
+[advanced]
+
+[[advanced.headers]]
+source = "/assets/**"

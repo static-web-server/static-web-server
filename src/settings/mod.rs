@@ -7,12 +7,12 @@
 //!
 
 use clap::Parser;
-use globset::{Glob, GlobMatcher};
+use globset::GlobMatcher;
 use headers::HeaderMap;
 use hyper::StatusCode;
 use std::path::{Path, PathBuf};
 
-use crate::url_rules::{RuleHost, UrlRule};
+use crate::url_rules::{self, RuleHost, UrlRule};
 use crate::{Context, Result, helpers, logger};
 
 pub mod cli;
@@ -40,7 +40,7 @@ pub use file::CompressionLevel;
 
 /// The `headers` file options.
 pub struct Headers {
-    /// Source pattern glob matcher
+    /// Matcher of the source glob, which takes the path spelling of URL rule sources.
     pub source: GlobMatcher,
     /// Optional list of response status codes the headers apply to.
     /// If `None`, the headers apply to any response status.
@@ -524,14 +524,7 @@ impl Settings {
 
                         // Compile a glob pattern for each header sources entry
                         for headers_entry in headers_entries.iter() {
-                            let source = Glob::new(&headers_entry.source)
-                                .with_context(|| {
-                                    format!(
-                                        "can not compile glob pattern for header source: {}",
-                                        headers_entry.source
-                                    )
-                                })?
-                                .compile_matcher();
+                            let source = url_rules::to_matcher(&headers_entry.source)?;
 
                             let status = headers_entry
                                 .status

@@ -1,0 +1,23 @@
+[general]
+
+root = "tests/fixtures/public"
+
+[advanced]
+
+# A source matches every spelling of the same path
+[[advanced.headers]]
+source = "/assets/main.js"
+headers = { X-Exact = "1" }
+
+[[advanced.headers]]
+source = "/assets/*"
+headers = { X-Glob = "1" }
+
+# Sources take the same spelling: the characters themselves, or escapes in any hex case
+[[advanced.headers]]
+source = "/spécial-directöry.net/*"
+headers = { X-Characters = "1" }
+
+[[advanced.headers]]
+source = "/sp%c3%a9cial-direct%c3%b6ry.net/*"
+headers = { X-Escapes = "1" }

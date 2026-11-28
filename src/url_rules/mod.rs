@@ -45,6 +45,7 @@ use crate::fs::path::rule_path;
 use crate::{Error, Result, error_page, handler_opts::RequestHandlerOpts};
 
 pub use destination::{build_placeholder_replacer, replace_placeholders};
+pub(crate) use glob::to_matcher;
 pub(crate) use host::RequestHost;
 pub use host::RuleHost;
 

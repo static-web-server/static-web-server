@@ -6,8 +6,8 @@
 //! Translation of a rule's `source` glob into the regex whose capture groups feed the
 //! `$N` placeholders of its `destination`.
 
-use globset::GlobBuilder;
-use percent_encoding::{AsciiSet, utf8_percent_encode};
+use globset::{GlobBuilder, GlobMatcher};
+use percent_encoding::{AsciiSet, percent_encode, utf8_percent_encode};
 use regex_lite::Regex;
 
 use crate::fs::path::RULE_PATH_ENCODE;
@@ -35,13 +35,7 @@ const SOURCE_ENCODE: &AsciiSet = &RULE_PATH_ENCODE
 /// whose default file systems ignore letter case, it ignores ASCII case too, as paths in
 /// any case reach the same file.
 pub(crate) fn to_regex(glob: &str) -> Result<Regex> {
-    let spelling = rule_spelling(glob);
-    if !can_match(&spelling) {
-        tracing::warn!(
-            "url rule source {glob:?} matches no request: request paths are matched with a \
-             leading `/`, without empty, `.` or `..` segments, and with `/` unencoded"
-        );
-    }
+    let spelling = checked_spelling(glob, "url rule");
     let glob = GlobBuilder::new(&spelling)
         .literal_separator(true)
         .build()
@@ -68,10 +62,38 @@ pub(crate) fn to_regex(glob: &str) -> Result<Regex> {
         .with_context(|| format!("can not compile regex pattern equivalent for source: {pattern}"))
 }
 
+/// Compiles the `source` glob of a custom headers rule into a matcher of
+/// [`crate::fs::path::rule_path`] spellings.
+///
+/// `*` crosses `/` here, as it always did for header sources. The source takes the
+/// spelling and the letter case handling of [`to_regex`].
+pub(crate) fn to_matcher(glob: &str) -> Result<GlobMatcher> {
+    let matcher = GlobBuilder::new(&checked_spelling(glob, "header"))
+        .case_insensitive(cfg!(any(target_os = "macos", windows)))
+        .build()
+        .with_context(|| format!("can not compile glob pattern for header source: {glob}"))?
+        .compile_matcher();
+    Ok(matcher)
+}
+
+/// Returns the rule path spelling of the `source` glob of a `kind` of rule, and warns
+/// when it can match no request.
+fn checked_spelling(glob: &str, kind: &str) -> String {
+    let spelling = rule_spelling(glob);
+    if !can_match(&spelling) {
+        tracing::warn!(
+            "{kind} source {glob:?} matches no request: request paths are matched with a \
+             leading `/`, without empty, `.` or `..` segments, and with `/` unencoded"
+        );
+    }
+    spelling
+}
+
 /// Spells the text of a `source` glob the way rule paths are spelled: percent-escapes in
 /// uppercase hex, and spaces, non-ASCII and other characters that need an escape encoded.
-/// An escape of an RFC 3986 unreserved character is decoded, as rule paths hold that
-/// character itself (RFC 3986 §6.2.2.2). A `%` that starts no escape becomes `%25`.
+/// An escape of a character that rule paths hold as it is, such as `%61` or `%2B`, is
+/// decoded (RFC 3986 §6.2.2.2), `*` and `,` as the literals `[*]` and `[,]`, since they
+/// are glob syntax. A `%` that starts no escape becomes `%25`.
 fn rule_spelling(glob: &str) -> String {
     let mut spelling = String::with_capacity(glob.len());
     let mut rest = glob;
@@ -82,7 +104,8 @@ fn rule_spelling(glob: &str) -> String {
             .filter(|escape| escape.bytes().skip(1).all(|b| b.is_ascii_hexdigit()));
         let byte = escape.and_then(|escape| u8::from_str_radix(&escape[1..], 16).ok());
         match (escape, byte) {
-            (_, Some(b)) if b.is_ascii_alphanumeric() || matches!(b, b'-' | b'.' | b'_' | b'~') => {
+            (_, Some(b @ (b'*' | b','))) => spelling.extend(['[', char::from(b), ']']),
+            (_, Some(b)) if is_kept_in_rule_paths(b) => {
                 spelling.push(char::from(b));
             }
             (Some(escape), _) => spelling.push_str(&escape.to_ascii_uppercase()),
@@ -92,6 +115,13 @@ fn rule_spelling(glob: &str) -> String {
     }
     spelling.extend(utf8_percent_encode(rest, SOURCE_ENCODE));
     spelling
+}
+
+/// Returns whether rule paths hold the byte `b` as it is, not percent-encoded.
+fn is_kept_in_rule_paths(b: u8) -> bool {
+    percent_encode(&[b], RULE_PATH_ENCODE)
+        .next()
+        .is_some_and(|chunk| chunk.len() == 1)
 }
 
 /// Returns whether a source glob in rule path spelling can match a rule path: it starts
@@ -109,7 +139,7 @@ fn can_match(spelling: &str) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::{can_match, rule_spelling, to_regex};
+    use super::{can_match, rule_spelling, to_matcher, to_regex};
 
     fn captures(glob: &str, path: &str) -> Option<Vec<String>> {
         let re = to_regex(glob).unwrap();
@@ -184,10 +214,19 @@ mod tests {
         for (glob, spelling) in [
             ("/%61dmin/**", "/admin/**"),
             ("/%2d%2E%5f%7e%41%7A%30%39", "/-._~Az09"),
-            ("/%2f%5c%2a%3a%40%25", "/%2F%5C%2A%3A%40%25"),
+            ("/a%2Bb%3a%40%21%24%26%27%28%29%3B%3D", "/a+b:@!$&'();="),
+            ("/%2f%5c%25%20%5B%7b%3F", "/%2F%5C%25%20%5B%7B%3F"),
+            ("/a%2Ab%2cc", "/a[*]b[,]c"),
         ] {
             assert_eq!(rule_spelling(glob), spelling, "{glob}");
         }
+        assert!(
+            to_matcher("/C%2B%2B/a%2Ab%2Cc")
+                .unwrap()
+                .is_match("/C++/a*b,c")
+        );
+        assert!(!to_matcher("/a%2Ab").unwrap().is_match("/axb"));
+        assert_eq!(captures("/{x%2Cy,z}", "/x,y"), Some(vec!["x,y".into()]));
         assert_eq!(
             captures("/%61dmin/{**}", "/admin/x/y"),
             Some(vec!["x/y".into()])
@@ -242,6 +281,31 @@ mod tests {
         assert_eq!(captures("/Old", "/old").is_some(), ignores_case);
         assert_eq!(captures("/old/{*}", "/OLD/x").is_some(), ignores_case);
         assert_eq!(captures("/old", "/old"), Some(vec![]));
+    }
+
+    #[test]
+    fn glob_matcher_takes_rule_path_spelling() {
+        let matcher = to_matcher("/café/*.js").unwrap();
+        assert!(matcher.is_match("/caf%C3%A9/app.js"));
+        assert!(matcher.is_match("/caf%C3%A9/a/b.js"), "`*` crosses `/`");
+        assert!(!matcher.is_match("/café/app.js"));
+        assert!(to_matcher("/%61dmin/**").unwrap().is_match("/admin/x"));
+    }
+
+    #[test]
+    fn glob_matcher_letter_case_follows_the_platform() {
+        let ignores_case = cfg!(any(target_os = "macos", windows));
+        assert_eq!(
+            to_matcher("/Old/*").unwrap().is_match("/old/x"),
+            ignores_case
+        );
+        assert!(to_matcher("/old/*").unwrap().is_match("/old/x"));
+    }
+
+    #[test]
+    fn glob_matcher_invalid_pattern_is_an_error() {
+        let err = to_matcher("/{unclosed").unwrap_err();
+        assert!(err.to_string().contains("/{unclosed"), "{err}");
     }
 
     #[test]

@@ -77,7 +77,7 @@ bin/server.rs → settings/ → server/ (mod.rs, opts.rs) → service.rs → han
 | 17 | Dynamic compression | — |
 | 18 | `Cache-Control` | — |
 | 19 | Security headers | — |
-| 20 | Custom headers (final precedence). Steps 1–8 return *early* responses; only `scope = "all"` rules reach them | — |
+| 20 | Custom headers (final precedence), matched by the request path and by the path of the file served. Steps 1–8 return *early* responses; only `scope = "all"` rules reach them | — |
 
 Around the pipeline: metrics (request count, inflight, duration, bytes; health probes excluded) and `logger::access::AccessLog`, which wraps the body and logs one line per request when the body is dropped, with the status and the request values the client sent (before rewrites).
 
