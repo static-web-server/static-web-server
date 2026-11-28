@@ -102,7 +102,6 @@ maud = { version = "0.27" }
 mime_guess = "2.0"
 mini-moka = { version = "0.10.3", optional = true }
 percent-encoding = "2.3"
-pin-project = "1.1"
 prometheus = { version = "0.14.0", default-features = false, optional = true }
 regex-lite = "0.1.9"
 rustls-pki-types = { version = "1.15.0", optional = true }
