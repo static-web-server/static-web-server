@@ -5,6 +5,10 @@
 
 //! The server CLI options.
 
+// Unoptimized, clap's derived `augment_args` for `General` takes a ~514 KB stack frame,
+// run once at startup. `unknown_lints`: stable clippy doesn't know the lint yet.
+#![allow(unknown_lints, clippy::large_unopt_stack_frames)]
+
 use clap::Parser;
 use hyper::StatusCode;
 use std::{net::IpAddr, path::PathBuf};
