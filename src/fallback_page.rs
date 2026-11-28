@@ -13,15 +13,29 @@ use std::path::Path;
 use crate::body::Body;
 use crate::error_page::build_html_response;
 use crate::exts::headers::Accept;
+use crate::fs::path::is_path_within_base;
 use crate::{Error, exts::http::MethodExt, handler_opts::RequestHandlerOpts, helpers};
 
-/// Initializes fallback page processing
-pub(crate) fn init(file_path: &Path, handler_opts: &mut RequestHandlerOpts) {
-    let found = file_path.is_file();
+/// Initializes fallback page processing.
+///
+/// The page must resolve inside `root_dir`, after following `..` and symlinks,
+/// so it can't be used to serve a file the root doesn't expose.
+pub(crate) fn init(file_path: &Path, root_dir: &Path, handler_opts: &mut RequestHandlerOpts) {
+    let found = if !file_path.is_file() {
+        tracing::debug!("fallback page path not found or not a regular file");
+        false
+    } else if !is_path_within_base(file_path, root_dir) {
+        tracing::warn!(
+            "fallback page \"{}\" is outside the root directory \"{}\" and was not enabled",
+            file_path.display(),
+            root_dir.display()
+        );
+        false
+    } else {
+        true
+    };
     if found {
         handler_opts.page_fallback = helpers::read_text_default(file_path).into_bytes();
-    } else {
-        tracing::debug!("fallback page path not found or not a regular file");
     }
 
     tracing::info!(
@@ -325,5 +339,40 @@ mod tests {
             fallback_status("/favicon.ico", Some("text/html;q=0, */*")),
             StatusCode::NOT_FOUND
         );
+    }
+
+    fn init_from(file_path: &str) -> RequestHandlerOpts {
+        let mut opts = RequestHandlerOpts::default();
+        super::init(
+            &PathBuf::from(file_path),
+            &PathBuf::from("tests/fixtures/public"),
+            &mut opts,
+        );
+        opts
+    }
+
+    #[test]
+    fn init_enables_a_page_inside_the_root() {
+        assert!(
+            !init_from("tests/fixtures/public/assets/index.html")
+                .page_fallback
+                .is_empty()
+        );
+        // `..` is fine as long as the page still ends up inside the root
+        assert!(
+            !init_from("tests/fixtures/public/../public/assets/index.html")
+                .page_fallback
+                .is_empty()
+        );
+    }
+
+    #[test]
+    fn init_rejects_a_page_outside_the_root() {
+        assert!(
+            init_from("tests/fixtures/public/../markdown/article.html")
+                .page_fallback
+                .is_empty()
+        );
+        assert!(init_from("Cargo.toml").page_fallback.is_empty());
     }
 }

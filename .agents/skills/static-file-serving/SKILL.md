@@ -81,7 +81,7 @@ Entries are keyed by `(path, ContentCoding)`, so a pre-compressed variant is cac
 
 ## Fallback and Error Pages
 
-- `--page-fallback <file>` (`fallback-page` feature; path **not** relative to the root): served with 200 for `GET` requests that would 404, except missing assets, which keep 404: `Sec-Fetch-Dest` other than a document or frame, or, without that header, a non-HTML extension (`/favicon.ico`) not asking for `text/html`
+- `--page-fallback <file>` (`fallback-page` feature; path **not** relative to the root, but it must resolve inside the root after `..` and symlinks, or the feature stays off): served with 200 for `GET` requests that would 404, except missing assets, which keep 404: `Sec-Fetch-Dest` other than a document or frame, or, without that header, a non-HTML extension (`/favicon.ico`) not asking for `text/html`
 - `--page404` (`./404.html`), `--page50x` (`./50x.html`): loaded at startup; relative paths resolve under the root; missing file → generic message
 
 ## Markdown Negotiation (`--accept-markdown`, default `false`)
